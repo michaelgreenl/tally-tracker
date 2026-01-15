@@ -1,0 +1,82 @@
+$primary-font-stack: helvetica, arial, sans-serif;
+
+:root {
+    --color-white: #fff;
+    --color-gray1: #f8f9fa;
+    --color-gray2: #e9ecef;
+    --color-gray3: #dee2e6;
+    --color-gray4: #ced4da;
+    --color-gray5: #adb5bd;
+    --color-gray6: #575e64;
+    --color-gray7: #495057;
+    --color-gray8: #343a40;
+    --color-gray9: #212529;
+    --color-black: #000;
+    --color-success: #4caf50;
+    --color-error: #f44336;
+    --color-primary: #23a6d5;
+    --color-primary-light: #d9edff;
+    --color-bg-primary: var(--color-gray7);
+    --color-bg-primary-alt: var(--color-gray8);
+    --color-bg-secondary: var(--color-gray1);
+    --color-text-primary-light: var(--color-gray2);
+    --color-text-primary-dark: var(--color-gray7);
+    --color-text-secondary-light: var(--color-gray4);
+    --color-text-secondary-dark: var(--color-gray6);
+    --color-text-muted: var(--color-gray5);
+}
+
+$color-white: var(--color-white);
+$color-gray1: var(--color-gray1);
+$color-gray2: var(--color-gray2);
+$color-gray3: var(--color-gray3);
+$color-gray4: var(--color-gray4);
+$color-gray5: var(--color-gray5);
+$color-gray6: var(--color-gray6);
+$color-gray7: var(--color-gray7);
+$color-gray8: var(--color-gray8);
+$color-gray9: var(--color-gray9);
+$color-black: var(--color-black);
+$color-success: var(--color-success);
+$color-error: var(--color-error);
+$color-primary: var(--color-primary);
+$color-primary-light: var(--color-primary-light);
+$color-accent: var(--color-accent);
+$color-accent-light: var(--color-accent-light);
+$color-bg-primary: var(--color-bg-primary);
+$color-bg-primary-alt: var(--color-bg-primary-alt);
+$color-bg-secondary: var(--color-bg-secondary);
+$color-text-primary-light: var(--color-text-primary-light);
+$color-text-primary-dark: var(--color-text-primary-dark);
+$color-text-secondary-light: var(--color-text-secondary-light);
+$color-text-secondary-dark: var(--color-text-secondary-dark);
+$color-text-muted: var(--color-text-muted);
+
+$size-1: 0.25em;
+$size-2: 0.5em;
+$size-3: 0.75em;
+$size-4: 1em;
+$size-5: 1.25em;
+$size-6: 1.5em;
+$size-7: 1.75em;
+$size-8: 2em;
+$size-9: 2.5em;
+$size-10: 3em;
+$size-11: 3.5em;
+$size-12: 4em;
+$size-13: 4.5em;
+$size-14: 5em;
+$size-15: 5.5em;
+$size-16: 6em;
+$size-17: 6.5em;
+$size-18: 7em;
+$size-19: 7.5em;
+$size-20: 8em;
+
+$border-radius-xs: 8px;
+$border-radius-sm: 10px;
+$border-radius-md: 12px;
+$border-radius-lg: 14px;
+$border-radius-xl: 16px;
+
+$box-shadow: 2px 2px 6px 2px #0002;
