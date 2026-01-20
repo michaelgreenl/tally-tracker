@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
-import { ApiResponse } from '../../types/index.js';
+import type { ApiResponse } from '../../types/shared/responses.d.ts';
 
 export const checkHealth = (req: Request, res: Response) => {
-    const response: ApiResponse = {
+    const response: ApiResponse<Object> = {
         success: true,
         data: {
             status: 'healthy',
@@ -10,5 +10,6 @@ export const checkHealth = (req: Request, res: Response) => {
             uptime: process.uptime(),
         },
     };
+
     res.json(response);
 };

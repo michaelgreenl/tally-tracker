@@ -11,7 +11,7 @@ export const jwt = (req: Request, res: Response, next: NextFunction) => {
 
     try {
         const decoded = jwtUtil.verify(token);
-        (req as any).user = decoded; // Attach user to request
+        req.user = decoded;
         next();
     } catch (error) {
         return res.status(UNAUTHORIZED).json({ message: 'Invalid token' });

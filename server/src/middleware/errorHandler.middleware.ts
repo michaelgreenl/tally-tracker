@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import { ApiResponse } from '../types/index.js';
+
+import type { ApiResponse } from '../types/shared/responses.d.ts';
 
 export const errorHandler = (err: unknown, req: Request, res: Response, _next: NextFunction) => {
     let message = 'Internal Server Error';
@@ -16,10 +17,6 @@ export const errorHandler = (err: unknown, req: Request, res: Response, _next: N
         console.error('Unknown error:', err);
     }
 
-    const response: ApiResponse = {
-        success: false,
-        error: message,
-    };
-
+    const response: ApiResponse<null> = { success: false, message };
     res.status(status).json(response);
 };
