@@ -1,12 +1,15 @@
+<script setup lang="ts">
+import { useAuthStore } from '@/stores/authStore.js';
+import { IonApp, IonRouterOutlet } from '@ionic/vue';
+
+const authStore = useAuthStore();
+</script>
+
 <template>
     <ion-app>
         <ion-router-outlet />
     </ion-app>
 </template>
-
-<script setup lang="ts">
-import { IonApp, IonRouterOutlet } from '@ionic/vue';
-</script>
 
 <style lang="scss">
 * {
@@ -29,23 +32,6 @@ body,
     position: relative;
     display: flex;
     flex-direction: column;
-    font-size: 8px;
-
-    @include bp-xs-phone {
-        font-size: 10px;
-    }
-
-    @include bp-sm-phone {
-        font-size: 12px;
-    }
-
-    @include bp-md-tablet {
-        font-size: 14px;
-    }
-
-    @include bp-xxl-desktop {
-        font-size: 16px;
-    }
 }
 
 main {

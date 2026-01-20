@@ -2,37 +2,32 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/authStore';
-import Button from '@/components/Button.vue';
-import TextInput from '@/components/Inputs/Text.vue';
+import { IonPage, IonContent, IonGrid, IonRow, IonCol } from '@ionic/vue';
+import TextInput from '@/components/inputs/TextInput.vue';
+import BaseButton from '@/components/base/BaseButton.vue';
+import BaseNavLink from '@/components/base/BaseNavLink.vue';
 
 const authStore = useAuthStore();
-
-const username = ref('');
-const password = ref('');
-const errorMessage = ref<string | null>(null);
-const isLoading = ref(false);
-const showPassword = ref(false);
-const passwordHideButton = ref(false);
-
 const router = useRouter();
 
+const email = ref('');
+const password = ref('');
+const showPassword = ref(false);
+const isLoading = ref(false);
+const errorMessage = ref('');
+
 const handleLogin = async () => {
-    errorMessage.value = null;
     isLoading.value = true;
+    errorMessage.value = '';
 
     try {
-        const success = await authStore.login(username.value, password.value);
+        const res = await authStore.login({ email: email.value, password: password.value });
 
-        if (success) {
-            router.push('/');
-        } else {
-            errorMessage.value = 'Invalid username or password.';
-            password.value = '';
-        }
-    } catch (error) {
-        errorMessage.value = 'An unexpected error occurred.';
-        password.value = '';
-        console.error(error);
+        if (res.success) router.push('/');
+        else errorMessage.value = res.message || 'Login Failed';
+    } catch (error: any) {
+        errorMessage.value = 'Server error occurred';
+        console.error('Server error occurred', error);
     } finally {
         isLoading.value = false;
     }
@@ -40,142 +35,80 @@ const handleLogin = async () => {
 </script>
 
 <template>
-    <div class="auth-container">
-        <form class="auth-form" @submit.prevent="handleLogin">
-            <div class="auth-header">
-                <h2>Login</h2>
-            </div>
-            <hr class="header-border" />
-            <div class="form-groups">
-                <div class="form-group">
-                    <label for="username">Username</label>
-                    <TextInput id="username" v-model="username" required :disabled="isLoading" />
-                </div>
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <div class="password-input-wrapper">
-                        <TextInput
-                            id="password"
-                            v-model="password"
-                            required
-                            :disabled="isLoading"
-                            :show-password="showPassword"
-                            :password-hide-button="passwordHideButton"
-                            @toggle-hide-button="showPassword = !showPassword"
-                            @focus="passwordHideButton = true"
-                            @blur="passwordHideButton = false"
-                        />
-                    </div>
-                </div>
-            </div>
-            <Button type="submit" text="Login" preset="secondary" :is-loading="isLoading" :disabled="isLoading" />
-            <hr class="bottom-border" />
-            <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
-            <p class="form-link">Don't have an account? <router-link to="/register">Register</router-link></p>
-        </form>
-    </div>
+    <ion-page>
+        <ion-content class="ion-padding">
+            <ion-grid style="height: 100%">
+                <ion-row class="ion-justify-content-center ion-align-items-center" style="height: 100%">
+                    <ion-col size="12" size-md="6" size-lg="4">
+                        <div class="header">
+                            <h1>Welcome Back</h1>
+                            <p>Please login to continue</p>
+                        </div>
+                        <form @submit.prevent="handleLogin">
+                            <TextInput
+                                label="Email Address"
+                                v-model="email"
+                                type="email"
+                                :disabled="isLoading"
+                                placeholder="name@example.com"
+                            />
+                            <TextInput
+                                label="Password"
+                                v-model="password"
+                                type="password"
+                                :disabled="isLoading"
+                                :show-password-toggle="true"
+                                :is-password-visible="showPassword"
+                                @toggle-password="showPassword = !showPassword"
+                            />
+                            <div class="error-box" v-if="errorMessage">
+                                {{ errorMessage }}
+                            </div>
+                            <BaseButton type="submit" :loading="isLoading">Login</BaseButton>
+                            <div class="footer">
+                                <BaseNavLink to="/register">Create an account</BaseNavLink>
+                            </div>
+                        </form>
+                    </ion-col>
+                </ion-row>
+            </ion-grid>
+        </ion-content>
+    </ion-page>
 </template>
 
-<style lang="scss" scoped>
-.auth-container {
-    width: 100%;
-    padding: 0 $size-4 $size-12;
-    font-size: 0.8em;
-    @include flexCenterAll;
-}
-
-.auth-form {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: $size-1;
-    width: 90%;
-    max-width: 30em;
-    padding: $size-6 $size-7 0;
-}
-
-.auth-header {
-    align-self: flex-start;
-    @include flexCenterAll;
-
-    h2 {
-        margin: 0;
-        font-size: 2.2em;
-        color: $color-accent;
-    }
-}
-
-.header-border {
-    height: 2px;
-    margin: 0 0 $size-1;
-    background-color: $color-primary-light;
-    border: 0;
-}
-
-.bottom-border {
-    width: 90%;
-    height: 1px;
-    margin: $size-2 auto 0;
-    background-color: $color-gray4;
-    border: 0;
-}
-
-.form-groups {
-    display: flex;
-    flex-direction: column;
-    gap: $size-3;
-    padding: $size-1 $size-2 $size-2;
-}
-
-.form-group {
-    display: flex;
-    flex-direction: column;
-    gap: $size-1;
-
-    label {
-        font-size: 0.9em;
-        color: $color-text-secondary-dark;
-    }
-}
-
-.password-input-wrapper {
-    display: flex;
-    align-items: center;
-
-    :deep(input) {
-        padding-right: 60px;
-    }
-}
-
-button[type='submit'] {
-    position: relative;
-    z-index: 2;
-    align-self: flex-end;
-    margin-right: $size-4;
-
-    :deep(span) {
-        color: $color-white;
-        text-shadow: none;
-    }
-}
-
-.error-message {
-    margin-top: $size-1;
-    color: $color-error;
+<style scoped>
+.header {
     text-align: center;
+    margin-bottom: 30px;
 }
 
-.form-link {
-    margin-top: $size-2;
-    color: $color-text-secondary-dark;
+.header h1 {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.header p {
+    color: #666;
+}
+
+.footer {
     text-align: center;
+    margin-top: 20px;
+}
 
-    a {
-        color: $color-primary;
+.footer a {
+    text-decoration: none;
+    font-weight: bold;
+    color: var(--ion-color-primary);
+}
 
-        &:hover {
-            text-decoration: underline;
-        }
-    }
+.error-box {
+    color: var(--ion-color-danger);
+    text-align: center;
+    margin-bottom: 20px;
+    background: rgba(var(--ion-color-danger-rgb), 0.1);
+    padding: 10px;
+    border-radius: 8px;
 }
 </style>
