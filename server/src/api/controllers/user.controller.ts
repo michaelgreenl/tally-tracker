@@ -22,6 +22,7 @@ export const checkAuth = async (req: Request, res: Response<AuthResponse>) => {
 
         const user = await userRepository.getUserById(userId);
         if (!user) {
+            res.clearCookie('token', cookieConfig);
             return res.status(NOT_FOUND).json({ success: false, message: 'User not found' });
         }
 
