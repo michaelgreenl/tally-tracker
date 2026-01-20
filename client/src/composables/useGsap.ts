@@ -1,6 +1,7 @@
 import { onUnmounted, shallowRef } from 'vue';
-import type { Ref } from 'vue';
 import { gsap } from 'gsap';
+
+import type { Ref } from 'vue';
 
 export function useGsap(scope?: Ref<HTMLElement | null | undefined>) {
     const ctx = shallowRef<gsap.Context | null>(null);

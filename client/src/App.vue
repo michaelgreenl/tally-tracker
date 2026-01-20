@@ -1,8 +1,5 @@
 <script setup lang="ts">
-import { useAuthStore } from '@/stores/authStore.js';
 import { IonApp, IonRouterOutlet } from '@ionic/vue';
-
-const authStore = useAuthStore();
 </script>
 
 <template>
