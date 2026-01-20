@@ -1,8 +1,7 @@
 {
-    "name": "express-ts-template",
-    "version": "1.0.0",
+    "name": "tally-tacker-server",
+    "version": "0.0.1",
     "description": "",
-    "main": "index.js",
     "type": "module",
     "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1",
@@ -12,11 +11,16 @@
         "lint": "eslint src --ext .ts",
         "type-check": "tsc --noEmit",
         "format": "prettier --write \"src/**/*.ts\"",
-        "prepare": "husky"
+        "prepare": "husky",
+        "generate": "npx prisma generate",
+        "sync-types": "chmod +x ./scripts/sync-types.sh && ./scripts/sync-types.sh"
     },
     "keywords": [],
     "author": "",
     "license": "ISC",
+    "prisma": {
+        "seed": "tsx prisma/seed.ts"
+    },
     "dependencies": {
         "@prisma/adapter-pg": "^7.2.0",
         "@prisma/client": "^7.2.0",
@@ -50,11 +54,13 @@
         "globals": "^17.0.0",
         "husky": "^9.1.7",
         "prettier": "^3.7.4",
-        "ts-node": "^10.9.2",
+        "prettier-plugin-prisma": "^5.0.0",
+        "prisma": "^7.2.0",
         "tsx": "^4.21.0",
-        "typescript": "^5.9.3"
+        "typescript": "^5.9.3",
+        "zod-prisma-types": "^3.3.10"
     },
-    "prisma": {
-        "seed": "ts-node prisma/seed.ts"
+    "overrides": {
+        "hono": "^4.11.4"
     }
 }
