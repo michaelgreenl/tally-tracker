@@ -1,0 +1,41 @@
+import { ClientUser } from './models';
+import { HexColor } from './index';
+
+// ***** Express *****
+declare global {
+    namespace Express {
+        interface Request {
+            user?: ClientUser;
+        }
+    }
+}
+
+// ***** User Requests *****
+export interface AuthRequest {
+    email?: string;
+    phone?: string;
+    password: string;
+}
+
+export interface UpdateUserRequest {
+    email?: string;
+    phone?: string;
+    password?: string;
+}
+
+// ***** Counter Requests *****
+export interface CreateCounterRequest {
+    title: string;
+    count?: number;
+    color?: HexColor;
+}
+
+export interface UpdateCounterRequest {
+    title?: string;
+    count?: number;
+    color?: HexColor;
+}
+
+export interface IncrementCounterRequest {
+    amount: number;
+}
