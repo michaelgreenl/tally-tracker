@@ -1,9 +1,10 @@
 import { createRouter, createWebHistory } from '@ionic/vue-router';
-import type { RouteRecordRaw } from 'vue-router';
 import { useAuthStore } from '@/stores/authStore.js';
-import HomeView from '../views/HomeView.vue';
-import LoginView from '../views/LoginView.vue';
-import RegisterView from '../views/RegisterView.vue';
+import HomeView from '@/views/HomeView.vue';
+import LoginView from '@/views/LoginView.vue';
+import RegisterView from '@/views/RegisterView.vue';
+
+import type { RouteRecordRaw } from 'vue-router';
 
 const DEFAULT_TITLE = 'Ionic Vue Template';
 
@@ -22,19 +23,16 @@ router.beforeEach(async (to, from, next) => {
     const authStore = useAuthStore();
     const authorized = localStorage.getItem('AUTHORIZED');
 
-    if (!authStore.initLoading && authorized && !authStore.isAuthenticated) {
+    if (authorized && !authStore.isAuthenticated) {
         await authStore.initializeAuth();
         authStore.initLoading = false;
     }
 
     if (!authStore.isAuthenticated && to.meta.requiresAuth) {
         next('/login');
-    } else if ((to.name === 'Login' || to.name === 'Register') && authStore.isAuthenticated) {
-        next('/profile');
-    } else {
-        next();
     }
 
+    next();
     authStore.initLoading = false;
 });
 
@@ -43,9 +41,7 @@ router.afterEach((to) => {
 
     let title = DEFAULT_TITLE;
 
-    if (authStore.isAuthenticated) {
-        title += ' | ' + authStore.user?.username;
-    } else if (to.meta.title) {
+    if (to.meta.title) {
         title += ' | ' + to.meta.title;
     }
 
