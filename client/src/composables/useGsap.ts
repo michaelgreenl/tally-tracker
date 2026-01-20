@@ -7,21 +7,19 @@ export function useGsap(scope?: Ref<HTMLElement | null | undefined>) {
 
     const init = () => {
         if (!ctx.value) {
-            ctx.value = gsap.context(() => { }, scope?.value ?? undefined);
+            ctx.value = gsap.context(() => {}, scope?.value ?? undefined);
         }
     };
 
-    const registerAnim = (
-        animationLogic: (defaults: any) => void
-    ) => {
+    const registerAnim = (animationLogic: (defaults: any) => void) => {
         return (userOptions: Record<string, any> = {}) => {
             init();
 
             const defaults = {
                 tl: gsap.timeline(),
                 delay: 0,
-                onComplete: () => { },
-                onStart: () => { },
+                onComplete: () => {},
+                onStart: () => {},
                 ...userOptions,
             };
 

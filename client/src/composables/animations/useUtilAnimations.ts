@@ -1,6 +1,7 @@
 import { gsap } from 'gsap';
-import Flip from 'gsap/Flip';
 import { useGsap } from '@/composables/useGsap';
+// @ts-ignore
+import Flip from 'gsap/Flip';
 
 gsap.registerPlugin(Flip);
 
@@ -38,7 +39,7 @@ export function useUtilAnimations() {
         });
     });
 
-    const flipFrom = ({ state, opts, onComplete = () => { } }: AnimationOptions) => {
+    const flipFrom = ({ state, opts, onComplete = () => {} }: AnimationOptions) => {
         if (!state) return;
         Flip.from(state, {
             duration: 0.3,
