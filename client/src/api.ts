@@ -1,22 +1,15 @@
-// api.ts
+import type { ApiResponse } from '@/types/shared/responses';
+
 const API_URL = import.meta.env.VITE_API_URL;
 
-export interface ApiError {
-    message: string;
-    [key: string]: unknown;
+export interface ApiRequestOptions<T = any> extends Omit<RequestInit, 'body'> {
+    body?: T;
 }
 
-export interface ApiResponse<T = unknown> {
-    data: T;
-    success: boolean;
-    message?: string;
-}
-
-export interface ApiRequestOptions extends Omit<RequestInit, 'body'> {
-    body?: any;
-}
-
-async function apiFetch<T = unknown>(endpoint: string, options: ApiRequestOptions = {}): Promise<T> {
+async function apiFetch<ResT = unknown, ReqT = any>(
+    endpoint: string,
+    options: ApiRequestOptions<ReqT> = {},
+): Promise<ResT> {
     const { body, headers = {}, ...restOptions } = options;
 
     const isFormData = body instanceof FormData;
@@ -29,6 +22,7 @@ async function apiFetch<T = unknown>(endpoint: string, options: ApiRequestOption
     }
 
     const response = await fetch(`${API_URL}${endpoint}`, {
+        credentials: 'include',
         ...restOptions,
         headers: reqHeaders,
         body: isFormData ? body : body ? JSON.stringify(body) : undefined,
@@ -37,9 +31,9 @@ async function apiFetch<T = unknown>(endpoint: string, options: ApiRequestOption
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
 
-        const error: ApiError = {
+        const error: ApiResponse<never> = {
+            success: false,
             message: errorData.message || 'An API error occurred',
-            ...errorData,
         };
 
         throw error;
