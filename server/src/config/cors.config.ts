@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import cors from 'cors';
 
 const getAllowedOrigins = () => {
@@ -6,8 +7,8 @@ const getAllowedOrigins = () => {
 };
 
 export const expressCorsOpts = {
+    credentials: true,
     origin: getAllowedOrigins(),
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'X-Requested-With'],
 };
-
