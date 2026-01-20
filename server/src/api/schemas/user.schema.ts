@@ -29,25 +29,9 @@ export const loginSchema = z.object({
 });
 
 export const updateUserSchema = z.object({
-    params: z.object({
-        userId: z.string().uuid(),
-    }),
     body: z.object({
         email: z.string().email().optional(),
         phone: phoneSchema.optional(),
         password: z.string().min(6).optional(),
-    }),
-});
-
-export const deleteUserSchema = z.object({
-    params: z.object({
-        userId: z.string().uuid(),
-    }),
-});
-
-export const getUsersSchema = z.object({
-    query: z.object({
-        limit: z.coerce.number().min(1).max(100).optional(),
-        offset: z.coerce.number().min(0).optional(),
     }),
 });
