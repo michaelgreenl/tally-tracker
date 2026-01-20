@@ -1,6 +1,14 @@
 import prisma from '../prisma.js';
 import { Prisma } from '@prisma/client';
 
+const userSelectSchema = {
+    id: true,
+    email: true,
+    phone: true,
+    createdAt: true,
+    updatedAt: true,
+};
+
 export const createUser = async ({ email, phone, password }: { email?: string; phone?: string; password: string }) =>
     prisma.user.create({
         data: {
@@ -16,13 +24,7 @@ export const getAllUsers = async ({ limit, offset }: { limit: number; offset: nu
     prisma.user.findMany({
         take: limit,
         skip: offset,
-        select: {
-            id: true,
-            email: true,
-            phone: true,
-            createdAt: true,
-            updatedAt: true,
-        },
+        select: userSelectSchema,
     });
 
 export const getUserById = (userId: string) =>
@@ -30,13 +32,7 @@ export const getUserById = (userId: string) =>
         where: {
             id: userId,
         },
-        select: {
-            id: true,
-            email: true,
-            phone: true,
-            createdAt: true,
-            updatedAt: true,
-        },
+        select: userSelectSchema,
     });
 
 export const getUserByEmail = (email: string) =>
@@ -59,6 +55,6 @@ export const updateUserInfo = (userId: string, data: Prisma.UserUpdateInput) =>
             where: {
                 id: userId,
             },
-            data: data,
+            data,
         })
         .then(() => true);

@@ -1,20 +1,20 @@
-import { UNAUTHORIZED, NOT_FOUND, UNPROCESSABLE_ENTITY } from '../../contants.js';
-import bcrypt from 'bcrypt';
-import jwt from '../../util/jwt.util.js';
+import { CREATED, UNAUTHORIZED, NOT_FOUND, UNPROCESSABLE_ENTITY, SERVER_ERROR } from '../../contants.js';
 import * as userRepository from '../../db/repositories/user.repository.js';
-import { Request, Response } from 'express';
+import cookieConfig from '../../config/cookie.config.js';
+import jwt from '../../util/jwt.util.js';
+import bcrypt from 'bcrypt';
 import { Prisma } from '@prisma/client';
 
-export const get = async (req: Request, res: Response) => {
-    const { limit, offset } = req.query;
-    res.send({ users: await userRepository.getAllUsers({ limit: Number(limit) || 10, offset: Number(offset) || 0 }) });
-};
+import type { Request, Response } from 'express';
+import type { AuthResponse } from '../../types/shared/responses.d.ts';
+import type { AuthRequest } from '../../types/shared/requests.d.ts';
+import type { ClientUser } from '../../types/shared/models.d.ts';
 
-export const checkAuth = async (req: Request, res: Response) => {
+export const checkAuth = async (req: Request, res: Response<AuthResponse>) => {
     try {
-        const token = req.cookies.token;
+        const token = req.cookies?.token;
         if (!token) {
-            return res.json({ success: false, message: 'Not authenticated', id: null });
+            return res.json({ success: false, message: 'Not authenticated: Token not found' });
         }
 
         const decoded = jwt.verify(token) as { id: string };
@@ -22,47 +22,105 @@ export const checkAuth = async (req: Request, res: Response) => {
 
         const user = await userRepository.getUserById(userId);
         if (!user) {
-            return res.json({ success: false, message: 'User not found', id: null });
-        } else {
-            res.json({
-                success: true,
-                message: 'Authentication successful',
-                id: user.id,
-                email: user.email,
-                phone: user.phone,
-            });
+            return res.status(NOT_FOUND).json({ success: false, message: 'User not found' });
         }
+
+        res.json({
+            success: true,
+            message: 'Authentication successful',
+            data: { user },
+        });
     } catch (error: any) {
-        console.error('Auth check error:', error);
-        res.json({ success: false, message: 'Authentication failed: ' + error.message });
+        console.error('Authentication Check Error:', error);
+        res.status(SERVER_ERROR).json({
+            success: false,
+            message: 'Authentication Check Error: ' + error.message,
+        });
     }
 };
 
-export const post = async (req: Request, res: Response) => {
+export const post = async (req: Request<{}, {}, AuthRequest>, res: Response<AuthResponse>) => {
     try {
         const { email, phone, password } = req.body;
 
         const hash = await bcrypt.hash(password, 10);
-        const user = await userRepository.createUser({ email, phone, password: hash });
+        await userRepository.createUser({ email, phone, password: hash });
 
-        const token = jwt.sign({ id: user.id, email: user.email });
-
-        res.send({ id: user.id, email: user.email, phone: user.phone });
+        res.status(CREATED).json({ success: true });
     } catch (error: any) {
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
             const target = (error.meta?.target as string[])?.[0] || 'Account';
             const field = target.charAt(0).toUpperCase() + target.slice(1);
 
-            res.status(UNPROCESSABLE_ENTITY).json({ message: `${field} is already in use.` });
+            res.status(UNPROCESSABLE_ENTITY).json({
+                success: false,
+                message: `${field} is already in use.`,
+            });
         } else {
-            res.send(error);
+            console.error('User Controller Error: ', error);
+            res.status(SERVER_ERROR).json({
+                success: false,
+                message: 'Server error: ' + error.message,
+            });
         }
     }
 };
 
-export const put = async (req: Request, res: Response) => {
+export const login = async (req: Request<{}, {}, AuthRequest>, res: Response<AuthResponse>) => {
     try {
-        const { userId } = req.params;
+        const { email, phone, password } = req.body;
+
+        let user;
+        if (email) {
+            user = await userRepository.getUserByEmail(email);
+        } else if (phone) {
+            user = await userRepository.getUserByPhone(phone);
+        }
+
+        if (!user) {
+            return res.status(NOT_FOUND).json({
+                success: false,
+                message: 'No account found with those credentials.',
+            });
+        }
+
+        const match = await bcrypt.compare(password, user.password);
+        if (!match) {
+            return res.status(UNAUTHORIZED).json({ success: false, message: 'Incorrect password.' });
+        }
+
+        const token = jwt.sign({ id: user.id, email: user.email, phone: user.phone });
+
+        const { password: _, ...clientUser } = user;
+
+        res.cookie('token', token, cookieConfig);
+        res.json({ success: true, data: { user: clientUser } });
+    } catch (error: any) {
+        console.error('User Controller Error: ', error);
+        res.status(SERVER_ERROR).json({
+            success: false,
+            message: 'Server error: ' + error.message,
+        });
+    }
+};
+
+export const logout = async (req: Request, res: Response<AuthResponse>) => {
+    try {
+        res.clearCookie('token', cookieConfig);
+
+        res.json({ success: true });
+    } catch (error: any) {
+        console.error('User Controller Error: ', error);
+        res.status(SERVER_ERROR).json({
+            success: false,
+            message: 'Server error: ' + error.message,
+        });
+    }
+};
+
+export const put = async (req: Request<{}, {}, AuthRequest>, res: Response<AuthResponse>) => {
+    try {
+        const userId = req.user?.id;
         const { email, phone, password } = req.body;
 
         const updateData: any = {};
@@ -77,79 +135,40 @@ export const put = async (req: Request, res: Response) => {
             await userRepository.updateUserInfo(userId, updateData);
         }
 
-        res.send({ success: true });
+        res.json({ success: true });
     } catch (error: any) {
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
             const target = (error.meta?.target as string[])?.[0] || 'Account';
             const field = target.charAt(0).toUpperCase() + target.slice(1);
 
-            res.status(UNPROCESSABLE_ENTITY).json({ message: `${field} is already in use.` });
+            res.status(UNPROCESSABLE_ENTITY).json({
+                success: false,
+                message: `${field} is already in use.`,
+            });
         } else {
-            res.send(error);
+            console.error('User Controller Error: ', error);
+            res.status(SERVER_ERROR).json({
+                success: false,
+                message: 'Server error: ' + error.message,
+            });
         }
     }
 };
 
-export const remove = async (req: Request, res: Response) => {
+export const remove = async (req: Request, res: Response<AuthResponse>) => {
     try {
-        const { userId } = req.params;
+        const userId = req.user?.id;
 
         if (typeof userId === 'string') {
             await userRepository.deleteUser(userId);
         }
 
-        res.send();
-    } catch (error) {
-        res.send(error);
-    }
-};
-
-export const login = async (req: Request, res: Response) => {
-    try {
-        const { email, phone, password } = req.body;
-
-        let user;
-        if (email) {
-            user = await userRepository.getUserByEmail(email);
-        } else if (phone) {
-            user = await userRepository.getUserByPhone(phone);
-        }
-
-        if (!user) {
-            res.status(NOT_FOUND).json({ message: 'No account found with those credentials.' });
-            return;
-        }
-
-        const match = await bcrypt.compare(password, user.password);
-        if (!match) {
-            res.status(UNAUTHORIZED).json({ message: 'Incorrect password.' });
-            return;
-        }
-
-        const token = jwt.sign({ id: user.id, email: user.email });
-        res.cookie('token', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
-            maxAge: 24 * 60 * 60 * 1000,
+        res.json({ success: true });
+    } catch (error: any) {
+        console.error('User Controller Error: ', error);
+        res.status(SERVER_ERROR).json({
+            success: false,
+            message: 'Server error: ' + error.message,
         });
-
-        res.send({ id: user.id, email: user.email, phone: user.phone });
-    } catch (error) {
-        res.send(error);
-    }
-};
-
-export const logout = async (req: Request, res: Response) => {
-    try {
-        res.clearCookie('token', {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
-            maxAge: 0,
-        });
-        res.json({ success: true, message: 'Logged out successfully' });
-    } catch (error) {
-        res.send(error);
     }
 };
