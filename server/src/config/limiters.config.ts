@@ -2,7 +2,9 @@ import 'dotenv/config';
 import rateLimit from 'express-rate-limit';
 import slowDown from 'express-slow-down';
 
-const skip = (req) => (process.env.NODE_ENV === 'development' ? true : false);
+import { Request } from 'express';
+
+const skip = (req: Request) => (process.env.NODE_ENV === 'development' ? true : false);
 
 export const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
