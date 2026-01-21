@@ -3,7 +3,13 @@ import cors from 'cors';
 
 const getAllowedOrigins = () => {
     const { FRONTEND_URL } = process.env;
-    return ['http://localhost:5173', 'http://localhost:5174', FRONTEND_URL].filter(Boolean) as string[];
+    return [
+        'http://localhost:5173',
+        'http://localhost:5174',
+        'capacitor://localhost',
+        'http://localhost',
+        FRONTEND_URL,
+    ].filter(Boolean) as string[];
 };
 
 export const expressCorsOpts = {
