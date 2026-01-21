@@ -5,7 +5,7 @@ import { useCounterStore } from '@/stores/counterStore';
 import { useRouter } from 'vue-router';
 import BaseNavLink from '@/components/base/BaseNavLink.vue';
 import BaseButton from '@/components/base/BaseButton.vue';
-import TextInput from '@/components/inputs/TestInput.vue';
+import TextInput from '@/components/inputs/TextInput.vue';
 import CounterForm from '@/components/CounterForm.vue';
 import {
     IonPage,
@@ -74,7 +74,11 @@ const closeCounterForm = () => {
             </ion-list>
             <p v-else>No counter's yet.</p>
             <BaseButton v-if="!showCounterForm" @click="showCounterForm = true">Add counter</BaseButton>
-            <CounterForm v-if="showCounterForm" :counter="counterToUpdate" @done="closeCounterForm()" />
+            <CounterForm
+                v-if="showCounterForm"
+                :counter="counterToUpdate as ClientCounter | undefined"
+                @done="closeCounterForm()"
+            />
             <BaseButton v-if="showCounterForm" @click="closeCounterForm()">Cancel</BaseButton>
         </ion-content>
         <ion-content v-else class="ion-padding">

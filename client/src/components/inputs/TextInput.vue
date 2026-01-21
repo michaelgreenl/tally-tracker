@@ -28,7 +28,7 @@ const emit = defineEmits<{
                 :type="isPasswordVisible ? 'text' : type"
                 :placeholder="placeholder"
                 :disabled="disabled"
-                @ionInput="emit('update:modelValue', $event.target.value)"
+                @ionInput="emit('update:modelValue', $event.target.value as string)"
             ></ion-input>
             <ion-icon
                 v-if="showPasswordToggle"
