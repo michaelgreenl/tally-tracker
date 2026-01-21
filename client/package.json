@@ -1,7 +1,7 @@
 {
     "name": "tally-tracker-client",
     "private": true,
-    "version": "1.0.0",
+    "version": "0.0.1",
     "description": "",
     "type": "module",
     "scripts": {
@@ -28,7 +28,6 @@
         "gsap": "^3.14.2",
         "ionicons": "^7.0.0",
         "pinia": "^3.0.4",
-        "socket.io-client": "^4.8.3",
         "vue": "^3.3.0",
         "vue-router": "^4.2.0",
         "zod": "^4.3.5"
