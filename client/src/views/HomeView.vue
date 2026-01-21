@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useAuthStore } from '@/stores/authStore';
 import { useCounterStore } from '@/stores/counterStore';
 import { useRouter } from 'vue-router';
 import BaseNavLink from '@/components/base/BaseNavLink.vue';
+import BaseButton from '@/components/base/BaseButton.vue';
+import TextInput from '@/components/inputs/TestInput.vue';
+import CounterForm from '@/components/CounterForm.vue';
 import {
     IonPage,
     IonHeader,
@@ -18,21 +21,30 @@ import {
 } from '@ionic/vue';
 
 import type { HexColor } from '@/types/shared';
+import type { ClientCounter } from '@/types/shared/models';
 
 const authStore = useAuthStore();
 const counterStore = useCounterStore();
 const router = useRouter();
 
-const logout = () => {
-    authStore.logout();
-    router.push('/login');
-};
+const showCounterForm = ref(false);
+const counterToUpdate = ref<ClientCounter | null>(null);
 
 onMounted(async () => {
     if (authStore.isAuthenticated) {
         await counterStore.getAllCounters();
     }
 });
+
+const updateCounter = async (counter: ClientCounter) => {
+    counterToUpdate.value = counter;
+    showCounterForm.value = true;
+};
+
+const closeCounterForm = () => {
+    counterToUpdate.value = null;
+    showCounterForm.value = false;
+};
 </script>
 
 <template>
@@ -41,7 +53,7 @@ onMounted(async () => {
             <ion-toolbar color="primary">
                 <ion-title>Tally Counter</ion-title>
                 <ion-buttons v-if="authStore.isAuthenticated" slot="end">
-                    <ion-button @click="logout">Logout</ion-button>
+                    <ion-button @click="authStore.logout()">Logout</ion-button>
                 </ion-buttons>
             </ion-toolbar>
         </ion-header>
@@ -49,14 +61,21 @@ onMounted(async () => {
             <h2>Welcome to Tally Counter!</h2>
             <ion-list v-if="counterStore.counters.length">
                 <ion-item v-for="counter in counterStore.counters" :key="counter.id">
-                    <div :style="{ display: 'flex', flexDirection: 'column' }">
+                    <div :style="{ display: 'flex', gap: '20px' }">
                         <h1>{{ counter.title }}</h1>
                         <p>{{ counter.count }}</p>
                         <p>{{ counter.color }}</p>
+                        <BaseButton @click="counterStore.deleteCounter(counter.id)">delete</BaseButton>
+                        <BaseButton @click="counterStore.incrementCounter(counter.id, -1)">-1</BaseButton>
+                        <BaseButton @click="counterStore.incrementCounter(counter.id, 1)">+1</BaseButton>
+                        <BaseButton @click="updateCounter(counter)">update</BaseButton>
                     </div>
                 </ion-item>
             </ion-list>
             <p v-else>No counter's yet.</p>
+            <BaseButton v-if="!showCounterForm" @click="showCounterForm = true">Add counter</BaseButton>
+            <CounterForm v-if="showCounterForm" :counter="counterToUpdate" @done="closeCounterForm()" />
+            <BaseButton v-if="showCounterForm" @click="closeCounterForm()">Cancel</BaseButton>
         </ion-content>
         <ion-content v-else class="ion-padding">
             <ion-list>
