@@ -13,18 +13,16 @@ const props = defineProps<{
     isPasswordVisible?: boolean;
 }>();
 
-const emit = defineEmits(['update:modelValue', 'toggle-password']);
+const emit = defineEmits<{
+    (e: 'update:modelValue', value: string): void;
+    (e: 'toggle-password'): void;
+}>();
 </script>
 
 <template>
     <div class="input-wrapper">
-        <!--
-      fill="solid" or "outline" makes it look like modern Material Design.
-      mode="md" forces the Android look everywhere if you prefer consistency.
-    -->
         <ion-item fill="outline" mode="md" :class="{ 'ion-invalid': !!error }">
             <ion-label position="floating">{{ label }}</ion-label>
-
             <ion-input
                 :value="modelValue"
                 :type="isPasswordVisible ? 'text' : type"
@@ -32,8 +30,6 @@ const emit = defineEmits(['update:modelValue', 'toggle-password']);
                 :disabled="disabled"
                 @ionInput="emit('update:modelValue', $event.target.value)"
             ></ion-input>
-
-            <!-- Password Eye Icon -->
             <ion-icon
                 v-if="showPasswordToggle"
                 slot="end"
@@ -42,8 +38,6 @@ const emit = defineEmits(['update:modelValue', 'toggle-password']);
                 class="password-icon"
             ></ion-icon>
         </ion-item>
-
-        <!-- Helper/Error Text -->
         <ion-note slot="error" v-if="error" color="danger">
             {{ error }}
         </ion-note>
