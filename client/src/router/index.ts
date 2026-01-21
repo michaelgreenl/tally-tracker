@@ -6,7 +6,7 @@ import RegisterView from '@/views/RegisterView.vue';
 
 import type { RouteRecordRaw } from 'vue-router';
 
-const DEFAULT_TITLE = 'Ionic Vue Template';
+const DEFAULT_TITLE = 'Tally Tracker';
 
 const routes: Array<RouteRecordRaw> = [
     { path: '/', component: HomeView },

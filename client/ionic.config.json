@@ -1,5 +1,5 @@
 {
-    "name": "ionic-vue-template",
+    "name": "tally-tracker-client",
     "integrations": {
         "capacitor": {}
     },
