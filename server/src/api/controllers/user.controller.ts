@@ -40,12 +40,21 @@ export const checkAuth = async (req: Request, res: Response<AuthResponse>) => {
     }
 };
 
+const sanitizeEmail = (email: string): string => {
+    return email.trim().toLowerCase();
+};
+
 export const post = async (req: Request<{}, {}, AuthRequest>, res: Response<AuthResponse>) => {
     try {
         const { email, phone, password } = req.body;
 
+        let sanitizedEmail: string | undefined;
+        if (email) {
+            sanitizedEmail = sanitizeEmail(email);
+        }
+
         const hash = await bcrypt.hash(password, 10);
-        await userRepository.createUser({ email, phone, password: hash });
+        await userRepository.createUser({ email: sanitizedEmail, phone, password: hash });
 
         res.status(CREATED).json({ success: true });
     } catch (error: any) {
@@ -73,7 +82,8 @@ export const login = async (req: Request<{}, {}, AuthRequest>, res: Response<Aut
 
         let user;
         if (email) {
-            user = await userRepository.getUserByEmail(email);
+            const sanitizedEmail = sanitizeEmail(email);
+            user = await userRepository.getUserByEmail(sanitizedEmail);
         } else if (phone) {
             user = await userRepository.getUserByPhone(phone);
         }
