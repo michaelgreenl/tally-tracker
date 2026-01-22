@@ -105,7 +105,7 @@ export const login = async (req: Request<{}, {}, AuthRequest>, res: Response<Aut
         const { password: _, ...clientUser } = user;
 
         res.cookie('token', token, cookieConfig);
-        res.json({ success: true, data: { user: clientUser } });
+        res.json({ success: true, data: { user: clientUser, token } });
     } catch (error: any) {
         console.error('User Controller Error: ', error);
         res.status(SERVER_ERROR).json({
