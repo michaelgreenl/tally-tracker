@@ -13,6 +13,6 @@ export type ApiResponse<T> =
           data?: never;
       };
 
-export type AuthResponse = ApiResponse<{ user: ClientUser }>;
+export type AuthResponse = ApiResponse<{ user: ClientUser; token?: string }>;
 
 export type CounterResponse = ApiResponse<{ counter?: ClientCounter; counters?: Array<ClientCounter> }>;
