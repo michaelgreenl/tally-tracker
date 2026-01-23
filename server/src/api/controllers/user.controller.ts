@@ -26,10 +26,12 @@ export const checkAuth = async (req: Request, res: Response<AuthResponse>) => {
             return res.status(NOT_FOUND).json({ success: false, message: 'User not found' });
         }
 
+        const newToken = jwt.sign({ id: user.id });
+
         res.json({
             success: true,
             message: 'Authentication successful',
-            data: { user },
+            data: { user, token: newToken },
         });
     } catch (error: any) {
         console.error('Authentication Check Error:', error);
