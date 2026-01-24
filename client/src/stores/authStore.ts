@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import apiFetch from '@/api';
 import router from '@/router';
+import { Preferences } from '@capacitor/preferences';
 
 import type { ApiResponse, AuthResponse } from '@/types/shared/responses';
 import type { StoreResponse } from '@/types/index';
@@ -21,6 +22,11 @@ export const useAuthStore = defineStore('auth', () => {
 
             if (res.success) {
                 user.value = { ...res.data?.user } as ClientUser;
+
+                if (res.data?.token) {
+                    await Preferences.set({ key: 'auth_token', value: res.data.token });
+                }
+
                 localStorage.setItem('AUTHORIZED', 'true');
                 return { success: true };
             } else {
@@ -42,7 +48,7 @@ export const useAuthStore = defineStore('auth', () => {
             if (!data.email && !data.phone)
                 return { success: false, message: 'Registration requires phone or email as input' };
 
-            const res = await apiFetch<AuthResponse, AuthRequest>('/users/auth', {
+            const res = await apiFetch<AuthResponse, AuthRequest>('/users', {
                 method: 'POST',
                 body: data,
             });
@@ -68,6 +74,10 @@ export const useAuthStore = defineStore('auth', () => {
 
             if (res.success) {
                 user.value = { ...res.data?.user } as ClientUser;
+
+                if (res.data?.token) {
+                    await Preferences.set({ key: 'auth_token', value: res.data.token });
+                }
 
                 localStorage.setItem('AUTHORIZED', 'true');
                 return { success: true };
