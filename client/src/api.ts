@@ -1,10 +1,16 @@
-import type { ApiResponse } from '@/types/shared/responses';
+import { Preferences } from '@capacitor/preferences';
+import { Capacitor } from '@capacitor/core';
 
-const API_URL = import.meta.env.VITE_API_URL;
+import type { ApiResponse } from '@/types/shared/responses';
 
 export interface ApiRequestOptions<T = any> extends Omit<RequestInit, 'body'> {
     body?: T;
 }
+
+const isDev = import.meta.env.DEV;
+const isNative = Capacitor.isNativePlatform();
+
+const API_URL = isDev ? '' : import.meta.env.VITE_API_URL;
 
 async function apiFetch<ResT = unknown, ReqT = any>(
     endpoint: string,
@@ -21,25 +27,49 @@ async function apiFetch<ResT = unknown, ReqT = any>(
         reqHeaders['Content-Type'] = 'application/json';
     }
 
-    const response = await fetch(`${API_URL}${endpoint}`, {
-        credentials: 'include',
-        ...restOptions,
-        headers: reqHeaders,
-        body: isFormData ? body : body ? JSON.stringify(body) : undefined,
-    });
+    if (isNative) {
+        const { value: token } = await Preferences.get({ key: 'auth_token' });
+        if (token) {
+            reqHeaders['Authorization'] = `Bearer ${token}`;
+        }
+    }
 
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), 10000);
 
-        const error: ApiResponse<never> = {
-            success: false,
-            message: errorData.message || 'An API error occurred',
-        };
+    try {
+        const response = await fetch(`${API_URL}${endpoint}`, {
+            credentials: 'include',
+            ...restOptions,
+            headers: reqHeaders,
+            body: isFormData ? body : body ? JSON.stringify(body) : undefined,
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+
+            const error: ApiResponse<never> = {
+                success: false,
+                message: errorData.message || 'An API error occurred',
+            };
+
+            throw error;
+        }
+
+        const data = await response.json();
+
+        console.log(`[API] ${endpoint} Response:`, data);
+
+        return data;
+    } catch (error: any) {
+        clearTimeout(id);
+
+        if (error.name === 'AbortError') {
+            throw new Error('Network timeout: Server took too long to respond.');
+        }
 
         throw error;
     }
-
-    return response.json();
 }
 
 export default apiFetch;
