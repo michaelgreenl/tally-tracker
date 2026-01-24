@@ -1,8 +1,8 @@
 {
     "name": "tally-tracker-client",
     "private": true,
-    "version": "0.0.2",
-    "description": "init structure, works on web and native ios simulator",
+    "version": "0.0.0",
+    "description": "",
     "type": "module",
     "scripts": {
         "dev": "vite",
@@ -27,7 +27,6 @@
         "@capacitor/app": "^8.0.0",
         "@capacitor/core": "^8.0.0",
         "@capacitor/haptics": "^8.0.0",
-        "@capacitor/http": "^0.0.2",
         "@capacitor/ios": "^8.0.0",
         "@capacitor/keyboard": "^8.0.0",
         "@capacitor/preferences": "^8.0.0",
