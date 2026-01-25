@@ -11,7 +11,6 @@ import type { ClientUser } from '@/types/shared/models';
 
 export const useAuthStore = defineStore('auth', () => {
     const user = ref<ClientUser | null>(null);
-    const initLoading = ref(true);
     const isAuthenticated = computed(() => !!user.value);
 
     async function initializeAuth(): Promise<StoreResponse> {
@@ -38,8 +37,6 @@ export const useAuthStore = defineStore('auth', () => {
             user.value = null;
             console.error('Auth check failed:', error.message);
             return { success: false, message: error.message };
-        } finally {
-            initLoading.value = false;
         }
     }
 
@@ -132,7 +129,6 @@ export const useAuthStore = defineStore('auth', () => {
         user,
         isAuthenticated,
         initializeAuth,
-        initLoading,
         register,
         login,
         logout,

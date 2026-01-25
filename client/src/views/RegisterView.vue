@@ -14,7 +14,7 @@ const email = ref('');
 const password = ref('');
 const confirmPassword = ref('');
 const showPassword = ref(false);
-const isLoading = ref(false);
+const loading = ref(false);
 const errorMessage = ref('');
 
 const handleRegister = async () => {
@@ -28,7 +28,7 @@ const handleRegister = async () => {
         return;
     }
 
-    isLoading.value = true;
+    loading.value = true;
     errorMessage.value = '';
 
     try {
@@ -40,7 +40,7 @@ const handleRegister = async () => {
         errorMessage.value = 'Server error occurred';
         console.error('Server error occurred', error);
     } finally {
-        isLoading.value = false;
+        loading.value = false;
     }
 };
 </script>
@@ -74,7 +74,7 @@ const handleRegister = async () => {
                             <div class="error-box" v-if="errorMessage">
                                 {{ errorMessage }}
                             </div>
-                            <BaseButton type="submit" :loading="isLoading">Register</BaseButton>
+                            <BaseButton type="submit" :loading="loading">Register</BaseButton>
                             <div class="footer">
                                 <BaseNavLink to="/login" direction="back">Already have an account?</BaseNavLink>
                             </div>

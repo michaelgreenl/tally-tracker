@@ -13,23 +13,23 @@ const router = useRouter();
 const email = ref('');
 const password = ref('');
 const showPassword = ref(false);
-const isLoading = ref(false);
+const loading = ref(false);
 const errorMessage = ref('');
 
 const handleLogin = async () => {
-    isLoading.value = true;
+    loading.value = true;
     errorMessage.value = '';
 
     try {
         const res = await authStore.login({ email: email.value, password: password.value });
 
-        if (res.success) router.push('/');
+        if (res.success) router.push('/home');
         else errorMessage.value = res.message || 'Login Failed';
     } catch (error: any) {
         errorMessage.value = 'Server error occurred';
         console.error('Server error occurred', error);
     } finally {
-        isLoading.value = false;
+        loading.value = false;
     }
 };
 </script>
@@ -41,22 +41,22 @@ const handleLogin = async () => {
                 <ion-row class="ion-justify-content-center ion-align-items-center" style="height: 100%">
                     <ion-col size="12" size-md="6" size-lg="4">
                         <div class="header">
-                            <h1>Welcome Back</h1>
-                            <p>Please login to continue</p>
+                            <h1>Welcome to Tally Tracker</h1>
+                            <BaseNavLink to="/home">Continue as guest</BaseNavLink>
                         </div>
                         <form @submit.prevent="handleLogin">
                             <TextInput
                                 label="Email Address"
                                 v-model="email"
                                 type="email"
-                                :disabled="isLoading"
+                                :disabled="loading"
                                 placeholder="name@example.com"
                             />
                             <TextInput
                                 label="Password"
                                 v-model="password"
                                 type="password"
-                                :disabled="isLoading"
+                                :disabled="loading"
                                 :show-password-toggle="true"
                                 :is-password-visible="showPassword"
                                 @toggle-password="showPassword = !showPassword"
@@ -64,7 +64,7 @@ const handleLogin = async () => {
                             <div class="error-box" v-if="errorMessage">
                                 {{ errorMessage }}
                             </div>
-                            <BaseButton type="submit" :loading="isLoading">Login</BaseButton>
+                            <BaseButton type="submit" :loading="loading">Login</BaseButton>
                             <div class="footer">
                                 <BaseNavLink to="/register">Create an account</BaseNavLink>
                             </div>
