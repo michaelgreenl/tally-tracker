@@ -17,4 +17,7 @@ echo "🔄 Syncing Shared Types..."
 rm -rf "$CLIENT_DIR/src/types/shared"
 cp -r src/types/shared "$CLIENT_DIR/src/types/shared"
 
+echo "🧹 Cleaning up..."
+rm -rf "../src"
+
 echo "✅ Sync Complete!"
