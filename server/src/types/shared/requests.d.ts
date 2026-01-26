@@ -25,6 +25,7 @@ export interface UpdateUserRequest {
 
 // ***** Counter Requests *****
 export interface CreateCounterRequest {
+    id?: string;
     title: string;
     count?: number;
     color?: HexColor;

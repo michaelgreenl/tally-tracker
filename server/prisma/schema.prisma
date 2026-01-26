@@ -39,3 +39,11 @@ model Counter {
 
     @@map("counters")
 }
+
+model IdempotencyLog {
+    key       String   @id
+    userId    String   @map("user_id") @db.Uuid
+    createdAt DateTime @default(now()) @map("created_at")
+
+    @@map("idempotency_logs")
+}

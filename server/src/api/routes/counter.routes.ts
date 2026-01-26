@@ -2,6 +2,7 @@ import express from 'express';
 import { getById, getAllByUser, post, remove, put, increment } from '../controllers/counter.controller.js';
 import { jwt } from '../../middleware/auth.middleware.js';
 import { validate } from '../../middleware/validate.middleware.js';
+import { idempotency } from '../../middleware/idempotency.middleware.js';
 import {
     createCounterSchema,
     updateCounterSchema,
@@ -13,6 +14,7 @@ import {
 const router = express.Router();
 
 router.use(jwt);
+router.use(idempotency);
 
 router.post('/', validate(createCounterSchema), post);
 router.get('/', getAllByUser);

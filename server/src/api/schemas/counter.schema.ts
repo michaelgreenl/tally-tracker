@@ -4,6 +4,7 @@ const hexColorSchema = z.string().regex(/^#([0-9a-fA-F]{3}){1,2}$/, 'Must be a v
 
 export const createCounterSchema = z.object({
     body: z.object({
+        id: z.string().uuid('Invalid UUID').optional(),
         title: z.string().min(1, 'Title is required').max(50, 'Title is too long'),
         count: z.number().int().default(0).optional(),
         color: hexColorSchema.optional(),

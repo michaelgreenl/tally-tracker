@@ -2,18 +2,20 @@ import prisma from '../prisma.js';
 import { Prisma } from '@prisma/client';
 
 export const post = async ({
+    id,
     userId,
     title,
     count,
     color,
 }: {
+    id?: string;
     userId: string;
     title: string;
     count?: number;
     color?: string;
 }) =>
     prisma.counter.create({
-        data: { userId, title, count, color },
+        data: { id, userId, title, count, color },
     });
 
 export const remove = async ({ counterId, userId }: { counterId: string; userId: string }) =>

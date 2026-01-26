@@ -1,4 +1,4 @@
-import { CREATED, BAD_REQUEST, NOT_FOUND, SERVER_ERROR } from '../../contants.js';
+import { CREATED, BAD_REQUEST, NOT_FOUND, SERVER_ERROR } from '../../constants.js';
 import * as counterRepository from '../../db/repositories/counter.repository.js';
 
 import type { Request, Response } from 'express';
@@ -12,7 +12,7 @@ import type {
 export const post = async (req: Request<{}, {}, CreateCounterRequest>, res: Response<CounterResponse>) => {
     try {
         const userId = req.user?.id;
-        const { title, count, color } = req.body;
+        const { id, title, count, color } = req.body;
 
         if (!userId) {
             return res
@@ -20,7 +20,7 @@ export const post = async (req: Request<{}, {}, CreateCounterRequest>, res: Resp
                 .json({ success: false, message: 'Failed to create counter: Invalid userId' });
         }
 
-        const counter = await counterRepository.post({ userId, title, count, color });
+        const counter = await counterRepository.post({ id, userId, title, count, color });
 
         if (!counter) {
             return res.status(NOT_FOUND).json({ success: false, message: 'Counter not found' });
