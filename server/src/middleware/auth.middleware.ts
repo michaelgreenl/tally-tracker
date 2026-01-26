@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwtUtil from '../util/jwt.util.js';
-import { UNAUTHORIZED } from '../contants.js';
+import { UNAUTHORIZED } from '../constants.js';
 
 export const jwt = (req: Request, res: Response, next: NextFunction) => {
     let token;

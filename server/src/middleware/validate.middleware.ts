@@ -1,4 +1,4 @@
-import { UNPROCESSABLE_ENTITY, SERVER_ERROR } from '../contants.js';
+import { UNPROCESSABLE_ENTITY, SERVER_ERROR } from '../constants.js';
 import { Request, Response, NextFunction } from 'express';
 import { ZodSchema, ZodError, ZodIssue } from 'zod';
 

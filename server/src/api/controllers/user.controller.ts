@@ -1,4 +1,4 @@
-import { CREATED, UNAUTHORIZED, NOT_FOUND, UNPROCESSABLE_ENTITY, SERVER_ERROR } from '../../contants.js';
+import { CREATED, UNAUTHORIZED, NOT_FOUND, UNPROCESSABLE_ENTITY, SERVER_ERROR } from '../../constants.js';
 import * as userRepository from '../../db/repositories/user.repository.js';
 import cookieConfig from '../../config/cookie.config.js';
 import jwt from '../../util/jwt.util.js';
