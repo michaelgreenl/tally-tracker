@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { useAuthStore } from '@/stores/authStore';
 import { CounterService } from '@/services/counter.service';
+import { ok, fail } from '@/utils/result';
 
 import type { StoreResponse } from '@/types/index';
 import type { ClientCounter } from '@/types/shared/models';
@@ -54,31 +55,31 @@ export const useCounterStore = defineStore('counter', () => {
 
         await CounterService.create(newCounter, isGuest.value);
 
-        return { success: true };
+        return ok();
     }
 
     async function incrementCounter(counterId: string, amount: number): Promise<StoreResponse> {
         const counter = counters.value.find((c) => c.id === counterId);
-        if (!counter) return { success: false, message: 'Counter not found' };
+        if (!counter) return fail('Counter not found');
 
         counter.count += amount;
         await saveState();
 
         await CounterService.increment(counterId, amount, isGuest.value);
 
-        return { success: true };
+        return ok();
     }
 
     async function updateCounter(counterId: string, data: any): Promise<StoreResponse> {
         const index = counters.value.findIndex((c) => c.id === counterId);
-        if (index === -1) return { success: false, message: 'Not found' };
+        if (index === -1) return fail('Not found');
 
         counters.value[index] = { ...counters.value[index], ...data };
         await saveState();
 
         await CounterService.update(counterId, data, isGuest.value);
 
-        return { success: true };
+        return ok();
     }
 
     async function deleteCounter(counterId: string): Promise<StoreResponse> {
@@ -87,7 +88,7 @@ export const useCounterStore = defineStore('counter', () => {
 
         await CounterService.delete(counterId, isGuest.value);
 
-        return { success: true };
+        return ok();
     }
 
     async function consolidateGuestCounters() {

@@ -4,6 +4,7 @@ import router from '@/router';
 import { useCounterStore } from '@/stores/counterStore';
 import { AuthService } from '@/services/auth.service';
 import { ApiError } from '@/utils/errors';
+import { ok, fail } from '@/utils/result';
 
 import type { StoreResponse } from '@/types/index';
 import type { AuthRequest, UpdateUserRequest } from '@/types/shared/requests';
@@ -27,7 +28,7 @@ export const useAuthStore = defineStore('auth', () => {
         if (!token) {
             user.value = null;
             checkingAuth.value = false;
-            return { success: false, message: 'No token found' };
+            return fail('No token found');
         }
 
         try {
@@ -41,10 +42,10 @@ export const useAuthStore = defineStore('auth', () => {
                     await AuthService.setToken(res.data.token);
                 }
 
-                return { success: true };
+                return ok();
             }
 
-            return { success: false, message: 'Auth check failed' };
+            return fail('Auth check failed');
         } catch (error: any) {
             console.error('Auth check error:', error);
 
@@ -54,13 +55,13 @@ export const useAuthStore = defineStore('auth', () => {
             if (status === 401) {
                 console.warn('Token expired. Logging out.');
                 await logout(false);
-                return { success: false, message: 'Session expired' };
+                return fail('Session expired');
             }
 
             console.warn('Network error during auth check. Trusting cached profile.');
-            if (user.value) return { success: true };
+            if (user.value) return ok();
 
-            return { success: false, message: 'Network error' };
+            return fail('Network error');
         } finally {
             checkingAuth.value = false;
         }
@@ -80,20 +81,18 @@ export const useAuthStore = defineStore('auth', () => {
                 const counterStore = useCounterStore();
                 counterStore.consolidateGuestCounters();
 
-                return { success: true };
+                return ok();
             }
 
-            return { success: false, message: 'Login Failed' };
+            return fail('Login Failed');
         } catch (error: any) {
-            return { success: false, message: error.message };
+            return fail(error.message);
         }
     }
 
     async function logout(notifyServer = true): Promise<StoreResponse> {
         try {
-            if (notifyServer) {
-                await AuthService.logout();
-            }
+            if (notifyServer) await AuthService.logout();
         } catch (error: any) {
             console.warn('Server logout failed', error);
         } finally {
@@ -102,21 +101,20 @@ export const useAuthStore = defineStore('auth', () => {
             router.push({ name: 'Login' });
         }
 
-        return { success: true };
+        return ok();
     }
 
     async function register(data: AuthRequest): Promise<StoreResponse> {
         try {
-            if (!data.email && !data.phone)
-                return { success: false, message: 'Registration requires phone or email as input' };
+            if (!data.email && !data.phone) return fail('Registration requires phone or email as input');
 
             const res = await AuthService.register(data);
-            if (res.success) return { success: true };
+            if (res.success) return ok();
 
-            return { success: false, message: 'Registration failed' };
+            return fail('Registration failed');
         } catch (error: any) {
             console.error('Registration failed:', error.message);
-            return { success: false, message: error.message };
+            return fail(error.message);
         }
     }
 
@@ -129,13 +127,13 @@ export const useAuthStore = defineStore('auth', () => {
                 user.value = { ...user.value, ...updates } as ClientUser;
                 await AuthService.cacheUser(user.value);
 
-                return { success: true };
+                return ok();
             }
 
-            return { success: false, message: 'Failed to update user' };
+            return fail('Failed to update user');
         } catch (error: any) {
             console.error('Failed to update user: ', error.message);
-            return { success: false, message: error.message };
+            return fail(error.message);
         }
     }
 
