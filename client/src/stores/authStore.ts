@@ -1,12 +1,10 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import apiFetch from '@/api';
 import router from '@/router';
 import { useCounterStore } from '@/stores/counterStore';
-import { Preferences } from '@capacitor/preferences';
+import { AuthService } from '@/services/auth.service';
 import { ApiError } from '@/utils/errors';
 
-import type { AuthResponse } from '@/types/shared/responses';
 import type { StoreResponse } from '@/types/index';
 import type { AuthRequest, UpdateUserRequest } from '@/types/shared/requests';
 import type { ClientUser } from '@/types/shared/models';
@@ -19,38 +17,28 @@ export const useAuthStore = defineStore('auth', () => {
     const isAuthenticated = computed(() => !!user.value);
     const checkingAuth = ref(false);
 
-    async function cacheUser(userData: ClientUser | null) {
-        if (userData) {
-            await Preferences.set({ key: USER_KEY, value: JSON.stringify(userData) });
-        } else {
-            await Preferences.remove({ key: USER_KEY });
-        }
-    }
-
-    async function loadCachedUser() {
-        const { value } = await Preferences.get({ key: USER_KEY });
-
-        if (value) {
-            user.value = JSON.parse(value);
-        }
-    }
-
     async function initializeAuth(): Promise<StoreResponse> {
         checkingAuth.value = true;
 
-        await loadCachedUser();
+        const cached = await AuthService.getCachedUser();
+        if (cached) user.value = cached;
+
+        const token = await AuthService.getToken();
+        if (!token) {
+            user.value = null;
+            checkingAuth.value = false;
+            return { success: false, message: 'No token found' };
+        }
 
         try {
-            const res = await apiFetch<AuthResponse>('/users/check-auth', {
-                method: 'GET',
-            });
+            const res = await AuthService.checkAuth();
 
             if (res.success && res.data?.user) {
                 user.value = res.data.user;
-                await cacheUser(user.value);
+                await AuthService.cacheUser(user.value);
 
                 if (res.data?.token) {
-                    await Preferences.set({ key: TOKEN_KEY, value: res.data.token });
+                    await AuthService.setToken(res.data.token);
                 }
 
                 return { success: true };
@@ -70,11 +58,9 @@ export const useAuthStore = defineStore('auth', () => {
             }
 
             console.warn('Network error during auth check. Trusting cached profile.');
-            if (user.value) {
-                return { success: true };
-            } else {
-                return { success: false, message: 'Network error during auth check. Trusting cached profile.' };
-            }
+            if (user.value) return { success: true };
+
+            return { success: false, message: 'Network error' };
         } finally {
             checkingAuth.value = false;
         }
@@ -82,23 +68,18 @@ export const useAuthStore = defineStore('auth', () => {
 
     async function login(data: AuthRequest): Promise<StoreResponse> {
         try {
-            const res = await apiFetch<AuthResponse, AuthRequest>('/users/login', {
-                method: 'POST',
-                body: data,
-            });
+            const res = await AuthService.login(data);
 
             if (res.success && res.data?.user) {
                 user.value = res.data.user;
-                await cacheUser(user.value);
+                await AuthService.cacheUser(user.value);
 
-                if (res.data?.token) {
-                    await Preferences.set({ key: TOKEN_KEY, value: res.data.token });
-                }
-
+                if (res.data?.token) await AuthService.setToken(res.data.token);
                 localStorage.setItem('AUTHORIZED', 'true');
 
                 const counterStore = useCounterStore();
                 counterStore.consolidateGuestCounters();
+
                 return { success: true };
             }
 
@@ -108,24 +89,19 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
-    async function clearLocalAuth() {
-        user.value = null;
-        await Preferences.remove({ key: TOKEN_KEY });
-        await Preferences.remove({ key: USER_KEY });
-        localStorage.removeItem('AUTHORIZED');
-    }
-
     async function logout(notifyServer = true): Promise<StoreResponse> {
         try {
             if (notifyServer) {
-                await apiFetch<AuthResponse>('/users/logout', { method: 'POST' });
+                await AuthService.logout();
             }
         } catch (error: any) {
             console.warn('Server logout failed', error);
         } finally {
-            await clearLocalAuth();
+            user.value = null;
+            await AuthService.clearLocalAuth();
             router.push({ name: 'Login' });
         }
+
         return { success: true };
     }
 
@@ -134,11 +110,7 @@ export const useAuthStore = defineStore('auth', () => {
             if (!data.email && !data.phone)
                 return { success: false, message: 'Registration requires phone or email as input' };
 
-            const res = await apiFetch<AuthResponse, AuthRequest>('/users', {
-                method: 'POST',
-                body: data,
-            });
-
+            const res = await AuthService.register(data);
             if (res.success) return { success: true };
 
             return { success: false, message: 'Registration failed' };
@@ -150,16 +122,13 @@ export const useAuthStore = defineStore('auth', () => {
 
     async function updateUser(data: UpdateUserRequest): Promise<StoreResponse> {
         try {
-            const res = await apiFetch<AuthResponse, UpdateUserRequest>('/users', {
-                method: 'PUT',
-                body: data,
-            });
+            const res = await AuthService.updateUser(data);
 
             if (res.success) {
                 const { password: _, ...updates } = data;
-
                 user.value = { ...user.value, ...updates } as ClientUser;
-                await cacheUser(user.value);
+                await AuthService.cacheUser(user.value);
+
                 return { success: true };
             }
 
