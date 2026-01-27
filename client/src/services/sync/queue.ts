@@ -1,5 +1,6 @@
 import { Preferences } from '@capacitor/preferences';
-import type { MutationCommand } from '@/types/sync';
+
+import type { MutationCommand } from './types';
 
 const QUEUE_KEY = 'app_sync_queue';
 

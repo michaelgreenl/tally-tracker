@@ -1,9 +1,9 @@
 import { Network } from '@capacitor/network';
-import { SyncQueueService } from './sync-queue.service';
+import { SyncQueueService } from '@/services/sync/queue';
 import apiFetch from '@/api';
 import { ApiError } from '@/utils/errors';
 
-import type { MutationCommand } from '@/types/sync';
+import type { MutationCommand } from './types';
 import type { CounterResponse } from '@/types/shared/responses';
 import type { CreateCounterRequest, IncrementCounterRequest, UpdateCounterRequest } from '@/types/shared/requests';
 

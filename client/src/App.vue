@@ -2,7 +2,7 @@
 import { onMounted } from 'vue';
 import { IonApp, IonRouterOutlet } from '@ionic/vue';
 import { SplashScreen } from '@capacitor/splash-screen';
-import { SyncManager } from '@/services/sync-manager';
+import { SyncManager } from '@/services/sync/manager';
 
 onMounted(async () => {
     await SyncManager.init();

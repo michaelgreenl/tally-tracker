@@ -1,4 +1,4 @@
-import { ClientCounter } from './shared/models';
+import { ClientCounter } from '@/types/shared/models';
 
 export type MutationType = 'CREATE' | 'UPDATE' | 'DELETE' | 'INCREMENT';
 
