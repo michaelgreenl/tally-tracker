@@ -1,245 +1,192 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import apiFetch from '@/api';
 import { useAuthStore } from '@/stores/authStore';
 import { LocalStorageService } from '@/services/storage.service';
+import { SyncQueueService } from '@/services/sync-queue.service';
+import { SyncManager } from '@/services/sync-manager';
+import apiFetch from '@/api';
 
-import type { ApiResponse, CounterResponse } from '@/types/shared/responses';
 import type { StoreResponse } from '@/types/index';
-import type { CreateCounterRequest, IncrementCounterRequest, UpdateCounterRequest } from '@/types/shared/requests';
 import type { ClientCounter } from '@/types/shared/models';
 import type { HexColor } from '@/types/shared';
+import type { CounterResponse } from '@/types/shared/responses';
 
 const DEFAULT_COUNTER_COLOR = '#000000' as HexColor;
 
 export const useCounterStore = defineStore('counter', () => {
     const counters = ref<ClientCounter[]>([]);
     const loading = ref(false);
-    const isGuest = computed(() => !useAuthStore().isAuthenticated);
+
+    const authStore = useAuthStore();
+    const isGuest = computed(() => !authStore.isAuthenticated);
+
+    async function persist() {
+        await LocalStorageService.saveCounters(counters.value);
+    }
+
+    async function init() {
+        counters.value = await LocalStorageService.getAllCounters();
+
+        if (!isGuest.value) {
+            fetchRemoteCounters();
+            SyncManager.processQueue();
+        }
+    }
+
+    async function fetchRemoteCounters() {
+        loading.value = true;
+        try {
+            const res = await apiFetch<CounterResponse>('/counters', { method: 'GET' });
+
+            if (res.success && res.data?.counters) {
+                counters.value = res.data.counters;
+                await persist();
+            }
+        } catch (err) {
+            console.warn('Background fetch failed, using local cache.');
+        } finally {
+            loading.value = false;
+        }
+    }
 
     async function createCounter(title: string, color: HexColor | null): Promise<StoreResponse> {
-        const payload = {
-            title: title,
+        const newCounter: ClientCounter = {
+            id: crypto.randomUUID(),
+            title,
             color: color || DEFAULT_COUNTER_COLOR,
             count: 0,
+            userId: isGuest.value ? 'guest' : authStore.user?.id || 'offline-user',
         };
 
-        const tempId = crypto.randomUUID();
-        const tempCounter: ClientCounter = {
-            ...payload,
-            id: tempId,
-            userId: 'optimistic',
-        };
+        counters.value.push(newCounter);
+        await persist();
 
-        counters.value.push(tempCounter);
-
-        try {
-            if (isGuest.value) {
-                const newCounter = await LocalStorageService.createCounter(payload as ClientCounter);
-
-                const index = counters.value.findIndex((c) => c.id === tempId);
-                if (index !== -1) counters.value[index] = newCounter;
-
-                return { success: true };
-            } else {
-                const res = await apiFetch<CounterResponse, CreateCounterRequest>('/counters', {
-                    method: 'POST',
-                    body: payload as CreateCounterRequest,
-                });
-
-                if (res.success && res.data?.counter) {
-                    const index = counters.value.findIndex((c) => c.id === tempId);
-                    if (index !== -1) {
-                        counters.value[index] = res.data.counter;
-                        return { success: true };
-                    }
-                }
-            }
-
-            throw new Error('API Error');
-        } catch (error: any) {
-            counters.value = counters.value.filter((c) => c.id !== tempId);
-            console.error('Failed to create counter: ', error.message);
-            return { success: false, message: error.message };
-        }
-    }
-
-    async function getAllCounters(): Promise<StoreResponse> {
-        loading.value = true;
-        try {
-            if (isGuest.value) {
-                counters.value = await LocalStorageService.getAllCounters();
-                return { success: true };
-            } else {
-                const res = await apiFetch<CounterResponse>('/counters', { method: 'GET' });
-
-                if (res.success) {
-                    if (res.data?.counters) {
-                        counters.value = res.data.counters;
-                        return { success: true };
-                    }
-
-                    return { success: false, message: 'Failed to get counters: No counters were found' };
-                }
-            }
-
-            return { success: false, message: 'Failed to get counters' };
-        } catch (error: any) {
-            console.error('Failed to get counters: ', error.message);
-            return { success: false, message: error.message };
-        } finally {
-            loading.value = false;
-        }
-    }
-
-    async function getCounter(counterId: string): Promise<StoreResponse> {
-        loading.value = true;
-        try {
-            if (isGuest.value) {
-                const counter: ClientCounter | undefined = await LocalStorageService.getCounter(counterId);
-
-                if (counter) {
-                    const index = counters.value.findIndex((c) => c.id === counter.id);
-                    if (index !== -1) counters.value[index] = counter;
-
-                    return { success: true };
-                }
-
-                return { success: false, message: 'Failed to get counter: No counter was found' };
-            } else {
-                const res = await apiFetch<CounterResponse>(`/counters/${counterId}`, { method: 'GET' });
-
-                if (res.success) {
-                    if (res.data?.counter) {
-                        const index = counters.value.findIndex((c) => c.id === counterId);
-                        if (index !== -1) counters.value[index] = res.data.counter;
-
-                        return { success: true };
-                    }
-
-                    return { success: false, message: 'Failed to get counter: No counter was found' };
-                }
-            }
-
-            return { success: false, message: 'Failed to get counter' };
-        } catch (error: any) {
-            console.error('Failed to get counter: ', error.message);
-            return { success: false, message: error.message };
-        } finally {
-            loading.value = false;
-        }
-    }
-
-    async function updateCounter(counterId: string, data: UpdateCounterRequest): Promise<StoreResponse> {
-        const index = counters.value.findIndex((c) => c.id === counterId);
-        if (index === -1) throw new Error('Counter not found');
-
-        const previousCounter = counters.value[index];
-        if (previousCounter) {
-            counters.value[index] = { ...data } as ClientCounter;
+        if (!isGuest.value) {
+            await SyncQueueService.addCommand({
+                id: crypto.randomUUID(),
+                type: 'CREATE',
+                entity: 'counter',
+                entityId: newCounter.id,
+                payload: {
+                    id: newCounter.id,
+                    title: newCounter.title,
+                    color: newCounter.color,
+                },
+                timestamp: Date.now(),
+                retryCount: 0,
+            });
+            SyncManager.processQueue();
         }
 
-        try {
-            if (isGuest.value) {
-                if (counters.value[index]) {
-                    await LocalStorageService.updateCounter(counters.value[index]);
-                    return { success: true };
-                }
-            } else {
-                const res = await apiFetch<CounterResponse, UpdateCounterRequest>(`/counters/update/${counterId}`, {
-                    method: 'PUT',
-                    body: data,
-                });
-
-                if (res.success && res.data?.counter) {
-                    counters.value[index] = res.data.counter;
-                    return { success: true };
-                }
-            }
-
-            throw new Error('API Error');
-        } catch (error: any) {
-            if (error.type !== 'Counter not found' && previousCounter) {
-                counters.value[index] = previousCounter;
-            }
-
-            console.error('Failed to update counter: ', error.message);
-            return { success: false, message: error.message };
-        }
+        return { success: true };
     }
 
     async function incrementCounter(counterId: string, amount: number): Promise<StoreResponse> {
+        const counter = counters.value.find((c) => c.id === counterId);
+        if (!counter) return { success: false, message: 'Counter not found' };
+
+        counter.count += amount;
+        await persist();
+
+        if (!isGuest.value) {
+            await SyncQueueService.addCommand({
+                id: crypto.randomUUID(),
+                type: 'INCREMENT',
+                entity: 'counter',
+                entityId: counter.id,
+                payload: { amount },
+                timestamp: Date.now(),
+                retryCount: 0,
+            });
+            SyncManager.processQueue();
+        }
+
+        return { success: true };
+    }
+
+    async function updateCounter(counterId: string, data: any): Promise<StoreResponse> {
         const index = counters.value.findIndex((c) => c.id === counterId);
-        if (index === -1) throw new Error('Counter not found');
+        if (index === -1) return { success: false, message: 'Not found' };
 
-        if (counters.value[index]) {
-            counters.value[index].count += amount;
+        counters.value[index] = { ...counters.value[index], ...data };
+        await persist();
+
+        if (!isGuest.value) {
+            await SyncQueueService.addCommand({
+                id: crypto.randomUUID(),
+                type: 'UPDATE',
+                entity: 'counter',
+                entityId: counterId,
+                payload: data,
+                timestamp: Date.now(),
+                retryCount: 0,
+            });
+            SyncManager.processQueue();
         }
 
-        try {
-            if (isGuest.value) {
-                if (counters.value[index]) {
-                    await LocalStorageService.updateCounter(counters.value[index]);
-                    return { success: true };
-                }
-            } else {
-                const res = await apiFetch<CounterResponse, IncrementCounterRequest>(
-                    `/counters/increment/${counterId}`,
-                    {
-                        method: 'PUT',
-                        body: { amount },
-                    },
-                );
-
-                if (res.success && res.data?.counter) {
-                    if (index !== -1) counters.value[index] = res.data.counter;
-                    return { success: true };
-                }
-            }
-
-            throw new Error('API Error');
-        } catch (error: any) {
-            if (error.type !== 'Counter not found' && counters.value[index]) {
-                counters.value[index].count -= amount;
-            }
-
-            console.error('Failed to increment counter: ', error.message);
-            return { success: false, message: error.message };
-        }
+        return { success: true };
     }
 
     async function deleteCounter(counterId: string): Promise<StoreResponse> {
-        const previous = [...counters.value];
         counters.value = counters.value.filter((c) => c.id !== counterId);
+        await persist();
 
-        try {
-            if (isGuest.value) {
-                await LocalStorageService.deleteCounter(counterId);
-                return { success: true };
-            } else {
-                const res = await apiFetch<CounterResponse, UpdateCounterRequest>(`/counters/${counterId}`, {
-                    method: 'DELETE',
-                });
-
-                if (res.success) return { success: true };
-            }
-
-            throw new Error('API Error');
-        } catch (error: any) {
-            counters.value = previous;
-            console.error('Failed to delete counter: ', error.message);
-            return { success: false, message: error.message };
+        if (!isGuest.value) {
+            await SyncQueueService.addCommand({
+                id: crypto.randomUUID(),
+                type: 'DELETE',
+                entity: 'counter',
+                entityId: counterId,
+                payload: {},
+                timestamp: Date.now(),
+                retryCount: 0,
+            });
+            SyncManager.processQueue();
         }
+
+        return { success: true };
+    }
+
+    async function consolidateGuestCounters() {
+        if (isGuest.value) return;
+
+        const guestCounters = counters.value.filter((c) => c.userId === 'guest');
+
+        if (guestCounters.length === 0) return;
+
+        console.log(`[Consolidation] Found ${guestCounters.length} guest counters. Syncing...`);
+
+        for (const counter of guestCounters) {
+            counter.userId = authStore.user?.id || 'unknown';
+
+            await SyncQueueService.addCommand({
+                id: crypto.randomUUID(),
+                type: 'CREATE',
+                entity: 'counter',
+                entityId: counter.id,
+                payload: {
+                    id: counter.id,
+                    title: counter.title,
+                    color: counter.color,
+                    count: counter.count,
+                },
+                timestamp: Date.now(),
+                retryCount: 0,
+            });
+        }
+
+        await persist();
+        SyncManager.processQueue();
     }
 
     return {
         counters,
         loading,
+        init,
         createCounter,
-        getCounter,
-        getAllCounters,
-        updateCounter,
         incrementCounter,
+        updateCounter,
         deleteCounter,
+        consolidateGuestCounters,
     };
 });

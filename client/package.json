@@ -1,7 +1,7 @@
 {
     "name": "tally-tracker-client",
     "private": true,
-    "version": "0.0.0",
+    "version": "0.0.1",
     "description": "",
     "type": "module",
     "scripts": {
@@ -29,7 +29,9 @@
         "@capacitor/haptics": "^8.0.0",
         "@capacitor/ios": "^8.0.0",
         "@capacitor/keyboard": "^8.0.0",
+        "@capacitor/network": "^8.0.0",
         "@capacitor/preferences": "^8.0.0",
+        "@capacitor/splash-screen": "^8.0.0",
         "@capacitor/status-bar": "^8.0.0",
         "@ionic/vue": "^8.0.0",
         "@ionic/vue-router": "^8.0.0",

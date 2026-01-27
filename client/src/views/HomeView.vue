@@ -32,7 +32,7 @@ const showCounterForm = ref(false);
 const counterToUpdate = ref<ClientCounter | null>(null);
 
 onIonViewWillEnter(async () => {
-    await counterStore.getAllCounters();
+    await counterStore.init();
 });
 
 const startUpdateCounter = async (counter: ClientCounter) => {

@@ -1,5 +1,13 @@
 <script setup lang="ts">
+import { onMounted } from 'vue';
 import { IonApp, IonRouterOutlet } from '@ionic/vue';
+import { SplashScreen } from '@capacitor/splash-screen';
+import { SyncManager } from '@/services/sync-manager';
+
+onMounted(async () => {
+    await SyncManager.init();
+    await SplashScreen.hide();
+});
 </script>
 
 <template>
