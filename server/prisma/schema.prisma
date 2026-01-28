@@ -11,12 +11,17 @@ datasource db {
     provider = "postgresql"
 }
 
-model User {
-    id       String  @id @default(uuid()) @db.Uuid
-    email    String? @unique
-    phone    String? @unique
-    password String
+enum UserTier {
+    PREMIUM
+    BASIC
+}
 
+model User {
+    id       String    @id @default(uuid()) @db.Uuid
+    email    String?   @unique
+    phone    String?   @unique
+    password String
+    tier     UserTier  @default(BASIC)
     counters Counter[]
 
     createdAt DateTime @default(now()) @map("created_at")
@@ -25,11 +30,17 @@ model User {
     @@map("users")
 }
 
+enum CounterType {
+    PERSONAL
+    SHARED
+}
+
 model Counter {
-    id    String  @id @default(uuid())
+    id    String      @id @default(uuid())
     title String
-    count Int     @default(0)
+    count Int         @default(0)
     color String?
+    type  CounterType @default(PERSONAL)
 
     userId String @map("user_id") @db.Uuid
     user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)

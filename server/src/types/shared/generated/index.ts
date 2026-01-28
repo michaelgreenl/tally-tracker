@@ -12,9 +12,9 @@ import type { Prisma } from '@prisma/client';
 
 export const TransactionIsolationLevelSchema = z.enum(['ReadUncommitted','ReadCommitted','RepeatableRead','Serializable']);
 
-export const UserScalarFieldEnumSchema = z.enum(['id','email','phone','password','createdAt','updatedAt']);
+export const UserScalarFieldEnumSchema = z.enum(['id','email','phone','password','tier','createdAt','updatedAt']);
 
-export const CounterScalarFieldEnumSchema = z.enum(['id','title','count','color','userId','createdAt','updatedAt']);
+export const CounterScalarFieldEnumSchema = z.enum(['id','title','count','color','type','userId','createdAt','updatedAt']);
 
 export const IdempotencyLogScalarFieldEnumSchema = z.enum(['key','userId','createdAt']);
 
@@ -23,6 +23,15 @@ export const SortOrderSchema = z.enum(['asc','desc']);
 export const QueryModeSchema = z.enum(['default','insensitive']);
 
 export const NullsOrderSchema = z.enum(['first','last']);
+
+export const UserTierSchema = z.enum(['PREMIUM','BASIC']);
+
+export type UserTierType = `${z.infer<typeof UserTierSchema>}`
+
+export const CounterTypeSchema = z.enum(['PERSONAL','SHARED']);
+
+export type CounterTypeType = `${z.infer<typeof CounterTypeSchema>}`
+
 /////////////////////////////////////////
 // MODELS
 /////////////////////////////////////////
@@ -32,6 +41,7 @@ export const NullsOrderSchema = z.enum(['first','last']);
 /////////////////////////////////////////
 
 export const UserSchema = z.object({
+  tier: UserTierSchema,
   id: z.uuid(),
   email: z.string().nullable(),
   phone: z.string().nullable(),
@@ -47,6 +57,7 @@ export type User = z.infer<typeof UserSchema>
 /////////////////////////////////////////
 
 export const CounterSchema = z.object({
+  type: CounterTypeSchema,
   id: z.uuid(),
   title: z.string(),
   count: z.number().int(),
@@ -100,6 +111,7 @@ export const UserSelectSchema: z.ZodType<Prisma.UserSelect> = z.object({
   email: z.boolean().optional(),
   phone: z.boolean().optional(),
   password: z.boolean().optional(),
+  tier: z.boolean().optional(),
   createdAt: z.boolean().optional(),
   updatedAt: z.boolean().optional(),
   counters: z.union([z.boolean(),z.lazy(() => CounterFindManyArgsSchema)]).optional(),
@@ -123,6 +135,7 @@ export const CounterSelectSchema: z.ZodType<Prisma.CounterSelect> = z.object({
   title: z.boolean().optional(),
   count: z.boolean().optional(),
   color: z.boolean().optional(),
+  type: z.boolean().optional(),
   userId: z.boolean().optional(),
   createdAt: z.boolean().optional(),
   updatedAt: z.boolean().optional(),
@@ -151,6 +164,7 @@ export const UserWhereInputSchema: z.ZodType<Prisma.UserWhereInput> = z.strictOb
   email: z.union([ z.lazy(() => StringNullableFilterSchema), z.string() ]).optional().nullable(),
   phone: z.union([ z.lazy(() => StringNullableFilterSchema), z.string() ]).optional().nullable(),
   password: z.union([ z.lazy(() => StringFilterSchema), z.string() ]).optional(),
+  tier: z.union([ z.lazy(() => EnumUserTierFilterSchema), z.lazy(() => UserTierSchema) ]).optional(),
   createdAt: z.union([ z.lazy(() => DateTimeFilterSchema), z.coerce.date() ]).optional(),
   updatedAt: z.union([ z.lazy(() => DateTimeFilterSchema), z.coerce.date() ]).optional(),
   counters: z.lazy(() => CounterListRelationFilterSchema).optional(),
@@ -161,6 +175,7 @@ export const UserOrderByWithRelationInputSchema: z.ZodType<Prisma.UserOrderByWit
   email: z.union([ z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema) ]).optional(),
   phone: z.union([ z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema) ]).optional(),
   password: z.lazy(() => SortOrderSchema).optional(),
+  tier: z.lazy(() => SortOrderSchema).optional(),
   createdAt: z.lazy(() => SortOrderSchema).optional(),
   updatedAt: z.lazy(() => SortOrderSchema).optional(),
   counters: z.lazy(() => CounterOrderByRelationAggregateInputSchema).optional(),
@@ -202,6 +217,7 @@ export const UserWhereUniqueInputSchema: z.ZodType<Prisma.UserWhereUniqueInput> 
   OR: z.lazy(() => UserWhereInputSchema).array().optional(),
   NOT: z.union([ z.lazy(() => UserWhereInputSchema), z.lazy(() => UserWhereInputSchema).array() ]).optional(),
   password: z.union([ z.lazy(() => StringFilterSchema), z.string() ]).optional(),
+  tier: z.union([ z.lazy(() => EnumUserTierFilterSchema), z.lazy(() => UserTierSchema) ]).optional(),
   createdAt: z.union([ z.lazy(() => DateTimeFilterSchema), z.coerce.date() ]).optional(),
   updatedAt: z.union([ z.lazy(() => DateTimeFilterSchema), z.coerce.date() ]).optional(),
   counters: z.lazy(() => CounterListRelationFilterSchema).optional(),
@@ -212,6 +228,7 @@ export const UserOrderByWithAggregationInputSchema: z.ZodType<Prisma.UserOrderBy
   email: z.union([ z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema) ]).optional(),
   phone: z.union([ z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema) ]).optional(),
   password: z.lazy(() => SortOrderSchema).optional(),
+  tier: z.lazy(() => SortOrderSchema).optional(),
   createdAt: z.lazy(() => SortOrderSchema).optional(),
   updatedAt: z.lazy(() => SortOrderSchema).optional(),
   _count: z.lazy(() => UserCountOrderByAggregateInputSchema).optional(),
@@ -227,6 +244,7 @@ export const UserScalarWhereWithAggregatesInputSchema: z.ZodType<Prisma.UserScal
   email: z.union([ z.lazy(() => StringNullableWithAggregatesFilterSchema), z.string() ]).optional().nullable(),
   phone: z.union([ z.lazy(() => StringNullableWithAggregatesFilterSchema), z.string() ]).optional().nullable(),
   password: z.union([ z.lazy(() => StringWithAggregatesFilterSchema), z.string() ]).optional(),
+  tier: z.union([ z.lazy(() => EnumUserTierWithAggregatesFilterSchema), z.lazy(() => UserTierSchema) ]).optional(),
   createdAt: z.union([ z.lazy(() => DateTimeWithAggregatesFilterSchema), z.coerce.date() ]).optional(),
   updatedAt: z.union([ z.lazy(() => DateTimeWithAggregatesFilterSchema), z.coerce.date() ]).optional(),
 });
@@ -239,6 +257,7 @@ export const CounterWhereInputSchema: z.ZodType<Prisma.CounterWhereInput> = z.st
   title: z.union([ z.lazy(() => StringFilterSchema), z.string() ]).optional(),
   count: z.union([ z.lazy(() => IntFilterSchema), z.number() ]).optional(),
   color: z.union([ z.lazy(() => StringNullableFilterSchema), z.string() ]).optional().nullable(),
+  type: z.union([ z.lazy(() => EnumCounterTypeFilterSchema), z.lazy(() => CounterTypeSchema) ]).optional(),
   userId: z.union([ z.lazy(() => UuidFilterSchema), z.string() ]).optional(),
   createdAt: z.union([ z.lazy(() => DateTimeFilterSchema), z.coerce.date() ]).optional(),
   updatedAt: z.union([ z.lazy(() => DateTimeFilterSchema), z.coerce.date() ]).optional(),
@@ -250,6 +269,7 @@ export const CounterOrderByWithRelationInputSchema: z.ZodType<Prisma.CounterOrde
   title: z.lazy(() => SortOrderSchema).optional(),
   count: z.lazy(() => SortOrderSchema).optional(),
   color: z.union([ z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema) ]).optional(),
+  type: z.lazy(() => SortOrderSchema).optional(),
   userId: z.lazy(() => SortOrderSchema).optional(),
   createdAt: z.lazy(() => SortOrderSchema).optional(),
   updatedAt: z.lazy(() => SortOrderSchema).optional(),
@@ -267,6 +287,7 @@ export const CounterWhereUniqueInputSchema: z.ZodType<Prisma.CounterWhereUniqueI
   title: z.union([ z.lazy(() => StringFilterSchema), z.string() ]).optional(),
   count: z.union([ z.lazy(() => IntFilterSchema), z.number().int() ]).optional(),
   color: z.union([ z.lazy(() => StringNullableFilterSchema), z.string() ]).optional().nullable(),
+  type: z.union([ z.lazy(() => EnumCounterTypeFilterSchema), z.lazy(() => CounterTypeSchema) ]).optional(),
   userId: z.union([ z.lazy(() => UuidFilterSchema), z.string() ]).optional(),
   createdAt: z.union([ z.lazy(() => DateTimeFilterSchema), z.coerce.date() ]).optional(),
   updatedAt: z.union([ z.lazy(() => DateTimeFilterSchema), z.coerce.date() ]).optional(),
@@ -278,6 +299,7 @@ export const CounterOrderByWithAggregationInputSchema: z.ZodType<Prisma.CounterO
   title: z.lazy(() => SortOrderSchema).optional(),
   count: z.lazy(() => SortOrderSchema).optional(),
   color: z.union([ z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema) ]).optional(),
+  type: z.lazy(() => SortOrderSchema).optional(),
   userId: z.lazy(() => SortOrderSchema).optional(),
   createdAt: z.lazy(() => SortOrderSchema).optional(),
   updatedAt: z.lazy(() => SortOrderSchema).optional(),
@@ -296,6 +318,7 @@ export const CounterScalarWhereWithAggregatesInputSchema: z.ZodType<Prisma.Count
   title: z.union([ z.lazy(() => StringWithAggregatesFilterSchema), z.string() ]).optional(),
   count: z.union([ z.lazy(() => IntWithAggregatesFilterSchema), z.number() ]).optional(),
   color: z.union([ z.lazy(() => StringNullableWithAggregatesFilterSchema), z.string() ]).optional().nullable(),
+  type: z.union([ z.lazy(() => EnumCounterTypeWithAggregatesFilterSchema), z.lazy(() => CounterTypeSchema) ]).optional(),
   userId: z.union([ z.lazy(() => UuidWithAggregatesFilterSchema), z.string() ]).optional(),
   createdAt: z.union([ z.lazy(() => DateTimeWithAggregatesFilterSchema), z.coerce.date() ]).optional(),
   updatedAt: z.union([ z.lazy(() => DateTimeWithAggregatesFilterSchema), z.coerce.date() ]).optional(),
@@ -351,6 +374,7 @@ export const UserCreateInputSchema: z.ZodType<Prisma.UserCreateInput> = z.strict
   email: z.string().optional().nullable(),
   phone: z.string().optional().nullable(),
   password: z.string(),
+  tier: z.lazy(() => UserTierSchema).optional(),
   createdAt: z.coerce.date().optional(),
   updatedAt: z.coerce.date().optional(),
   counters: z.lazy(() => CounterCreateNestedManyWithoutUserInputSchema).optional(),
@@ -361,6 +385,7 @@ export const UserUncheckedCreateInputSchema: z.ZodType<Prisma.UserUncheckedCreat
   email: z.string().optional().nullable(),
   phone: z.string().optional().nullable(),
   password: z.string(),
+  tier: z.lazy(() => UserTierSchema).optional(),
   createdAt: z.coerce.date().optional(),
   updatedAt: z.coerce.date().optional(),
   counters: z.lazy(() => CounterUncheckedCreateNestedManyWithoutUserInputSchema).optional(),
@@ -371,6 +396,7 @@ export const UserUpdateInputSchema: z.ZodType<Prisma.UserUpdateInput> = z.strict
   email: z.union([ z.string(),z.lazy(() => NullableStringFieldUpdateOperationsInputSchema) ]).optional().nullable(),
   phone: z.union([ z.string(),z.lazy(() => NullableStringFieldUpdateOperationsInputSchema) ]).optional().nullable(),
   password: z.union([ z.string(),z.lazy(() => StringFieldUpdateOperationsInputSchema) ]).optional(),
+  tier: z.union([ z.lazy(() => UserTierSchema), z.lazy(() => EnumUserTierFieldUpdateOperationsInputSchema) ]).optional(),
   createdAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
   updatedAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
   counters: z.lazy(() => CounterUpdateManyWithoutUserNestedInputSchema).optional(),
@@ -381,6 +407,7 @@ export const UserUncheckedUpdateInputSchema: z.ZodType<Prisma.UserUncheckedUpdat
   email: z.union([ z.string(),z.lazy(() => NullableStringFieldUpdateOperationsInputSchema) ]).optional().nullable(),
   phone: z.union([ z.string(),z.lazy(() => NullableStringFieldUpdateOperationsInputSchema) ]).optional().nullable(),
   password: z.union([ z.string(),z.lazy(() => StringFieldUpdateOperationsInputSchema) ]).optional(),
+  tier: z.union([ z.lazy(() => UserTierSchema), z.lazy(() => EnumUserTierFieldUpdateOperationsInputSchema) ]).optional(),
   createdAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
   updatedAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
   counters: z.lazy(() => CounterUncheckedUpdateManyWithoutUserNestedInputSchema).optional(),
@@ -391,6 +418,7 @@ export const UserCreateManyInputSchema: z.ZodType<Prisma.UserCreateManyInput> = 
   email: z.string().optional().nullable(),
   phone: z.string().optional().nullable(),
   password: z.string(),
+  tier: z.lazy(() => UserTierSchema).optional(),
   createdAt: z.coerce.date().optional(),
   updatedAt: z.coerce.date().optional(),
 });
@@ -400,6 +428,7 @@ export const UserUpdateManyMutationInputSchema: z.ZodType<Prisma.UserUpdateManyM
   email: z.union([ z.string(),z.lazy(() => NullableStringFieldUpdateOperationsInputSchema) ]).optional().nullable(),
   phone: z.union([ z.string(),z.lazy(() => NullableStringFieldUpdateOperationsInputSchema) ]).optional().nullable(),
   password: z.union([ z.string(),z.lazy(() => StringFieldUpdateOperationsInputSchema) ]).optional(),
+  tier: z.union([ z.lazy(() => UserTierSchema), z.lazy(() => EnumUserTierFieldUpdateOperationsInputSchema) ]).optional(),
   createdAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
   updatedAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
 });
@@ -409,6 +438,7 @@ export const UserUncheckedUpdateManyInputSchema: z.ZodType<Prisma.UserUncheckedU
   email: z.union([ z.string(),z.lazy(() => NullableStringFieldUpdateOperationsInputSchema) ]).optional().nullable(),
   phone: z.union([ z.string(),z.lazy(() => NullableStringFieldUpdateOperationsInputSchema) ]).optional().nullable(),
   password: z.union([ z.string(),z.lazy(() => StringFieldUpdateOperationsInputSchema) ]).optional(),
+  tier: z.union([ z.lazy(() => UserTierSchema), z.lazy(() => EnumUserTierFieldUpdateOperationsInputSchema) ]).optional(),
   createdAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
   updatedAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
 });
@@ -418,6 +448,7 @@ export const CounterCreateInputSchema: z.ZodType<Prisma.CounterCreateInput> = z.
   title: z.string(),
   count: z.number().int().optional(),
   color: z.string().optional().nullable(),
+  type: z.lazy(() => CounterTypeSchema).optional(),
   createdAt: z.coerce.date().optional(),
   updatedAt: z.coerce.date().optional(),
   user: z.lazy(() => UserCreateNestedOneWithoutCountersInputSchema),
@@ -428,6 +459,7 @@ export const CounterUncheckedCreateInputSchema: z.ZodType<Prisma.CounterUnchecke
   title: z.string(),
   count: z.number().int().optional(),
   color: z.string().optional().nullable(),
+  type: z.lazy(() => CounterTypeSchema).optional(),
   userId: z.string(),
   createdAt: z.coerce.date().optional(),
   updatedAt: z.coerce.date().optional(),
@@ -438,6 +470,7 @@ export const CounterUpdateInputSchema: z.ZodType<Prisma.CounterUpdateInput> = z.
   title: z.union([ z.string(),z.lazy(() => StringFieldUpdateOperationsInputSchema) ]).optional(),
   count: z.union([ z.number().int(),z.lazy(() => IntFieldUpdateOperationsInputSchema) ]).optional(),
   color: z.union([ z.string(),z.lazy(() => NullableStringFieldUpdateOperationsInputSchema) ]).optional().nullable(),
+  type: z.union([ z.lazy(() => CounterTypeSchema), z.lazy(() => EnumCounterTypeFieldUpdateOperationsInputSchema) ]).optional(),
   createdAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
   updatedAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
   user: z.lazy(() => UserUpdateOneRequiredWithoutCountersNestedInputSchema).optional(),
@@ -448,6 +481,7 @@ export const CounterUncheckedUpdateInputSchema: z.ZodType<Prisma.CounterUnchecke
   title: z.union([ z.string(),z.lazy(() => StringFieldUpdateOperationsInputSchema) ]).optional(),
   count: z.union([ z.number().int(),z.lazy(() => IntFieldUpdateOperationsInputSchema) ]).optional(),
   color: z.union([ z.string(),z.lazy(() => NullableStringFieldUpdateOperationsInputSchema) ]).optional().nullable(),
+  type: z.union([ z.lazy(() => CounterTypeSchema), z.lazy(() => EnumCounterTypeFieldUpdateOperationsInputSchema) ]).optional(),
   userId: z.union([ z.string(),z.lazy(() => StringFieldUpdateOperationsInputSchema) ]).optional(),
   createdAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
   updatedAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
@@ -458,6 +492,7 @@ export const CounterCreateManyInputSchema: z.ZodType<Prisma.CounterCreateManyInp
   title: z.string(),
   count: z.number().int().optional(),
   color: z.string().optional().nullable(),
+  type: z.lazy(() => CounterTypeSchema).optional(),
   userId: z.string(),
   createdAt: z.coerce.date().optional(),
   updatedAt: z.coerce.date().optional(),
@@ -468,6 +503,7 @@ export const CounterUpdateManyMutationInputSchema: z.ZodType<Prisma.CounterUpdat
   title: z.union([ z.string(),z.lazy(() => StringFieldUpdateOperationsInputSchema) ]).optional(),
   count: z.union([ z.number().int(),z.lazy(() => IntFieldUpdateOperationsInputSchema) ]).optional(),
   color: z.union([ z.string(),z.lazy(() => NullableStringFieldUpdateOperationsInputSchema) ]).optional().nullable(),
+  type: z.union([ z.lazy(() => CounterTypeSchema), z.lazy(() => EnumCounterTypeFieldUpdateOperationsInputSchema) ]).optional(),
   createdAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
   updatedAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
 });
@@ -477,6 +513,7 @@ export const CounterUncheckedUpdateManyInputSchema: z.ZodType<Prisma.CounterUnch
   title: z.union([ z.string(),z.lazy(() => StringFieldUpdateOperationsInputSchema) ]).optional(),
   count: z.union([ z.number().int(),z.lazy(() => IntFieldUpdateOperationsInputSchema) ]).optional(),
   color: z.union([ z.string(),z.lazy(() => NullableStringFieldUpdateOperationsInputSchema) ]).optional().nullable(),
+  type: z.union([ z.lazy(() => CounterTypeSchema), z.lazy(() => EnumCounterTypeFieldUpdateOperationsInputSchema) ]).optional(),
   userId: z.union([ z.string(),z.lazy(() => StringFieldUpdateOperationsInputSchema) ]).optional(),
   createdAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
   updatedAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
@@ -566,6 +603,13 @@ export const StringFilterSchema: z.ZodType<Prisma.StringFilter> = z.strictObject
   not: z.union([ z.string(),z.lazy(() => NestedStringFilterSchema) ]).optional(),
 });
 
+export const EnumUserTierFilterSchema: z.ZodType<Prisma.EnumUserTierFilter> = z.strictObject({
+  equals: z.lazy(() => UserTierSchema).optional(),
+  in: z.lazy(() => UserTierSchema).array().optional(),
+  notIn: z.lazy(() => UserTierSchema).array().optional(),
+  not: z.union([ z.lazy(() => UserTierSchema), z.lazy(() => NestedEnumUserTierFilterSchema) ]).optional(),
+});
+
 export const DateTimeFilterSchema: z.ZodType<Prisma.DateTimeFilter> = z.strictObject({
   equals: z.coerce.date().optional(),
   in: z.coerce.date().array().optional(),
@@ -597,6 +641,7 @@ export const UserCountOrderByAggregateInputSchema: z.ZodType<Prisma.UserCountOrd
   email: z.lazy(() => SortOrderSchema).optional(),
   phone: z.lazy(() => SortOrderSchema).optional(),
   password: z.lazy(() => SortOrderSchema).optional(),
+  tier: z.lazy(() => SortOrderSchema).optional(),
   createdAt: z.lazy(() => SortOrderSchema).optional(),
   updatedAt: z.lazy(() => SortOrderSchema).optional(),
 });
@@ -606,6 +651,7 @@ export const UserMaxOrderByAggregateInputSchema: z.ZodType<Prisma.UserMaxOrderBy
   email: z.lazy(() => SortOrderSchema).optional(),
   phone: z.lazy(() => SortOrderSchema).optional(),
   password: z.lazy(() => SortOrderSchema).optional(),
+  tier: z.lazy(() => SortOrderSchema).optional(),
   createdAt: z.lazy(() => SortOrderSchema).optional(),
   updatedAt: z.lazy(() => SortOrderSchema).optional(),
 });
@@ -615,6 +661,7 @@ export const UserMinOrderByAggregateInputSchema: z.ZodType<Prisma.UserMinOrderBy
   email: z.lazy(() => SortOrderSchema).optional(),
   phone: z.lazy(() => SortOrderSchema).optional(),
   password: z.lazy(() => SortOrderSchema).optional(),
+  tier: z.lazy(() => SortOrderSchema).optional(),
   createdAt: z.lazy(() => SortOrderSchema).optional(),
   updatedAt: z.lazy(() => SortOrderSchema).optional(),
 });
@@ -670,6 +717,16 @@ export const StringWithAggregatesFilterSchema: z.ZodType<Prisma.StringWithAggreg
   _max: z.lazy(() => NestedStringFilterSchema).optional(),
 });
 
+export const EnumUserTierWithAggregatesFilterSchema: z.ZodType<Prisma.EnumUserTierWithAggregatesFilter> = z.strictObject({
+  equals: z.lazy(() => UserTierSchema).optional(),
+  in: z.lazy(() => UserTierSchema).array().optional(),
+  notIn: z.lazy(() => UserTierSchema).array().optional(),
+  not: z.union([ z.lazy(() => UserTierSchema), z.lazy(() => NestedEnumUserTierWithAggregatesFilterSchema) ]).optional(),
+  _count: z.lazy(() => NestedIntFilterSchema).optional(),
+  _min: z.lazy(() => NestedEnumUserTierFilterSchema).optional(),
+  _max: z.lazy(() => NestedEnumUserTierFilterSchema).optional(),
+});
+
 export const DateTimeWithAggregatesFilterSchema: z.ZodType<Prisma.DateTimeWithAggregatesFilter> = z.strictObject({
   equals: z.coerce.date().optional(),
   in: z.coerce.date().array().optional(),
@@ -695,6 +752,13 @@ export const IntFilterSchema: z.ZodType<Prisma.IntFilter> = z.strictObject({
   not: z.union([ z.number(),z.lazy(() => NestedIntFilterSchema) ]).optional(),
 });
 
+export const EnumCounterTypeFilterSchema: z.ZodType<Prisma.EnumCounterTypeFilter> = z.strictObject({
+  equals: z.lazy(() => CounterTypeSchema).optional(),
+  in: z.lazy(() => CounterTypeSchema).array().optional(),
+  notIn: z.lazy(() => CounterTypeSchema).array().optional(),
+  not: z.union([ z.lazy(() => CounterTypeSchema), z.lazy(() => NestedEnumCounterTypeFilterSchema) ]).optional(),
+});
+
 export const UserScalarRelationFilterSchema: z.ZodType<Prisma.UserScalarRelationFilter> = z.strictObject({
   is: z.lazy(() => UserWhereInputSchema).optional(),
   isNot: z.lazy(() => UserWhereInputSchema).optional(),
@@ -705,6 +769,7 @@ export const CounterCountOrderByAggregateInputSchema: z.ZodType<Prisma.CounterCo
   title: z.lazy(() => SortOrderSchema).optional(),
   count: z.lazy(() => SortOrderSchema).optional(),
   color: z.lazy(() => SortOrderSchema).optional(),
+  type: z.lazy(() => SortOrderSchema).optional(),
   userId: z.lazy(() => SortOrderSchema).optional(),
   createdAt: z.lazy(() => SortOrderSchema).optional(),
   updatedAt: z.lazy(() => SortOrderSchema).optional(),
@@ -719,6 +784,7 @@ export const CounterMaxOrderByAggregateInputSchema: z.ZodType<Prisma.CounterMaxO
   title: z.lazy(() => SortOrderSchema).optional(),
   count: z.lazy(() => SortOrderSchema).optional(),
   color: z.lazy(() => SortOrderSchema).optional(),
+  type: z.lazy(() => SortOrderSchema).optional(),
   userId: z.lazy(() => SortOrderSchema).optional(),
   createdAt: z.lazy(() => SortOrderSchema).optional(),
   updatedAt: z.lazy(() => SortOrderSchema).optional(),
@@ -729,6 +795,7 @@ export const CounterMinOrderByAggregateInputSchema: z.ZodType<Prisma.CounterMinO
   title: z.lazy(() => SortOrderSchema).optional(),
   count: z.lazy(() => SortOrderSchema).optional(),
   color: z.lazy(() => SortOrderSchema).optional(),
+  type: z.lazy(() => SortOrderSchema).optional(),
   userId: z.lazy(() => SortOrderSchema).optional(),
   createdAt: z.lazy(() => SortOrderSchema).optional(),
   updatedAt: z.lazy(() => SortOrderSchema).optional(),
@@ -752,6 +819,16 @@ export const IntWithAggregatesFilterSchema: z.ZodType<Prisma.IntWithAggregatesFi
   _sum: z.lazy(() => NestedIntFilterSchema).optional(),
   _min: z.lazy(() => NestedIntFilterSchema).optional(),
   _max: z.lazy(() => NestedIntFilterSchema).optional(),
+});
+
+export const EnumCounterTypeWithAggregatesFilterSchema: z.ZodType<Prisma.EnumCounterTypeWithAggregatesFilter> = z.strictObject({
+  equals: z.lazy(() => CounterTypeSchema).optional(),
+  in: z.lazy(() => CounterTypeSchema).array().optional(),
+  notIn: z.lazy(() => CounterTypeSchema).array().optional(),
+  not: z.union([ z.lazy(() => CounterTypeSchema), z.lazy(() => NestedEnumCounterTypeWithAggregatesFilterSchema) ]).optional(),
+  _count: z.lazy(() => NestedIntFilterSchema).optional(),
+  _min: z.lazy(() => NestedEnumCounterTypeFilterSchema).optional(),
+  _max: z.lazy(() => NestedEnumCounterTypeFilterSchema).optional(),
 });
 
 export const IdempotencyLogCountOrderByAggregateInputSchema: z.ZodType<Prisma.IdempotencyLogCountOrderByAggregateInput> = z.strictObject({
@@ -792,6 +869,10 @@ export const StringFieldUpdateOperationsInputSchema: z.ZodType<Prisma.StringFiel
 
 export const NullableStringFieldUpdateOperationsInputSchema: z.ZodType<Prisma.NullableStringFieldUpdateOperationsInput> = z.strictObject({
   set: z.string().optional().nullable(),
+});
+
+export const EnumUserTierFieldUpdateOperationsInputSchema: z.ZodType<Prisma.EnumUserTierFieldUpdateOperationsInput> = z.strictObject({
+  set: z.lazy(() => UserTierSchema).optional(),
 });
 
 export const DateTimeFieldUpdateOperationsInputSchema: z.ZodType<Prisma.DateTimeFieldUpdateOperationsInput> = z.strictObject({
@@ -840,6 +921,10 @@ export const IntFieldUpdateOperationsInputSchema: z.ZodType<Prisma.IntFieldUpdat
   divide: z.number().optional(),
 });
 
+export const EnumCounterTypeFieldUpdateOperationsInputSchema: z.ZodType<Prisma.EnumCounterTypeFieldUpdateOperationsInput> = z.strictObject({
+  set: z.lazy(() => CounterTypeSchema).optional(),
+});
+
 export const UserUpdateOneRequiredWithoutCountersNestedInputSchema: z.ZodType<Prisma.UserUpdateOneRequiredWithoutCountersNestedInput> = z.strictObject({
   create: z.union([ z.lazy(() => UserCreateWithoutCountersInputSchema), z.lazy(() => UserUncheckedCreateWithoutCountersInputSchema) ]).optional(),
   connectOrCreate: z.lazy(() => UserCreateOrConnectWithoutCountersInputSchema).optional(),
@@ -885,6 +970,13 @@ export const NestedStringFilterSchema: z.ZodType<Prisma.NestedStringFilter> = z.
   startsWith: z.string().optional(),
   endsWith: z.string().optional(),
   not: z.union([ z.string(),z.lazy(() => NestedStringFilterSchema) ]).optional(),
+});
+
+export const NestedEnumUserTierFilterSchema: z.ZodType<Prisma.NestedEnumUserTierFilter> = z.strictObject({
+  equals: z.lazy(() => UserTierSchema).optional(),
+  in: z.lazy(() => UserTierSchema).array().optional(),
+  notIn: z.lazy(() => UserTierSchema).array().optional(),
+  not: z.union([ z.lazy(() => UserTierSchema), z.lazy(() => NestedEnumUserTierFilterSchema) ]).optional(),
 });
 
 export const NestedDateTimeFilterSchema: z.ZodType<Prisma.NestedDateTimeFilter> = z.strictObject({
@@ -968,6 +1060,16 @@ export const NestedStringWithAggregatesFilterSchema: z.ZodType<Prisma.NestedStri
   _max: z.lazy(() => NestedStringFilterSchema).optional(),
 });
 
+export const NestedEnumUserTierWithAggregatesFilterSchema: z.ZodType<Prisma.NestedEnumUserTierWithAggregatesFilter> = z.strictObject({
+  equals: z.lazy(() => UserTierSchema).optional(),
+  in: z.lazy(() => UserTierSchema).array().optional(),
+  notIn: z.lazy(() => UserTierSchema).array().optional(),
+  not: z.union([ z.lazy(() => UserTierSchema), z.lazy(() => NestedEnumUserTierWithAggregatesFilterSchema) ]).optional(),
+  _count: z.lazy(() => NestedIntFilterSchema).optional(),
+  _min: z.lazy(() => NestedEnumUserTierFilterSchema).optional(),
+  _max: z.lazy(() => NestedEnumUserTierFilterSchema).optional(),
+});
+
 export const NestedDateTimeWithAggregatesFilterSchema: z.ZodType<Prisma.NestedDateTimeWithAggregatesFilter> = z.strictObject({
   equals: z.coerce.date().optional(),
   in: z.coerce.date().array().optional(),
@@ -980,6 +1082,13 @@ export const NestedDateTimeWithAggregatesFilterSchema: z.ZodType<Prisma.NestedDa
   _count: z.lazy(() => NestedIntFilterSchema).optional(),
   _min: z.lazy(() => NestedDateTimeFilterSchema).optional(),
   _max: z.lazy(() => NestedDateTimeFilterSchema).optional(),
+});
+
+export const NestedEnumCounterTypeFilterSchema: z.ZodType<Prisma.NestedEnumCounterTypeFilter> = z.strictObject({
+  equals: z.lazy(() => CounterTypeSchema).optional(),
+  in: z.lazy(() => CounterTypeSchema).array().optional(),
+  notIn: z.lazy(() => CounterTypeSchema).array().optional(),
+  not: z.union([ z.lazy(() => CounterTypeSchema), z.lazy(() => NestedEnumCounterTypeFilterSchema) ]).optional(),
 });
 
 export const NestedIntWithAggregatesFilterSchema: z.ZodType<Prisma.NestedIntWithAggregatesFilter> = z.strictObject({
@@ -1009,11 +1118,22 @@ export const NestedFloatFilterSchema: z.ZodType<Prisma.NestedFloatFilter> = z.st
   not: z.union([ z.number(),z.lazy(() => NestedFloatFilterSchema) ]).optional(),
 });
 
+export const NestedEnumCounterTypeWithAggregatesFilterSchema: z.ZodType<Prisma.NestedEnumCounterTypeWithAggregatesFilter> = z.strictObject({
+  equals: z.lazy(() => CounterTypeSchema).optional(),
+  in: z.lazy(() => CounterTypeSchema).array().optional(),
+  notIn: z.lazy(() => CounterTypeSchema).array().optional(),
+  not: z.union([ z.lazy(() => CounterTypeSchema), z.lazy(() => NestedEnumCounterTypeWithAggregatesFilterSchema) ]).optional(),
+  _count: z.lazy(() => NestedIntFilterSchema).optional(),
+  _min: z.lazy(() => NestedEnumCounterTypeFilterSchema).optional(),
+  _max: z.lazy(() => NestedEnumCounterTypeFilterSchema).optional(),
+});
+
 export const CounterCreateWithoutUserInputSchema: z.ZodType<Prisma.CounterCreateWithoutUserInput> = z.strictObject({
   id: z.uuid().optional(),
   title: z.string(),
   count: z.number().int().optional(),
   color: z.string().optional().nullable(),
+  type: z.lazy(() => CounterTypeSchema).optional(),
   createdAt: z.coerce.date().optional(),
   updatedAt: z.coerce.date().optional(),
 });
@@ -1023,6 +1143,7 @@ export const CounterUncheckedCreateWithoutUserInputSchema: z.ZodType<Prisma.Coun
   title: z.string(),
   count: z.number().int().optional(),
   color: z.string().optional().nullable(),
+  type: z.lazy(() => CounterTypeSchema).optional(),
   createdAt: z.coerce.date().optional(),
   updatedAt: z.coerce.date().optional(),
 });
@@ -1061,6 +1182,7 @@ export const CounterScalarWhereInputSchema: z.ZodType<Prisma.CounterScalarWhereI
   title: z.union([ z.lazy(() => StringFilterSchema), z.string() ]).optional(),
   count: z.union([ z.lazy(() => IntFilterSchema), z.number() ]).optional(),
   color: z.union([ z.lazy(() => StringNullableFilterSchema), z.string() ]).optional().nullable(),
+  type: z.union([ z.lazy(() => EnumCounterTypeFilterSchema), z.lazy(() => CounterTypeSchema) ]).optional(),
   userId: z.union([ z.lazy(() => UuidFilterSchema), z.string() ]).optional(),
   createdAt: z.union([ z.lazy(() => DateTimeFilterSchema), z.coerce.date() ]).optional(),
   updatedAt: z.union([ z.lazy(() => DateTimeFilterSchema), z.coerce.date() ]).optional(),
@@ -1071,6 +1193,7 @@ export const UserCreateWithoutCountersInputSchema: z.ZodType<Prisma.UserCreateWi
   email: z.string().optional().nullable(),
   phone: z.string().optional().nullable(),
   password: z.string(),
+  tier: z.lazy(() => UserTierSchema).optional(),
   createdAt: z.coerce.date().optional(),
   updatedAt: z.coerce.date().optional(),
 });
@@ -1080,6 +1203,7 @@ export const UserUncheckedCreateWithoutCountersInputSchema: z.ZodType<Prisma.Use
   email: z.string().optional().nullable(),
   phone: z.string().optional().nullable(),
   password: z.string(),
+  tier: z.lazy(() => UserTierSchema).optional(),
   createdAt: z.coerce.date().optional(),
   updatedAt: z.coerce.date().optional(),
 });
@@ -1105,6 +1229,7 @@ export const UserUpdateWithoutCountersInputSchema: z.ZodType<Prisma.UserUpdateWi
   email: z.union([ z.string(),z.lazy(() => NullableStringFieldUpdateOperationsInputSchema) ]).optional().nullable(),
   phone: z.union([ z.string(),z.lazy(() => NullableStringFieldUpdateOperationsInputSchema) ]).optional().nullable(),
   password: z.union([ z.string(),z.lazy(() => StringFieldUpdateOperationsInputSchema) ]).optional(),
+  tier: z.union([ z.lazy(() => UserTierSchema), z.lazy(() => EnumUserTierFieldUpdateOperationsInputSchema) ]).optional(),
   createdAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
   updatedAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
 });
@@ -1114,6 +1239,7 @@ export const UserUncheckedUpdateWithoutCountersInputSchema: z.ZodType<Prisma.Use
   email: z.union([ z.string(),z.lazy(() => NullableStringFieldUpdateOperationsInputSchema) ]).optional().nullable(),
   phone: z.union([ z.string(),z.lazy(() => NullableStringFieldUpdateOperationsInputSchema) ]).optional().nullable(),
   password: z.union([ z.string(),z.lazy(() => StringFieldUpdateOperationsInputSchema) ]).optional(),
+  tier: z.union([ z.lazy(() => UserTierSchema), z.lazy(() => EnumUserTierFieldUpdateOperationsInputSchema) ]).optional(),
   createdAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
   updatedAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
 });
@@ -1123,6 +1249,7 @@ export const CounterCreateManyUserInputSchema: z.ZodType<Prisma.CounterCreateMan
   title: z.string(),
   count: z.number().int().optional(),
   color: z.string().optional().nullable(),
+  type: z.lazy(() => CounterTypeSchema).optional(),
   createdAt: z.coerce.date().optional(),
   updatedAt: z.coerce.date().optional(),
 });
@@ -1132,6 +1259,7 @@ export const CounterUpdateWithoutUserInputSchema: z.ZodType<Prisma.CounterUpdate
   title: z.union([ z.string(),z.lazy(() => StringFieldUpdateOperationsInputSchema) ]).optional(),
   count: z.union([ z.number().int(),z.lazy(() => IntFieldUpdateOperationsInputSchema) ]).optional(),
   color: z.union([ z.string(),z.lazy(() => NullableStringFieldUpdateOperationsInputSchema) ]).optional().nullable(),
+  type: z.union([ z.lazy(() => CounterTypeSchema), z.lazy(() => EnumCounterTypeFieldUpdateOperationsInputSchema) ]).optional(),
   createdAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
   updatedAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
 });
@@ -1141,6 +1269,7 @@ export const CounterUncheckedUpdateWithoutUserInputSchema: z.ZodType<Prisma.Coun
   title: z.union([ z.string(),z.lazy(() => StringFieldUpdateOperationsInputSchema) ]).optional(),
   count: z.union([ z.number().int(),z.lazy(() => IntFieldUpdateOperationsInputSchema) ]).optional(),
   color: z.union([ z.string(),z.lazy(() => NullableStringFieldUpdateOperationsInputSchema) ]).optional().nullable(),
+  type: z.union([ z.lazy(() => CounterTypeSchema), z.lazy(() => EnumCounterTypeFieldUpdateOperationsInputSchema) ]).optional(),
   createdAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
   updatedAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
 });
@@ -1150,6 +1279,7 @@ export const CounterUncheckedUpdateManyWithoutUserInputSchema: z.ZodType<Prisma.
   title: z.union([ z.string(),z.lazy(() => StringFieldUpdateOperationsInputSchema) ]).optional(),
   count: z.union([ z.number().int(),z.lazy(() => IntFieldUpdateOperationsInputSchema) ]).optional(),
   color: z.union([ z.string(),z.lazy(() => NullableStringFieldUpdateOperationsInputSchema) ]).optional().nullable(),
+  type: z.union([ z.lazy(() => CounterTypeSchema), z.lazy(() => EnumCounterTypeFieldUpdateOperationsInputSchema) ]).optional(),
   createdAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
   updatedAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
 });
