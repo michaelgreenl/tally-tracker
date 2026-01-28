@@ -30,6 +30,7 @@ export const loginSchema = z.object({
 
 export const updateUserSchema = z.object({
     body: z.object({
+        tier: z.string().optional(),
         email: z.string().email().optional(),
         phone: phoneSchema.optional(),
         password: z.string().min(6).optional(),

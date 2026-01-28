@@ -8,6 +8,7 @@ export const createCounterSchema = z.object({
         title: z.string().min(1, 'Title is required').max(50, 'Title is too long'),
         count: z.number().int().default(0).optional(),
         color: hexColorSchema.optional(),
+        type: z.string().optional(),
     }),
 });
 
@@ -31,6 +32,7 @@ export const updateCounterSchema = z.object({
         title: z.string().min(1).max(50).optional(),
         count: z.number().int().positive().optional(),
         color: hexColorSchema.optional().or(z.literal(null)),
+        type: z.string().optional(),
     }),
 });
 

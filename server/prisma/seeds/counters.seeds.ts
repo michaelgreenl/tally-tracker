@@ -20,12 +20,14 @@ export const seedCounters = async (prisma: PrismaClient) => {
             count: 50,
             color: '#FF5733',
             userId: admin.id,
+            type: 'PERSONAL',
         },
         {
             title: 'Water Glasses',
             count: 4,
             color: '#33C1FF',
             userId: admin.id,
+            type: 'PERSONAL',
         },
     ];
 
@@ -36,12 +38,14 @@ export const seedCounters = async (prisma: PrismaClient) => {
             count: 12,
             color: '#DAF7A6',
             userId: alice.id,
+            type: 'PERSONAL',
         },
         {
             title: 'Miles Ran',
             count: 105,
             color: null,
             userId: alice.id,
+            type: 'PERSONAL',
         },
     ];
 
@@ -52,12 +56,14 @@ export const seedCounters = async (prisma: PrismaClient) => {
             count: 4,
             color: '#CAFFF1',
             userId: unknown.id,
+            type: 'PERSONAL',
         },
         {
             title: 'Cigerettes',
             count: 6,
             color: null,
             userId: unknown.id,
+            type: 'PERSONAL',
         },
     ];
 

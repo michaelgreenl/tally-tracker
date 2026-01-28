@@ -1,5 +1,6 @@
 import { ClientUser } from './models';
 import { HexColor } from './index';
+import { UserTier, CounterType } from './generated/index.ts';
 
 // ***** Express *****
 declare global {
@@ -21,6 +22,7 @@ export interface UpdateUserRequest {
     email?: string;
     phone?: string;
     password?: string;
+    tier?: UserTier;
 }
 
 // ***** Counter Requests *****
@@ -29,12 +31,14 @@ export interface CreateCounterRequest {
     title: string;
     count?: number;
     color?: HexColor;
+    type?: CounterType;
 }
 
 export interface UpdateCounterRequest {
     title?: string;
     count?: number;
     color?: HexColor;
+    type?: CounterType;
 }
 
 export interface IncrementCounterRequest {
