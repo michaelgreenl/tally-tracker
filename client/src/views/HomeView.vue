@@ -8,7 +8,7 @@ import { useNetwork } from '@/composables/useNetwork';
 import { useSync } from '@/composables/useSync';
 import { SyncManager } from '@/services/sync/manager';
 import { Network } from '@capacitor/network';
-import { cloudDoneOutline, cloudOfflineOutline } from 'ionicons/icons';
+import { cloudDoneOutline, cloudOfflineOutline, diamond } from 'ionicons/icons';
 
 import BaseNavLink from '@/components/base/BaseNavLink.vue';
 import BaseButton from '@/components/base/BaseButton.vue';
@@ -65,11 +65,12 @@ const closeCounterForm = () => {
                 <ion-buttons slot="end">
                     <ion-button v-if="authStore.isAuthenticated" @click="authStore.logout()">Logout</ion-button>
                     <ion-button v-else @click="router.push('/login')">Login / Sync</ion-button>
-                </ion-buttons>
-                <ion-buttons slot="end">
+
                     <ion-spinner v-if="isSyncing" name="crescent" style="width: 20px; height: 20px" />
                     <ion-icon v-else-if="!isOnline" :icon="cloudOfflineOutline" color="medium" />
                     <ion-icon v-else :icon="cloudDoneOutline" color="success" />
+
+                    <ion-icon v-if="authStore.isPremium" :icon="diamond" color="warning" />
                 </ion-buttons>
             </ion-toolbar>
         </ion-header>

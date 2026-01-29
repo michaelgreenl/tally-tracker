@@ -16,6 +16,7 @@ const TOKEN_KEY = 'auth_token';
 export const useAuthStore = defineStore('auth', () => {
     const user = ref<ClientUser | null>(null);
     const isAuthenticated = computed(() => !!user.value);
+    const isPremium = computed(() => user.value?.tier === 'PREMIUM');
     const checkingAuth = ref(false);
 
     async function initializeAuth(): Promise<StoreResponse> {
@@ -140,6 +141,7 @@ export const useAuthStore = defineStore('auth', () => {
     return {
         user,
         isAuthenticated,
+        isPremium,
         checkingAuth,
         initializeAuth,
         register,
