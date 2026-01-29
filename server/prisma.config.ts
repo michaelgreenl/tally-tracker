@@ -8,7 +8,7 @@ const POSTGRES_URL = process.env.POSTGRES_URL || 'http://localhost:3000';
 export default defineConfig({
     schema: 'prisma/schema',
     migrations: {
-        seed: 'tsx prisma/seed.ts',
+        seed: 'tsx prisma/seeds/index.ts',
     },
     datasource: {
         url: POSTGRES_URL,

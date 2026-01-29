@@ -1,6 +1,6 @@
-import prisma from '../src/db/prisma.ts';
-import { seedUsers } from './seeds/users.seeds.ts';
-import { seedCounters } from './seeds/counters.seeds.ts';
+import prisma from '../../src/db/prisma.ts';
+import { seedUsers } from './users.seeds.ts';
+import { seedCounters } from './counters.seeds.ts';
 
 async function main() {
     await seedUsers(prisma);

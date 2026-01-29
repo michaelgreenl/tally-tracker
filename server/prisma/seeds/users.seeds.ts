@@ -6,32 +6,35 @@ export const seedUsers = async (prisma: PrismaClient) => {
 
     await prisma.user.upsert({
         where: { email: 'admin@example.com' },
-        update: {},
+        update: {
+            tier: 'PREMIUM',
+        },
         create: {
             email: 'admin@example.com',
             phone: '+15550000000',
             password: password,
-            tier: 'PREMIUM',
         },
     });
 
     await prisma.user.upsert({
         where: { email: 'alice@example.com' },
-        update: {},
+        update: {
+            tier: 'PREMIUM',
+        },
         create: {
             email: 'alice@example.com',
             password: password,
-            tier: 'PREMIUM',
         },
     });
 
     await prisma.user.upsert({
         where: { phone: '+15559999999' },
-        update: {},
+        update: {
+            tier: 'BASIC',
+        },
         create: {
             phone: '+15559999999',
             password: password,
-            tier: 'BASIC',
         },
     });
 };
