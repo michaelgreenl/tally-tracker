@@ -6,7 +6,7 @@ import type { PrismaConfig } from 'prisma';
 const POSTGRES_URL = process.env.POSTGRES_URL || 'http://localhost:3000';
 
 export default defineConfig({
-    schema: 'prisma/schema.prisma',
+    schema: 'prisma/schema',
     migrations: {
         seed: 'tsx prisma/seed.ts',
     },
