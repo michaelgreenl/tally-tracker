@@ -5,6 +5,7 @@ const userSelectSchema = {
     id: true,
     email: true,
     phone: true,
+    tier: true,
     createdAt: true,
     updatedAt: true,
 };
