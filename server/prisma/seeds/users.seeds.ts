@@ -11,7 +11,7 @@ export const seedUsers = async (prisma: PrismaClient) => {
             email: 'admin@example.com',
             phone: '+15550000000',
             password: password,
-            tier: 'BASIC',
+            tier: 'PREMIUM',
         },
     });
 
@@ -21,7 +21,7 @@ export const seedUsers = async (prisma: PrismaClient) => {
         create: {
             email: 'alice@example.com',
             password: password,
-            tier: 'BASIC',
+            tier: 'PREMIUM',
         },
     });
 
