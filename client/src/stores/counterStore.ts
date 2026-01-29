@@ -48,12 +48,13 @@ export const useCounterStore = defineStore('counter', () => {
             color: color || DEFAULT_COUNTER_COLOR,
             count: 0,
             userId: isGuest.value ? 'guest' : authStore.user?.id || 'offline-user',
+            type: 'PERSONAL',
         };
 
         counters.value.push(newCounter);
         await saveState();
 
-        await CounterService.create(newCounter, isGuest.value);
+        if (!isGuest.value) await CounterService.create(newCounter);
 
         return ok();
     }
@@ -65,7 +66,7 @@ export const useCounterStore = defineStore('counter', () => {
         counter.count += amount;
         await saveState();
 
-        await CounterService.increment(counterId, amount, isGuest.value);
+        if (!isGuest.value) await CounterService.increment(counter, amount);
 
         return ok();
     }
@@ -77,7 +78,7 @@ export const useCounterStore = defineStore('counter', () => {
         counters.value[index] = { ...counters.value[index], ...data };
         await saveState();
 
-        await CounterService.update(counterId, data, isGuest.value);
+        if (!isGuest.value) await CounterService.update(counterId, data);
 
         return ok();
     }
@@ -86,7 +87,7 @@ export const useCounterStore = defineStore('counter', () => {
         counters.value = counters.value.filter((c) => c.id !== counterId);
         await saveState();
 
-        await CounterService.delete(counterId, isGuest.value);
+        if (!isGuest.value) await CounterService.delete(counterId);
 
         return ok();
     }
