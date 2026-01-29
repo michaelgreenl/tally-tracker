@@ -20,9 +20,7 @@ export const CounterService = {
         await LocalStorageService.saveCounters(counters);
     },
 
-    async create(counter: ClientCounter, isGuest: boolean) {
-        if (isGuest) return;
-
+    async create(counter: ClientCounter) {
         await SyncQueueService.addCommand({
             id: crypto.randomUUID(),
             type: 'CREATE',
@@ -33,6 +31,7 @@ export const CounterService = {
                 title: counter.title,
                 color: counter.color,
                 count: counter.count,
+                type: counter.type,
             },
             timestamp: Date.now(),
             retryCount: 0,
@@ -40,9 +39,7 @@ export const CounterService = {
         SyncManager.processQueue();
     },
 
-    async update(counterId: string, updates: Partial<ClientCounter>, isGuest: boolean) {
-        if (isGuest) return;
-
+    async update(counterId: string, updates: Partial<ClientCounter>) {
         await SyncQueueService.addCommand({
             id: crypto.randomUUID(),
             type: 'UPDATE',
@@ -55,24 +52,32 @@ export const CounterService = {
         SyncManager.processQueue();
     },
 
-    async increment(counterId: string, amount: number, isGuest: boolean) {
-        if (isGuest) return;
-
-        await SyncQueueService.addCommand({
-            id: crypto.randomUUID(),
-            type: 'INCREMENT',
-            entity: 'counter',
-            entityId: counterId,
-            payload: { amount },
-            timestamp: Date.now(),
-            retryCount: 0,
-        });
+    async increment(counter: ClientCounter, amount: number) {
+        if (counter.type === 'SHARED') {
+            await SyncQueueService.addCommand({
+                id: crypto.randomUUID(),
+                type: 'INCREMENT',
+                entity: 'counter',
+                entityId: counter.id,
+                payload: { amount },
+                timestamp: Date.now(),
+                retryCount: 0,
+            });
+        } else {
+            await SyncQueueService.addCommand({
+                id: crypto.randomUUID(),
+                type: 'UPDATE',
+                entity: 'counter',
+                entityId: counter.id,
+                payload: { count: counter.count },
+                timestamp: Date.now(),
+                retryCount: 0,
+            });
+        }
         SyncManager.processQueue();
     },
 
-    async delete(counterId: string, isGuest: boolean) {
-        if (isGuest) return;
-
+    async delete(counterId: string) {
         await SyncQueueService.addCommand({
             id: crypto.randomUUID(),
             type: 'DELETE',
@@ -99,6 +104,7 @@ export const CounterService = {
                     title: counter.title,
                     color: counter.color,
                     count: counter.count,
+                    type: counter.type,
                 },
                 timestamp: Date.now(),
                 retryCount: 0,
