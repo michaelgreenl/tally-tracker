@@ -91,7 +91,7 @@ export const SyncManager = {
             case 'INCREMENT':
                 await apiFetch<CounterResponse, IncrementCounterRequest>(`/counters/increment/${cmd.entityId}`, {
                     method: 'PUT',
-                    body: { amount: cmd.payload.amount },
+                    body: cmd.payload,
                     ...options,
                 });
                 break;
