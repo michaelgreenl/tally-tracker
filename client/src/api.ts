@@ -8,7 +8,10 @@ export interface ApiRequestOptions<T = any> extends Omit<RequestInit, 'body'> {
 
 const isDev = import.meta.env.DEV;
 const isNative = Capacitor.isNativePlatform();
-const API_URL = isDev ? '' : import.meta.env.VITE_API_URL;
+const isAndroid = Capacitor.getPlatform() === 'android';
+
+const defaultLocal = isAndroid ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
+const API_URL = import.meta.env.VITE_API_URL || defaultLocal;
 
 async function apiFetch<ResT = unknown, ReqT = any>(
     endpoint: string,
