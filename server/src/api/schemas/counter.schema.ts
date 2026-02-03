@@ -1,15 +1,31 @@
 import { z } from 'zod';
 
-const hexColorSchema = z.string().regex(/^#([0-9a-fA-F]{3}){1,2}$/, 'Must be a valid Hex color code (e.g., #ff0000)');
+import { HexColorSchema } from '../../types/shared/index.js';
+import { CounterTypeSchema } from '../../types/shared/generated/index.js';
 
 export const createCounterSchema = z.object({
-    body: z.object({
-        id: z.string().uuid('Invalid UUID').optional(),
-        title: z.string().min(1, 'Title is required').max(50, 'Title is too long'),
-        count: z.number().int().default(0).optional(),
-        color: hexColorSchema.optional(),
-        type: z.string().optional(),
-    }),
+    body: z
+        .object({
+            id: z.string().uuid('Invalid UUID').optional(),
+            title: z.string().min(1, 'Title is required').max(50, 'Title is too long'),
+            count: z.number().int().default(0).optional(),
+            color: HexColorSchema.optional(),
+            type: CounterTypeSchema.optional(),
+            inviteCode: z.string().optional(),
+        })
+        .refine(
+            (data) => {
+                if (data.type === 'SHARED') {
+                    return !!data.inviteCode;
+                }
+
+                return true;
+            },
+            {
+                message: 'Shared counters must have an invite code',
+                path: ['inviteCode'],
+            },
+        ),
 });
 
 export const deleteCounterSchema = z.object({
@@ -31,8 +47,8 @@ export const updateCounterSchema = z.object({
     body: z.object({
         title: z.string().min(1).max(50).optional(),
         count: z.number().int().positive().optional(),
-        color: hexColorSchema.optional().or(z.literal(null)),
-        type: z.string().optional(),
+        color: HexColorSchema.optional().or(z.literal(null)),
+        type: CounterTypeSchema.optional(),
     }),
 });
 

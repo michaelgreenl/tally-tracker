@@ -33,7 +33,12 @@ export const getUserById = (userId: string) =>
         where: {
             id: userId,
         },
-        select: userSelectSchema,
+        select: {
+            ...userSelectSchema,
+            sharedCounters: {
+                select: { status: true, counter: true },
+            },
+        },
     });
 
 export const getUserByEmail = (email: string) =>

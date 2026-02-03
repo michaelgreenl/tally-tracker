@@ -4,17 +4,43 @@ enum CounterType {
 }
 
 model Counter {
-    id    String      @id @default(uuid())
-    title String
-    count Int         @default(0)
-    color String?
-    type  CounterType @default(PERSONAL)
+    id         String      @id @default(uuid())
+    title      String
+    count      Int         @default(0)
+    color      String?
+    type       CounterType @default(PERSONAL)
+    inviteCode String?     @unique @map("invite_code")
 
     userId String @map("user_id") @db.Uuid
-    user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+    owner  User   @relation("OwnedCounters", fields: [userId], references: [id], onDelete: Cascade)
+
+    shares CounterShare[]
 
     createdAt DateTime @default(now()) @map("created_at")
     updatedAt DateTime @updatedAt @map("updated_at")
 
     @@map("counters")
+}
+
+enum ShareStatus {
+    PENDING
+    ACCEPTED
+    REJECTED
+}
+
+model CounterShare {
+    id     String      @id @default(uuid())
+    status ShareStatus @default(PENDING)
+
+    counterId String  @map("counter_id")
+    counter   Counter @relation(fields: [counterId], references: [id], onDelete: Cascade)
+
+    userId String @map("user_id") @db.Uuid
+    user   User   @relation("ReceivedShares", fields: [userId], references: [id], onDelete: Cascade)
+
+    createdAt DateTime @default(now()) @map("created_at")
+    updatedAt DateTime @updatedAt @map("updated_at")
+
+    @@unique([counterId, userId])
+    @@map("counter_shares")
 }
