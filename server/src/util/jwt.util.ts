@@ -6,7 +6,7 @@ const { JWT_SECRET } = process.env;
 export default {
     sign: (obj = {}) =>
         jwt.sign(obj, JWT_SECRET as string, {
-            expiresIn: 60 * 60 * 24, // 24 hours
+            expiresIn: '365d',
             issuer: 'reaction-api',
             audience: 'reaction-client',
         }),
