@@ -55,6 +55,12 @@ const closeCounterForm = () => {
     counterToUpdate.value = null;
     showCounterForm.value = false;
 };
+
+const copyShareLink = async (inviteCode: string) => {
+    const url = `${window.location.origin}/join?code=${inviteCode}`;
+    await navigator.clipboard.writeText(url);
+    alert('Magic Link copied to clipboard!');
+};
 </script>
 
 <template>
@@ -79,13 +85,23 @@ const closeCounterForm = () => {
             <ion-list v-if="counterStore.counters.length">
                 <ion-item v-for="counter in counterStore.counters" :key="counter.id">
                     <div :style="{ display: 'flex', gap: '20px' }">
+                        <ion-icon v-if="counter.type === 'SHARED'" :icon="diamond" color="warning" />
                         <h1>{{ counter.title }}</h1>
                         <p>{{ counter.count }}</p>
                         <p>{{ counter.color }}</p>
-                        <BaseButton @click="counterStore.deleteCounter(counter.id)">delete</BaseButton>
+                        <BaseButton @click="counterStore.deleteCounter(counter.id)">remove</BaseButton>
+
+                        <!-- TODO: -->
+                        <!-- <BaseButton v-else @click="counterStore.removeCounter(counter.id)">remove</BaseButton> -->
+
                         <BaseButton @click="counterStore.incrementCounter(counter.id, -1)">-1</BaseButton>
                         <BaseButton @click="counterStore.incrementCounter(counter.id, 1)">+1</BaseButton>
                         <BaseButton @click="startUpdateCounter(counter)">edit</BaseButton>
+                        <BaseButton
+                            v-if="counter.type === 'SHARED'"
+                            @click="copyShareLink(counter.inviteCode as string)"
+                            >Share</BaseButton
+                        >
                     </div>
                 </ion-item>
             </ion-list>

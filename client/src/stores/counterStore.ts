@@ -5,6 +5,7 @@ import { CounterService } from '@/services/counter.service';
 import { ok, fail } from '@/utils/result';
 
 import type { StoreResponse } from '@/types/index';
+import type { CounterTypeType as CounterType } from '@/types/shared/generated/index';
 import type { ClientCounter } from '@/types/shared/models';
 import type { HexColor } from '@/types/shared';
 
@@ -41,14 +42,26 @@ export const useCounterStore = defineStore('counter', () => {
         }
     }
 
-    async function createCounter(title: string, color: HexColor | null): Promise<StoreResponse> {
+    const generateInviteCode = (): string => {
+        const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let result = '';
+        for (let i = 0; i < 8; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return result;
+    };
+
+    async function createCounter(title: string, color: HexColor | null, type: CounterType): Promise<StoreResponse> {
+        const inviteCode = type === 'SHARED' ? generateInviteCode() : null;
+
         const newCounter: ClientCounter = {
             id: crypto.randomUUID(),
             title,
             color: color || DEFAULT_COUNTER_COLOR,
             count: 0,
             userId: isGuest.value ? 'guest' : authStore.user?.id || 'offline-user',
-            type: 'PERSONAL',
+            type,
+            inviteCode,
         };
 
         counters.value.push(newCounter);
@@ -92,6 +105,16 @@ export const useCounterStore = defineStore('counter', () => {
         return ok();
     }
 
+    // TODO:
+    // async function removeCounter(counterId: string): Promise<StoreResponse> {
+    //     counters.value = counters.value.filter((c) => c.id !== counterId);
+    //     await saveState();
+
+    //     if (!isGuest.value) await CounterService.removeShared(counterId, userId);
+
+    //     return ok();
+    // }
+
     async function consolidateGuestCounters() {
         if (isGuest.value) return;
 
@@ -106,6 +129,33 @@ export const useCounterStore = defineStore('counter', () => {
         await CounterService.consolidate(guestCounters, authStore.user?.id || '');
     }
 
+    async function joinCounter(inviteCode: string): Promise<StoreResponse> {
+        loading.value = true;
+
+        try {
+            const res = await CounterService.join(inviteCode);
+
+            if (res.success && res.data?.counter) {
+                const newCounter = res.data.counter;
+
+                const exists = counters.value.some((c) => c.id === newCounter.id);
+                if (!exists) {
+                    counters.value.push(newCounter);
+                    await saveState();
+                }
+
+                return ok();
+            }
+
+            return fail(res.message || 'Failed to join counter');
+        } catch (error: any) {
+            console.error('Join counter failed:', error);
+            return fail(error.message || 'Network error');
+        } finally {
+            loading.value = false;
+        }
+    }
+
     return {
         counters,
         loading,
@@ -115,5 +165,6 @@ export const useCounterStore = defineStore('counter', () => {
         updateCounter,
         deleteCounter,
         consolidateGuestCounters,
+        joinCounter,
     };
 });

@@ -5,6 +5,7 @@ import apiFetch from '@/api';
 
 import type { ClientCounter } from '@/types/shared/models';
 import type { CounterResponse } from '@/types/shared/responses';
+import type { JoinCounterRequest } from '@/types/shared/requests';
 
 export const CounterService = {
     async getAllLocal() {
@@ -32,6 +33,7 @@ export const CounterService = {
                 color: counter.color,
                 count: counter.count,
                 type: counter.type,
+                inviteCode: counter.inviteCode,
             },
             timestamp: Date.now(),
             retryCount: 0,
@@ -88,6 +90,29 @@ export const CounterService = {
             retryCount: 0,
         });
         SyncManager.processQueue();
+    },
+
+    // TODO:
+    // async remove(counterId: string, userId: string) {
+    //     await SyncQueueService.addCommand({
+    //         id: crypto.randomUUID(),
+    //         type: 'REMOVE',
+    //         entity: 'counter',
+    //         entityId: counterId,
+    //         payload: {},
+    //         timestamp: Date.now(),
+    //         retryCount: 0,
+    //     });
+    //     SyncManager.processQueue();
+    // },
+
+    async join(inviteCode: string) {
+        const res = await apiFetch<CounterResponse, JoinCounterRequest>('/counters/join', {
+            method: 'POST',
+            body: { inviteCode },
+        });
+
+        return res;
     },
 
     async consolidate(countersToSync: ClientCounter[], userId: string) {
