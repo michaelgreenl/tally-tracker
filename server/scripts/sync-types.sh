@@ -7,8 +7,11 @@ echo "🚀 Starting Type Sync..."
 echo "📦 Generating Server Prisma Client..."
 npx prisma generate
 
-echo "📄 Copying schema to Client..."
-cp prisma/schema.prisma "$CLIENT_DIR/schema.prisma"
+echo "📄 Combining and Copying schema to Client..."
+cat prisma/schema/*.prisma > "$CLIENT_DIR/schema.prisma"
+
+# NOTE: -i '' is required for macOS sed
+sed -i '' 's|\.\./\.\./src/types|./src/types|g' "$CLIENT_DIR/schema.prisma"
 
 echo "📦 Generating Client Prisma Client..."
 (cd "$CLIENT_DIR" && npx prisma generate --schema=./schema.prisma)
