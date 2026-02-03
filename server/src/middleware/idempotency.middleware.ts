@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../db/prisma.js';
 import { OK_NO_CONTENT } from '../constants.js';
+import * as idempotencyRepository from '../db/repositories/idempotency.repository.js';
 
 export const idempotency = async (req: Request, res: Response, next: NextFunction) => {
     const key = req.headers['x-idempotency-key'] as string;
@@ -13,21 +14,14 @@ export const idempotency = async (req: Request, res: Response, next: NextFunctio
         const userId = req.user?.id;
         if (!userId) return next();
 
-        const existing = await prisma.idempotencyLog.findUnique({
-            where: { key },
-        });
+        const existing = await idempotencyRepository.get(key);
 
         if (existing) {
             console.log(`[Idempotency] Skipping duplicate request: ${key}`);
             return res.status(OK_NO_CONTENT).send();
         }
 
-        await prisma.idempotencyLog.create({
-            data: {
-                key,
-                userId,
-            },
-        });
+        await idempotencyRepository.create({ key, userId });
 
         next();
     } catch (error) {
