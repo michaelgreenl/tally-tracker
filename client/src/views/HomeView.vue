@@ -89,10 +89,13 @@ const copyShareLink = async (inviteCode: string) => {
                         <h1>{{ counter.title }}</h1>
                         <p>{{ counter.count }}</p>
                         <p>{{ counter.color }}</p>
-                        <BaseButton @click="counterStore.deleteCounter(counter.id)">remove</BaseButton>
 
-                        <!-- TODO: -->
-                        <!-- <BaseButton v-else @click="counterStore.removeCounter(counter.id)">remove</BaseButton> -->
+                        <BaseButton
+                            v-if="counter.userId === authStore.user?.id || !authStore.isAuthenticated"
+                            @click="counterStore.deleteCounter(counter.id)"
+                            >remove</BaseButton
+                        >
+                        <BaseButton v-else @click="counterStore.removeShared(counter.id)">remove</BaseButton>
 
                         <BaseButton @click="counterStore.incrementCounter(counter.id, -1)">-1</BaseButton>
                         <BaseButton @click="counterStore.incrementCounter(counter.id, 1)">+1</BaseButton>

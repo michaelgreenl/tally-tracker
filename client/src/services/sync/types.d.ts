@@ -1,6 +1,6 @@
 import type { ClientCounter } from '@/types/shared/models';
 
-export type MutationType = 'CREATE' | 'UPDATE' | 'DELETE' | 'INCREMENT';
+export type MutationType = 'CREATE' | 'UPDATE' | 'DELETE' | 'INCREMENT' | 'REMOVE';
 
 export interface MutationCommand {
     id: string;

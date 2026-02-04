@@ -50,9 +50,7 @@ export const SyncManager = {
                     status = error.status || 0;
                 }
 
-                const isFatal = status >= 400 && status < 500;
-
-                if (isFatal) {
+                if (status >= 400 && status < 500) {
                     console.warn('[Sync] Fatal error (4xx), removing invalid command.');
                     await SyncQueueService.removeCommand(command.id);
                     continue;
@@ -98,6 +96,12 @@ export const SyncManager = {
             case 'DELETE':
                 await apiFetch(`/counters/${cmd.entityId}`, {
                     method: 'DELETE',
+                    ...options,
+                });
+                break;
+            case 'REMOVE':
+                await apiFetch(`/counters/remove-shared/${cmd.entityId}`, {
+                    method: 'PUT',
                     ...options,
                 });
                 break;

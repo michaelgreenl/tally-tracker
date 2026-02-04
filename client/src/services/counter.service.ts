@@ -93,18 +93,18 @@ export const CounterService = {
     },
 
     // TODO:
-    // async remove(counterId: string, userId: string) {
-    //     await SyncQueueService.addCommand({
-    //         id: crypto.randomUUID(),
-    //         type: 'REMOVE',
-    //         entity: 'counter',
-    //         entityId: counterId,
-    //         payload: {},
-    //         timestamp: Date.now(),
-    //         retryCount: 0,
-    //     });
-    //     SyncManager.processQueue();
-    // },
+    async removeShared(counterId: string) {
+        await SyncQueueService.addCommand({
+            id: crypto.randomUUID(),
+            type: 'REMOVE',
+            entity: 'counter',
+            entityId: counterId,
+            payload: {},
+            timestamp: Date.now(),
+            retryCount: 0,
+        });
+        SyncManager.processQueue();
+    },
 
     async join(inviteCode: string) {
         const res = await apiFetch<CounterResponse, JoinCounterRequest>('/counters/join', {

@@ -106,14 +106,14 @@ export const useCounterStore = defineStore('counter', () => {
     }
 
     // TODO:
-    // async function removeCounter(counterId: string): Promise<StoreResponse> {
-    //     counters.value = counters.value.filter((c) => c.id !== counterId);
-    //     await saveState();
+    async function removeShared(counterId: string): Promise<StoreResponse> {
+        counters.value = counters.value.filter((c) => c.id !== counterId);
+        await saveState();
 
-    //     if (!isGuest.value) await CounterService.removeShared(counterId, userId);
+        if (!isGuest.value) await CounterService.removeShared(counterId);
 
-    //     return ok();
-    // }
+        return ok();
+    }
 
     async function consolidateGuestCounters() {
         if (isGuest.value) return;
@@ -164,6 +164,7 @@ export const useCounterStore = defineStore('counter', () => {
         incrementCounter,
         updateCounter,
         deleteCounter,
+        removeShared,
         consolidateGuestCounters,
         joinCounter,
     };
