@@ -60,3 +60,15 @@ export const incrementCounterSchema = z.object({
         amount: z.number().int(),
     }),
 });
+
+export const joinCounterSchema = z.object({
+    body: z.object({
+        inviteCode: z.string(),
+    }),
+});
+
+export const updateShareSchema = z.object({
+    params: z.object({
+        counterId: z.string().uuid('Invalid Counter ID'),
+    }),
+});

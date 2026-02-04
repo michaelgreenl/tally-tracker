@@ -1,6 +1,6 @@
 import { ClientUser } from './models';
 import { HexColor } from './index';
-import { UserTier, CounterTypeType as CounterType } from './generated/index.ts';
+import { UserTier, CounterTypeType as CounterType, ShareStatusType } from './generated/index.ts';
 
 // ***** Express *****
 declare global {
@@ -50,6 +50,7 @@ export interface JoinCounterRequest {
     inviteCode: string;
 }
 
-// export interface RemoveSharedCounterRequest {
-//     counterId: string;
-// }
+export interface UpdateShareRequest {
+    counterId: string;
+    status?: ShareStatusType;
+}

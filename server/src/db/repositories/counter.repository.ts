@@ -62,15 +62,32 @@ export const getAllByUser = async (userId: string) =>
         },
     });
 
-export const getById = ({ counterId, userId }: { counterId: string; userId: string }) =>
+export const getById = (counterId: string) =>
     prisma.counter.findUnique({
         where: {
             id: counterId,
-            userId,
         },
     });
 
-export const put = ({
+const getShared = async ({ counterId, userId }: { counterId: string; userId: string }) =>
+    await prisma.counter.findFirst({
+        where: {
+            id: counterId,
+            OR: [
+                { userId: userId },
+                {
+                    shares: {
+                        some: {
+                            userId: userId,
+                            status: 'ACCEPTED' as ShareStatusType,
+                        },
+                    },
+                },
+            ],
+        },
+    });
+
+export const put = async ({
     counterId,
     userId,
     data,
@@ -79,8 +96,12 @@ export const put = ({
     userId: string;
     data: Prisma.CounterUpdateInput;
 }) => {
+    const counter = await getShared({ counterId, userId });
+
+    if (!counter) return null;
+
     return prisma.counter.update({
-        where: { id: counterId, userId },
+        where: { id: counterId },
         data,
     });
 };
@@ -94,7 +115,8 @@ export const increment = async ({
     userId: string;
     amount: number;
 }) => {
-    const counter = await prisma.counter.findFirst({ where: { id: counterId, userId } });
+    const counter = await getShared({ counterId, userId });
+
     if (!counter) return null;
 
     return prisma.counter.update({
@@ -115,11 +137,26 @@ export const join = (inviteCode: string) =>
         },
     });
 
-// export const removeShared = (counterId: string, userId: string) =>
-//     // TODO:
-//     prisma.counter.update({
-//         where: { counterId },
-//     });
+export const updateShare = ({
+    counterId,
+    userId,
+    status,
+}: {
+    counterId: string;
+    userId: string;
+    status: ShareStatusType;
+}) =>
+    prisma.counterShare.update({
+        where: {
+            counterId_userId: {
+                counterId,
+                userId,
+            },
+        },
+        data: {
+            status,
+        },
+    });
 
 export const createShare = ({
     counterId,
