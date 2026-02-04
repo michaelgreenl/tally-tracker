@@ -6,8 +6,6 @@ const getAllowedOrigins = () => {
     return [
         'http://localhost:5173',
         'http://localhost:8100',
-        'https://localhost:5173',
-        'https://localhost:8100',
         'capacitor://localhost',
         'http://localhost',
         FRONTEND_URL,
