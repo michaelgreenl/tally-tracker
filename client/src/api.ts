@@ -11,7 +11,7 @@ const isNative = Capacitor.isNativePlatform();
 const isAndroid = Capacitor.getPlatform() === 'android';
 
 const defaultLocal = isAndroid ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
-const API_URL = import.meta.env.VITE_API_URL || defaultLocal;
+const API_URL = isDev && !isNative ? '' : import.meta.env.VITE_API_URL || defaultLocal;
 
 async function apiFetch<ResT = unknown, ReqT = any>(
     endpoint: string,
