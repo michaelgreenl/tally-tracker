@@ -5,8 +5,9 @@ const getAllowedOrigins = () => {
     const { FRONTEND_URL } = process.env;
     return [
         'http://localhost:5173',
-        'http://localhost:5174',
         'http://localhost:8100',
+        'https://localhost:5173',
+        'https://localhost:8100',
         'capacitor://localhost',
         'http://localhost',
         FRONTEND_URL,
