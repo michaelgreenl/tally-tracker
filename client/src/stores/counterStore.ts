@@ -105,7 +105,6 @@ export const useCounterStore = defineStore('counter', () => {
         return ok();
     }
 
-    // TODO:
     async function removeShared(counterId: string): Promise<StoreResponse> {
         counters.value = counters.value.filter((c) => c.id !== counterId);
         await saveState();

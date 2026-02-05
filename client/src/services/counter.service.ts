@@ -92,7 +92,6 @@ export const CounterService = {
         SyncManager.processQueue();
     },
 
-    // TODO:
     async removeShared(counterId: string) {
         await SyncQueueService.addCommand({
             id: crypto.randomUUID(),
