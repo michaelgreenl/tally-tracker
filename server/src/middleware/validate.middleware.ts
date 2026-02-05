@@ -16,7 +16,7 @@ export const validate = (schema: ZodSchema) => async (req: Request, res: Respons
             return res.status(UNPROCESSABLE_ENTITY).json({
                 success: false,
                 message: 'Validation failed',
-                errors: (error as any).errors.map((e: ZodIssue) => ({
+                errors: error.issues.map((e: ZodIssue) => ({
                     field: e.path.join('.'),
                     message: e.message,
                 })),
