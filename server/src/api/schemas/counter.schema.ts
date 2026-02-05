@@ -11,7 +11,7 @@ export const createCounterSchema = z.object({
             count: z.number().int().default(0).optional(),
             color: HexColorSchema.optional(),
             type: CounterTypeSchema.optional(),
-            inviteCode: z.string().optional(),
+            inviteCode: z.string().nullish(),
         })
         .refine(
             (data) => {
