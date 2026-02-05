@@ -31,6 +31,4 @@ npm-debug.log*
 /plugins
 /www
 
-/android
-/ios
 schema.prisma
