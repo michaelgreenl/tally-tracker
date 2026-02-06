@@ -34,9 +34,9 @@ router.beforeEach(async (to, from, next) => {
         next('/login');
     } else if (authStore.isAuthenticated && (to.path === '/login' || to.path === '/register')) {
         next('/home');
+    } else {
+        next();
     }
-
-    next();
 });
 
 router.afterEach((to) => {
