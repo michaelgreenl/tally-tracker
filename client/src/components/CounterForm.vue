@@ -66,12 +66,6 @@ const updateCounter = async () => {
                     @ionChange="localCounter.type = $event.detail.checked ? 'SHARED' : 'PERSONAL'"
                 ></ion-toggle>
             </ion-item>
-
-            <div v-if="localCounter.type === 'SHARED'" class="share-info">
-                <ion-note color="medium">
-                    You will receive a <strong>Magic Link</strong> after creating this counter.
-                </ion-note>
-            </div>
         </div>
         <BaseButton type="submit">{{ counter ? 'Update' : 'Create' }}</BaseButton>
     </form>
