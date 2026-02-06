@@ -1,12 +1,30 @@
 <script setup lang="ts">
 import { onMounted } from 'vue';
+import { App as CapacitorApp } from '@capacitor/app';
 import { IonApp, IonRouterOutlet } from '@ionic/vue';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { SyncManager } from '@/services/sync/manager';
+import { useRouter } from 'vue-router';
+
+import type { URLOpenListenerEvent } from '@capacitor/app';
+
+const router = useRouter();
 
 onMounted(async () => {
     await SyncManager.init();
     await SplashScreen.hide();
+
+    CapacitorApp.addListener('appUrlOpen', (event: URLOpenListenerEvent) => {
+        alert('Opened deep link');
+
+        const url = new URL(event.url);
+        if (url.host === 'join') {
+            const code = url.searchParams.get('code');
+            if (code) {
+                router.push(`/join?code=${code}`);
+            }
+        }
+    });
 });
 </script>
 
