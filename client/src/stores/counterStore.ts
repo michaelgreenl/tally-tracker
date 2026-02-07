@@ -158,6 +158,7 @@ export const useCounterStore = defineStore('counter', () => {
     return {
         counters,
         loading,
+        saveState,
         init,
         createCounter,
         incrementCounter,

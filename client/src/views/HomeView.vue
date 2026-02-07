@@ -57,9 +57,8 @@ const closeCounterForm = () => {
 };
 
 const copyShareLink = async (inviteCode: string) => {
-    // For Dev/Simulator testing
-    const url = `tally://join?code=${inviteCode}`;
-    // const url = `${window.location.origin}/join?code=${inviteCode}`;
+    const url = `${window.location.origin}/join?code=${inviteCode}`;
+    // const url = `tally://join?code=${inviteCode}`; // For Dev/Simulator testing
 
     await navigator.clipboard.writeText(url);
     alert('Share Link copied to clipboard!');

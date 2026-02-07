@@ -1,9 +1,3 @@
-import { createApp } from 'vue';
-import { createPinia } from 'pinia';
-import router from './router';
-import App from './App.vue';
-import { IonicVue } from '@ionic/vue';
-
 /* Core CSS required for Ionic components to work properly */
 import '@ionic/vue/css/core.css';
 
@@ -27,9 +21,17 @@ import '@ionic/vue/css/display.css';
 // @import '@ionic/vue/css/palettes/dark.class.css';
 import '@ionic/vue/css/palettes/dark.system.css';
 
+import { createApp } from 'vue';
+import { createPinia } from 'pinia';
+import router from './router';
+import socket from './socket/index.ts';
+import App from './App.vue';
+import { IonicVue } from '@ionic/vue';
+
 const app = createApp(App).use(IonicVue).use(router);
 
 app.use(createPinia());
+socket.connect();
 
 router.isReady().then(() => {
     app.mount('#app');
