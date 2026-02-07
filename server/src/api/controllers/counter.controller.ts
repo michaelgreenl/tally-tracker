@@ -173,6 +173,13 @@ export const increment = async (
             return res.status(NOT_FOUND).json({ success: false, message: 'Counter not found' });
         }
 
+        const participants = await counterRepository.getParticipants(counterId);
+        const io = req.app.get('io');
+
+        participants.forEach((participantId) => {
+            io.to(participantId).emit('counter-update', counter);
+        });
+
         res.json({
             success: true,
             message: 'Counter incremented successfully',

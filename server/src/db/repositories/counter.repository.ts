@@ -174,3 +174,23 @@ export const createShare = ({
             status,
         },
     });
+
+export const getParticipants = async (counterId: string) => {
+    const counter = await prisma.counter.findUnique({
+        where: { id: counterId },
+        select: {
+            userId: true,
+            shares: {
+                where: { status: 'ACCEPTED' as ShareStatusType },
+                select: { userId: true },
+            },
+        },
+    });
+
+    if (!counter) return [];
+
+    const ownerId = counter.userId;
+    const sharedIds = counter.shares.map((s) => s.userId);
+
+    return [ownerId, ...sharedIds];
+};
