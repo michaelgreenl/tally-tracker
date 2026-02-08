@@ -39,8 +39,8 @@ export const remove = async ({ counterId, userId }: { counterId: string; userId:
 export const getAllByUser = async (userId: string) =>
     prisma.counter.findMany({
         where: {
+            userId: userId,
             OR: [
-                { userId: userId },
                 {
                     shares: {
                         some: {
@@ -62,14 +62,7 @@ export const getAllByUser = async (userId: string) =>
         },
     });
 
-export const getById = (counterId: string) =>
-    prisma.counter.findUnique({
-        where: {
-            id: counterId,
-        },
-    });
-
-const getShared = async ({ counterId, userId }: { counterId: string; userId: string }) =>
+export const getByIdOrShare = async ({ counterId, userId }: { counterId: string; userId: string }) =>
     await prisma.counter.findFirst({
         where: {
             id: counterId,
@@ -87,6 +80,26 @@ const getShared = async ({ counterId, userId }: { counterId: string; userId: str
         },
     });
 
+export const getParticipants = async (counterId: string) => {
+    const counter = await prisma.counter.findUnique({
+        where: { id: counterId },
+        select: {
+            userId: true,
+            shares: {
+                where: { status: 'ACCEPTED' as ShareStatusType },
+                select: { userId: true },
+            },
+        },
+    });
+
+    if (!counter) return [];
+
+    const ownerId = counter.userId;
+    const sharedIds = counter.shares.map((s) => s.userId);
+
+    return [ownerId, ...sharedIds];
+};
+
 export const put = async ({
     counterId,
     userId,
@@ -96,7 +109,7 @@ export const put = async ({
     userId: string;
     data: Prisma.CounterUpdateInput;
 }) => {
-    const counter = await getShared({ counterId, userId });
+    const counter = await getByIdOrShare({ counterId, userId });
 
     if (!counter) return null;
 
@@ -115,7 +128,7 @@ export const increment = async ({
     userId: string;
     amount: number;
 }) => {
-    const counter = await getShared({ counterId, userId });
+    const counter = await getByIdOrShare({ counterId, userId });
 
     if (!counter) return null;
 
@@ -134,6 +147,23 @@ export const join = (inviteCode: string) =>
         where: { inviteCode },
         include: {
             shares: true,
+        },
+    });
+
+export const createShare = ({
+    counterId,
+    userId,
+    status,
+}: {
+    counterId: string;
+    userId: string;
+    status: ShareStatusType;
+}) =>
+    prisma.counterShare.create({
+        data: {
+            counterId,
+            userId,
+            status,
         },
     });
 
@@ -157,40 +187,3 @@ export const updateShare = ({
             status,
         },
     });
-
-export const createShare = ({
-    counterId,
-    userId,
-    status,
-}: {
-    counterId: string;
-    userId: string;
-    status: ShareStatusType;
-}) =>
-    prisma.counterShare.create({
-        data: {
-            counterId,
-            userId,
-            status,
-        },
-    });
-
-export const getParticipants = async (counterId: string) => {
-    const counter = await prisma.counter.findUnique({
-        where: { id: counterId },
-        select: {
-            userId: true,
-            shares: {
-                where: { status: 'ACCEPTED' as ShareStatusType },
-                select: { userId: true },
-            },
-        },
-    });
-
-    if (!counter) return [];
-
-    const ownerId = counter.userId;
-    const sharedIds = counter.shares.map((s) => s.userId);
-
-    return [ownerId, ...sharedIds];
-};

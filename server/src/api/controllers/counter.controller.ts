@@ -18,9 +18,7 @@ export const post = async (req: Request<{}, {}, CreateCounterRequest>, res: Resp
         const { id, title, count, color, type, inviteCode } = req.body;
 
         if (!userId) {
-            return res
-                .status(BAD_REQUEST)
-                .json({ success: false, message: 'Failed to create counter: Invalid userId' });
+            return res.status(BAD_REQUEST).json({ success: false, message: 'Invalid userId' });
         }
 
         const counter = await counterRepository.post({ id, userId, title, count, color, type, inviteCode });
@@ -51,7 +49,7 @@ export const remove = async (req: Request, res: Response<CounterResponse>) => {
         if (!userId || !counterId) {
             return res.status(BAD_REQUEST).json({
                 success: false,
-                message: 'Invalid request: Missing userId or counterId',
+                message: 'Invalid userId or counterId',
             });
         }
 
@@ -72,7 +70,7 @@ export const getAllByUser = async (req: Request, res: Response<CounterResponse>)
         const userId = req.user?.id;
 
         if (!userId) {
-            return res.status(BAD_REQUEST).json({ success: false, message: 'Failed to get counters: Invalid userId' });
+            return res.status(BAD_REQUEST).json({ success: false, message: 'Invalid userId' });
         }
 
         const counters = await counterRepository.getAllByUser(userId);
@@ -101,9 +99,7 @@ export const put = async (
         const { title, count, color } = req.body;
 
         if (!userId) {
-            return res
-                .status(BAD_REQUEST)
-                .json({ success: false, message: 'Failed to update counter: Invalid userId' });
+            return res.status(BAD_REQUEST).json({ success: false, message: 'Invalid userId' });
         }
 
         const counter = await counterRepository.put({ counterId, userId, data: { title, count, color } });
@@ -138,7 +134,7 @@ export const increment = async (
         if (!userId) {
             return res.status(BAD_REQUEST).json({
                 success: false,
-                message: 'Failed to increment counter: Invalid userId',
+                message: 'Invalid userId',
             });
         }
 
@@ -175,7 +171,7 @@ export const join = async (req: Request<{}, {}, JoinCounterRequest>, res: Respon
         const { inviteCode } = req.body;
 
         if (!userId || !inviteCode) {
-            return res.status(BAD_REQUEST).json({ success: false, message: 'Missing data' });
+            return res.status(BAD_REQUEST).json({ success: false, message: 'Invalid userId or inviteCode' });
         }
 
         const counter = await counterRepository.join(inviteCode);
@@ -213,7 +209,7 @@ export const join = async (req: Request<{}, {}, JoinCounterRequest>, res: Respon
         });
     } catch (error: any) {
         console.error('Join Error:', error);
-        return res.status(SERVER_ERROR).json({ success: false, message: 'Server error' });
+        return res.status(SERVER_ERROR).json({ success: false, message: 'Server error: ' + error.message });
     }
 };
 
@@ -223,10 +219,10 @@ export const removeShare = async (req: Request<{ counterId: string }, {}, Update
         const counterId = req.params.counterId as string;
 
         if (!userId || !counterId) {
-            return res.status(BAD_REQUEST).json({ success: false, message: 'Missing data' });
+            return res.status(BAD_REQUEST).json({ success: false, message: 'Invalid userId or counterId' });
         }
 
-        const counter = await counterRepository.getById(counterId);
+        const counter = await counterRepository.getByIdOrShare({ counterId, userId });
 
         if (!counter) {
             return res.status(NOT_FOUND).json({ success: false, message: 'Counter not found' });
@@ -247,7 +243,7 @@ export const removeShare = async (req: Request<{ counterId: string }, {}, Update
             message: 'Shared counter successfully removed',
         });
     } catch (error: any) {
-        console.error('Remove Shared Counter Error:', error);
-        return res.status(SERVER_ERROR).json({ success: false, message: 'Server error' });
+        console.error('Remove Shared Counter Error: ', error);
+        return res.status(SERVER_ERROR).json({ success: false, message: 'Server error: ' + error.message });
     }
 };

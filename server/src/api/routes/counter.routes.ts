@@ -20,11 +20,10 @@ router.use(idempotency);
 
 router.post('/', validate(createCounterSchema), post);
 router.get('/', getAllByUser);
-
 router.delete('/:counterId', validate(deleteCounterSchema), remove);
 router.put('/update/:counterId', validate(updateCounterSchema), put);
-router.put('/increment/:counterId', validate(incrementCounterSchema), increment);
 
+router.put('/increment/:counterId', validate(incrementCounterSchema), increment);
 router.post('/join', validate(joinCounterSchema), join);
 router.put('/remove-shared/:counterId', validate(updateShareSchema), removeShare);
 
