@@ -1,14 +1,5 @@
 import express from 'express';
-import {
-    getById,
-    getAllByUser,
-    post,
-    remove,
-    put,
-    increment,
-    join,
-    removeShare,
-} from '../controllers/counter.controller.js';
+import { getAllByUser, post, remove, put, increment, join, removeShare } from '../controllers/counter.controller.js';
 import { jwt } from '../../middleware/auth.middleware.js';
 import { validate } from '../../middleware/validate.middleware.js';
 import { idempotency } from '../../middleware/idempotency.middleware.js';
@@ -31,7 +22,6 @@ router.post('/', validate(createCounterSchema), post);
 router.get('/', getAllByUser);
 
 router.delete('/:counterId', validate(deleteCounterSchema), remove);
-router.get('/:counterId', validate(getCounterSchema), getById);
 router.put('/update/:counterId', validate(updateCounterSchema), put);
 router.put('/increment/:counterId', validate(incrementCounterSchema), increment);
 

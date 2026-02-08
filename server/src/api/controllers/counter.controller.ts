@@ -67,31 +67,6 @@ export const remove = async (req: Request, res: Response<CounterResponse>) => {
     }
 };
 
-export const getById = async (req: Request, res: Response<CounterResponse>) => {
-    try {
-        const userId = req.user?.id;
-        const counterId = req.params.counterId as string;
-
-        if (!userId) {
-            return res.status(BAD_REQUEST).json({ success: false, message: 'Failed to get counter: Invalid userId' });
-        }
-
-        const counter = await counterRepository.getById(counterId);
-
-        if (!counter) {
-            return res.status(NOT_FOUND).json({ success: false, message: 'Counter not found' });
-        } else {
-            res.json({ success: true, data: { counter } });
-        }
-    } catch (error: any) {
-        console.error('Counter Controller Error: ', error);
-        res.status(SERVER_ERROR).json({
-            success: false,
-            message: 'Server error: ' + error.message,
-        });
-    }
-};
-
 export const getAllByUser = async (req: Request, res: Response<CounterResponse>) => {
     try {
         const userId = req.user?.id;
