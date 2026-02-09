@@ -7,6 +7,12 @@ generator zod {
     output   = "../../src/types/shared/generated"
 }
 
+generator erd {
+    provider = "prisma-erd-generator"
+    output   = "../../docs/ERD.md"
+    theme    = "dark"
+}
+
 datasource db {
     provider = "postgresql"
 }
