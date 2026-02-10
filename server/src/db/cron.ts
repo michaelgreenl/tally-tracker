@@ -1,4 +1,5 @@
 import prisma from './prisma.js';
+import * as idempotencyRepository from './repositories/idempotency.repository.js';
 
 export const startCleanupJob = () => {
     cleanup();
@@ -9,15 +10,7 @@ const cleanup = async () => {
     try {
         console.log('[Maintenance] Cleaning up old idempotency keys...');
 
-        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-
-        const { count } = await prisma.idempotencyLog.deleteMany({
-            where: {
-                createdAt: {
-                    lt: twentyFourHoursAgo,
-                },
-            },
-        });
+        const count = await idempotencyRepository.deleteMany();
 
         console.log(`[Maintenance] Deleted ${count} expired keys.`);
     } catch (error) {
