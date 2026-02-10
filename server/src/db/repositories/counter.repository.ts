@@ -39,8 +39,8 @@ export const remove = async ({ counterId, userId }: { counterId: string; userId:
 export const getAllByUser = async (userId: string) =>
     prisma.counter.findMany({
         where: {
-            userId: userId,
             OR: [
+                { userId: userId },
                 {
                     shares: {
                         some: {
