@@ -13,7 +13,8 @@ import { cloudDoneOutline, cloudOfflineOutline, diamond } from 'ionicons/icons';
 import BaseNavLink from '@/components/base/BaseNavLink.vue';
 import BaseButton from '@/components/base/BaseButton.vue';
 import TextInput from '@/components/inputs/TextInput.vue';
-import CounterForm from '@/components/CounterForm.vue';
+import Counter from '@/components/counter/Counter.vue';
+import CounterForm from '@/components/counter/CounterForm.vue';
 import {
     IonPage,
     IonHeader,
@@ -55,61 +56,45 @@ const closeCounterForm = () => {
     counterToUpdate.value = null;
     showCounterForm.value = false;
 };
-
-const copyShareLink = async (inviteCode: string) => {
-    const url = `${window.location.origin}/join?code=${inviteCode}`;
-    // const url = `tally://join?code=${inviteCode}`; // For Dev/Simulator testing
-
-    await navigator.clipboard.writeText(url);
-    alert('Share Link copied to clipboard!');
-};
 </script>
 
 <template>
     <ion-page>
         <ion-header>
             <ion-toolbar color="primary">
-                <ion-title>Tally Counter</ion-title>
+                <ion-title>
+                    <div class="title-wrapper">
+                        Tally Counter
+                        <ion-icon v-if="authStore.isPremium" :icon="diamond" color="dark" />
+                    </div>
+                </ion-title>
+
                 <ion-buttons slot="end">
                     <ion-button v-if="authStore.isAuthenticated" @click="authStore.logout()">Logout</ion-button>
-                    <ion-button v-else @click="router.push('/login')">Login / Sync</ion-button>
-
-                    <ion-spinner v-if="isSyncing" name="crescent" style="width: 20px; height: 20px" />
-                    <ion-icon v-else-if="!isOnline" :icon="cloudOfflineOutline" color="medium" />
-                    <ion-icon v-else :icon="cloudDoneOutline" color="success" />
-
-                    <ion-icon v-if="authStore.isPremium" :icon="diamond" color="warning" />
+                    <ion-button v-else @click="router.push('/login')">Login</ion-button>
                 </ion-buttons>
             </ion-toolbar>
         </ion-header>
         <ion-content class="ion-padding">
-            <h2>Welcome {{ authStore.isAuthenticated ? authStore.user?.email : 'Guest' }}!</h2>
+            <div class="content-header">
+                <h2>Welcome {{ authStore.isAuthenticated ? authStore.user?.email : 'Guest' }}!</h2>
+
+                <ion-spinner v-if="isSyncing" name="crescent" :style="{ width: '20px', height: '20px' }" />
+                <ion-icon v-else-if="!isOnline" :icon="cloudOfflineOutline" color="dark" />
+                <ion-icon v-else :icon="cloudDoneOutline" color="dark" />
+            </div>
+
             <ion-list v-if="counterStore.counters.length">
                 <ion-item v-for="counter in counterStore.counters" :key="counter.id">
-                    <div :style="{ display: 'flex', gap: '20px' }">
-                        <ion-icon v-if="counter.type === 'SHARED'" :icon="diamond" color="warning" />
-                        <h1>{{ counter.title }}</h1>
-                        <p>{{ counter.count }}</p>
-                        <p>{{ counter.color }}</p>
-
-                        <BaseButton
-                            v-if="counter.userId === authStore.user?.id || !authStore.isAuthenticated"
-                            @click="counterStore.deleteCounter(counter.id)"
-                            >remove</BaseButton
-                        >
-                        <BaseButton v-else @click="counterStore.removeShared(counter.id)">remove</BaseButton>
-
-                        <BaseButton @click="counterStore.incrementCounter(counter.id, -1)">-1</BaseButton>
-                        <BaseButton @click="counterStore.incrementCounter(counter.id, 1)">+1</BaseButton>
-                        <BaseButton @click="startUpdateCounter(counter)">edit</BaseButton>
-                        <BaseButton
-                            v-if="counter.type === 'SHARED'"
-                            @click="copyShareLink(counter.inviteCode as string)"
-                            >Share</BaseButton
-                        >
-                    </div>
+                    <Counter
+                        :counter="counter"
+                        @delete="counterStore.deleteCounter"
+                        @increment="counterStore.incrementCounter"
+                        @showUpdateForm="startUpdateCounter"
+                    />
                 </ion-item>
             </ion-list>
+
             <p v-else>No counter's yet.</p>
             <BaseButton v-if="!showCounterForm" @click="showCounterForm = true">Add counter</BaseButton>
             <template v-else>
@@ -120,4 +105,18 @@ const copyShareLink = async (inviteCode: string) => {
     </ion-page>
 </template>
 
-<style lang="scss" scoped></style>
+<style lang="scss" scoped>
+.title-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+}
+
+.content-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding-right: 1em;
+}
+</style>
