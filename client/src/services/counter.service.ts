@@ -1,6 +1,7 @@
 import { LocalStorageService } from '@/services/storage.service';
 import { SyncQueueService } from '@/services/sync/queue';
 import { SyncManager } from '@/services/sync/manager';
+import { useAuthStore } from '@/stores/authStore';
 import apiFetch from '@/api';
 
 import type { ClientCounter } from '@/types/shared/models';
@@ -79,29 +80,29 @@ export const CounterService = {
         SyncManager.processQueue();
     },
 
-    async delete(counterId: string) {
-        await SyncQueueService.addCommand({
-            id: crypto.randomUUID(),
-            type: 'DELETE',
-            entity: 'counter',
-            entityId: counterId,
-            payload: {},
-            timestamp: Date.now(),
-            retryCount: 0,
-        });
-        SyncManager.processQueue();
-    },
-
-    async removeShared(counterId: string) {
-        await SyncQueueService.addCommand({
-            id: crypto.randomUUID(),
-            type: 'REMOVE',
-            entity: 'counter',
-            entityId: counterId,
-            payload: {},
-            timestamp: Date.now(),
-            retryCount: 0,
-        });
+    async delete(counter: ClientCounter) {
+        const authStore = useAuthStore();
+        if (!authStore.isAuthenticated || counter.userId === authStore.user?.id) {
+            await SyncQueueService.addCommand({
+                id: crypto.randomUUID(),
+                type: 'DELETE',
+                entity: 'counter',
+                entityId: counter.id,
+                payload: {},
+                timestamp: Date.now(),
+                retryCount: 0,
+            });
+        } else {
+            await SyncQueueService.addCommand({
+                id: crypto.randomUUID(),
+                type: 'REMOVE',
+                entity: 'counter',
+                entityId: counter.id,
+                payload: {},
+                timestamp: Date.now(),
+                retryCount: 0,
+            });
+        }
         SyncManager.processQueue();
     },
 
