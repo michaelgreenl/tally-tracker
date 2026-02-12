@@ -1,12 +1,16 @@
 import 'dotenv/config';
 import jwt from 'jsonwebtoken';
 
+import type { StringValue } from 'ms';
+
 const { JWT_SECRET } = process.env;
 
 export default {
-    sign: (obj = {}) =>
-        jwt.sign(obj, JWT_SECRET as string, {
-            expiresIn: '365d',
+    // expiresIn defaults to 15m (when refresh tokens are in play).
+    // Pass '1d' for browser sessions without remember me.
+    sign: (payload = {}, expiresIn: StringValue = '15m') =>
+        jwt.sign(payload, JWT_SECRET as string, {
+            expiresIn,
             issuer: 'reaction-api',
             audience: 'reaction-client',
         }),

@@ -21,11 +21,18 @@ export const loginSchema = z.object({
             email: z.string().email().optional(),
             phone: z.string().optional(),
             password: z.string(),
+            rememberMe: z.boolean().optional(),
         })
         .refine((data) => data.email || data.phone, {
             message: 'Either email or phone number is required to login',
             path: ['email'],
         }),
+});
+
+export const refreshSchema = z.object({
+    body: z.object({
+        refreshToken: z.string().uuid().optional(),
+    }),
 });
 
 export const updateUserSchema = z.object({
