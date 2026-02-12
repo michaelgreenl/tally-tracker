@@ -1,3 +1,6 @@
+// Scoped GSAP context tied to a component's lifecycle.
+// All animations registered via registerAnim are auto-reverted on unmount.
+
 import { onUnmounted, shallowRef } from 'vue';
 import { gsap } from 'gsap';
 

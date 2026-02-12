@@ -1,3 +1,16 @@
+/**
+ * Singleton responsible for processing the offline sync queue.
+ *
+ * Listens for network restoration via Capacitor and processes commands in FIFO order.
+ * Each command includes its ID as an X-Idempotency-Key header, so replayed commands
+ * (e.g., client didn't receive the response but server processed it) are safely deduplicated.
+ *
+ * Error strategy:
+ * - 2xx: Success. Remove command from queue.
+ * - 4xx: Fatal (validation/logic error). Remove to unblock the queue.
+ * - 5xx / Network: Retryable. Stop processing, retry on next trigger.
+ */
+
 import { Network } from '@capacitor/network';
 import { SyncQueueService } from '@/services/sync/queue';
 import apiFetch from '@/api';
@@ -10,6 +23,7 @@ import type { CreateCounterRequest, IncrementCounterRequest, UpdateCounterReques
 export const SyncManager = {
     isSyncing: false,
 
+    // Register network listener. Called once on app mount (App.vue).
     async init() {
         Network.addListener('networkStatusChange', async (status) => {
             console.log('[Network] Status changed:', status.connected);
@@ -50,12 +64,14 @@ export const SyncManager = {
                     status = error.status || 0;
                 }
 
+                // 4xx = logic/validation error (bug). Discard to unblock the queue.
                 if (status >= 400 && status < 500) {
                     console.warn('[Sync] Fatal error (4xx), removing invalid command.');
                     await SyncQueueService.removeCommand(command.id);
                     continue;
                 }
 
+                // 5xx or network failure = retryable. Stop and wait for next trigger.
                 this.isSyncing = false;
                 return;
             }

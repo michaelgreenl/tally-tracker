@@ -10,9 +10,24 @@ const isDev = import.meta.env.DEV;
 const isNative = Capacitor.isNativePlatform();
 const isAndroid = Capacitor.getPlatform() === 'android';
 
+// Web dev: empty string so requests hit localhost, caught by Vite proxy (vite.config.ts)
+// Android emulator: 10.0.2.2 is the emulator's alias for the host machine's localhost
 const defaultLocal = isAndroid ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
 const API_URL = isDev && !isNative ? '' : import.meta.env.VITE_API_URL || defaultLocal;
 
+/**
+ * Cross-platform HTTP client. Handles auth injection, timeouts, and error normalization.
+ *
+ * Auth strategy:
+ * - Native (iOS/Android): Reads JWT from Capacitor Preferences, attaches as Bearer header.
+ * - Web: Does nothing — the browser attaches the HttpOnly cookie automatically.
+ *
+ * Error handling:
+ * - Non-OK responses are thrown as `ApiError` with the server's status and message.
+ * - Timeouts (10s) throw `ApiError` with status 408.
+ * - Network failures throw `ApiError` with status 0 (used by SyncManager to distinguish retryable errors).
+ * - 204 responses return an empty object (handles idempotency "already processed" responses).
+ */
 async function apiFetch<ResT = unknown, ReqT = any>(
     endpoint: string,
     options: ApiRequestOptions<ReqT> = {},

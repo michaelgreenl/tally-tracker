@@ -34,6 +34,12 @@ export default defineConfig(({ mode }) => {
         server: {
             port: 8100,
             host: true,
+
+            /**
+             * Proxies forward requests to the remote API during web development.
+             * cookieDomainRewrite rewrites the Set-Cookie domain from the remote
+             * host to localhost so the browser accepts it. See: docs/diagrams/sequence/auth/dev-vite-proxy.md
+             */
             proxy: {
                 '/users': {
                     target: API_URL,

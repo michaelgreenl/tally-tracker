@@ -56,6 +56,8 @@ export const CounterService = {
     },
 
     async increment(counter: ClientCounter, amount: number) {
+        // Shared counters use the atomic increment endpoint to avoid race conditions
+        // with concurrent users. Personal counters send the absolute count instead.
         if (counter.type === 'SHARED') {
             await SyncQueueService.addCommand({
                 id: crypto.randomUUID(),
@@ -82,6 +84,8 @@ export const CounterService = {
 
     async delete(counter: ClientCounter) {
         const authStore = useAuthStore();
+
+        // Counter owner -> DELETE | Counter participant -> REMOVE (sets share status to REJECTED).
         if (!authStore.isAuthenticated || counter.userId === authStore.user?.id) {
             await SyncQueueService.addCommand({
                 id: crypto.randomUUID(),
@@ -106,6 +110,7 @@ export const CounterService = {
         SyncManager.processQueue();
     },
 
+    // Join is synchronous since it requires real-time server validation.
     async join(inviteCode: string) {
         const res = await apiFetch<CounterResponse, JoinCounterRequest>('/counters/join', {
             method: 'POST',
@@ -115,6 +120,7 @@ export const CounterService = {
         return res;
     },
 
+    // Migrates guest counters to the authenticated user's account after login.
     async consolidate(countersToSync: ClientCounter[], userId: string) {
         console.log(`[Consolidation] Syncing ${countersToSync.length} counters...`);
 

@@ -1,9 +1,11 @@
 import type { ClientCounter } from '@/types/shared/models';
 
+// Maps to API endpoints: CREATE/UPDATE/DELETE operate on owned counters,
+// INCREMENT uses the atomic increment endpoint, REMOVE sets a share to REJECTED.
 export type MutationType = 'CREATE' | 'UPDATE' | 'DELETE' | 'INCREMENT' | 'REMOVE';
 
 export interface MutationCommand {
-    id: string;
+    id: string; // Also used as the X-Idempotency-Key header
     type: MutationType;
     entity: 'counter';
     entityId: string;

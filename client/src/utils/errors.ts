@@ -9,6 +9,7 @@ export class ApiError extends Error {
         this.data = data;
         this.success = false;
 
+        // Required for instanceof checks to work after transpilation
         Object.setPrototypeOf(this, ApiError.prototype);
         this.name = 'ApiError';
     }

@@ -15,11 +15,6 @@ socket = registerCounterListeners(socket);
 socket.on('connect', () => {
     console.log('Client connected: ', socket.id);
 
-    // const authStore = useAuthStore();
-    // if (authStore.user) {
-    //     socket.emit('join-room', authStore.user.id);
-    // }
-
     socket.on('disconnect', () => {
         console.log('Client disconnected');
     });

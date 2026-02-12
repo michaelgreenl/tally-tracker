@@ -19,6 +19,13 @@ export const useAuthStore = defineStore('auth', () => {
     const isPremium = computed(() => user.value?.tier === 'PREMIUM');
     const checkingAuth = ref(false);
 
+    /**
+     * Cold-start auth flow. Called by the router guard when the AUTHORIZED flag
+     * exists but the store isn't hydrated yet (e.g., page refresh, app reopen).
+     *
+     * Loads cached user for instant UI, then validates with the server.
+     * On network failure, trusts the cache so the app remains usable offline.
+     */
     async function initializeAuth(): Promise<StoreResponse> {
         checkingAuth.value = true;
 
@@ -59,6 +66,7 @@ export const useAuthStore = defineStore('auth', () => {
                 return fail('Session expired');
             }
 
+            // Network error — trust cached profile so app works offline
             console.warn('Network error during auth check. Trusting cached profile.');
             if (user.value) return ok();
 
@@ -77,6 +85,8 @@ export const useAuthStore = defineStore('auth', () => {
                 await AuthService.cacheUser(user.value);
 
                 if (res.data?.token) await AuthService.setToken(res.data.token);
+
+                // Persisted flag checked by the router guard to trigger initializeAuth on cold start
                 localStorage.setItem('AUTHORIZED', 'true');
 
                 const counterStore = useCounterStore();

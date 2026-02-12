@@ -25,6 +25,12 @@ const router = createRouter({
 
 router.beforeEach(async (to, from, next) => {
     const authStore = useAuthStore();
+
+    /**
+     * AUTHORIZED is a localStorage flag set on login, used to trigger
+     * initializeAuth on cold starts (page refresh, app reopen) without
+     * requiring a server call just to decide whether to attempt auth.
+     */
     const authorized = localStorage.getItem('AUTHORIZED');
 
     if (authorized && !authStore.isAuthenticated) {
@@ -42,6 +48,8 @@ router.beforeEach(async (to, from, next) => {
 
 router.afterEach((to) => {
     const authStore = useAuthStore();
+
+    // Re-join socket room on every navigation to handle reconnections and page refreshes
     if (authStore.isAuthenticated) {
         socket.emit('join-room', authStore.user?.id);
     }

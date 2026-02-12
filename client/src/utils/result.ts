@@ -1,3 +1,5 @@
+// Factory helpers for the StoreResponse type. Provides a consistent success/fail
+// contract between stores and views without throwing errors for expected failures.
 import type { StoreResponse } from '@/types/index';
 
 export const ok = (data?: any): StoreResponse => ({

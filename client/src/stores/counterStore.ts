@@ -18,10 +18,15 @@ export const useCounterStore = defineStore('counter', () => {
     const isGuest = computed(() => !authStore.isAuthenticated);
     const loading = ref(false);
 
+    // Persist current counter state to local storage. Exposed for the socket listener.
     async function saveState() {
         await CounterService.persist(counters.value);
     }
 
+    /**
+     * Load counters from local storage (instant), then sync with the server in the background.
+     * Called on every HomeView enter via onIonViewWillEnter.
+     */
     async function init() {
         counters.value = await CounterService.getAllLocal();
 
@@ -52,6 +57,8 @@ export const useCounterStore = defineStore('counter', () => {
     };
 
     async function createCounter(title: string, color: HexColor | null, type: CounterType): Promise<StoreResponse> {
+        // Invite code is generated client-side and sent with the CREATE command,
+        // so it's available locally before the server roundtrip completes.
         const inviteCode = type === 'SHARED' ? generateInviteCode() : null;
 
         const newCounter: ClientCounter = {
@@ -105,6 +112,7 @@ export const useCounterStore = defineStore('counter', () => {
         return ok();
     }
 
+    // Re-assigns guest counters to the logged-in user and syncs them to the server.
     async function consolidateGuestCounters() {
         if (isGuest.value) return;
 

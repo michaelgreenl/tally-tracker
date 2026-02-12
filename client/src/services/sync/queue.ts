@@ -1,3 +1,6 @@
+// Persistent queue for offline mutation commands. Backed by Capacitor Preferences
+// so commands survive app restarts. Consumed by SyncManager.processQueue().
+
 import { Preferences } from '@capacitor/preferences';
 
 import type { MutationCommand } from './types';
