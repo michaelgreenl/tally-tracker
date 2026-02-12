@@ -10,6 +10,8 @@ import type { AuthResponse } from '../../types/shared/responses.d.ts';
 import type { AuthRequest } from '../../types/shared/requests.d.ts';
 import type { ClientUser } from '../../types/shared/models.d.ts';
 
+// Validates the existing token and issues a fresh one. Used by the client's
+// initializeAuth flow on cold start to re-hydrate the user and refresh the token.
 export const checkAuth = async (req: Request, res: Response<AuthResponse>) => {
     try {
         const token = req.cookies?.token;
@@ -61,6 +63,7 @@ export const post = async (req: Request<{}, {}, AuthRequest>, res: Response<Auth
         res.status(CREATED).json({ success: true });
     } catch (error: any) {
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+            // P2002 = unique constraint violation
             const target = (error.meta?.target as string[])?.[0] || 'Account';
             const field = target.charAt(0).toUpperCase() + target.slice(1);
 
@@ -78,6 +81,8 @@ export const post = async (req: Request<{}, {}, AuthRequest>, res: Response<Auth
     }
 };
 
+// Returns token both as a cookie (web) and in the response body (native).
+// See: docs/diagrams/sequence/auth/cross-platform-strategy.md
 export const login = async (req: Request<{}, {}, AuthRequest>, res: Response<AuthResponse>) => {
     try {
         const { email, phone, password } = req.body;

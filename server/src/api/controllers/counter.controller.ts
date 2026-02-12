@@ -144,6 +144,7 @@ export const increment = async (
             return res.status(NOT_FOUND).json({ success: false, message: 'Counter not found' });
         }
 
+        // Broadcast to all participants (owner + accepted sharers) via user-scoped socket rooms
         const participants = await counterRepository.getParticipants(counterId);
         const io = req.app.get('io');
 
@@ -199,6 +200,7 @@ export const join = async (req: Request<{}, {}, JoinCounterRequest>, res: Respon
         if (!existingShare) {
             await counterRepository.createShare(shareUpdates);
         } else {
+            // Previously rejected — flip back to accepted (re-join)
             await counterRepository.updateShare(shareUpdates);
         }
 

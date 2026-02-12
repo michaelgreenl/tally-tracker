@@ -2,6 +2,8 @@ import 'dotenv/config';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
+// sameSite: 'none' + secure: true is required in production for cross-origin
+// cookie delivery (frontend and API are on different domains).
 const cookieConfig: Object = {
     httpOnly: true,
     secure: isProduction,

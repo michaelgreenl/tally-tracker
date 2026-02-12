@@ -12,7 +12,7 @@ export const post = async ({
     type,
     inviteCode,
 }: {
-    id?: string;
+    id?: string; // Client-generated UUID for optimistic/offline creation
     userId: string;
     title: string;
     count?: number;
@@ -36,6 +36,7 @@ export const post = async ({
 export const remove = async ({ counterId, userId }: { counterId: string; userId: string }) =>
     prisma.counter.delete({ where: { id: counterId, userId: userId } });
 
+// Returns owned counters + counters shared with this user (ACCEPTED status)
 export const getAllByUser = async (userId: string) =>
     prisma.counter.findMany({
         where: {
@@ -62,6 +63,7 @@ export const getAllByUser = async (userId: string) =>
         },
     });
 
+// Authorization check: user must be the owner OR have an accepted share
 export const getByIdOrShare = async ({ counterId, userId }: { counterId: string; userId: string }) =>
     await prisma.counter.findFirst({
         where: {
@@ -80,6 +82,7 @@ export const getByIdOrShare = async ({ counterId, userId }: { counterId: string;
         },
     });
 
+// Returns all user IDs that should receive socket broadcasts for this counter
 export const getParticipants = async (counterId: string) => {
     const counter = await prisma.counter.findUnique({
         where: { id: counterId },
@@ -132,6 +135,7 @@ export const increment = async ({
 
     if (!counter) return null;
 
+    // Atomic increment avoids race conditions on concurrent shared counter updates
     return prisma.counter.update({
         where: { id: counterId },
         data: {
@@ -167,6 +171,7 @@ export const createShare = ({
         },
     });
 
+// Uses the compound unique (counterId, userId) to target the specific share record
 export const updateShare = ({
     counterId,
     userId,

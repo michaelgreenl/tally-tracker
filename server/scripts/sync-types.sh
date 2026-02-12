@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Generates Prisma client + Zod types on both server and client, then copies
+# the shared type directory to the client. Run from the server project root.
+# The server is the single source of truth for all shared types.
+
 CLIENT_DIR="../tally-tracker-client"
 
 echo "🚀 Starting Type Sync..."
@@ -10,6 +14,7 @@ npx prisma generate
 echo "📄 Combining and Copying schema to Client..."
 cat prisma/schema/*.prisma > "$CLIENT_DIR/schema.prisma"
 
+# Fix generator output path for the client's directory structure
 # NOTE: -i '' is required for macOS sed
 sed -i '' 's|\.\./\.\./src/types|./src/types|g' "$CLIENT_DIR/schema.prisma"
 

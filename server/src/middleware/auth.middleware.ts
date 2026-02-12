@@ -1,3 +1,6 @@
+// Dual-path auth: checks cookie first (web), then Bearer header (native).
+// See: docs/diagrams/sequence/auth/cross-platform-strategy.md
+
 import { Request, Response, NextFunction } from 'express';
 import jwtUtil from '../util/jwt.util.js';
 import { UNAUTHORIZED } from '../constants.js';

@@ -6,6 +6,7 @@ import * as idempotencyRepository from '../db/repositories/idempotency.repositor
 export const idempotency = async (req: Request, res: Response, next: NextFunction) => {
     const key = req.headers['x-idempotency-key'] as string;
 
+    // No key = not an offline-synced request, skip.
     if (!key) {
         return next();
     }
@@ -25,6 +26,7 @@ export const idempotency = async (req: Request, res: Response, next: NextFunctio
 
         next();
     } catch (error) {
+        // Fail open — better to risk a duplicate than block the client's sync queue
         console.error('[Idempotency] Error:', error);
         return res.status(OK_NO_CONTENT).send();
     }

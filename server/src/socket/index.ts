@@ -1,3 +1,9 @@
+/**
+ * Each user joins a room keyed by their own userId. The server targets specific
+ * participants when broadcasting, rather than using counter-scoped rooms.
+ * This avoids room management complexity and prevents data leaking to unauthorized users.
+ */
+
 import { Server } from 'socket.io';
 import { socketCorsOpts } from '../config/cors.config.js';
 import { Server as HttpServer } from 'http';

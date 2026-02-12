@@ -10,7 +10,8 @@ const helmetConfig = helmet({
             imgSrc: ["'self'", 'data:', 'https:'],
         },
     },
-    crossOriginEmbedderPolicy: process.env.NODE_ENV === 'development' ? true : false,
+    // Disabled in production to avoid blocking cross-origin resources (API ↔ frontend)
+    crossOriginEmbedderPolicy: process.env.NODE_ENV === 'development',
 });
 
 export default helmetConfig;

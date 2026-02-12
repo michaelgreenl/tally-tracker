@@ -6,17 +6,19 @@ const getAllowedOrigins = () => {
     return [
         'http://localhost:5173',
         'http://localhost:8100',
-        'capacitor://localhost',
-        'http://localhost',
+        'capacitor://localhost', // iOS WebView
+        'http://localhost', // Android WebView
         FRONTEND_URL,
     ].filter(Boolean) as string[];
 };
 
 const corsOrigin = (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    // No origin = same-origin or non-browser request (e.g., curl, Postman)
     if (!origin) return callback(null, true);
 
     if (getAllowedOrigins().includes(origin)) return callback(null, true);
 
+    // Allow local network IPs for testing on physical devices during development
     const localNetwork = /^http:\/\/(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3})(:\d+)?$/;
     if (localNetwork.test(origin)) return callback(null, true);
 
