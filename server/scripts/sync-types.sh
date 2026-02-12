@@ -12,7 +12,7 @@ echo "📦 Generating Server Prisma Client..."
 npx prisma generate
 
 echo "📄 Combining and Copying schema to Client..."
-cat prisma/schema/*.prisma > "$CLIENT_DIR/schema.prisma"
+cat prisma/schema/*.prisma | sed '/generator erd/,/^}/d' > "$CLIENT_DIR/schema.prisma"
 
 # Fix generator output path for the client's directory structure
 # NOTE: -i '' is required for macOS sed
