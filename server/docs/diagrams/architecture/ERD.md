@@ -51,6 +51,14 @@ BASIC BASIC
     }
   
 
+  "refresh_tokens" {
+    String id "🗝️"
+    String user_id 
+    DateTime expires_at 
+    DateTime created_at 
+    }
+  
+
   "users" {
     String id "🗝️"
     String email "❓"
@@ -66,5 +74,6 @@ BASIC BASIC
     "counter_shares" |o--|| "ShareStatus" : "enum:status"
     "counter_shares" }o--|| counters : "counter"
     "counter_shares" }o--|| users : "user"
+    "refresh_tokens" }o--|| users : "user"
     "users" |o--|| "UserTier" : "enum:tier"
 ```
