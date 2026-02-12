@@ -6,7 +6,8 @@ import type { ClientUser } from '@/types/shared/models';
 import type { AuthRequest, UpdateUserRequest } from '@/types/shared/requests';
 
 const USER_KEY = 'auth_user_profile';
-const TOKEN_KEY = 'auth_token';
+const ACCESS_TOKEN_KEY = 'access_token';
+const REFRESH_TOKEN_KEY = 'refresh_token';
 
 export const AuthService = {
     async getCachedUser(): Promise<ClientUser | null> {
@@ -22,17 +23,27 @@ export const AuthService = {
         }
     },
 
-    async getToken() {
-        const { value } = await Preferences.get({ key: TOKEN_KEY });
+    async getAccessToken() {
+        const { value } = await Preferences.get({ key: ACCESS_TOKEN_KEY });
         return value;
     },
 
-    async setToken(token: string) {
-        await Preferences.set({ key: TOKEN_KEY, value: token });
+    async setAccessToken(token: string) {
+        await Preferences.set({ key: ACCESS_TOKEN_KEY, value: token });
+    },
+
+    async getRefreshToken() {
+        const { value } = await Preferences.get({ key: REFRESH_TOKEN_KEY });
+        return value;
+    },
+
+    async setRefreshToken(token: string) {
+        await Preferences.set({ key: REFRESH_TOKEN_KEY, value: token });
     },
 
     async clearLocalAuth() {
-        await Preferences.remove({ key: TOKEN_KEY });
+        await Preferences.remove({ key: ACCESS_TOKEN_KEY });
+        await Preferences.remove({ key: REFRESH_TOKEN_KEY });
         await Preferences.remove({ key: USER_KEY });
         localStorage.removeItem('AUTHORIZED');
     },

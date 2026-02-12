@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { Capacitor } from '@capacitor/core';
 import { useAuthStore } from '@/stores/authStore';
-import { IonPage, IonContent, IonGrid, IonRow, IonCol } from '@ionic/vue';
+import { IonPage, IonContent, IonGrid, IonRow, IonCol, IonItem, IonLabel, IonToggle } from '@ionic/vue';
 import TextInput from '@/components/inputs/TextInput.vue';
 import BaseButton from '@/components/base/BaseButton.vue';
 import BaseNavLink from '@/components/base/BaseNavLink.vue';
@@ -10,8 +11,11 @@ import BaseNavLink from '@/components/base/BaseNavLink.vue';
 const authStore = useAuthStore();
 const router = useRouter();
 
+const isNative = Capacitor.isNativePlatform();
+
 const email = ref('');
 const password = ref('');
+const rememberMe = ref(false);
 const showPassword = ref(false);
 const loading = ref(false);
 const errorMessage = ref('');
@@ -21,7 +25,11 @@ const handleLogin = async () => {
     errorMessage.value = '';
 
     try {
-        const res = await authStore.login({ email: email.value, password: password.value });
+        const res = await authStore.login({
+            email: email.value,
+            password: password.value,
+            rememberMe: rememberMe.value,
+        });
 
         if (res.success) router.push('/home');
         else errorMessage.value = res.message || 'Login Failed';
@@ -61,6 +69,10 @@ const handleLogin = async () => {
                                 :is-password-visible="showPassword"
                                 @toggle-password="showPassword = !showPassword"
                             />
+                            <ion-item v-if="!isNative" lines="none" class="remember-me">
+                                <ion-label>Remember me</ion-label>
+                                <ion-toggle v-model="rememberMe" :disabled="loading" />
+                            </ion-item>
                             <div class="error-box" v-if="errorMessage">
                                 {{ errorMessage }}
                             </div>
@@ -90,6 +102,11 @@ const handleLogin = async () => {
 
 .header p {
     color: #666;
+}
+
+.remember-me {
+    --padding-start: 0;
+    margin-bottom: 20px;
 }
 
 .footer {

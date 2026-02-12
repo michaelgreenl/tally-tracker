@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
+import { Capacitor } from '@capacitor/core';
 import router from '@/router';
 import { useCounterStore } from '@/stores/counterStore';
 import { AuthService } from '@/services/auth.service';
@@ -9,9 +10,6 @@ import { ok, fail } from '@/utils/result';
 import type { StoreResponse } from '@/types/index';
 import type { AuthRequest, UpdateUserRequest } from '@/types/shared/requests';
 import type { ClientUser } from '@/types/shared/models';
-
-const USER_KEY = 'auth_user_profile';
-const TOKEN_KEY = 'auth_token';
 
 export const useAuthStore = defineStore('auth', () => {
     const user = ref<ClientUser | null>(null);
@@ -24,6 +22,8 @@ export const useAuthStore = defineStore('auth', () => {
      * exists but the store isn't hydrated yet (e.g., page refresh, app reopen).
      *
      * Loads cached user for instant UI, then validates with the server.
+     * apiFetch handles 401 + refresh transparently — if we still get a 401 here,
+     * the refresh token is also expired and the session is over.
      * On network failure, trusts the cache so the app remains usable offline.
      */
     async function initializeAuth(): Promise<StoreResponse> {
@@ -32,11 +32,13 @@ export const useAuthStore = defineStore('auth', () => {
         const cached = await AuthService.getCachedUser();
         if (cached) user.value = cached;
 
-        const token = await AuthService.getToken();
-        if (!token) {
+        // Quick bail if no tokens exist at all
+        const accessToken = await AuthService.getAccessToken();
+        const refreshToken = await AuthService.getRefreshToken();
+        if (!accessToken && !refreshToken) {
             user.value = null;
             checkingAuth.value = false;
-            return fail('No token found');
+            return fail('No tokens found');
         }
 
         try {
@@ -45,11 +47,6 @@ export const useAuthStore = defineStore('auth', () => {
             if (res.success && res.data?.user) {
                 user.value = res.data.user;
                 await AuthService.cacheUser(user.value);
-
-                if (res.data?.token) {
-                    await AuthService.setToken(res.data.token);
-                }
-
                 return ok();
             }
 
@@ -60,8 +57,9 @@ export const useAuthStore = defineStore('auth', () => {
             let status = 0;
             if (error instanceof ApiError) status = error.status || 0;
 
+            // 401 here means refresh also failed — session is truly expired
             if (status === 401) {
-                console.warn('Token expired. Logging out.');
+                console.warn('Session expired. Logging out.');
                 await logout(false);
                 return fail('Session expired');
             }
@@ -78,13 +76,19 @@ export const useAuthStore = defineStore('auth', () => {
 
     async function login(data: AuthRequest): Promise<StoreResponse> {
         try {
+            // Native clients always use refresh tokens
+            if (Capacitor.isNativePlatform()) {
+                data.rememberMe = true;
+            }
+
             const res = await AuthService.login(data);
 
             if (res.success && res.data?.user) {
                 user.value = res.data.user;
                 await AuthService.cacheUser(user.value);
 
-                if (res.data?.token) await AuthService.setToken(res.data.token);
+                if (res.data.accessToken) await AuthService.setAccessToken(res.data.accessToken);
+                if (res.data.refreshToken) await AuthService.setRefreshToken(res.data.refreshToken);
 
                 // Persisted flag checked by the router guard to trigger initializeAuth on cold start
                 localStorage.setItem('AUTHORIZED', 'true');

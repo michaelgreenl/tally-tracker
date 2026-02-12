@@ -7,12 +7,15 @@
  *
  * Error strategy:
  * - 2xx: Success. Remove command from queue.
- * - 4xx: Fatal (validation/logic error). Remove to unblock the queue.
+ * - 401: Session expired (refresh already failed in apiFetch). Stop processing,
+ *         keep commands for after re-auth, trigger logout.
+ * - Other 4xx: Fatal (validation/logic error). Remove to unblock the queue.
  * - 5xx / Network: Retryable. Stop processing, retry on next trigger.
  */
 
 import { Network } from '@capacitor/network';
 import { SyncQueueService } from '@/services/sync/queue';
+import { useAuthStore } from '@/stores/authStore';
 import apiFetch from '@/api';
 import { ApiError } from '@/utils/errors';
 
@@ -64,7 +67,18 @@ export const SyncManager = {
                     status = error.status || 0;
                 }
 
-                // 4xx = logic/validation error (bug). Discard to unblock the queue.
+                // 401 = refresh already failed in apiFetch. Session is dead.
+                // Keep commands for after re-auth.
+                if (status === 401) {
+                    console.warn('[Sync] Session expired. Keeping commands for after re-auth.');
+                    this.isSyncing = false;
+
+                    const authStore = useAuthStore();
+                    await authStore.logout(false);
+                    return;
+                }
+
+                // Other 4xx = invalid command (bug). Discard to unblock queue.
                 if (status >= 400 && status < 500) {
                     console.warn('[Sync] Fatal error (4xx), removing invalid command.');
                     await SyncQueueService.removeCommand(command.id);

@@ -16,6 +16,11 @@ export interface AuthRequest {
     email?: string;
     phone?: string;
     password: string;
+    rememberMe?: boolean;
+}
+
+export interface RefreshRequest {
+    refreshToken?: string;
 }
 
 export interface UpdateUserRequest {
