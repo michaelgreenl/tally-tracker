@@ -1,4 +1,4 @@
-### Development Auth Flow with Vite Proxy 
+### Development Auth Flow with Vite Proxy
 
 ```mermaid
 %%{
@@ -26,7 +26,7 @@ sequenceDiagram
     participant API as Render Backend
     participant DB as Database
 
-    User->>Browser: Click "Login"
+    User->>Browser: Click "Login" (remember me ON)
     
     Note right of Browser: src/api.ts uses relative path ""<br/> -> so request hits localhost
     Browser->>Proxy: POST http://localhost:8100/users/login
@@ -38,15 +38,16 @@ sequenceDiagram
     API->>DB: Find User & Validate Password
     DB-->>API: User Data
     
-    API->>API: Generate JWT
-    
+    API->>API: Generate access token
+    API->>API: Generate refresh token
+    API->>DB: Store refresh token record
+
     Note left of API: cookie.config.ts<br/>Secure: true, SameSite: None
-    API-->>Proxy: 200 OK + Set-Cookie Header
+    API-->>Proxy: 200 OK + Set-Cookie (access + refresh)
     deactivate API
 
     Note right of Proxy: vite.config.ts<br/>cookieDomainRewrite: "localhost"
-    Proxy-->>Browser: Pass Response + Rewritten Cookie
+    Proxy-->>Browser: Pass Response + Rewritten Cookies
     
-    Note right of Browser: Cookie is Secure<br/>Browser allows "Secure" on localhost
-    Browser->>Browser: Cookie Saved Successfully
-```
+    Note right of Browser: Cookies are Secure<br/>Browser allows "Secure" on localhost
+    Browser->>Browser: Both Cookies Saved Successfully

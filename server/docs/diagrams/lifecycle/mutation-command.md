@@ -30,6 +30,7 @@ stateDiagram-v2
     
     Processing --> Completed: API Returns 200/201
     Processing --> Pending: API Returns 500 / Network Fail
+    Processing --> Pending: API Returns 401 (Session Expired)
     Processing --> Dead: API Returns 400/422 (Validation)
 
     Completed --> [*]: Removed from Queue
@@ -38,6 +39,8 @@ stateDiagram-v2
     note right of Pending
         Persisted in LocalStorage.
         Safe from app restart.
+        401 commands return here
+        and resume after re-auth.
     end note
 
     note right of Dead

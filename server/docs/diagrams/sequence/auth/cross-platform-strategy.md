@@ -31,13 +31,13 @@ sequenceDiagram
     Client->>Client: Check Capacitor.isNativePlatform()
     
     alt isNative is TRUE (iOS/Android)
-        Client->>Storage: Get 'auth_token'
+        Client->>Storage: Get 'access_token'
         Storage-->>Client: Returns "ey..."
         Client->>Client: Add Header: "Authorization: Bearer ey..."
         Note right of Client: Native apps bypass Cookie issues<br/>by using explicit Headers
     else isNative is FALSE (Web)
         Client->>Client: Do NOT add Header
-        Note right of Client: Browser automatically attaches<br/>HttpOnly Cookie
+        Note right of Client: Browser automatically attaches<br/>HttpOnly Cookies
     end
     
     Client->>API: Send Request
@@ -46,11 +46,15 @@ sequenceDiagram
     API->>API: Middleware Check
     
     alt Header Present?
-        API->>API: Validate Bearer Token
+        API->>API: Validate Access Token
     else Cookie Present?
-        API->>API: Validate Cookie Token
+        API->>API: Validate Access Token Cookie
     end
     
-    API-->>Client: 200 OK
+    alt Token Valid
+        API-->>Client: 200 OK
+    else Token Expired
+        API-->>Client: 401 Unauthorized
+        Note right of Client: Triggers refresh flow<br/>See: token-refresh.md
+    end
     deactivate API
-```
