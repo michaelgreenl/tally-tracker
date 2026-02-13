@@ -21,7 +21,8 @@
         "lint:style": "stylelint \"**/*.{vue,css,scss}\" --fix",
         "format": "prettier --write --experimental-cli src/",
         "prepare": "husky",
-        "type-check": "vue-tsc --noEmit -p tsconfig.app.json"
+        "type-check": "vue-tsc --noEmit -p tsconfig.app.json",
+        "type-check:pretty": "chmod +x ./scripts/tc-pretty.sh && ./scripts/tc-pretty.sh"
     },
     "dependencies": {
         "@capacitor/android": "^8.0.0",
