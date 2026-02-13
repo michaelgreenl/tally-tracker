@@ -10,6 +10,7 @@
         "start": "node dist/server.js",
         "lint": "eslint src --ext .ts",
         "type-check": "tsc --noEmit",
+        "type-check:pretty": "chmod +x ./scripts/tc-pretty.sh && ./scripts/tc-pretty.sh",
         "format": "prettier --write \"src/**/*.ts\"",
         "prepare": "husky",
         "generate": "npx prisma generate",
