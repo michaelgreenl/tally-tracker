@@ -19,9 +19,11 @@
  * - 204 responses return an empty object (handles idempotency "already processed" responses).
  */
 
+import { OK_NO_CONTENT, REQUEST_TIMEOUT, UNAUTHORIZED } from '@/constants/status-codes';
 import { Preferences } from '@capacitor/preferences';
 import { Capacitor } from '@capacitor/core';
 import { ApiError } from '@/utils/errors';
+import { useAuthStore } from './stores/authStore';
 
 export interface ApiRequestOptions<T = any> extends Omit<RequestInit, 'body'> {
     body?: T;
@@ -119,6 +121,7 @@ async function apiFetch<ResT = unknown, ReqT = any>(
             ...restOptions,
             headers: reqHeaders,
             body: isFormData ? body : body ? JSON.stringify(body) : undefined,
+            signal: controller.signal,
         });
 
         clearTimeout(id);
@@ -126,18 +129,21 @@ async function apiFetch<ResT = unknown, ReqT = any>(
         if (!res.ok) {
             // Attempt refresh on 401 before throwing. Only on the first attempt
             // to prevent infinite loops if the retried request also returns 401.
-            if (res.status === 401 && !_isRetry) {
+            if (res.status === UNAUTHORIZED && !_isRetry) {
                 const refreshed = await attemptRefresh();
                 if (refreshed) {
                     return apiFetch<ResT, ReqT>(endpoint, options, true);
                 }
             }
 
+            const authStore = useAuthStore();
+            await authStore.logout(false);
+
             const errorData = await res.json().catch(() => ({}));
             throw new ApiError(errorData.message || 'An API error occurred', res.status, errorData);
         }
 
-        if (res.status === 204) {
+        if (res.status === OK_NO_CONTENT) {
             return {} as ResT;
         }
 
@@ -147,7 +153,7 @@ async function apiFetch<ResT = unknown, ReqT = any>(
     } catch (error: any) {
         clearTimeout(id);
 
-        if (error.name === 'AbortError') throw new ApiError('Network timeout', 408);
+        if (error.name === 'AbortError') throw new ApiError('Network timeout', REQUEST_TIMEOUT);
 
         if (error instanceof ApiError) throw error;
 
