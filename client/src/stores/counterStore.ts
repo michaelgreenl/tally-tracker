@@ -3,6 +3,7 @@ import { ref, computed } from 'vue';
 import { useAuthStore } from '@/stores/authStore';
 import { CounterService } from '@/services/counter.service';
 import { ok, fail } from '@/utils/result';
+import { randomUUID } from '@/utils/safeUUID';
 
 import type { StoreResponse } from '@/types/index';
 import type { CounterTypeType as CounterType } from '@/types/shared/generated/index';
@@ -62,7 +63,7 @@ export const useCounterStore = defineStore('counter', () => {
         const inviteCode = type === 'SHARED' ? generateInviteCode() : null;
 
         const newCounter: ClientCounter = {
-            id: crypto.randomUUID(),
+            id: randomUUID(),
             title,
             color: color || DEFAULT_COUNTER_COLOR,
             count: 0,

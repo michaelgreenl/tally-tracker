@@ -1,8 +1,9 @@
+import apiFetch from '@/api';
 import { LocalStorageService } from '@/services/storage.service';
 import { SyncQueueService } from '@/services/sync/queue';
 import { SyncManager } from '@/services/sync/manager';
 import { useAuthStore } from '@/stores/authStore';
-import apiFetch from '@/api';
+import { randomUUID } from '@/utils/safeUUID';
 
 import type { ClientCounter } from '@/types/shared/models';
 import type { CounterResponse } from '@/types/shared/responses';
@@ -24,7 +25,7 @@ export const CounterService = {
 
     async create(counter: ClientCounter) {
         await SyncQueueService.addCommand({
-            id: crypto.randomUUID(),
+            id: randomUUID(),
             type: 'CREATE',
             entity: 'counter',
             entityId: counter.id,
@@ -44,7 +45,7 @@ export const CounterService = {
 
     async update(counterId: string, updates: Partial<ClientCounter>) {
         await SyncQueueService.addCommand({
-            id: crypto.randomUUID(),
+            id: randomUUID(),
             type: 'UPDATE',
             entity: 'counter',
             entityId: counterId,
@@ -60,7 +61,7 @@ export const CounterService = {
         // with concurrent users. Personal counters send the absolute count instead.
         if (counter.type === 'SHARED') {
             await SyncQueueService.addCommand({
-                id: crypto.randomUUID(),
+                id: randomUUID(),
                 type: 'INCREMENT',
                 entity: 'counter',
                 entityId: counter.id,
@@ -70,7 +71,7 @@ export const CounterService = {
             });
         } else {
             await SyncQueueService.addCommand({
-                id: crypto.randomUUID(),
+                id: randomUUID(),
                 type: 'UPDATE',
                 entity: 'counter',
                 entityId: counter.id,
@@ -88,7 +89,7 @@ export const CounterService = {
         // Counter owner -> DELETE | Counter participant -> REMOVE (sets share status to REJECTED).
         if (!authStore.isAuthenticated || counter.userId === authStore.user?.id) {
             await SyncQueueService.addCommand({
-                id: crypto.randomUUID(),
+                id: randomUUID(),
                 type: 'DELETE',
                 entity: 'counter',
                 entityId: counter.id,
@@ -98,7 +99,7 @@ export const CounterService = {
             });
         } else {
             await SyncQueueService.addCommand({
-                id: crypto.randomUUID(),
+                id: randomUUID(),
                 type: 'REMOVE',
                 entity: 'counter',
                 entityId: counter.id,
@@ -126,7 +127,7 @@ export const CounterService = {
 
         for (const counter of countersToSync) {
             await SyncQueueService.addCommand({
-                id: crypto.randomUUID(),
+                id: randomUUID(),
                 type: 'CREATE',
                 entity: 'counter',
                 entityId: counter.id,

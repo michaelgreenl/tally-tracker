@@ -1,4 +1,5 @@
 import { Preferences } from '@capacitor/preferences';
+import { randomUUID } from '@/utils/safeUUID';
 
 import type { ClientCounter } from '@/types/shared/models';
 
@@ -27,7 +28,7 @@ export const LocalStorageService = {
 
         const newCounter: ClientCounter = {
             ...counter,
-            id: crypto.randomUUID(),
+            id: randomUUID(),
             userId: 'guest',
         };
 
