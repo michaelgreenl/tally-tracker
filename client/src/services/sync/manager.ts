@@ -13,6 +13,7 @@
  * - 5xx / Network: Retryable. Stop processing, retry on next trigger.
  */
 
+import { UNAUTHORIZED } from '@/constants/status-codes';
 import { Network } from '@capacitor/network';
 import { SyncQueueService } from '@/services/sync/queue';
 import { useAuthStore } from '@/stores/authStore';
@@ -69,7 +70,7 @@ export const SyncManager = {
 
                 // 401 = refresh already failed in apiFetch. Session is dead.
                 // Keep commands for after re-auth.
-                if (status === 401) {
+                if (status === UNAUTHORIZED) {
                     console.warn('[Sync] Session expired. Keeping commands for after re-auth.');
                     this.isSyncing = false;
 

@@ -1,3 +1,4 @@
+import { UNAUTHORIZED } from '@/constants/status-codes';
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { Capacitor } from '@capacitor/core';
@@ -58,7 +59,7 @@ export const useAuthStore = defineStore('auth', () => {
             if (error instanceof ApiError) status = error.status || 0;
 
             // 401 here means refresh also failed — session is truly expired
-            if (status === 401) {
+            if (status === UNAUTHORIZED) {
                 console.warn('Session expired. Logging out.');
                 await logout(false);
                 return fail('Session expired');
@@ -113,7 +114,7 @@ export const useAuthStore = defineStore('auth', () => {
         } finally {
             user.value = null;
             await AuthService.clearLocalAuth();
-            router.push({ name: 'Login' });
+            router.push('/login');
         }
 
         return ok();
