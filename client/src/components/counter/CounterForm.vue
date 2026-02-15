@@ -67,7 +67,7 @@ const updateCounter = async () => {
                 ></ion-toggle>
             </ion-item>
         </div>
-        <BaseButton type="submit">{{ counter ? 'Update' : 'Create' }}</BaseButton>
+        <BaseButton type="submit" test-id="counter-form-submit">{{ counter ? 'Update' : 'Create' }}</BaseButton>
     </form>
 </template>
 

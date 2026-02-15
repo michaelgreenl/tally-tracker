@@ -7,6 +7,7 @@ const props = defineProps<{
     type?: 'button' | 'submit';
     expand?: 'block' | 'full';
     color?: string;
+    testId?: string;
 }>();
 
 const emit = defineEmits<{
@@ -20,6 +21,7 @@ const emit = defineEmits<{
         :disabled="disabled || loading"
         :expand="expand || 'block'"
         :color="color"
+        :data-testid="testId"
         mode="md"
         @click="$emit('click', $event)"
     >
