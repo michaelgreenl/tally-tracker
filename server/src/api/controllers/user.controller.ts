@@ -1,4 +1,4 @@
-import { CREATED, UNAUTHORIZED, NOT_FOUND, UNPROCESSABLE_ENTITY, SERVER_ERROR } from '../../constants.js';
+import { CREATED, UNAUTHORIZED, NOT_FOUND, UNPROCESSABLE_ENTITY, SERVER_ERROR } from '../../constants/status-codes.js';
 import * as userRepository from '../../db/repositories/user.repository.js';
 import * as tokenRepository from '../../db/repositories/token.repository.js';
 import {

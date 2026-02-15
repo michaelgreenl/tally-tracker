@@ -1,4 +1,4 @@
-import { CREATED, BAD_REQUEST, NOT_FOUND, CONFLICT, SERVER_ERROR } from '../../constants.js';
+import { CREATED, BAD_REQUEST, NOT_FOUND, CONFLICT, SERVER_ERROR } from '../../constants/status-codes.js';
 import * as counterRepository from '../../db/repositories/counter.repository.js';
 
 import type { Request, Response } from 'express';

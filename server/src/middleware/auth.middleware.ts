@@ -3,7 +3,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import jwtUtil from '../util/jwt.util.js';
-import { UNAUTHORIZED } from '../constants.js';
+import { UNAUTHORIZED } from '../constants/status-codes.js';
 
 export const jwt = (req: Request, res: Response, next: NextFunction) => {
     let token;
