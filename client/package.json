@@ -7,8 +7,8 @@
     "scripts": {
         "dev": "vite",
         "qa": "vite --mode qa",
-        "test": "npm run test:e2e",
         "test:e2e": "cypress run",
+        "test:unit": "vitest",
         "preview": "vite preview",
         "build": "vue-tsc --noEmit -p tsconfig.app.json && vite build",
         "ionic:build": "npm run build",
