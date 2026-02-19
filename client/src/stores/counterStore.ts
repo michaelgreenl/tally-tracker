@@ -24,6 +24,10 @@ export const useCounterStore = defineStore('counter', () => {
         await CounterService.persist(counters.value);
     }
 
+    async function clearState() {
+        await CounterService.clearLocalCounters();
+    }
+
     /**
      * Load counters from local storage (instant), then sync with the server in the background.
      * Called on every HomeView enter via onIonViewWillEnter.
@@ -176,6 +180,7 @@ export const useCounterStore = defineStore('counter', () => {
         counters,
         loading,
         saveState,
+        clearState,
         init,
         createCounter,
         incrementCounter,

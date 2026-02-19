@@ -23,6 +23,10 @@ export const CounterService = {
         await LocalStorageService.saveCounters(counters);
     },
 
+    async clearLocalCounters() {
+        await LocalStorageService.clearCounters();
+    },
+
     async create(counter: ClientCounter) {
         await SyncQueueService.addCommand({
             id: randomUUID(),

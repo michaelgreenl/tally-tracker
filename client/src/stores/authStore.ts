@@ -114,6 +114,8 @@ export const useAuthStore = defineStore('auth', () => {
         } finally {
             user.value = null;
             await AuthService.clearLocalAuth();
+            const counterStore = useCounterStore();
+            await counterStore.clearState();
             router.push('/login');
         }
 
