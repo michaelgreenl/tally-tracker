@@ -184,6 +184,15 @@ describe('Counters', () => {
 
             cy.intercept('POST', '/users/login').as('loginReq');
 
+            let getCountersCallCount = 0;
+            cy.intercept('GET', '/counters', (req) => {
+                getCountersCallCount++;
+                req.on('response', (res) => {
+                    res.setDelay(500); // forces race condition to surface
+                });
+                req.reply({ success: true, data: { counters: [] } });
+            }).as('getCounters');
+
             cy.get('@loginPage').within(() => {
                 cy.get('input[type="email"]').should('have.length', 1).type(email);
                 cy.get('input[type="password"]').should('have.length', 1).type(password);
@@ -191,6 +200,7 @@ describe('Counters', () => {
             });
 
             cy.wait('@loginReq').its('response.statusCode').should('eq', 200);
+            cy.wait('@getCounters');
 
             cy.contains('Guest Counter A').should('be.visible');
             cy.contains('Guest Counter B').should('be.visible');
@@ -201,7 +211,23 @@ describe('Counters', () => {
             createGuestCounter('Guest Counter X');
             createGuestCounter('Guest Counter Y');
 
+            let getCountersCallCount = 0;
+            cy.intercept('GET', '/counters', (req) => {
+                getCountersCallCount++;
+                req.on('response', (res) => {
+                    res.setDelay(500); // forces race condition to surface
+                });
+                req.reply({
+                    success: true,
+                    data: {
+                        counters: [buildCounter({ title: 'Books Read' }), buildCounter({ title: 'Miles Ran' })],
+                    },
+                });
+            }).as('getCounters');
+
             cy.login('alice@example.com', 'password123');
+
+            cy.wait('@getCounters');
 
             cy.contains('Guest Counter X').should('be.visible');
             cy.contains('Guest Counter Y').should('be.visible');

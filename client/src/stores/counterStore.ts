@@ -41,7 +41,10 @@ export const useCounterStore = defineStore('counter', () => {
                 const remoteCounters = await CounterService.fetchRemote();
 
                 if (remoteCounters) {
-                    counters.value = remoteCounters;
+                    // Merge: keep any local counters not yet on the server
+                    const remoteIds = new Set(remoteCounters.map((c) => c.id));
+                    const pendingLocal = counters.value.filter((c) => !remoteIds.has(c.id));
+                    counters.value = [...remoteCounters, ...pendingLocal];
                     await saveState();
                 }
             } catch (error: any) {
