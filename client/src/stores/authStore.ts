@@ -95,7 +95,7 @@ export const useAuthStore = defineStore('auth', () => {
                 localStorage.setItem('AUTHORIZED', 'true');
 
                 const counterStore = useCounterStore();
-                counterStore.consolidateGuestCounters();
+                await counterStore.consolidateGuestCounters();
 
                 return ok();
             }

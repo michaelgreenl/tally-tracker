@@ -48,7 +48,7 @@ const updateCounter = async () => {
 <template>
     <h1>{{ counter ? 'Update' : 'Create' }} Counter</h1>
     <form @submit.prevent="updateCounter()">
-        <TextInput label="title" v-model="localCounter.title" required />
+        <TextInput label="title" test-id="counter-title" v-model="localCounter.title" required />
         <label for="color">Color</label>
         <input type="color" id="color" v-model="localCounter.color" />
         <div class="share-section" v-if="!props.counter">

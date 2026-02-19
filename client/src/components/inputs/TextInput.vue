@@ -10,6 +10,7 @@ const props = defineProps<{
     placeholder?: string;
     disabled?: boolean;
     required?: boolean;
+    testId?: string;
     showPasswordToggle?: boolean;
     isPasswordVisible?: boolean;
 }>();
@@ -30,6 +31,7 @@ const emit = defineEmits<{
                 :placeholder="placeholder"
                 :disabled="disabled"
                 :required="required"
+                :data-testid="testId"
                 @ionInput="emit('update:modelValue', $event.target.value as string)"
             ></ion-input>
             <ion-icon
