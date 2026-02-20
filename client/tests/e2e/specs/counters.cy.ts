@@ -220,6 +220,7 @@ describe('Counters', () => {
                 req.reply({
                     success: true,
                     data: {
+                        // counters from dev seeders data for alice@example.com
                         counters: [buildCounter({ title: 'Books Read' }), buildCounter({ title: 'Miles Ran' })],
                     },
                 });
