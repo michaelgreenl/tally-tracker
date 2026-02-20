@@ -65,7 +65,7 @@ const closeCounterForm = () => {
                 <ion-title>
                     <div class="title-wrapper">
                         Tally Counter
-                        <ion-icon v-if="authStore.isPremium" :icon="diamond" color="dark" />
+                        <ion-icon v-if="authStore.isPremium" :icon="diamond" color="light" />
                     </div>
                 </ion-title>
 
