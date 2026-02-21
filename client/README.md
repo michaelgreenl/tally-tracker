@@ -1,6 +1,8 @@
 # Tally Tracker (Client)
 
-> **Current Status:** 🚧 Active Development / WIP
+**[Server Repository](https://github.com/michaelgreenl/tally-tracker-server)** 
+
+> **Current Status:** 🚧  WIP
 
 A cross-platform, offline-first counter application built to handle complex synchronization scenarios and real-time collaboration. This project demonstrates a robust implementation of local-first architecture using Vue 3 and Capacitor.
 
