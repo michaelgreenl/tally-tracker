@@ -65,7 +65,7 @@ const closeCounterForm = () => {
                 <ion-title>
                     <div class="title-wrapper">
                         Tally Counter
-                        <ion-icon v-if="authStore.isPremium" :icon="diamond" color="dark" />
+                        <ion-icon v-if="authStore.isPremium" :icon="diamond" color="light" />
                     </div>
                 </ion-title>
 
@@ -75,32 +75,36 @@ const closeCounterForm = () => {
                 </ion-buttons>
             </ion-toolbar>
         </ion-header>
-        <ion-content class="ion-padding">
-            <div class="content-header">
-                <h2>Welcome {{ authStore.isAuthenticated ? authStore.user?.email : 'Guest' }}!</h2>
+        <ion-content class="ion-content ion-padding">
+            <div class="content-wrapper">
+                <div class="content-header">
+                    <h2>Welcome {{ authStore.isAuthenticated ? authStore.user?.email : 'Guest' }}!</h2>
 
-                <ion-spinner v-if="isSyncing" name="crescent" :style="{ width: '20px', height: '20px' }" />
-                <ion-icon v-else-if="!isOnline" :icon="cloudOfflineOutline" color="dark" />
-                <ion-icon v-else :icon="cloudDoneOutline" color="dark" />
+                    <template v-if="authStore.isAuthenticated">
+                        <ion-spinner v-if="isSyncing" name="crescent" :style="{ width: '20px', height: '20px' }" />
+                        <ion-icon v-else-if="!isOnline" :icon="cloudOfflineOutline" color="dark" />
+                        <ion-icon v-else :icon="cloudDoneOutline" color="dark" />
+                    </template>
+                </div>
+
+                <ion-list v-if="counterStore.counters.length">
+                    <ion-item v-for="counter in counterStore.counters" :key="counter.id">
+                        <Counter
+                            :counter="counter"
+                            @delete="counterStore.deleteCounter"
+                            @increment="counterStore.incrementCounter"
+                            @showUpdateForm="startUpdateCounter"
+                        />
+                    </ion-item>
+                </ion-list>
+
+                <p v-else>No counter's yet.</p>
+                <BaseButton v-if="!showCounterForm" @click="showCounterForm = true">Add counter</BaseButton>
+                <template v-else>
+                    <CounterForm :counter="counterToUpdate as ClientCounter | undefined" @done="closeCounterForm()" />
+                    <BaseButton @click="closeCounterForm()">Cancel</BaseButton>
+                </template>
             </div>
-
-            <ion-list v-if="counterStore.counters.length">
-                <ion-item v-for="counter in counterStore.counters" :key="counter.id">
-                    <Counter
-                        :counter="counter"
-                        @delete="counterStore.deleteCounter"
-                        @increment="counterStore.incrementCounter"
-                        @showUpdateForm="startUpdateCounter"
-                    />
-                </ion-item>
-            </ion-list>
-
-            <p v-else>No counter's yet.</p>
-            <BaseButton v-if="!showCounterForm" @click="showCounterForm = true">Add counter</BaseButton>
-            <template v-else>
-                <CounterForm :counter="counterToUpdate as ClientCounter | undefined" @done="closeCounterForm()" />
-                <BaseButton @click="closeCounterForm()">Cancel</BaseButton>
-            </template>
         </ion-content>
     </ion-page>
 </template>
@@ -110,6 +114,11 @@ const closeCounterForm = () => {
     display: flex;
     align-items: center;
     gap: 0.5em;
+}
+
+.content-wrapper {
+    max-width: 600px;
+    margin: 0 auto;
 }
 
 .content-header {

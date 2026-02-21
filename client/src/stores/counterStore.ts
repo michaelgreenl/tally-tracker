@@ -24,6 +24,10 @@ export const useCounterStore = defineStore('counter', () => {
         await CounterService.persist(counters.value);
     }
 
+    async function clearState() {
+        await CounterService.clearLocalCounters();
+    }
+
     /**
      * Load counters from local storage (instant), then sync with the server in the background.
      * Called on every HomeView enter via onIonViewWillEnter.
@@ -37,7 +41,10 @@ export const useCounterStore = defineStore('counter', () => {
                 const remoteCounters = await CounterService.fetchRemote();
 
                 if (remoteCounters) {
-                    counters.value = remoteCounters;
+                    // Merge: keep any local counters not yet on the server
+                    const remoteIds = new Set(remoteCounters.map((c) => c.id));
+                    const pendingLocal = counters.value.filter((c) => !remoteIds.has(c.id));
+                    counters.value = [...remoteCounters, ...pendingLocal];
                     await saveState();
                 }
             } catch (error: any) {
@@ -113,7 +120,10 @@ export const useCounterStore = defineStore('counter', () => {
         return ok();
     }
 
-    // Re-assigns guest counters to the logged-in user and syncs them to the server.
+    /**
+     * Merges guest counters with the user's existing remote counters,
+     * then syncs the guest counters to the server in the background.
+     */
     async function consolidateGuestCounters() {
         if (isGuest.value) return;
 
@@ -123,9 +133,23 @@ export const useCounterStore = defineStore('counter', () => {
         guestCounters.forEach((c) => {
             c.userId = authStore.user?.id || 'unknown';
         });
+
+        let remoteCounters: ClientCounter[] = [];
+        try {
+            const fetched = await CounterService.fetchRemote();
+            if (fetched) remoteCounters = fetched;
+        } catch {
+            // Offline — merge what we have, sync will reconcile later
+        }
+
+        const remoteIds = new Set(remoteCounters.map((c) => c.id));
+        const newGuestCounters = guestCounters.filter((c) => !remoteIds.has(c.id));
+        counters.value = [...remoteCounters, ...newGuestCounters];
         await saveState();
 
-        await CounterService.consolidate(guestCounters, authStore.user?.id || '');
+        if (newGuestCounters.length > 0) {
+            await CounterService.consolidate(newGuestCounters, authStore.user?.id || '');
+        }
     }
 
     async function joinCounter(inviteCode: string): Promise<StoreResponse> {
@@ -159,6 +183,7 @@ export const useCounterStore = defineStore('counter', () => {
         counters,
         loading,
         saveState,
+        clearState,
         init,
         createCounter,
         incrementCounter,

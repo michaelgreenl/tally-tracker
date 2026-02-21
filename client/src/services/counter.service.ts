@@ -23,6 +23,10 @@ export const CounterService = {
         await LocalStorageService.saveCounters(counters);
     },
 
+    async clearLocalCounters() {
+        await LocalStorageService.clearCounters();
+    },
+
     async create(counter: ClientCounter) {
         await SyncQueueService.addCommand({
             id: randomUUID(),
@@ -122,6 +126,7 @@ export const CounterService = {
     },
 
     // Migrates guest counters to the authenticated user's account after login.
+    // FIXME: should the userId be sent with the payload here? if not why is it here?
     async consolidate(countersToSync: ClientCounter[], userId: string) {
         console.log(`[Consolidation] Syncing ${countersToSync.length} counters...`);
 

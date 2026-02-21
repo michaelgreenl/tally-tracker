@@ -95,7 +95,7 @@ export const useAuthStore = defineStore('auth', () => {
                 localStorage.setItem('AUTHORIZED', 'true');
 
                 const counterStore = useCounterStore();
-                counterStore.consolidateGuestCounters();
+                await counterStore.consolidateGuestCounters();
 
                 return ok();
             }
@@ -114,6 +114,8 @@ export const useAuthStore = defineStore('auth', () => {
         } finally {
             user.value = null;
             await AuthService.clearLocalAuth();
+            const counterStore = useCounterStore();
+            await counterStore.clearState();
             router.push('/login');
         }
 

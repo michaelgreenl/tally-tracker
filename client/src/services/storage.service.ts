@@ -23,6 +23,10 @@ export const LocalStorageService = {
         });
     },
 
+    async clearCounters(): Promise<void> {
+        await Preferences.remove({ key: GUEST_COUNTERS_KEY });
+    },
+
     async createCounter(counter: Omit<ClientCounter, 'id' | 'userId'>): Promise<ClientCounter> {
         const counters = await this.getAllCounters();
 
