@@ -2,11 +2,11 @@
 . "$(dirname -- "$0")/_/husky.sh"
 
 echo "🧪 Running unit tests..."
-bun run test:unit
+npm run test:unit
 
 if [ "$SKIP_E2E" = "1" ]; then
   echo "⏭️  Skipping E2E tests"
 else
   echo "🌐 Running E2E tests..."
-  bun run test:e2e
+  npm run test:e2e
 fi
