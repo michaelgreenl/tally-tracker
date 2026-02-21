@@ -1,6 +1,8 @@
 # Tally Tracker (API)
 
-> **Current Status:** 🚧 Active Development / WIP
+**[Client Repository](https://github.com/michaelgreenl/tally-tracker-client)** 
+
+> **Current Status:** 🚧 WIP
 
 The backend infrastructure for Tally Tracker, designed to handle eventually consistent data synchronization and real-time event broadcasting. Deployed on Render with a PostgreSQL database.
 
