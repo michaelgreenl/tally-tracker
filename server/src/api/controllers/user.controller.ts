@@ -113,7 +113,7 @@ export const login = async (req: Request<{}, {}, AuthRequest>, res: Response<Aut
 
         const accessToken = jwt.sign(
             { id: user.id, email: user.email, phone: user.phone },
-            !!rememberMe ? '15m' : '1d',
+            !!rememberMe ? '60m' : '1d',
         );
 
         let refreshToken: string | undefined;

@@ -14,12 +14,12 @@ describe('JWT Util', () => {
         expect(decoded.aud).toBe('reaction-client');
     });
 
-    it('should default to 15m expiry', () => {
+    it('should default to 45m expiry', () => {
         const token = jwt.sign({ id: 'user-123' });
         const decoded = jwt.verify(token) as any;
 
-        // exp - iat should be 900 seconds (15 minutes)
-        expect(decoded.exp - decoded.iat).toBe(900);
+        // exp - iat should be 2700 seconds (45 minutes)
+        expect(decoded.exp - decoded.iat).toBe(2700);
     });
 
     it('should accept custom expiry', () => {

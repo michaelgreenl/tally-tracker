@@ -19,7 +19,7 @@ export const accessCookieConfig = {
 // Browser with remember me — short-lived, refresh handles continuity
 export const shortAccessCookieConfig = {
     ...baseCookieConfig,
-    maxAge: 15 * 60 * 1000, // 15m
+    maxAge: 45 * 60 * 1000, // 45m
 };
 
 export const refreshCookieConfig = {
