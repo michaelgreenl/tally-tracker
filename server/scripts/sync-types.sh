@@ -4,7 +4,7 @@
 # the shared type directory to the client. Run from the server project root.
 # The server is the single source of truth for all shared types.
 
-CLIENT_DIR="../tally-tracker-client"
+CLIENT_DIR="../client"
 
 echo "🚀 Starting Type Sync..."
 
