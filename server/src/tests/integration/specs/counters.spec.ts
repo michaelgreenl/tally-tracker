@@ -1,19 +1,19 @@
-import { OK, CREATED, NOT_FOUND, UNPROCESSABLE_ENTITY } from '../../constants/status-codes.js';
+import { OK, CREATED, NOT_FOUND, UNPROCESSABLE_ENTITY } from '../../../constants/status-codes.js';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Request, Response, NextFunction } from 'express';
 import request from 'supertest';
 import { randomUUID } from 'crypto';
-import app from '../../app.js';
+import app from '../../../app.js';
 import { buildCounter, TEST_COUNTER_ID, TEST_OTHER_USER_ID, TEST_USER_ID } from '../fixtures/counter.fixture.js';
 
-vi.mock('../../middleware/auth.middleware', () => ({
+vi.mock('../../../middleware/auth.middleware', () => ({
     jwt: (req: Request, res: Response, next: NextFunction) => {
         req.user = { id: TEST_USER_ID, email: 'test@test.com', tier: 'PREMIUM' };
         next();
     },
 }));
 
-vi.mock('../../db/repositories/counter.repository', () => ({
+vi.mock('../../../db/repositories/counter.repository', () => ({
     post: vi.fn(),
     getAllByUser: vi.fn(),
     getByIdOrShare: vi.fn(),
@@ -26,12 +26,12 @@ vi.mock('../../db/repositories/counter.repository', () => ({
     updateShare: vi.fn(),
 }));
 
-vi.mock('../../db/repositories/idempotency.repository', () => ({
+vi.mock('../../../db/repositories/idempotency.repository', () => ({
     get: vi.fn().mockResolvedValue(null),
     create: vi.fn().mockResolvedValue({}),
 }));
 
-import * as counterRepository from '../../db/repositories/counter.repository.js';
+import * as counterRepository from '../../../db/repositories/counter.repository.js';
 
 describe('Counter Routes', () => {
     beforeEach(() => {

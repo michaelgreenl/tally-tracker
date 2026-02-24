@@ -1,12 +1,12 @@
-import { OK, CREATED, UNAUTHORIZED, NOT_FOUND, UNPROCESSABLE_ENTITY } from '../../constants/status-codes.js';
+import { OK, CREATED, UNAUTHORIZED, NOT_FOUND, UNPROCESSABLE_ENTITY } from '../../../constants/status-codes.js';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import { randomUUID } from 'crypto';
-import app from '../../app.js';
+import app from '../../../app.js';
 import { buildUser, buildClientUser } from '../fixtures/user.fixture.js';
 import { buildRefreshToken, TEST_USER_ID, TEST_REFRESH_TOKEN_ID } from '../fixtures/counter.fixture.js';
 
-vi.mock('../../db/repositories/user.repository', () => ({
+vi.mock('../../../db/repositories/user.repository', () => ({
     createUser: vi.fn(),
     getUserByEmail: vi.fn(),
     getUserByPhone: vi.fn(),
@@ -15,15 +15,15 @@ vi.mock('../../db/repositories/user.repository', () => ({
     deleteUser: vi.fn(),
 }));
 
-vi.mock('../../db/repositories/token.repository', () => ({
+vi.mock('../../../db/repositories/token.repository', () => ({
     create: vi.fn(),
     get: vi.fn(),
     remove: vi.fn(),
     removeAllForUser: vi.fn(),
 }));
 
-import * as userRepository from '../../db/repositories/user.repository.js';
-import * as tokenRepository from '../../db/repositories/token.repository.js';
+import * as userRepository from '../../../db/repositories/user.repository.js';
+import * as tokenRepository from '../../../db/repositories/token.repository.js';
 
 describe('Auth Routes', () => {
     beforeEach(() => {
