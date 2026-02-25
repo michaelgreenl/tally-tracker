@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 
 import type { CounterShare, RefreshToken } from '@prisma/client';
-import type { CounterTypeType as CounterType } from '../../types/shared/generated/index.js';
+import type { CounterTypeType as CounterType } from '../../../types/shared/generated/index.js';
 
 export const TEST_COUNTER_ID = randomUUID();
 export const TEST_USER_ID = randomUUID();
