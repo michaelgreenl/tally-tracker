@@ -1,0 +1,28 @@
+{
+  "name": "tally-tracker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A cross-platform, offline-first counter application",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "type-check": "npm run type-check -w client && npm run type-check -w server",
+    "test:unit": "npm run test:unit -w client && npm run test:spec -w server",
+    "test": "npm run test:unit",
+    "build": "npm run build -w client && npm run build -w server",
+    "dev:client": "npm run dev -w client",
+    "dev:server": "npm run dev -w server"
+  },
+  "keywords": [
+    "counter",
+    "offline-first",
+    "cross-platform",
+    "vue",
+    "ionic",
+    "capacitor"
+  ],
+  "author": "",
+  "license": "ISC"
+}
