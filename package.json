@@ -4,8 +4,8 @@
   "private": true,
   "description": "A cross-platform, offline-first counter application",
   "workspaces": [
-    "client",
-    "server"
+    "app/*",
+    "packages/*"
   ],
   "scripts": {
     "type-check": "npm run type-check -w client && npm run type-check -w server",

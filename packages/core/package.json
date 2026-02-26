@@ -1,0 +1,26 @@
+{
+  "name": "@packages/core",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^7.3.0",
+    "tsx": "^4.21.0",
+    "zod": "^4.3.5"
+  },
+  "devDependencies": {
+    "@prisma/adapter-pg": "^7.4.1",
+    "dotenv": "^17.3.1",
+    "pg": "^8.19.0",
+    "prisma": "^7.3.0",
+    "typescript": "^5.9.3",
+    "zod-prisma-types": "^3.3.10"
+  }
+}

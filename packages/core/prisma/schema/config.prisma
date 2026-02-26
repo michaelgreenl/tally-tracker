@@ -1,0 +1,19 @@
+generator client {
+    provider        = "prisma-client-js"
+    previewFeatures = ["driverAdapters"]
+}
+
+generator zod {
+    provider = "zod-prisma-types"
+    output   = "../../src/types/generated"
+}
+
+generator erd {
+    provider = "prisma-erd-generator"
+    output   = "../../../../docs/diagrams/architecture/ERD.md"
+    theme    = "dark"
+}
+
+datasource db {
+    provider = "postgresql"
+}
