@@ -13,7 +13,7 @@
  * - 5xx / Network: Retryable. Stop processing, retry on next trigger.
  */
 
-import { UNAUTHORIZED } from '@/constants/status-codes';
+import { UNAUTHORIZED } from '@packages/utils';
 import { Network } from '@capacitor/network';
 import { SyncQueueService } from '@/services/sync/queue';
 import { useAuthStore } from '@/stores/authStore';

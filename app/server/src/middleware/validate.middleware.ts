@@ -1,4 +1,4 @@
-import { UNPROCESSABLE_ENTITY, SERVER_ERROR } from '../constants/status-codes.js';
+import { UNPROCESSABLE_ENTITY, SERVER_ERROR } from '@packages/utils';
 import { Request, Response, NextFunction } from 'express';
 import { ZodSchema, ZodError, ZodIssue } from 'zod';
 

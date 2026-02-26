@@ -1,4 +1,4 @@
-import { OK, CREATED, NOT_FOUND, CONFLICT } from '../../../constants/status-codes.js';
+import { OK, CREATED, NOT_FOUND, CONFLICT } from '@packages/utils';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Request, Response, NextFunction } from 'express';
 import request from 'supertest';

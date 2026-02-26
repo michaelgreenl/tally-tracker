@@ -1,4 +1,4 @@
-import { OK_NO_CONTENT } from '../../constants/status-codes.js';
+import { OK_NO_CONTENT } from '@packages/utils';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { idempotency } from '../idempotency.middleware.js';
 

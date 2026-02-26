@@ -19,7 +19,7 @@
  * - 204 responses return an empty object (handles idempotency "already processed" responses).
  */
 
-import { OK_NO_CONTENT, REQUEST_TIMEOUT, UNAUTHORIZED } from '@/constants/status-codes';
+import { OK_NO_CONTENT, REQUEST_TIMEOUT, UNAUTHORIZED } from '@packages/utils';
 import { Preferences } from '@capacitor/preferences';
 import { Capacitor } from '@capacitor/core';
 import { ApiError } from '@/utils/errors';

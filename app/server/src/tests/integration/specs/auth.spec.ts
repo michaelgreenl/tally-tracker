@@ -1,4 +1,4 @@
-import { OK, CREATED, UNAUTHORIZED, NOT_FOUND, UNPROCESSABLE_ENTITY } from '../../../constants/status-codes.js';
+import { OK, CREATED, UNAUTHORIZED, NOT_FOUND, UNPROCESSABLE_ENTITY } from '@packages/utils';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import { randomUUID } from 'crypto';

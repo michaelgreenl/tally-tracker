@@ -1,4 +1,4 @@
-import { OK, OK_NO_CONTENT, BAD_REQUEST, UNAUTHORIZED, REQUEST_TIMEOUT } from '@/constants/status-codes';
+import { OK, OK_NO_CONTENT, BAD_REQUEST, UNAUTHORIZED, REQUEST_TIMEOUT } from '@packages/utils';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('@capacitor/core', () => ({

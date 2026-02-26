@@ -1,4 +1,4 @@
-import { UNAUTHORIZED } from '@/constants/status-codes';
+import { UNAUTHORIZED } from '@packages/utils';
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { Capacitor } from '@capacitor/core';

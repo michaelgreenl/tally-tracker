@@ -1,4 +1,4 @@
-import { UNAUTHORIZED, UNPROCESSABLE_ENTITY, SERVER_ERROR } from '@/constants/status-codes';
+import { UNAUTHORIZED, UNPROCESSABLE_ENTITY, SERVER_ERROR } from '@packages/utils';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { buildCommand } from '../../../../tests/e2e/fixtures/counter.fixture';
 import { ApiError } from '@/utils/errors';
