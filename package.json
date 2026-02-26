@@ -1,28 +1,40 @@
 {
-  "name": "tally-tracker",
-  "version": "0.1.0",
-  "private": true,
-  "description": "A cross-platform, offline-first counter application",
-  "workspaces": [
-    "app/*",
-    "packages/*"
-  ],
-  "scripts": {
-    "type-check": "npm run type-check -w client && npm run type-check -w server",
-    "test:unit": "npm run test:unit -w client && npm run test:spec -w server",
-    "test": "npm run test:unit",
-    "build": "npm run build -w client && npm run build -w server",
-    "dev:client": "npm run dev -w client",
-    "dev:server": "npm run dev -w server"
-  },
-  "keywords": [
-    "counter",
-    "offline-first",
-    "cross-platform",
-    "vue",
-    "ionic",
-    "capacitor"
-  ],
-  "author": "",
-  "license": "ISC"
+    "name": "tally-tracker",
+    "version": "0.1.0",
+    "private": true,
+    "workspaces": [
+        "app/*",
+        "packages/*"
+    ],
+    "scripts": {
+        "dev:client": "npm run dev -w client",
+        "dev:server": "npm run dev -w server",
+        "test": "npm run test:unit && npm run test:e2e",
+        "test:e2e": "npm run test:e2e -w client",
+        "test:unit": "npm run test:unit -w client && npm run test -w server",
+        "build": "npm run build -w client && npm run build -w server",
+        "commit:skip": "SKIP_E2E=1 git commit",
+        "type-check": "npm run type-check -w client && npm run type-check -w server",
+        "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,vue,css,scss}\"",
+        "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,vue,css,scss}\"",
+        "prepare": "husky"
+    },
+    "devDependencies": {
+        "@commitlint/cli": "^20.4.2",
+        "@commitlint/config-conventional": "^20.4.2",
+        "husky": "^9.1.7",
+        "prettier": "^3.8.1",
+        "prettier-plugin-prisma": "^5.0.0"
+    },
+    "description": "A cross-platform, offline-first counter application",
+    "keywords": [
+        "counter",
+        "offline-first",
+        "cross-platform",
+        "vue",
+        "ionic",
+        "capacitor"
+    ],
+    "author": "",
+    "license": "ISC"
 }

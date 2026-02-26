@@ -11,7 +11,7 @@
       'lineColor': '#00ff41',
       'secondaryColor': '#006100',
       'tertiaryColor': '#fff',
-      'noteBkgColor': '#333', 
+      'noteBkgColor': '#333',
       'noteTextColor': '#fff',
       'noteBorderColor': '#fff'
     }
@@ -66,7 +66,7 @@ classDiagram
     HomeView ..> CounterStore : Calls Actions
     HomeView ..> AuthStore : Checks State
     JoinView ..> CounterStore : Calls join()
-    
+
     LoginView ..> AuthStore : Calls login()
     RegisterView ..> AuthStore : Calls register()
 
@@ -75,10 +75,10 @@ classDiagram
 
     CounterService ..> SyncManager : Adds Commands
     CounterService ..> StorageService : Persists Data
-    
+
     SyncManager ..> apiFetch : Network Req
     AuthService ..> apiFetch : Network Req
-    
+
     Socket ..> CounterStore : Pushes Updates
     CapacitorPlugins ..> StorageService : Preferences API
 ```

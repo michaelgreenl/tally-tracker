@@ -12,7 +12,7 @@
       'lineColor': '#00ff41',
       'secondaryColor': '#006100',
       'tertiaryColor': '#fff',
-      'noteBkgColor': '#333', 
+      'noteBkgColor': '#333',
       'noteTextColor': '#fff',
       'noteBorderColor': '#fff'
     }
@@ -27,9 +27,9 @@ sequenceDiagram
     participant API as Backend
 
     App->>Client: apiFetch('/resource')
-    
+
     Client->>Client: Check Capacitor.isNativePlatform()
-    
+
     alt isNative is TRUE (iOS/Android)
         Client->>Storage: Get 'access_token'
         Storage-->>Client: Returns "ey..."
@@ -39,18 +39,18 @@ sequenceDiagram
         Client->>Client: Do NOT add Header
         Note right of Client: Browser automatically attaches<br/>HttpOnly Cookies
     end
-    
+
     Client->>API: Send Request
-    
+
     activate API
     API->>API: Middleware Check
-    
+
     alt Header Present?
         API->>API: Validate Access Token
     else Cookie Present?
         API->>API: Validate Access Token Cookie
     end
-    
+
     alt Token Valid
         API-->>Client: 200 OK
     else Token Expired
@@ -58,3 +58,4 @@ sequenceDiagram
         Note right of Client: Triggers refresh flow<br/>See: token-refresh.md
     end
     deactivate API
+```

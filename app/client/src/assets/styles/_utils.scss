@@ -1,5 +1,5 @@
-@use "sass:map";
-@use "sass:string";
+@use 'sass:map';
+@use 'sass:string';
 
 // Mobile-first responsive breakpoints
 $breakpoints: (
@@ -12,50 +12,50 @@ $breakpoints: (
 ) !default;
 
 @mixin bp-xs-phone {
-    @media (min-width: map.get($breakpoints, "xs")) {
+    @media (min-width: map.get($breakpoints, 'xs')) {
         @content;
     }
 }
 
 @mixin bp-sm-phone {
-    @media (min-width: map.get($breakpoints, "sm")) {
+    @media (min-width: map.get($breakpoints, 'sm')) {
         @content;
     }
 }
 
 @mixin bp-md-tablet {
-    @media (min-width: map.get($breakpoints, "md")) {
+    @media (min-width: map.get($breakpoints, 'md')) {
         @content;
     }
 }
 
 @mixin bp-lg-laptop {
-    @media (min-width: map.get($breakpoints, "lg")) {
+    @media (min-width: map.get($breakpoints, 'lg')) {
         @content;
     }
 }
 
 @mixin bp-xl-desktop {
-    @media (min-width: map.get($breakpoints, "xl")) {
+    @media (min-width: map.get($breakpoints, 'xl')) {
         @content;
     }
 }
 
 @mixin bp-xxl-desktop {
-    @media (min-width: map.get($breakpoints, "xxl")) {
+    @media (min-width: map.get($breakpoints, 'xxl')) {
         @content;
     }
 }
 
 // Custom sizes
 @mixin bp-custom-min($min-width) {
-    @media (min-width: ($min-width + "px")) {
+    @media (min-width: ($min-width + 'px')) {
         @content;
     }
 }
 
 @mixin bp-custom-max($max-width) {
-    @media (max-width: ($max-width + "px")) {
+    @media (max-width: ($max-width + 'px')) {
         @content;
     }
 }
@@ -82,11 +82,11 @@ $breakpoints: (
 @function lighten-color($color, $percentage) {
     $amount: $percentage;
     $remaining: 100% - $amount;
-    @return string.unquote("color-mix(in srgb, #{$color} #{$remaining}, white #{$amount})");
+    @return string.unquote('color-mix(in srgb, #{$color} #{$remaining}, white #{$amount})');
 }
 
 @function darken-color($color, $percentage) {
     $amount: $percentage;
     $remaining: 100% - $amount;
-    @return string.unquote("color-mix(in srgb, #{$color} #{$remaining}, black #{$amount})");
+    @return string.unquote('color-mix(in srgb, #{$color} #{$remaining}, black #{$amount})');
 }

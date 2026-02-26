@@ -11,7 +11,7 @@
       'lineColor': '#00ff41',
       'secondaryColor': '#006100',
       'tertiaryColor': '#fff',
-      'noteBkgColor': '#333', 
+      'noteBkgColor': '#333',
       'noteTextColor': '#fff',
       'noteBorderColor': '#fff'
     }
@@ -20,14 +20,14 @@
 
 stateDiagram-v2
     [*] --> Pending: User Action (Store)
-    
+
     state "Pending (In Queue)" as Pending
     state "Processing (In Flight)" as Processing
     state "Completed (Success)" as Completed
     state "Dead (Fatal Error)" as Dead
 
     Pending --> Processing: Network Connected
-    
+
     Processing --> Completed: API Returns 200/201
     Processing --> Pending: API Returns 500 / Network Fail
     Processing --> Pending: API Returns 401 (Session Expired)
@@ -35,7 +35,7 @@ stateDiagram-v2
 
     Completed --> [*]: Removed from Queue
     Dead --> [*]: Removed from Queue
-    
+
     note right of Pending
         Persisted in LocalStorage.
         Safe from app restart.

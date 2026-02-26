@@ -11,7 +11,7 @@
       'lineColor': '#00ff41',
       'secondaryColor': '#006100',
       'tertiaryColor': '#fff',
-      'noteBkgColor': '#333', 
+      'noteBkgColor': '#333',
       'noteTextColor': '#fff',
       'noteBorderColor': '#fff'
     }
@@ -40,7 +40,7 @@ sequenceDiagram
 
     activate API
     API->>DB: Lookup refresh token
-    
+
     alt Token Valid
         DB-->>API: Token record found, not expired
         API->>API: Generate new access token
@@ -65,3 +65,4 @@ sequenceDiagram
         Client-->>App: Trigger logout + redirect to login
     end
     deactivate API
+```

@@ -11,7 +11,7 @@
       'lineColor': '#00ff41',
       'secondaryColor': '#006100',
       'tertiaryColor': '#fff',
-      'noteBkgColor': '#333', 
+      'noteBkgColor': '#333',
       'noteTextColor': '#fff',
       'noteBorderColor': '#fff'
     }
@@ -30,29 +30,29 @@ sequenceDiagram
 
     Net->>Manager: Event: 'networkStatusChange' (Connected)
     Manager->>Manager: processQueue()
-    
+
     Manager->>Queue: getQueue()
     Queue-->>Manager: Returns [Cmd1, Cmd2]
 
     loop For Each Command
         Manager->>Client: Execute Command (Cmd1)
-        
+
         Note right of Client: apiFetch handles 401 internally:<br/>attempts refresh + retry before<br/>bubbling the error up.
 
         Client->>API: Request (with idempotency key)
-        
+
         alt Success (200/201)
             API-->>Client: 200 OK
             Client-->>Manager: Success
             Manager->>Queue: removeCommand(Cmd1)
             Note right of Manager: Permanent success.<br/>Remove from disk.
-            
+
         else Fatal Error (400/422)
             API-->>Client: 400 Bad Request
             Client-->>Manager: ApiError (4xx)
             Manager->>Queue: removeCommand(Cmd1)
             Note right of Manager: Invalid command (bug).<br/>Remove to unblock queue.
-            
+
         else Session Expired (401 after refresh failed)
             API-->>Client: 401 Unauthorized
             Client-->>Manager: ApiError (401)
@@ -67,5 +67,6 @@ sequenceDiagram
             Manager-->>Manager: Stop Processing (Break Loop)
         end
     end
-    
+
     Manager-->>Manager: isSyncing = false
+```

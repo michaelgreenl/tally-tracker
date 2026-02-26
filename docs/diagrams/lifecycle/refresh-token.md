@@ -11,7 +11,7 @@
       'lineColor': '#00ff41',
       'secondaryColor': '#006100',
       'tertiaryColor': '#fff',
-      'noteBkgColor': '#333', 
+      'noteBkgColor': '#333',
       'noteTextColor': '#fff',
       'noteBorderColor': '#fff'
     }
@@ -20,7 +20,7 @@
 
 stateDiagram-v2
     [*] --> Issued: Login (native or rememberMe)
-    
+
     state "Issued (Active)" as Issued
     state "Rotated (Replaced)" as Rotated
     state "Expired (TTL)" as Expired

@@ -11,7 +11,7 @@
       'lineColor': '#00ff41',
       'secondaryColor': '#006100',
       'tertiaryColor': '#fff',
-      'noteBkgColor': '#333', 
+      'noteBkgColor': '#333',
       'noteTextColor': '#fff',
       'noteBorderColor': '#fff'
     }
@@ -63,12 +63,12 @@ classDiagram
 
     CounterController ..> CounterRepository : Calls Data Methods
     UserController ..> UserRepository : Calls Data Methods
-    
+
     CounterController ..> SocketIO : Emits Events
 
     CounterRepository ..> PrismaClient : Queries
     UserRepository ..> PrismaClient : Queries
     IdempotencyRepository ..> PrismaClient : Queries
-    
+
     PrismaClient ..> PostgresDB : SQL
 ```

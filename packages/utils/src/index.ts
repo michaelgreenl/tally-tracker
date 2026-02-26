@@ -1,1 +1,1 @@
-export * from "./contants/index.js";
+export * from './contants/index.js';

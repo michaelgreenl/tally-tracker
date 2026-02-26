@@ -11,7 +11,7 @@
       'lineColor': '#00ff41',
       'secondaryColor': '#006100',
       'tertiaryColor': '#fff',
-      'noteBkgColor': '#333', 
+      'noteBkgColor': '#333',
       'noteTextColor': '#fff',
       'noteBorderColor': '#fff'
     }
@@ -20,13 +20,13 @@
 
 stateDiagram-v2
     [*] --> Accepted: User clicks "Join Link"
-    
+
     state "Accepted (Active)" as Accepted
     state "Rejected (Hidden)" as Rejected
 
     Accepted --> Rejected: User clicks "Remove"
     Rejected --> Accepted: User clicks "Join Link" again
-    
+
     Accepted --> [*]: Owner Deletes Counter
     Rejected --> [*]: Owner Deletes Counter
 
@@ -39,7 +39,7 @@ stateDiagram-v2
         Hidden from Home View.
         History preserved in DB.
     end note
-    
+
     note bottom of [*]
         Prisma Cascade Delete
         removes the Share record.
