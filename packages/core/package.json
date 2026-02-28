@@ -10,6 +10,10 @@
     "prisma": {
         "seed": "tsx prisma/seed.ts"
     },
+    "scripts": {
+        "generate": "npx prisma generate",
+        "render:start": "npx prisma db push && npx prisma db seed"
+    },
     "dependencies": {
         "@prisma/client": "^7.3.0",
         "tsx": "^4.21.0",

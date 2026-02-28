@@ -13,6 +13,8 @@
         "test:e2e": "npm run test:e2e -w client",
         "test:unit": "npm run test:unit -w client && npm run test -w server",
         "build": "npm run build -w client && npm run build -w server",
+        "render:build": "npm install && npm run generate -w @packages/core && npm run render:build -w server",
+        "render:start": "npm run render:start -w @packages/core && npm run render:start -w server",
         "commit:skip": "SKIP_E2E=1 git commit",
         "type-check": "npm run type-check -w client && npm run type-check -w server",
         "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,vue,css,scss}\"",
