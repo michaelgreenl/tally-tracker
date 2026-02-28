@@ -12,11 +12,10 @@
     },
     "scripts": {
         "generate": "npx prisma generate",
-        "render:start": "npx prisma db push --accept-data-loss && npx prisma db seed"
+        "render:start": "npx prisma db push && npx prisma db seed"
     },
     "dependencies": {
         "@prisma/client": "^7.3.0",
-        "prisma": "^7.3.0",
         "tsx": "^4.21.0",
         "zod": "^4.3.5"
     },
@@ -24,6 +23,7 @@
         "@prisma/adapter-pg": "^7.4.1",
         "dotenv": "^17.3.1",
         "pg": "^8.19.0",
+        "prisma": "^7.3.0",
         "typescript": "^5.9.3",
         "zod-prisma-types": "^3.3.10"
     }
