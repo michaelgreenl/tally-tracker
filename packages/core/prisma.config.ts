@@ -7,4 +7,7 @@ export default defineConfig({
     migrations: {
         seed: 'tsx prisma/seeds/index.ts',
     },
+    datasource: {
+        url: POSTGRES_URL,
+    },
 }) satisfies PrismaConfig;
