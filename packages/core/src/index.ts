@@ -4,4 +4,4 @@ export { PrismaClient };
 
 export * as PrismaTypes from '@prisma/client';
 
-export * from './types/index.js';
+export * from './types/index.ts';

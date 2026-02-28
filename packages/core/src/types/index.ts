@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
-export * from '../types/generated/index.js';
-export type * from '../types/models.js';
-export type * from '../types/requests.js';
-export type * from '../types/responses.js';
+export * from '../types/generated/index.ts';
+export type * from '../types/models.ts';
+export type * from '../types/requests.ts';
+export type * from '../types/responses.ts';
 
 export const HexColorSchema = z
     .string()
