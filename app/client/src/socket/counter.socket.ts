@@ -22,5 +22,5 @@ export const registerCounterListeners = (socket: Socket) => {
         }
     });
 
-    return socket;
+    return socket as Socket;
 };

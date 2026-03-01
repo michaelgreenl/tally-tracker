@@ -1,10 +1,10 @@
-import { io } from 'socket.io-client';
+import { io, Socket } from 'socket.io-client';
 import { registerCounterListeners } from './counter.socket';
 import { useAuthStore } from '@/stores/authStore';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
-let socket = io(API_URL, {
+let socket: Socket = io(API_URL, {
     transports: ['websocket', 'polling'],
     autoConnect: true,
     withCredentials: true,
