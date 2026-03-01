@@ -1,5 +1,5 @@
 generator client {
-    provider        = "prisma-client-js"
+    provider = "prisma-client-js"
 }
 
 generator zod {
@@ -10,7 +10,6 @@ generator zod {
 generator erd {
     provider = "prisma-erd-generator"
     output   = "../../../../docs/diagrams/architecture/ERD.md"
-    theme    = "dark"
 }
 
 datasource db {

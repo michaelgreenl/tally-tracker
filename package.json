@@ -7,16 +7,16 @@
         "packages/*"
     ],
     "scripts": {
-        "dev:client": "npm run dev -w client",
-        "dev:server": "npm run dev -w server",
-        "test": "npm run test:unit && npm run test:e2e",
-        "test:e2e": "npm run test:e2e -w client",
-        "test:unit": "npm run test:unit -w client && npm run test -w server",
-        "build": "npm run build -w client && npm run build -w server",
-        "render:build": "npm install && npm run generate -w @packages/core && npm run render:build -w server",
-        "render:start": "npm run render:start -w @packages/core && npm run render:start -w server",
+        "dev:client": "bun --filter=client run dev",
+        "dev:server": "bun --filter=app/server run dev",
+        "test": "bun run test:unit && bun run test:e2e",
+        "test:e2e": "bun --filter=client run test:e2e",
+        "test:unit": "bun --filter=client run test:unit && bun --filter=server run test",
+        "build": "bun --filter=client run build && bun --filter=server run build",
+        "render:build": "bun install && bun --filter=@packages/core run generate && bun --filter=server run render:build",
+        "render:start": "bun --filter=@packages/core run render:start && bun --filter=server run render:start",
         "commit:skip": "SKIP_E2E=1 git commit",
-        "type-check": "npm run type-check -w client && npm run type-check -w server",
+        "type-check": "bun --filter=client run type-check && bun --filter=server run type-check",
         "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,vue,css,scss}\"",
         "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,vue,css,scss}\"",
         "prepare": "husky"
@@ -38,5 +38,8 @@
         "capacitor"
     ],
     "author": "",
-    "license": "ISC"
+    "license": "ISC",
+    "dependencies": {
+        "bcrypt": "^6.0.0"
+    }
 }

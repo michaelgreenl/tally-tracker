@@ -21,10 +21,12 @@
     },
     "devDependencies": {
         "@prisma/adapter-pg": "^7.4.1",
+        "@prisma/config": "^7.4.2",
         "dotenv": "^17.3.1",
         "pg": "^8.19.0",
         "prisma": "^7.3.0",
+        "prisma-erd-generator": "^2.4.2",
         "typescript": "^5.9.3",
-        "zod-prisma-types": "^3.3.10"
+        "zod-prisma-types": "^3.3.11"
     }
 }
