@@ -1,6 +1,9 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
+echo "🛂 Running type check..."
+bun run type-check
+
 echo "🧪 Running unit tests..."
 bun run test:unit
 
