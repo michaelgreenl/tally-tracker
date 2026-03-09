@@ -1,0 +1,591 @@
+{
+    "workflow": "Initiative Workflow",
+    "version": "0.2",
+    "execution_mode": "semi_automated",
+    "description": "Automates all agent-to-agent routing. Pauses execution at HITL gates for user validation. Includes prompt refinement, context-aware review, cost tracking, and dry run mode.",
+
+    "root_path": "docs/agents/initiatives/active/<initiative-title>/",
+
+    "references": {
+        "agent_dictionary": "docs/agents/agent-dictionary.json",
+        "filesystem_structure": "docs/agents/in-project-initiative-structure.json",
+        "project_context": "docs/agents/project-context.md"
+    },
+
+    "state": {
+        "file": "workflow-state.json",
+        "location": "Lives at root_path. Created on init, updated after every step transition.",
+        "schema": {
+            "initiative_title": "string",
+            "current_phase": "phase_0 | phase_1 | phase_2 | phase_3",
+            "current_step": "string (step ID)",
+            "status": "in_progress | paused_hitl | complete | failed",
+            "dry_run": "boolean — when true, orchestrator logs planned actions but does not invoke agents or write files",
+            "counters": {
+                "clarification": "int — starts at 1, increments on user refinement",
+                "high_level_plan": "int — starts at 1, increments on reject",
+                "low_level_plan": "int — starts at 1, increments on reject",
+                "tests": "int — starts at 1, increments on reject",
+                "implementation": "int — starts at 1, increments on reject",
+                "fix_clarification": "object keyed by <issue-title>, each int starts at 1",
+                "issue_attempts": "object keyed by <issue-title>, each int starts at 1"
+            },
+            "cost_tracking": {
+                "total_estimated_cost_usd": "float — running total",
+                "cost_limit_usd": "float | null — user-configured threshold, pauses workflow when exceeded",
+                "per_step": [
+                    {
+                        "step_id": "string",
+                        "agent": "string (dict_key)",
+                        "model_tier": "opus | sonnet",
+                        "iteration": "int",
+                        "estimated_input_tokens": "int",
+                        "estimated_output_tokens": "int",
+                        "estimated_cost_usd": "float"
+                    }
+                ]
+            },
+            "history": [
+                {
+                    "step_id": "string",
+                    "agent": "string (dict_key)",
+                    "result": "approve | reject | complete | hitl_pause | hitl_approve | hitl_reject | hitl_confirm | hitl_refine",
+                    "iteration": "int",
+                    "notes": "string | null"
+                }
+            ]
+        }
+    },
+
+    "phases": [
+        {
+            "id": "phase_0",
+            "name": "Planning",
+            "steps": [
+                {
+                    "id": "step_0_1",
+                    "name": "Prompt Refinement",
+                    "agent": "docs/agents/initiative/planning/clarifier.md",
+                    "dict_key": "initiative.planning.clarifier.md",
+                    "inputs": ["user_prompt", "project-context.md"],
+                    "counter_key": "clarification",
+                    "outputs": {
+                        "on_complete": {
+                            "writes": "plans/requirements-understanding.md",
+                            "next_step": "step_0_2"
+                        }
+                    }
+                },
+                {
+                    "id": "step_0_2",
+                    "name": "User Confirms Requirements Understanding",
+                    "type": "hitl",
+                    "inputs": ["plans/requirements-understanding.md"],
+                    "outputs": {
+                        "on_approve": {
+                            "next_step": "step_0_3"
+                        },
+                        "on_reject": {
+                            "feedback_source": "user_provided_text",
+                            "increments": "clarification",
+                            "next_step": "step_0_1"
+                        }
+                    }
+                },
+                {
+                    "id": "step_0_3",
+                    "name": "High-Level Planning",
+                    "agent": "docs/agents/initiative/planning/high-level.md",
+                    "dict_key": "initiative.planning.high-level.md",
+                    "inputs": ["plans/requirements-understanding.md", "project-context.md"],
+                    "counter_key": "high_level_plan",
+                    "outputs": {
+                        "on_draft_complete_first_attempt": {
+                            "condition": "high_level_plan counter equals 1",
+                            "writes": "plans/high-level-plans/high-level-{N}/high-level-plan.md",
+                            "next_step": "step_0_4"
+                        },
+                        "on_draft_complete_revision": {
+                            "condition": "high_level_plan counter greater than 1",
+                            "additional_inputs": [
+                                "plans/context.md",
+                                "plans/high-level-plans/high-level-{N-1}/high-level-revisions.md"
+                            ],
+                            "writes": "plans/high-level-plans/high-level-{N}/high-level-plan.md",
+                            "next_step": "step_0_6",
+                            "note": "Skips user HITL and context gathering on revisions — user already approved direction and context already exists"
+                        }
+                    }
+                },
+                {
+                    "id": "step_0_4",
+                    "name": "User Approves Plan Direction",
+                    "type": "hitl",
+                    "inputs": ["latest high-level plan from step_0_3"],
+                    "outputs": {
+                        "on_approve": {
+                            "next_step": "step_0_5"
+                        },
+                        "on_reject": {
+                            "feedback_source": "user_provided_text",
+                            "increments": "high_level_plan",
+                            "next_step": "step_0_3"
+                        }
+                    }
+                },
+                {
+                    "id": "step_0_5",
+                    "name": "Context Gathering",
+                    "agent": "docs/agents/initiative/planning/context-gatherer.md",
+                    "dict_key": "initiative.planning.context-gatherer.md",
+                    "inputs": ["latest approved high-level plan from step_0_3"],
+                    "outputs": {
+                        "on_complete": {
+                            "writes": "plans/context.md",
+                            "next_step": "step_0_6"
+                        }
+                    }
+                },
+                {
+                    "id": "step_0_6",
+                    "name": "High-Level Review with Codebase Context",
+                    "reviewer": "docs/agents/initiative/planning/reviewer/high-level.md",
+                    "reviewer_dict_key": "initiative.planning.reviewer.high-level.md",
+                    "inputs": ["latest high-level plan", "plans/context.md", "user_prompt"],
+                    "counter_key": "high_level_plan",
+                    "outputs": {
+                        "on_approve": {
+                            "writes": "plans/high-level-plan.md",
+                            "next_step": "step_0_7"
+                        },
+                        "on_reject": {
+                            "reviewer_writes": "plans/high-level-plans/high-level-{N}/high-level-revisions.md",
+                            "increments": "high_level_plan",
+                            "next_step": "step_0_3",
+                            "note": "Routes back to HLP with context and revisions. HLP will take the revision path (on_draft_complete_revision) directly to this reviewer."
+                        }
+                    }
+                },
+                {
+                    "id": "step_0_7",
+                    "name": "Low-Level Planning & Review",
+                    "agent": "docs/agents/initiative/planning/low-level.md",
+                    "dict_key": "initiative.planning.low-level.md",
+                    "reviewer": "docs/agents/initiative/planning/reviewer/low-level.md",
+                    "reviewer_dict_key": "initiative.planning.reviewer.low-level.md",
+                    "inputs": ["plans/high-level-plan.md", "plans/context.md"],
+                    "counter_key": "low_level_plan",
+                    "outputs": {
+                        "on_approve": {
+                            "writes": "plans/low-level-plan.md",
+                            "next_step": "step_1_1"
+                        },
+                        "on_reject": {
+                            "reviewer_writes": "plans/low-level-plans/low-level-{N}/low-level-revisions.md",
+                            "agent_writes_next": "plans/low-level-plans/low-level-{N+1}/low-level-plan.md",
+                            "increments": "low_level_plan",
+                            "next_step": "step_0_7"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "id": "phase_1",
+            "name": "Initiative Tests",
+            "steps": [
+                {
+                    "id": "step_1_1",
+                    "name": "Test Writing & Agent Review",
+                    "agent": "docs/agents/initiative/planning/testers/writer.md",
+                    "dict_key": "initiative.planning.testers.writer.md",
+                    "reviewer": "docs/agents/initiative/planning/testers/reviewer.md",
+                    "reviewer_dict_key": "initiative.planning.testers.reviewer.md",
+                    "inputs": ["plans/low-level-plan.md"],
+                    "counter_key": "tests",
+                    "outputs": {
+                        "on_approve": {
+                            "next_step": "step_1_2",
+                            "note": "Reviewer has requires_hitl: true. Orchestrator must pause."
+                        },
+                        "on_reject": {
+                            "reviewer_writes": "tests/<initiative-title>-tests-{N}/revisions.md",
+                            "agent_writes_next": "tests/<initiative-title>-tests-{N+1}/<initiative-title>.test.ts",
+                            "increments": "tests",
+                            "next_step": "step_1_1"
+                        }
+                    }
+                },
+                {
+                    "id": "step_1_2",
+                    "name": "User HITL Validation (Initiative Tests)",
+                    "type": "hitl",
+                    "triggered_by": "initiative.planning.testers.reviewer.md",
+                    "inputs": ["latest test file from step_1_1"],
+                    "outputs": {
+                        "on_approve": {
+                            "writes": "tests/<initiative-title>.test.ts",
+                            "next_step": "step_2_1"
+                        },
+                        "on_reject": {
+                            "feedback_source": "user_provided_text",
+                            "increments": "tests",
+                            "next_step": "step_1_1"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "id": "phase_2",
+            "name": "Implementation",
+            "steps": [
+                {
+                    "id": "step_2_1",
+                    "name": "Implementation & Review",
+                    "agent": "docs/agents/initiative/implement/implementer.md",
+                    "dict_key": "initiative.implement.implementer.md",
+                    "reviewer": "docs/agents/initiative/implement/reviewer.md",
+                    "reviewer_dict_key": "initiative.implement.reviewer.md",
+                    "inputs": ["plans/low-level-plan.md", "plans/context.md", "tests/<initiative-title>.test.ts"],
+                    "counter_key": "implementation",
+                    "process": [
+                        "Write code to satisfy plans",
+                        "Run tests to self-verify",
+                        "Write summary to implementation/implementation-{N}/log.md"
+                    ],
+                    "outputs": {
+                        "on_approve": {
+                            "writes": "final-report.md",
+                            "next_step": null,
+                            "terminal": true,
+                            "status": "Initiative Implementation Complete"
+                        },
+                        "on_reject": {
+                            "reviewer_writes": "implementation/implementation-{N}/revisions.md",
+                            "agent_writes_next": "implementation/implementation-{N+1}/log.md",
+                            "increments": "implementation",
+                            "next_step": "step_2_1"
+                        },
+                        "on_critical_bug": {
+                            "next_step": "phase_3",
+                            "note": "Escalate to Issues workflow. User must write issue.md to proceed."
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "id": "phase_3",
+            "name": "Issues (Bug Fixing)",
+            "entry_condition": "critical_unforeseen_bug OR user_creates_issue",
+            "scoped_to": "<issue-title>",
+            "steps": [
+                {
+                    "id": "step_3_1",
+                    "name": "Issue Clarification",
+                    "agent": "docs/agents/initiative/fix/clarifier.md",
+                    "dict_key": "initiative.fix.clarifier.md",
+                    "inputs": ["issues/active/<issue-title>/issue.md"],
+                    "counter_key": "fix_clarification",
+                    "outputs": {
+                        "on_complete": {
+                            "writes": "issues/active/<issue-title>/issue-understanding.md",
+                            "next_step": "step_3_2"
+                        }
+                    }
+                },
+                {
+                    "id": "step_3_2",
+                    "name": "User Confirms Issue Understanding",
+                    "type": "hitl",
+                    "inputs": ["issues/active/<issue-title>/issue-understanding.md"],
+                    "outputs": {
+                        "on_approve": {
+                            "next_step": "step_3_3"
+                        },
+                        "on_reject": {
+                            "feedback_source": "user_provided_text",
+                            "increments": "fix_clarification.<issue-title>",
+                            "next_step": "step_3_1"
+                        }
+                    }
+                },
+                {
+                    "id": "step_3_3",
+                    "name": "Issue Context Gathering",
+                    "actor": "user writes issue.md first",
+                    "agent": "docs/agents/initiative/fix/context-gatherer.md",
+                    "dict_key": "initiative.fix.context-gatherer.md",
+                    "inputs": [
+                        "issues/active/<issue-title>/issue.md",
+                        "issues/active/<issue-title>/issue-understanding.md"
+                    ],
+                    "outputs": {
+                        "on_complete": {
+                            "writes": "issues/active/<issue-title>/context.md",
+                            "next_step": "step_3_4"
+                        }
+                    }
+                },
+                {
+                    "id": "step_3_4",
+                    "name": "Fix Planning",
+                    "agent": "docs/agents/initiative/fix/planner.md",
+                    "dict_key": "initiative.fix.planner.md",
+                    "inputs": [
+                        "issues/active/<issue-title>/issue.md",
+                        "issues/active/<issue-title>/issue-understanding.md",
+                        "issues/active/<issue-title>/context.md"
+                    ],
+                    "outputs": {
+                        "on_complete": {
+                            "writes": "issues/active/<issue-title>/fix-plan.md",
+                            "next_step": "step_3_5"
+                        }
+                    }
+                },
+                {
+                    "id": "step_3_5",
+                    "name": "Issue Test Writing & Agent Review",
+                    "agent": "docs/agents/initiative/fix/testers/writer.md",
+                    "dict_key": "initiative.fix.testers.writer.md",
+                    "reviewer": "docs/agents/initiative/fix/testers/reviewer.md",
+                    "reviewer_dict_key": "initiative.fix.testers.reviewer.md",
+                    "inputs": ["issues/active/<issue-title>/fix-plan.md"],
+                    "counter_key": "issue_attempts",
+                    "outputs": {
+                        "on_approve": {
+                            "next_step": "step_3_6",
+                            "note": "Reviewer has requires_hitl: true. Orchestrator must pause."
+                        },
+                        "on_reject": {
+                            "reviewer_writes": "issues/active/<issue-title>/attempt-{N}/revisions.md",
+                            "agent_writes_next": "issues/active/<issue-title>/attempt-{N+1}/issue.test.ts",
+                            "increments": "issue_attempts.<issue-title>",
+                            "next_step": "step_3_5"
+                        }
+                    }
+                },
+                {
+                    "id": "step_3_6",
+                    "name": "User HITL Validation (Issue Tests)",
+                    "type": "hitl",
+                    "triggered_by": "initiative.fix.testers.reviewer.md",
+                    "inputs": ["latest issue test file from step_3_5"],
+                    "outputs": {
+                        "on_approve": {
+                            "writes": "issues/active/<issue-title>/issue.test.ts",
+                            "next_step": "step_3_7"
+                        },
+                        "on_reject": {
+                            "feedback_source": "user_provided_text",
+                            "increments": "issue_attempts.<issue-title>",
+                            "next_step": "step_3_5"
+                        }
+                    }
+                },
+                {
+                    "id": "step_3_7",
+                    "name": "Fix Implementation & Review",
+                    "agent": "docs/agents/initiative/fix/implementer.md",
+                    "dict_key": "initiative.fix.implementer.md",
+                    "reviewer": "docs/agents/initiative/fix/reviewer.md",
+                    "reviewer_dict_key": "initiative.fix.reviewer.md",
+                    "inputs": ["issues/active/<issue-title>/fix-plan.md", "issues/active/<issue-title>/issue.test.ts"],
+                    "counter_key": "issue_attempts",
+                    "process": ["Apply fix", "Write actions to issues/active/<issue-title>/attempt-{N}/log.md"],
+                    "outputs": {
+                        "on_approve": {
+                            "moves": "issues/active/<issue-title>/ → issues/fixed/<issue-title>/",
+                            "updates": "issues/all-issues.md",
+                            "next_step": null,
+                            "terminal": true,
+                            "status": "Issue Resolved"
+                        },
+                        "on_reject": {
+                            "reviewer_writes": "issues/active/<issue-title>/attempt-{N}/revisions.md",
+                            "increments": "issue_attempts.<issue-title>",
+                            "next_step": "step_3_4",
+                            "note": "Loops back to Fix Planning. Both planner and implementer retry."
+                        }
+                    }
+                }
+            ]
+        }
+    ],
+
+    "nodes": [
+        { "id": "User", "type": "user", "label": "User Prompt / HITL Actor" },
+        {
+            "id": "CLAR",
+            "type": "agent",
+            "label": "Prompt Clarifier",
+            "dict_key": "initiative.planning.clarifier.md"
+        },
+        {
+            "id": "HITL_CLAR",
+            "type": "hitl",
+            "label": "User Confirms Requirements Understanding"
+        },
+        {
+            "id": "HLP",
+            "type": "agent",
+            "label": "High-Level Planner",
+            "dict_key": "initiative.planning.high-level.md"
+        },
+        {
+            "id": "HITL_PLAN",
+            "type": "hitl",
+            "label": "User Approves Plan Direction"
+        },
+        {
+            "id": "CG",
+            "type": "agent",
+            "label": "Context Gatherer",
+            "dict_key": "initiative.planning.context-gatherer.md"
+        },
+        {
+            "id": "HLR",
+            "type": "review",
+            "label": "High-Level Reviewer",
+            "dict_key": "initiative.planning.reviewer.high-level.md"
+        },
+        {
+            "id": "LLP",
+            "type": "agent",
+            "label": "Low-Level Planner",
+            "dict_key": "initiative.planning.low-level.md"
+        },
+        {
+            "id": "LLR",
+            "type": "review",
+            "label": "Low-Level Reviewer",
+            "dict_key": "initiative.planning.reviewer.low-level.md"
+        },
+        {
+            "id": "TW",
+            "type": "agent",
+            "label": "Test Writer",
+            "dict_key": "initiative.planning.testers.writer.md"
+        },
+        {
+            "id": "TR",
+            "type": "review",
+            "label": "Test Reviewer",
+            "dict_key": "initiative.planning.testers.reviewer.md",
+            "requires_hitl": true
+        },
+        {
+            "id": "HITL_INIT",
+            "type": "hitl",
+            "label": "User HITL Gate (Initiative Tests)"
+        },
+        {
+            "id": "IMP",
+            "type": "agent",
+            "label": "Implementer",
+            "dict_key": "initiative.implement.implementer.md"
+        },
+        {
+            "id": "IMR",
+            "type": "review",
+            "label": "Implementation Reviewer",
+            "dict_key": "initiative.implement.reviewer.md"
+        },
+        {
+            "id": "FCLAR",
+            "type": "agent",
+            "label": "Fix Issue Clarifier",
+            "dict_key": "initiative.fix.clarifier.md"
+        },
+        {
+            "id": "HITL_FCLAR",
+            "type": "hitl",
+            "label": "User Confirms Issue Understanding"
+        },
+        {
+            "id": "ICG",
+            "type": "agent",
+            "label": "Issue Context Gatherer",
+            "dict_key": "initiative.fix.context-gatherer.md"
+        },
+        {
+            "id": "FP",
+            "type": "agent",
+            "label": "Fix Planner",
+            "dict_key": "initiative.fix.planner.md"
+        },
+        {
+            "id": "FTW",
+            "type": "agent",
+            "label": "Fix Test Writer",
+            "dict_key": "initiative.fix.testers.writer.md"
+        },
+        {
+            "id": "FTR",
+            "type": "review",
+            "label": "Fix Test Reviewer",
+            "dict_key": "initiative.fix.testers.reviewer.md",
+            "requires_hitl": true
+        },
+        {
+            "id": "HITL_FIX",
+            "type": "hitl",
+            "label": "User HITL Gate (Issue Tests)"
+        },
+        {
+            "id": "FIMP",
+            "type": "agent",
+            "label": "Fix Implementer",
+            "dict_key": "initiative.fix.implementer.md"
+        },
+        {
+            "id": "FIMR",
+            "type": "review",
+            "label": "Fix Reviewer",
+            "dict_key": "initiative.fix.reviewer.md"
+        }
+    ],
+
+    "edges": [
+        { "from": "User", "to": "CLAR", "on": "submit_prompt" },
+        { "from": "CLAR", "to": "HITL_CLAR", "on": "understanding_complete" },
+        { "from": "HITL_CLAR", "to": "CLAR", "on": "refine" },
+        { "from": "HITL_CLAR", "to": "HLP", "on": "confirm" },
+        { "from": "HLP", "to": "HITL_PLAN", "on": "draft_complete_first_attempt" },
+        { "from": "HLP", "to": "HLR", "on": "draft_complete_revision" },
+        { "from": "HITL_PLAN", "to": "HLP", "on": "reject" },
+        { "from": "HITL_PLAN", "to": "CG", "on": "approve" },
+        { "from": "CG", "to": "HLR", "on": "context_written" },
+        { "from": "HLR", "to": "HLP", "on": "reject" },
+        { "from": "HLR", "to": "LLP", "on": "approve" },
+        { "from": "LLP", "to": "LLR", "on": "draft_complete" },
+        { "from": "LLR", "to": "LLP", "on": "reject" },
+        { "from": "LLR", "to": "TW", "on": "approve" },
+        { "from": "TW", "to": "TR", "on": "draft_complete" },
+        { "from": "TR", "to": "TW", "on": "reject" },
+        { "from": "TR", "to": "HITL_INIT", "on": "approve" },
+        { "from": "HITL_INIT", "to": "TW", "on": "reject" },
+        { "from": "HITL_INIT", "to": "IMP", "on": "approve" },
+        { "from": "IMP", "to": "IMR", "on": "implementation_complete" },
+        { "from": "IMR", "to": "IMP", "on": "reject" },
+        { "from": "IMR", "to": null, "on": "approve", "terminal": true },
+        { "from": "IMR", "to": "ICG", "on": "critical_bug" },
+
+        { "from": "User", "to": "FCLAR", "on": "create_issue" },
+        { "from": "FCLAR", "to": "HITL_FCLAR", "on": "understanding_complete" },
+        { "from": "HITL_FCLAR", "to": "FCLAR", "on": "refine" },
+        { "from": "HITL_FCLAR", "to": "ICG", "on": "confirm" },
+        { "from": "ICG", "to": "FP", "on": "context_written" },
+        { "from": "FP", "to": "FTW", "on": "plan_written" },
+        { "from": "FTW", "to": "FTR", "on": "draft_complete" },
+        { "from": "FTR", "to": "FTW", "on": "reject" },
+        { "from": "FTR", "to": "HITL_FIX", "on": "approve" },
+        { "from": "HITL_FIX", "to": "FTW", "on": "reject" },
+        { "from": "HITL_FIX", "to": "FIMP", "on": "approve" },
+        { "from": "FIMP", "to": "FIMR", "on": "fix_complete" },
+        { "from": "FIMR", "to": "FP", "on": "reject" },
+        { "from": "FIMR", "to": null, "on": "approve", "terminal": true }
+    ]
+}
