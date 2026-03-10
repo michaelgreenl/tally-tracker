@@ -78,7 +78,7 @@ Enforce a maximum of 5 counters for non-premium accounts (`isPremium === false`)
 - `ion-modal` upgrade prompt (boilerplate content)
 - New `UpgradeView.vue` page (boilerplate, no real upgrade logic)
 - New `/upgrade` route wired into the router
-- Server-side limit check in `counter.controller.ts` 
+- Server-side limit check in `counter.controller.ts`
 - `isPremium` field on the `User` Prisma model (schema + migration reset/reinit if needed)
 - `isPremium` exposed via `authStore` (already present per project context — confirm presence)
 
@@ -106,5 +106,5 @@ Enforce a maximum of 5 counters for non-premium accounts (`isPremium === false`)
 | A6 | The modal uses `ion-modal`. | User answer (Q4) |
 | A7 | The modal CTA navigates to a new `UpgradeView.vue` at `/upgrade`. | User answer (Q3) |
 | A8 | The "Add Counter" button has no visual change (no lock, badge, or disabled state). | User answer (Q5) |
-| A9 | The server-side check is a simple guard in the controller/repository — no new service layer. | Project context (no server service layer) |
+| A9 | The server-side check is a simple guard in `counter.controller.ts` — no new service layer. | Project context (no server service layer) + user confirmation |
 | A10 | The server should return a non-2xx error (e.g., `403` or `422`) when a non-premium user exceeds the limit via a direct API call. | User clarification (server enforcement requirement) |
