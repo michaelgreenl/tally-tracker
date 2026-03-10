@@ -206,13 +206,14 @@
                     "outputs": {
                         "on_approve": {
                             "next_step": "step_1_2",
-                            "note": "Reviewer has requires_hitl: true. Orchestrator must pause."
+                            "note": "Reviewer has requires_hitl: true. Orchestrator must pause. Tests are now in codebase (app/client or app/server), manifest documents their location."
                         },
                         "on_reject": {
                             "reviewer_writes": "tests/<initiative-title>-tests-{N}/revisions.md",
-                            "agent_writes_next": "tests/<initiative-title>-tests-{N+1}/<initiative-title>.test.ts",
+                            "agent_writes_next": "tests/<initiative-title>-tests-{N+1}/log.md",
                             "increments": "tests",
-                            "next_step": "step_1_1"
+                            "next_step": "step_1_1",
+                            "note": "Writer creates new attempt log documenting test locations in codebase"
                         }
                     }
                 },
@@ -221,11 +222,14 @@
                     "name": "User HITL Validation (Initiative Tests)",
                     "type": "hitl",
                     "triggered_by": "initiative.planning.testers.reviewer.md",
-                    "inputs": ["latest test file from step_1_1"],
+                    "inputs": [
+                        "test manifest/log from step_1_1 describing actual test file locations in app/client or app/server"
+                    ],
                     "outputs": {
                         "on_approve": {
-                            "writes": "tests/<initiative-title>.test.ts",
-                            "next_step": "step_2_1"
+                            "writes": "tests/test-manifest.md",
+                            "next_step": "step_2_1",
+                            "note": "Manifest finalizes the record of test locations in codebase"
                         },
                         "on_reject": {
                             "feedback_source": "user_provided_text",
@@ -247,7 +251,12 @@
                     "dict_key": "initiative.implement.implementer.md",
                     "reviewer": "docs/agents/initiative/implement/reviewer.md",
                     "reviewer_dict_key": "initiative.implement.reviewer.md",
-                    "inputs": ["plans/low-level-plan.md", "plans/context.md", "tests/<initiative-title>.test.ts"],
+                    "inputs": [
+                        "plans/low-level-plan.md",
+                        "plans/context.md",
+                        "tests/test-manifest.md",
+                        "actual test files in app/client or app/server referenced by manifest"
+                    ],
                     "counter_key": "implementation",
                     "process": [
                         "Write code to satisfy plans",
@@ -357,13 +366,14 @@
                     "outputs": {
                         "on_approve": {
                             "next_step": "step_3_6",
-                            "note": "Reviewer has requires_hitl: true. Orchestrator must pause."
+                            "note": "Reviewer has requires_hitl: true. Orchestrator must pause. Test is now in codebase (app/client or app/server), log documents its location."
                         },
                         "on_reject": {
-                            "reviewer_writes": "issues/active/<issue-title>/attempt-{N}/revisions.md",
-                            "agent_writes_next": "issues/active/<issue-title>/attempt-{N+1}/issue.test.ts",
+                            "reviewer_writes": "issues/active/<issue-title>/issue-tests-{N}/revisions.md",
+                            "agent_writes_next": "issues/active/<issue-title>/issue-tests-{N+1}/log.md",
                             "increments": "issue_attempts.<issue-title>",
-                            "next_step": "step_3_5"
+                            "next_step": "step_3_5",
+                            "note": "Writer creates new attempt log documenting test location in codebase"
                         }
                     }
                 },
@@ -372,11 +382,14 @@
                     "name": "User HITL Validation (Issue Tests)",
                     "type": "hitl",
                     "triggered_by": "initiative.fix.testers.reviewer.md",
-                    "inputs": ["latest issue test file from step_3_5"],
+                    "inputs": [
+                        "issue test manifest/log from step_3_5 describing actual test file location in app/client or app/server"
+                    ],
                     "outputs": {
                         "on_approve": {
-                            "writes": "issues/active/<issue-title>/issue.test.ts",
-                            "next_step": "step_3_7"
+                            "writes": "issues/active/<issue-title>/issue-test-manifest.md",
+                            "next_step": "step_3_7",
+                            "note": "Manifest finalizes the record of issue test location in codebase"
                         },
                         "on_reject": {
                             "feedback_source": "user_provided_text",
@@ -392,7 +405,11 @@
                     "dict_key": "initiative.fix.implementer.md",
                     "reviewer": "docs/agents/initiative/fix/reviewer.md",
                     "reviewer_dict_key": "initiative.fix.reviewer.md",
-                    "inputs": ["issues/active/<issue-title>/fix-plan.md", "issues/active/<issue-title>/issue.test.ts"],
+                    "inputs": [
+                        "issues/active/<issue-title>/fix-plan.md",
+                        "issues/active/<issue-title>/issue-test-manifest.md",
+                        "actual issue test file in app/client or app/server referenced by manifest"
+                    ],
                     "counter_key": "issue_attempts",
                     "process": ["Apply fix", "Write actions to issues/active/<issue-title>/attempt-{N}/log.md"],
                     "outputs": {
