@@ -52,8 +52,35 @@ You are invoked at **Phase 3, Step 3.3** of the initiative workflow. You are inv
 ### Re-Invocation After Failed Implementation Attempt
 
 - All initial inputs (fix-plan.md may have been updated by the re-invoked Fix Planner), plus:
-- **Your Previous Test File** — Archived at **`<initiative>/issues/active/<issue-title>/attempt-NNNN/issue.{test,spec,cy}.{ts,tsx,js,jsx}`**.
+- **Your Previous Test File** — Located in the codebase at the path documented in your previous attempt log.
 - **Attempt Revisions** — Located at **`<initiative>/issues/active/<issue-title>/attempt-NNNN/revisions.md`**. The Fix Reviewer's feedback indicating why the test needs revision.
+
+---
+
+## Choosing the Right Test Type for Issue Tests
+
+For issue/bug testing, the test type depends on what code is buggy:
+
+### Unit Test Fixes → `*.spec.ts`
+
+- **When:** Bug is in a single utility, function, or component
+- **Where:** **`__tests__/`** colocated with the file being fixed
+    - Example: `app/server/src/utils/__tests__/formatter.spec.ts` tests bug in `formatter.ts`
+- **File extension:** MUST be `.ts`
+
+### Server Integration Test Fixes → `*.test.ts`
+
+- **When:** Bug is in API integration, database interaction, or multi-module flow
+- **Where:** **`app/server/src/tests/integration/specs/*`**
+    - Example: `app/server/src/tests/integration/specs/auth-flow.test.ts`
+- **File extension:** MUST be `.ts`
+
+### Client E2E Test Fixes → `*.cy.ts`
+
+- **When:** Bug affects UI or client behavior end-to-end
+- **Where:** **`app/client/src/tests/e2e/specs/*`**
+    - Example: `app/client/src/tests/e2e/specs/login-flow.cy.ts`
+- **File extension:** MUST be `.ts`
 
 ---
 
@@ -63,15 +90,12 @@ You are invoked at **Phase 3, Step 3.3** of the initiative workflow. You are inv
 
 Write the executable test file **directly into the monorepo codebase**, NOT into the docs directory. Tests are code, not workflow artifacts.
 
-**Determine the correct location:**
+**Determine the correct location and test type:**
 
-1. Read the fix plan to identify whether the bug affects **client-side** or **server-side** code
-2. Read **`<initiative>/issues/active/<issue-title>/context.md`** to understand the existing codebase structure and established test locations
-3. Place your test file in the appropriate monorepo location following existing conventions:
-    - **Client-side tests:** `app/client/src/__tests__/` (co-located with source) or `app/client/tests/` (for integration tests)
-    - **Server-side tests:** `app/server/src/**/__tests__/` (co-located with modules) or `app/server/src/tests/` (for integration tests)
-
-The file extension MUST match the project's established test convention (e.g., `.test.ts`, `.spec.ts`, `.cy.ts`).
+1. Read the fix plan to identify which code is buggy and which component or module has the issue
+2. Choose the appropriate test type from the section above based on the scope of the bug
+3. Place your test file using the exact naming and location rules for that test type
+4. **File extension MUST be `.ts` exclusively** (no `.tsx`, `.jsx`, or `.js`)
 
 ### Attempt Log (in docs directory)
 
@@ -81,9 +105,11 @@ Where `NNNN` is the current attempt number (e.g., `0001`, `0002`).
 
 Your log MUST include:
 
-- **Test File Location:** Exact repo-relative path where the issue test was created (e.g., `app/server/src/middleware/__tests__/auth.bug-123.spec.ts`)
-- **Location Rationale:** Why you chose client or server, and why within that area
-- **Test Commands:** How to run the test (e.g., `npm run test:server`)
+- **Test Type:** Clearly state which type you chose (unit `.spec.ts`, server integration `.test.ts`, or client e2e `.cy.ts`)
+- **Test File Location:** Exact repo-relative path where the issue test was created (e.g., `app/server/src/middleware/__tests__/auth.spec.ts`)
+- **Filename:** Confirm the filename follows the correct pattern (e.g., `auth.spec.ts` NOT `auth.test.ts` or `auth.test.tsx`)
+- **Location Rationale:** Why this test type was chosen (scope of the bug), and why this location is correct
+- **Test Commands:** How to run the test (e.g., `npm run test:server` for server tests, `npm run test:client` for client)
 - **Bug Reproduction & Fix Verification:** What scenarios are tested to reproduce the bug and verify the fix
 
 ---
@@ -92,12 +118,24 @@ Your log MUST include:
 
 All constraints from the base Test Writer prompt apply. The following additional constraints are specific to fix test writing:
 
-### 0. MONOREPO-NATIVE TEST PLACEMENT (CRITICAL)
+### 0. MONOREPO TEST NAMING AND PLACEMENT (CRITICAL)
 
-- Executable tests are code, not workflow documents—they must live in the monorepo codebase, NOT in `docs/agents/...`
-- **Always** write the issue test directly to `app/client/` or `app/server/` following the patterns already established in those locations
-- **Only** write an attempt log in the docs directory to record where the test was placed and how to run it
-- Do **not** write the executable issue test into `docs/agents/initiatives/` or any other workflow directory
+**File Naming and Extension Rules (STRICTLY ENFORCED):**
+
+- Unit tests MUST be named **`*.spec.ts`** (e.g., `formatter.spec.ts`)
+- Server integration tests MUST be named **`*.test.ts`** (e.g., `auth-flow.test.ts`)
+- Client E2E tests MUST be named **`*.cy.ts`** (e.g., `login.cy.ts`)
+- **File extension MUST be `.ts`** — NO `.tsx`, `.jsx`, or `.js` variants
+- Violations of these rules are grounds for immediate rejection by the Test Reviewer
+
+**Placement Rules (STRICTLY ENFORCED):**
+
+- Unit tests go in **`__tests__/`** colocated with the file being fixed
+- Server integration tests go in **`app/server/src/tests/integration/specs/*`**
+- Client E2E tests go in **`app/client/src/tests/e2e/specs/*`**
+- Executable tests are code—they must live in `app/client/` or `app/server/`, NOT in `docs/agents/...`
+- **Only** write an attempt log in the docs directory to record where the test was placed
+- Do **not** write the executable issue test into `docs/agents/issues/` or any other workflow directory
 
 ### 1. REPRODUCE THEN VERIFY PATTERN
 

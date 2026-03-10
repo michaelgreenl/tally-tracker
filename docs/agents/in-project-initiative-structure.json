@@ -2,6 +2,23 @@
     "project-root": {
         "docs": {
             "agents": {
+                "workflow-infrastructure": {
+                    "agent-dictionary.json": {
+                        "description": "Registry of all agent roles, responsibilities, and workflow positions. Maps agent prompt file locations to their names and workflow purposes. Defines which agents are testers, reviewers, planners, clarifiers, implementers, and their relationships."
+                    },
+                    "in-project-initiative-structure.json": {
+                        "description": "This file. Documents the complete file structure of the workflow system, including project-level workflow files and all initiative/issue subdirectories. Serves as a blueprint for what the workflow creates and maintains."
+                    },
+                    "project-context.md": {
+                        "description": "Static project overview maintained manually. Describes tech stack, directory structure, key modules, established patterns, and testing conventions. Fed to planners and clarifiers as grounding context. Updated when project architecture changes. Defines monorepo test naming (*.spec.ts, *.test.ts, *.cy.ts) and locations."
+                    },
+                    "workflow.json": {
+                        "description": "Orchestration spec for the initiative workflow. Defines phases, steps, agents, HITL gates, inputs/outputs, and routing logic. Machine-readable configuration that drives agent routing and state management."
+                    },
+                    "workflow.md": {
+                        "description": "Human-readable workflow documentation. Explains each phase, step, and decision point in narrative form. Includes diagrams showing agent routing and data flow. Reference for understanding the overall workflow."
+                    }
+                },
                 "project-context.md": {
                     "description": "Static project overview maintained manually. Describes tech stack, directory structure, key modules, established patterns, and testing conventions. Fed to planners and clarifiers as grounding context. Updated when project architecture changes."
                 },

@@ -139,8 +139,9 @@ For each fix plan step:
 
 ### Test Results
 
-- **Fix Test:** `<issue-title>/issue.{test,spec,cy}.{ts,tsx,js,jsx}` — [PASS / FAIL]
-- **Initiative Test:** `<initiative>/tests/<initiative-title>.{test,spec,cy}.{ts,tsx,js,jsx}` — [PASS / FAIL / NOT FOUND]
+- **Issue Fix Test:** [Path to actual test file documented in issue-test-manifest.md] — [PASS / FAIL]
+- **Initiative Test Suite:** [Path to actual test file(s) documented in test-manifest.md, if it exists] — [PASS / FAIL / NOT FOUND]
+- **Test Commands Used:** [Exact npm or test commands run to execute the tests]
 - **Fix Cycles:** [Number of test-fix-rerun cycles, "0" if tests passed on first run]
 - **Failure Details** _(only if failures occurred):_
     - Cycle 1: [which test failed, the error, what implementation change was made]

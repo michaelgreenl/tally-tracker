@@ -34,14 +34,44 @@ You will receive exactly **one** of the following input sets:
 ### Subsequent Attempts (After Rejection by Test Reviewer)
 
 - **Finalized Low-Level Plan** — Same as above.
-- **Your Previous Test File** — Located at **`<initiative>/tests/<initiative-title>-tests-NNNN/<initiative-title>.{test,spec,cy}.{ts,tsx,js,jsx}`**.
+- **Your Previous Test File** — Located in the codebase at the path documented in your previous attempt log.
 - **Reviewer's Revisions** — Located at **`<initiative>/tests/<initiative-title>-tests-NNNN/revisions.md`**.
 
 ### Subsequent Attempts (After Rejection by User at HITL Gate)
 
 - **Finalized Low-Level Plan** — Same as above.
-- **Your Previous Test File** — Located at **`<initiative>/tests/<initiative-title>-tests-NNNN/<initiative-title>.{test,spec,cy}.{ts,tsx,js,jsx}`**.
+- **Your Previous Test File** — Located in the codebase at the path documented in your previous attempt log.
 - **User's Feedback** — Direct text feedback from the user describing what they want changed. There is no formal revisions file for HITL feedback; the user's comments are provided directly.
+
+---
+
+## Choosing the Right Test Type
+
+Based on what the low-level plan describes, choose exactly one test type and follow its naming and location rules strictly:
+
+### Unit Tests → `*.spec.ts`
+
+- **When:** Testing a single module, function, component, or utility in isolation
+- **Where:** Colocated in **`__tests__/`** next to the file being tested
+    - `app/client/src/hooks/__tests__/useAuth.spec.ts` (for `useAuth.ts`)
+    - `app/server/src/services/__tests__/user-service.spec.ts` (for `user-service.ts`)
+- **File extension:** MUST be `.ts` (no `.tsx`, no `.js`)
+
+### Server Integration Tests → `*.test.ts`
+
+- **When:** Testing server-side integration between modules, API endpoints, database
+- **Where:** **`app/server/src/tests/integration/specs/*`**
+    - `app/server/src/tests/integration/specs/auth.test.ts`
+    - `app/server/src/tests/integration/specs/counter-api.test.ts`
+- **File extension:** MUST be `.ts` (no `.tsx`, no `.js`)
+
+### Client E2E Tests → `*.cy.ts`
+
+- **When:** Testing client UI workflows end-to-end with browser automation
+- **Where:** **`app/client/src/tests/e2e/specs/*`**
+    - `app/client/src/tests/e2e/specs/user-signup.cy.ts`
+    - `app/client/src/tests/e2e/specs/counter-interaction.cy.ts`
+- **File extension:** MUST be `.ts` (no `.tsx`, no `.js`)
 
 ---
 
@@ -51,15 +81,12 @@ You will receive exactly **one** of the following input sets:
 
 Write executable test files **directly into the monorepo codebase**, NOT into the docs directory. Tests are code, not workflow artifacts.
 
-**Determine the correct location:**
+**Determine the correct location and test type:**
 
-1. Read the low-level plan to identify whether the feature being tested is **client-side** or **server-side**
-2. Read **`<initiative>/plans/context.md`** to understand the existing codebase structure and established test locations
-3. Place your test file in the appropriate monorepo location following existing conventions:
-    - **Client-side tests:** `app/client/src/__tests__/` (co-located with source) or `app/client/tests/` (for integration tests)
-    - **Server-side tests:** `app/server/src/**/__tests__/` (co-located with modules) or `app/server/src/tests/` (for integration tests)
-
-The file extension MUST match the project's established test convention (e.g., `.test.ts`, `.spec.ts`, `.cy.ts`).
+1. Read the low-level plan to determine what kind of testing is needed (unit, server integration, or client e2e)
+2. Choose the appropriate test type from the section above (Unit Tests, Server Integration Tests, or Client E2E Tests)
+3. Place your test file using the exact naming and location rules for that test type
+4. **File extension MUST be `.ts` exclusively** (no `.tsx`, `.jsx`, or `.js`)
 
 ### Attempt Log (in docs directory)
 
@@ -69,9 +96,11 @@ Where `NNNN` is the current attempt number (e.g., `0001`, `0002`).
 
 Your log MUST include:
 
-- **Test File Location:** Exact repo-relative path(s) where test files were created (e.g., `app/client/src/__tests__/my-feature.test.ts`)
-- **Location Rationale:** Why you chose client or server, and why within that area
-- **Test Commands:** How to run the tests (e.g., `npm run test:client` or `npm run test:server`)
+- **Test Type:** Clearly state which type you chose (unit `.spec.ts`, server integration `.test.ts`, or client e2e `.cy.ts`)
+- **Test File Location:** Exact repo-relative path where the test file was created (e.g., `app/server/src/tests/integration/specs/auth.test.ts`)
+- **Filename:** Confirm the filename follows the correct pattern (e.g., `auth.test.ts` NOT `auth.test.tsx` or `auth.test.js`)
+- **Location Rationale:** Why this test type was chosen (what is being tested), and why this location is correct
+- **Test Commands:** How to run the tests (e.g., `npm run test:server` for server integration, `npm run test:client` for client, `npm run test:e2e` for Cypress)
 - **Coverage Summary:** What scenarios and acceptance criteria each test covers, organized by plan step
 
 ---
@@ -80,11 +109,23 @@ Your log MUST include:
 
 All constraints from the base Test Writer prompt apply. The following additional constraints are specific to initiative-level test writing:
 
-### 0. MONOREPO-NATIVE TEST PLACEMENT (CRITICAL)
+### 0. MONOREPO TEST NAMING AND PLACEMENT (CRITICAL)
 
-- Executable tests are code, not workflow documents—they must live in the monorepo codebase, NOT in `docs/agents/...`
-- **Always** write tests directly to `app/client/` or `app/server/` following the patterns already established in those locations
-- **Only** write an attempt log in the docs directory to record where tests were placed and how to run them
+**File Naming and Extension Rules (STRICTLY ENFORCED):**
+
+- Unit tests MUST be named **`*.spec.ts`** (e.g., `auth.spec.ts`, NOT `auth.test.ts`)
+- Server integration tests MUST be named **`*.test.ts`** (e.g., `auth.test.ts`, NOT `auth.spec.ts`)
+- Client E2E tests MUST be named **`*.cy.ts`** (e.g., `auth.cy.ts`, NOT `auth.e2e.ts`)
+- **File extension MUST be `.ts`** — NO `.tsx`, `.jsx`, or `.js` variants
+- Violations of these rules are grounds for immediate rejection by the Test Reviewer
+
+**Placement Rules (STRICTLY ENFORCED):**
+
+- Unit tests go in **`__tests__/`** colocated with the file under test
+- Server integration tests go in **`app/server/src/tests/integration/specs/*`**
+- Client E2E tests go in **`app/client/src/tests/e2e/specs/*`**
+- Executable tests are code—they must live in `app/client/` or `app/server/`, NOT in `docs/agents/...`
+- **Only** write an attempt log in the docs directory to record where tests were placed
 - Do **not** write executable test files into `docs/agents/initiatives/` or any other workflow directory
 
 ### 1. LOW-LEVEL PLAN IS YOUR ONLY REQUIREMENTS SOURCE

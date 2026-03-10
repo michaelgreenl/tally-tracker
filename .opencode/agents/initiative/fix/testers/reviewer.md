@@ -54,21 +54,33 @@ Provide structured revision feedback following the base Test Reviewer's rejectio
 
 All evaluation criteria from the base Test Reviewer prompt apply. For fix-level test review, apply the following **additional focus areas**:
 
-### 0. MONOREPO TEST PLACEMENT VERIFICATION (CRITICAL BLOCKER)
+### 0. MONOREPO TEST NAMING AND PLACEMENT VERIFICATION (CRITICAL BLOCKER)
 
-Before proceeding with any other review, verify:
+Before proceeding with any other review, verify BOTH naming AND placement. Violations block approval.
 
-- **Test Location Correctness:** The attempt log specifies where the issue test file was created in the codebase. Verify this path exists and follows the project's structure:
-    - Client-side tests in `app/client/src/__tests__/` or `app/client/tests/` — CORRECT
-    - Server-side tests in `app/server/src/**/__tests__/` or `app/server/src/tests/` — CORRECT
-    - Tests in `docs/agents/...` — REJECT IMMEDIATELY (critical blocker)
-    - Tests in wrong app area (client in server paths, etc.) — REJECT with severity "Critical"
+**File Naming — STRICTLY ENFORCED:**
 
-- **Actual File Verification:** Confirm the executable issue test file exists at the path documented in the log. Read the actual test file from its codebase location, not from workflow directories.
+- Unit tests MUST be **`*.spec.ts`** (exactly — no variations)
+- Server integration tests MUST be **`*.test.ts`** (exactly — no variations)
+- Client E2E tests MUST be **`*.cy.ts`** (exactly — no variations)
+- File extension MUST be **`.ts`** ONLY (no `.tsx`, `.jsx`, or `.js`)
+- If the log shows `auth.test.tsx` or `auth.spec.js` → REJECT IMMEDIATELY
 
-**Rejection Criterion:** If the issue test is in the wrong location (docs or wrong app area), reject immediately with this specific feedback:
+**File Location — STRICTLY ENFORCED:** The attempt log specifies where the issue test file was created. Verify:
 
-> "Issue tests must be executable files in the codebase (app/client or app/server), not workflow artifacts in docs/agents/. Tests are code. Please rewrite the test and place it in the appropriate monorepo location."
+- Unit tests (`.spec.ts`) in **`__tests__/`** colocated with the file being fixed — CORRECT
+- Server integration tests (`.test.ts`) in **`app/server/src/tests/integration/specs/*`** — CORRECT
+- Client E2E tests (`.cy.ts`) in **`app/client/src/tests/e2e/specs/*`** — CORRECT
+- Tests anywhere in `docs/agents/...` — REJECT IMMEDIATELY (critical blocker)
+- Tests in wrong app area — REJECT with severity "Critical"
+
+**Actual File Verification:** Confirm executable issue test file exists at exact path documented in the log. Read actual test file from codebase, not workflow directories.
+
+**Rejection Criteria — BLOCKING ISSUES:**
+
+1. Wrong file extension (`.tsx`, `.jsx`, `.js` instead of `.ts`) → REJECT with: "All test files must use `.ts` extension. No `.tsx`, `.jsx`, or `.js`."
+2. Wrong middle extension (`.spec.ts` for integration, `.test.ts` for unit) → REJECT with: "Test type does not match filename convention. Unit = `.spec.ts`, Server Integration = `.test.ts`, Client E2E = `.cy.ts`."
+3. Wrong location (docs or wrong app area) → REJECT with: "Issue tests must be executable files in the codebase (app/client or app/server), not workflow artifacts in docs/agents/. Tests are code."
 
 ### 1. Bug Reproduction Verification
 

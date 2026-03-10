@@ -146,7 +146,8 @@ For each plan step (in order):
 
 ### Test Results
 
-- **Test Suite:** `<initiative>/tests/<initiative-title>.{test,spec,cy}.{ts,tsx,js,jsx}`
+- **Test Suite:** [Path(s) to actual test file(s) documented in test-manifest.md]
+- **Test Command(s):** [Exact npm or test commands run]
 - **Result:** [PASS — all X tests passed | FAIL — X passed, Y failed]
 - **Fix Cycles:** [Number of test-fix-rerun cycles required, if any. "0" if tests passed on first run.]
 - **Failure Details** _(only if failures occurred during the process):_
