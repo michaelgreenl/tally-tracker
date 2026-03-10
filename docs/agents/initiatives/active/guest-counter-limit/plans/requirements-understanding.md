@@ -1,33 +1,72 @@
-# Guest Counter Limit — Requirements Understanding
+# Counter Limit for Non-Premium Accounts — Requirements Understanding (v2)
 
 ## 1. Initiative Summary
 
-Add a hard cap of **5 counters** for guest (unauthenticated) users. When a guest attempts to create a 6th counter, a modal appears explaining the limit and offering a boilerplate upgrade prompt (no functional upgrade path yet).
+Enforce a maximum of 5 counters for non-premium accounts (`isPremium === false`), on both the client and the server. When a non-premium user attempts to create a 6th counter, a modal is displayed in place of the counter creation form, with a CTA that navigates to a boilerplate `UpgradeView`.
 
 ---
 
 ## 2. Functional Requirements
 
-- A guest user (`isAuthenticated === false` / `userId === 'guest'`) **may not hold more than 5 counters**.
-- When a guest who already has 5 counters taps **"Add counter"** (or submits `CounterForm`), creation is **blocked** and an upgrade modal is displayed instead.
-- The modal must contain at minimum:
-    - A heading (e.g., "Counter Limit Reached")
-    - A short explanatory message (e.g., "Guest accounts are limited to 5 counters. Create a free account to add more.")
-    - A dismiss/close button
-    - A placeholder CTA button for a future upgrade/register flow (inert for now)
-- `counterStore.createCounter()` **must not mutate `counters[]`** if the guest limit is exceeded — the store must stay consistent.
-- The limit is enforced **client-side only** (guests have no server state).
-- No changes are made to authenticated user flows or the server.
+### Limit Enforcement
+
+- Any account where `isPremium === false` is subject to a maximum of **5 counters**.
+- Premium accounts (`isPremium === true`) are **not** subject to this limit.
+- The limit applies to **authenticated, non-premium users** — it is no longer a guest/unauthenticated concern.
+
+### Client-Side Enforcement
+
+- In `HomeView`, when the user clicks the **"Add Counter"** button:
+    - If the user is non-premium **and** already has **5 or more counters**, display the upgrade modal **instead of** the `CounterForm`.
+    - If the user is non-premium and has **fewer than 5 counters**, proceed normally (show `CounterForm`).
+    - If the user is premium, proceed normally regardless of counter count.
+- The "Add Counter" button retains its **current visual appearance** — no badge, lock icon, or disabled state.
+
+### Server-Side Enforcement
+
+- The counter creation endpoint must enforce the same 5-counter limit as a server-side guard ("never trust the client").
+- Before inserting a new counter, the server checks the authenticated user's current counter count.
+- If the user is non-premium and already has **5 or more counters**, the server returns an appropriate error response (e.g., `403 Forbidden` or `422 Unprocessable Entity`) and does **not** create the counter.
+- This check lives in `counter.controller.ts` — no new service layer is introduced.
+
+### Schema / Prisma
+
+- The `isPremium` field (or equivalent) must exist on the `User` model in the Prisma schema.
+- Because the project is in active development with no live users, **migrations can be reset and reinitialized** — a single migration covering all current schema state is acceptable. No concern for destructive retroactive changes.
+
+### Upgrade Modal
+
+- The modal is triggered from `HomeView` when the counter limit is hit.
+- Uses the **`ion-modal`** Ionic component.
+- Modal content is **boilerplate** — copy, layout, and pricing details are not finalized. A placeholder UI is sufficient.
+- The modal includes a **CTA button** that navigates the user to `/upgrade` (`UpgradeView.vue`).
+- The modal can be dismissed (closed) without navigating away.
+
+### UpgradeView
+
+- A new **`UpgradeView.vue`** route/page is created as a placeholder.
+- No real upgrade or payment logic is implemented at this stage.
+- The view serves as a destination for the modal CTA so the navigation hook is in place for future implementation.
 
 ---
 
 ## 3. Non-Functional Requirements
 
-- **UX:** The "Add counter" button should remain visible at 5 counters; the gate happens on the _attempt_ (not by hiding the button), so the affordance is preserved.
-- **Accessibility:** The modal must be keyboard/screen-reader accessible. Ionic's `ion-modal` or `ion-alert` satisfies this out of the box.
-- **Performance:** The limit check is a synchronous array-length comparison — no measurable overhead.
-- **No regressions:** Authenticated users (premium or not) must be completely unaffected by this change.
-- **SCSS/Stylelint:** Any new modal styles must pass the existing Stylelint config.
+### Performance
+
+- The client-side check is a simple reactive comparison against the already-loaded `counters` array in `counterStore` — no additional network request is made before showing the modal.
+- The server-side check should be a lightweight query (e.g., `COUNT` of counters for the user) and should not block the happy path for premium users.
+
+### UX
+
+- The modal appears **immediately** when the limit-breaching "Add Counter" action is taken — the `CounterForm` is never rendered in this case.
+- The experience for users under the limit is **unchanged**.
+- The "Add Counter" button appearance is **unchanged** — no preemptive visual indicator of the limit.
+
+### Accessibility
+
+- The `ion-modal` should follow Ionic's built-in accessibility conventions (focus trapping, ARIA roles).
+- The CTA and dismiss controls must be keyboard-navigable.
 
 ---
 
@@ -35,84 +74,37 @@ Add a hard cap of **5 counters** for guest (unauthenticated) users. When a guest
 
 ### In Scope
 
-- Guest counter limit logic (check + block)
-- Boilerplate upgrade modal (UI only, no routing or API calls)
-- Store-level guard inside `counterStore.createCounter()`
-- Triggering the modal from `HomeView` or `CounterForm` when the guard fires
+- Client-side limit check in `HomeView` before showing `CounterForm`
+- `ion-modal` upgrade prompt (boilerplate content)
+- New `UpgradeView.vue` page (boilerplate, no real upgrade logic)
+- New `/upgrade` route wired into the router
+- Server-side limit check in `counter.controller.ts` 
+- `isPremium` field on the `User` Prisma model (schema + migration reset/reinit if needed)
+- `isPremium` exposed via `authStore` (already present per project context — confirm presence)
 
 ### Out of Scope
 
-- Authenticated user limits of any tier (free, premium, etc.)
-- Actual account upgrade / registration flow from the modal
-- Any server changes
-- Backfilling or retroactively removing counters from guests who already have > 5
-- Hiding/disabling UI elements prior to reaching the limit
-- Analytics or tracking of limit-hit events
+- Actual premium upgrade / payment flow
+- Pricing UI, plan comparison, or feature gating beyond counter count
+- Any limit enforcement for **premium** users
+- Visual changes to the "Add Counter" button
+- Changes to `SyncQueueService` or idempotency middleware behavior
+- Any retroactive data migration for existing counters exceeding the limit (no live users)
+- Push notifications or other alerts about approaching the limit
 
 ---
 
-## 5. Assumptions
+## 5. Confirmed Assumptions
 
-| # | Assumption | Basis |
+| # | Assumption | Source |
 | --- | --- | --- |
-| A1 | The limit applies **only to guests** (`isAuthenticated === false`). Authenticated free-tier users are not limited at this time. | Prompt says "guest account constraints." `authStore` distinguishes guest vs. authenticated; `isPremium` exists for future gating. |
-| A2 | The limit is **not retroactive**. Guests who somehow have > 5 counters already (edge case) are not force-deleted. | Prompt makes no mention of cleanup; retroactive removal would be destructive and surprising. |
-| A3 | The **"Add counter" button remains visible** at the limit; the modal fires on tap. | Better UX — hiding the button gives no signal about _why_ they can't add more. |
-| A4 | The upgrade modal CTA can be **completely inert** (no `@click` handler or a `TODO` comment stub). | Prompt explicitly states "no logic for upgrading accounts yet." |
-| A5 | The guard lives in **`counterStore.createCounter()`**, returning a `fail()` `StoreResponse`, which the view/component then uses to decide whether to show the modal. | This keeps business logic out of components, is consistent with the existing `StoreResponse` contract (`ok()` / `fail()`), and is the lowest-blast-radius insertion point. |
-| A6 | The modal is implemented as a **Vue component** rendered conditionally in `HomeView`, controlled by a `ref<boolean>`. Using `ion-modal` or `ion-alert` inline is acceptable; a separate `GuestLimitModal.vue` is preferred for testability. | Project uses Ionic 8; `ion-modal` / `ion-alert` are already available. A dedicated component follows the existing `Counter.vue` / `CounterForm.vue` pattern. |
-| A7 | The constant `GUEST_COUNTER_LIMIT = 5` is defined **once** (e.g., in the store or a shared constants file) and not magic-numbered. | Future changeability. |
-
----
-
-## 6. Clarifying Questions
-
-These are the remaining ambiguities that need your input before planning begins.
-
-### Q1 — Where exactly should the modal be triggered?
-
-**Context:** The guard can live in the store (`createCounter` returns `fail()`), but _showing_ the modal requires UI state. Two natural trigger points exist:
-
-- **Option A — `HomeView.vue`:** The `showCounterForm = true` click handler checks the count before revealing the form. If at the limit, it shows the modal instead. The form is never opened.
-- **Option B — `CounterForm.vue`:** The form's `updateCounter` submit handler calls `createCounter`, receives `fail()`, and emits an event or sets a local `ref` to open the modal.
-
-**Question:** Should the limit be checked **before the form opens** (Option A — click on "Add counter") or **on form submission** (Option B — after the user fills in the form)? Option A is friendlier (prevents wasted effort filling a form), but needs confirmation.
-
----
-
-### Q2 — Should authenticated **free-tier** (non-premium) users also be limited?
-
-**Context:** The prompt says "guest account constraints," but the app has three tiers: guest, authenticated-free, and authenticated-premium. `isPremium` already exists in `authStore`. It's easy to extend the same limit to free-tier accounts now, but the prompt didn't explicitly ask for it.
-
-**Question:** Is this limit **guests only**, or **guests + authenticated free-tier users**?
-
----
-
-### Q3 — What should the upgrade CTA do (if anything)?
-
-**Context:** The prompt says "boilerplate since there's no logic yet." Options:
-
-- **Option A — Completely static:** CTA button renders but has no handler (or `@click="() => {}"` stub).
-- **Option B — Navigate to `/login` or `/register`:** Even though upgrade logic doesn't exist, the button could route to the registration flow.
-
-**Question:** Should the modal CTA navigate somewhere (e.g., `/register` or `/login`), or should it be a fully inert placeholder?
-
----
-
-### Q4 — `ion-modal` vs. `ion-alert` vs. custom component?
-
-**Context:** Ionic provides:
-
-- `ion-alert` — simple, quick, accessible; limited styling control.
-- `ion-modal` — full-screen or sheet; more flexible for future content (pricing table, etc.).
-- A custom Vue component wrapping either — most flexible and testable.
-
-**Question:** Do you have a preference for the modal style/component, or should we pick the most appropriate Ionic primitive?
-
----
-
-### Q5 — Should the "Add counter" button be visually different at the limit?
-
-**Context:** Even if the button stays visible, it could show a badge, tooltip, or different label (e.g., "Upgrade to add more") when a guest is at the cap, rather than looking identical to a normal "Add counter" button.
-
-**Question:** Should the button appearance change at the limit, or should it look identical and only reveal the modal on click?
+| A1 | "Guest" means `isPremium === false`, regardless of authentication state. The limit applies to all authenticated non-premium users. | User correction |
+| A2 | Premium users (`isPremium === true`) have no counter limit enforced. | User correction |
+| A3 | The project has no live users; migrations can be reset and rerun as a single cumulative migration. | User clarification |
+| A4 | `isPremium` is (or will be) a field on the `User` model and is accessible in `authStore`. | Project context + user correction |
+| A5 | The modal is triggered in `HomeView` on "Add Counter" click — the `CounterForm` is never shown when the limit is reached. | User clarification |
+| A6 | The modal uses `ion-modal`. | User answer (Q4) |
+| A7 | The modal CTA navigates to a new `UpgradeView.vue` at `/upgrade`. | User answer (Q3) |
+| A8 | The "Add Counter" button has no visual change (no lock, badge, or disabled state). | User answer (Q5) |
+| A9 | The server-side check is a simple guard in the controller/repository — no new service layer. | Project context (no server service layer) |
+| A10 | The server should return a non-2xx error (e.g., `403` or `422`) when a non-premium user exceeds the limit via a direct API call. | User clarification (server enforcement requirement) |
