@@ -1,0 +1,40 @@
+{
+    "initiative_title": "guest-counter-limit",
+    "current_phase": "phase_0",
+    "current_step": "step_0_2",
+    "status": "paused_hitl",
+    "dry_run": false,
+    "counters": {
+        "clarification": 1,
+        "high_level_plan": 1,
+        "low_level_plan": 1,
+        "tests": 1,
+        "implementation": 1,
+        "fix_clarification": {},
+        "issue_attempts": {}
+    },
+    "cost_tracking": {
+        "total_estimated_cost_usd": 0.12,
+        "cost_limit_usd": null,
+        "per_step": [
+            {
+                "step_id": "step_0_1",
+                "agent": "initiative.planning.clarifier.md",
+                "model_tier": "sonnet",
+                "iteration": 1,
+                "estimated_input_tokens": 6000,
+                "estimated_output_tokens": 3000,
+                "estimated_cost_usd": 0.12
+            }
+        ]
+    },
+    "history": [
+        {
+            "step_id": "step_0_1",
+            "agent": "initiative.planning.clarifier.md",
+            "result": "complete",
+            "iteration": 1,
+            "notes": "Requirements understanding produced with 5 clarifying questions"
+        }
+    ]
+}
