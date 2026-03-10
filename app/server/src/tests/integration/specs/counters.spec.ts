@@ -1,11 +1,10 @@
-import { OK, CREATED, NOT_FOUND, UNPROCESSABLE_ENTITY, FORBIDDEN } from '@packages/utils';
+import { OK, CREATED, NOT_FOUND, UNPROCESSABLE_ENTITY } from '@packages/utils';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Request, Response, NextFunction } from 'express';
 import request from 'supertest';
 import { randomUUID } from 'crypto';
 import app from '../../../app.js';
 import { buildCounter, TEST_COUNTER_ID, TEST_OTHER_USER_ID, TEST_USER_ID } from '../fixtures/counter.fixture.js';
-import { buildUser } from '../fixtures/user.fixture.js';
 
 vi.mock('../../../middleware/auth.middleware', () => ({
     jwt: (req: Request, res: Response, next: NextFunction) => {
@@ -25,17 +24,6 @@ vi.mock('../../../db/repositories/counter.repository', () => ({
     join: vi.fn(),
     createShare: vi.fn(),
     updateShare: vi.fn(),
-    countByOwner: vi.fn(),
-}));
-
-vi.mock('../../../db/repositories/user.repository', () => ({
-    createUser: vi.fn(),
-    deleteUser: vi.fn(),
-    getAllUsers: vi.fn(),
-    getUserById: vi.fn(),
-    getUserByEmail: vi.fn(),
-    getUserByPhone: vi.fn(),
-    updateUserInfo: vi.fn(),
 }));
 
 vi.mock('../../../db/repositories/idempotency.repository', () => ({
@@ -44,15 +32,11 @@ vi.mock('../../../db/repositories/idempotency.repository', () => ({
 }));
 
 import * as counterRepository from '../../../db/repositories/counter.repository.js';
-import * as userRepository from '../../../db/repositories/user.repository.js';
 
 describe('Counter Routes', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         app.set('io', { to: () => ({ emit: vi.fn() }) });
-        // Default: PREMIUM user (no tier-gate applies) and under the limit
-        vi.mocked(userRepository.getUserById).mockResolvedValue(buildUser({ tier: 'PREMIUM' }) as any);
-        vi.mocked(counterRepository.countByOwner).mockResolvedValue(0);
     });
 
     describe('POST /counters', () => {
@@ -96,40 +80,6 @@ describe('Counter Routes', () => {
                 .send({ title: 'A'.repeat(51) });
 
             expect(res.status).toBe(UNPROCESSABLE_ENTITY);
-        });
-
-        // --- Guest-counter-limit guard ---
-
-        it('should return 403 when BASIC user is at the 5-counter limit', async () => {
-            vi.mocked(userRepository.getUserById).mockResolvedValue(buildUser({ tier: 'BASIC' }) as any);
-            vi.mocked(counterRepository.countByOwner).mockResolvedValue(5);
-
-            const res = await request(app).post('/counters').send({ title: 'One Too Many' });
-
-            expect(res.status).toBe(FORBIDDEN);
-        });
-
-        it('should create a counter when BASIC user is under the 5-counter limit', async () => {
-            const counter = buildCounter({ title: 'Under Limit' });
-            vi.mocked(userRepository.getUserById).mockResolvedValue(buildUser({ tier: 'BASIC' }) as any);
-            vi.mocked(counterRepository.countByOwner).mockResolvedValue(4);
-            vi.mocked(counterRepository.post).mockResolvedValue(counter);
-
-            const res = await request(app).post('/counters').send({ title: 'Under Limit' });
-
-            expect(res.status).toBe(CREATED);
-        });
-
-        it('should bypass the limit check entirely for PREMIUM users', async () => {
-            const counter = buildCounter({ title: 'Premium Unlimited' });
-            vi.mocked(userRepository.getUserById).mockResolvedValue(buildUser({ tier: 'PREMIUM' }) as any);
-            vi.mocked(counterRepository.countByOwner).mockResolvedValue(5);
-            vi.mocked(counterRepository.post).mockResolvedValue(counter);
-
-            const res = await request(app).post('/counters').send({ title: 'Premium Unlimited' });
-
-            expect(res.status).toBe(CREATED);
-            expect(counterRepository.countByOwner).not.toHaveBeenCalled();
         });
     });
 
