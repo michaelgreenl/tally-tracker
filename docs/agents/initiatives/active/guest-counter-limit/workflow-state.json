@@ -1,20 +1,20 @@
 {
     "initiative_title": "guest-counter-limit",
-    "current_phase": "phase_0",
-    "current_step": "step_0_4",
+    "current_phase": "phase_1",
+    "current_step": "step_1_2",
     "status": "paused_hitl",
     "dry_run": false,
     "counters": {
         "clarification": 2,
         "high_level_plan": 1,
-        "low_level_plan": 1,
+        "low_level_plan": 2,
         "tests": 1,
         "implementation": 1,
         "fix_clarification": {},
         "issue_attempts": {}
     },
     "cost_tracking": {
-        "total_estimated_cost_usd": 1.59,
+        "total_estimated_cost_usd": 4.77,
         "cost_limit_usd": null,
         "per_step": [
             {
@@ -43,6 +43,78 @@
                 "estimated_input_tokens": 10000,
                 "estimated_output_tokens": 5000,
                 "estimated_cost_usd": 1.35
+            },
+            {
+                "step_id": "step_0_5",
+                "agent": "initiative.planning.context-gatherer.md",
+                "model_tier": "sonnet",
+                "iteration": 1,
+                "estimated_input_tokens": 15000,
+                "estimated_output_tokens": 8000,
+                "estimated_cost_usd": 0.24
+            },
+            {
+                "step_id": "step_0_6",
+                "agent": "initiative.planning.reviewer.high-level.md",
+                "model_tier": "sonnet",
+                "iteration": 1,
+                "estimated_input_tokens": 12000,
+                "estimated_output_tokens": 4000,
+                "estimated_cost_usd": 0.24
+            },
+            {
+                "step_id": "step_0_7",
+                "agent": "initiative.planning.low-level.md",
+                "model_tier": "opus",
+                "iteration": 1,
+                "estimated_input_tokens": 12000,
+                "estimated_output_tokens": 6000,
+                "estimated_cost_usd": 0.63
+            },
+            {
+                "step_id": "step_0_7",
+                "agent": "initiative.planning.reviewer.low-level.md",
+                "model_tier": "sonnet",
+                "iteration": 1,
+                "estimated_input_tokens": 14000,
+                "estimated_output_tokens": 5000,
+                "estimated_cost_usd": 0.36
+            },
+            {
+                "step_id": "step_0_7",
+                "agent": "initiative.planning.low-level.md",
+                "model_tier": "opus",
+                "iteration": 2,
+                "estimated_input_tokens": 14000,
+                "estimated_output_tokens": 6000,
+                "estimated_cost_usd": 0.66
+            },
+            {
+                "step_id": "step_0_7",
+                "agent": "initiative.planning.reviewer.low-level.md",
+                "model_tier": "sonnet",
+                "iteration": 2,
+                "estimated_input_tokens": 16000,
+                "estimated_output_tokens": 4000,
+                "estimated_cost_usd": 0.33
+            },
+            {
+                "step_id": "step_1_1",
+                "agent": "initiative.planning.testers.writer.md",
+                "model_tier": "sonnet",
+                "iteration": 1,
+                "estimated_input_tokens": 18000,
+                "estimated_output_tokens": 8000,
+                "estimated_cost_usd": 0.42
+            },
+            {
+                "step_id": "step_1_1",
+                "agent": "initiative.planning.testers.reviewer.md",
+                "model_tier": "sonnet",
+                "iteration": 1,
+                "estimated_input_tokens": 20000,
+                "estimated_output_tokens": 5000,
+                "estimated_cost_usd": 0.3
             }
         ]
     },
@@ -52,35 +124,98 @@
             "agent": "initiative.planning.clarifier.md",
             "result": "complete",
             "iteration": 1,
-            "notes": "Requirements understanding produced with 5 clarifying questions"
+            "notes": "Requirements understanding produced"
         },
         {
             "step_id": "step_0_2",
             "agent": null,
             "result": "hitl_refine",
             "iteration": 1,
-            "notes": "User provided revisions: guest means isPremium===false (not unauthenticated), limit enforced server-side too, modal triggered from HomeView before form opens, CTA navigates to new UpgradeView, use ion-modal, button unchanged at limit"
+            "notes": "User provided revisions"
         },
         {
             "step_id": "step_0_1",
             "agent": "initiative.planning.clarifier.md",
             "result": "complete",
             "iteration": 2,
-            "notes": "Revised requirements understanding incorporating all user corrections. No clarifying questions remain."
+            "notes": "Revised requirements understanding"
         },
         {
             "step_id": "step_0_2",
             "agent": null,
             "result": "hitl_confirm",
             "iteration": 2,
-            "notes": "User confirmed v2 with minor revision: server-side check lives in counter.controller.ts only (not repository). Applied edit to requirements-understanding.md."
+            "notes": "User confirmed"
         },
         {
             "step_id": "step_0_3",
             "agent": "initiative.planning.high-level.md",
             "result": "complete",
             "iteration": 1,
-            "notes": "High-level plan drafted with 5 architecture decisions and 4 milestones. Written to high-level-0001/."
+            "notes": "High-level plan drafted"
+        },
+        {
+            "step_id": "step_0_4",
+            "agent": null,
+            "result": "hitl_approve",
+            "iteration": 1,
+            "notes": "User approved plan direction"
+        },
+        {
+            "step_id": "step_0_5",
+            "agent": "initiative.planning.context-gatherer.md",
+            "result": "complete",
+            "iteration": 1,
+            "notes": "Context gathered"
+        },
+        {
+            "step_id": "step_0_6",
+            "agent": "initiative.planning.reviewer.high-level.md",
+            "result": "approve",
+            "iteration": 1,
+            "notes": "Approved with implementation notes"
+        },
+        {
+            "step_id": "step_0_7",
+            "agent": "initiative.planning.low-level.md",
+            "result": "complete",
+            "iteration": 1,
+            "notes": "Low-level plan drafted"
+        },
+        {
+            "step_id": "step_0_7",
+            "agent": "initiative.planning.reviewer.low-level.md",
+            "result": "reject",
+            "iteration": 1,
+            "notes": "4 defects found"
+        },
+        {
+            "step_id": "step_0_7",
+            "agent": "initiative.planning.low-level.md",
+            "result": "complete",
+            "iteration": 2,
+            "notes": "Revised plan fixing all 4 defects"
+        },
+        {
+            "step_id": "step_0_7",
+            "agent": "initiative.planning.reviewer.low-level.md",
+            "result": "approve",
+            "iteration": 2,
+            "notes": "All fixes verified. Approved."
+        },
+        {
+            "step_id": "step_1_1",
+            "agent": "initiative.planning.testers.writer.md",
+            "result": "complete",
+            "iteration": 1,
+            "notes": "13 tests written: 3 server integration + 10 client unit. Modified counters.spec.ts, created HomeView.spec.ts."
+        },
+        {
+            "step_id": "step_1_1",
+            "agent": "initiative.planning.testers.reviewer.md",
+            "result": "approve",
+            "iteration": 1,
+            "notes": "Approved. Coverage: all functional requirements covered. Advisory: modal markup/CTA not tested (visual); getUserById→null untested (edge case)."
         }
     ]
 }
