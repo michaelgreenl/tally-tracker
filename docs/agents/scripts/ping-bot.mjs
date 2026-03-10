@@ -4,7 +4,10 @@ import { argv } from 'node:process';
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const chatId = process.env.TELEGRAM_BOT_CHAT_ID;
 const initiativeTitle = argv[2] || 'Unknown Initiative';
-const message = `${initiativeTitle} — HITL Required`;
+const currentStep = argv[3] || 'Unknown Step';
+const currentStepDescriptor = argv[4] || 'Unknown Step';
+
+const message = `${initiativeTitle}  — HITL Required \nStep: ${currentStep} \nTask: ${currentStepDescriptor}`;
 
 if (!token) process.exit(1);
 

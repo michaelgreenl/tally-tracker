@@ -25,6 +25,28 @@ Before starting any new initiative:
 
 ---
 
+## Human Input Notification
+
+**Any time execution pauses and human input is required, you MUST run the following command before stopping:** 
+
+`bun run pint-bot <initiative-title> <current-step> <current-step-descriptor>`
+ 
+Where `<initiative-title>` is the value of `initiative_title` from `workflow-state.json` (the initiative folder name).
+Where `<current-step>` is the value of `current_step` from `workflow-state.json` (the active step for the initiative).
+Where `<current-step-descriptor>` is a simple title for the active step `current_step` from `workflow-state.json`.
+
+This applies to **all** pause scenarios without exception:
+
+- Reaching a HITL gate (`"type": "hitl"`)
+- Phase transition pause (see Core Execution Loop)
+- Cost limit exceeded
+- Counter exceeding 5 iterations on the same step
+- Missing input file or unrecoverable error
+
+**Do not skip this command.** Run it as a shell command immediately after updating `workflow-state.json` and immediately before presenting any artifact or message to the user.
+
+--- 
+
 ## State Management
 
 ### State File: `workflow-state.json`
