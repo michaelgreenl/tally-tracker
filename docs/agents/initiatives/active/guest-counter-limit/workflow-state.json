@@ -1,7 +1,7 @@
 {
     "initiative_title": "guest-counter-limit",
     "current_phase": "phase_0",
-    "current_step": "step_0_2",
+    "current_step": "step_0_4",
     "status": "paused_hitl",
     "dry_run": false,
     "counters": {
@@ -14,7 +14,7 @@
         "issue_attempts": {}
     },
     "cost_tracking": {
-        "total_estimated_cost_usd": 0.24,
+        "total_estimated_cost_usd": 1.59,
         "cost_limit_usd": null,
         "per_step": [
             {
@@ -34,6 +34,15 @@
                 "estimated_input_tokens": 8000,
                 "estimated_output_tokens": 3500,
                 "estimated_cost_usd": 0.12
+            },
+            {
+                "step_id": "step_0_3",
+                "agent": "initiative.planning.high-level.md",
+                "model_tier": "opus",
+                "iteration": 1,
+                "estimated_input_tokens": 10000,
+                "estimated_output_tokens": 5000,
+                "estimated_cost_usd": 1.35
             }
         ]
     },
@@ -58,6 +67,20 @@
             "result": "complete",
             "iteration": 2,
             "notes": "Revised requirements understanding incorporating all user corrections. No clarifying questions remain."
+        },
+        {
+            "step_id": "step_0_2",
+            "agent": null,
+            "result": "hitl_confirm",
+            "iteration": 2,
+            "notes": "User confirmed v2 with minor revision: server-side check lives in counter.controller.ts only (not repository). Applied edit to requirements-understanding.md."
+        },
+        {
+            "step_id": "step_0_3",
+            "agent": "initiative.planning.high-level.md",
+            "result": "complete",
+            "iteration": 1,
+            "notes": "High-level plan drafted with 5 architecture decisions and 4 milestones. Written to high-level-0001/."
         }
     ]
 }
