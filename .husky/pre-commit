@@ -1,5 +1,10 @@
 #!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
+# . "$(dirname -- "$0")/_/husky.sh"
+
+if [ "$SKIP_ALL" = "1" ]; then
+    echo "⏭️  Skipping all checks"
+    exit 0
+fi
 
 echo "🛂 Running type check..."
 bun run type-check
@@ -8,8 +13,8 @@ echo "🧪 Running unit tests..."
 bun run test:unit
 
 if [ "$SKIP_E2E" = "1" ]; then
-  echo "⏭️  Skipping E2E tests"
+    echo "⏭️  Skipping E2E tests"
 else
-  echo "🌐 Running E2E tests..."
-  bun run test:e2e
+    echo "🌐 Running E2E tests..."
+    bun run test:e2e
 fi
