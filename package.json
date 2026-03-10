@@ -19,7 +19,8 @@
         "type-check": "bun --filter=client run type-check && bun --filter=server run type-check",
         "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,vue,css,scss}\"",
         "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,vue,css,scss}\"",
-        "prepare": "husky"
+        "prepare": "husky",
+        "ping-bot": "node docs/agents/scripts/ping-bot.mjs"
     },
     "devDependencies": {
         "@commitlint/cli": "^20.4.2",

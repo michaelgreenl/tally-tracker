@@ -3,8 +3,8 @@ import { argv } from 'node:process';
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const chatId = process.env.TELEGRAM_BOT_CHAT_ID;
-const taskTitle = argv[2] || 'Unknown Task';
-const message = `${taskTitle} — HITL Required`;
+const initiativeTitle = argv[2] || 'Unknown Initiative';
+const message = `${initiativeTitle} — HITL Required`;
 
 if (!token) process.exit(1);
 
