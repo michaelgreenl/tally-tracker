@@ -1,12 +1,12 @@
 # INITIATIVE WORKFLOW
-> The flow of work, agent routing, and state management for agents/
 
-**NOTE:** This workflow is currently executed manually via step-by-step orchestration.
+> The flow of work, agent routing, and state management for agents/
 
 ---
 
 ## 🗺️ Master Routing Diagram
-*How an initiative flows from concept to implementation.*
+
+_How an initiative flows from concept to implementation._
 
 ```graph TD
 %% Styling
@@ -46,7 +46,9 @@ IMR -- Approves --> Done([Initiative Implementation Complete])
 ---
 
 ## Phase 0: Planning
+
 ### Project Initiative `docs/agents/<initiative-title>/plans/` Structure
+
 ```
 └╴󰝰 <initiative-title>
     └╴󰝰 plans
@@ -112,11 +114,18 @@ IMR -- Approves --> Done([Initiative Implementation Complete])
 ```
 └╴󰝰 <initiative-title>
   └╴󰝰 tests
-    ├╴󰌞 <initiative-title>.{spec,test,cy}.{js,jsx,ts,tsx}
-    ├╴󰝰 <initiative-title>-tests-0001
-    │ ├╴󰌞 <initiative-title>.{spec,test,cy}.{js,jsx,ts,tsx}
-    │ └╴󰍔 revisions.md
+    ├╴󰍔 test-manifest.md (canonical record of real test locations in app/client or app/server)
+    ├╴󰍔 <initiative-title>-tests-0001
+    │ ├╴󰍔 log.md (documents where tests were created in codebase)
+    │ └╴󰍔 revisions.md (only if reviewer rejected)
+    └╴󰝰 <initiative-title>-tests-0002
+      └╴󰍔 log.md
 ```
+
+**Real executable tests** live in the codebase:
+
+- **Client tests:** `app/client/src/__tests__/` or `app/client/tests/`
+- **Server tests:** `app/server/src/**/__tests__/` or `app/server/src/tests/`
 
 ### 1.1) Test Writing & Agent Review
 * Agent: `agents/initiative/planning/testers/writer.md`
@@ -136,7 +145,9 @@ IMR -- Approves --> Done([Initiative Implementation Complete])
 ---
 
 ## Phase 2: Implementation
+
 ### Project Initiative `docs/agents/<initiative-title>/implementation/` Structure
+
 ```
 └╴󰝰 <initiative-title>
   ├╴󰍔 final-report.md
@@ -159,6 +170,7 @@ IMR -- Approves --> Done([Initiative Implementation Complete])
 ---
 
 ## Phase 3: Issues (Bug Fixing Workflow)
+
 ```graph TD
 classDef user fill:#f9f,stroke:#333,stroke-width:2px;
 classDef agent fill:#bbf,stroke:#333,stroke-width:1px;
@@ -191,15 +203,22 @@ IMR -- Approves --> Done([Issue Resolved])
     │   ├╴󰍔 issue-understanding.md
     │   ├╴󰍔 context.md
     │   ├╴󰍔 fix-plan.md
-    │   ├╴󰌞 issue.{spec,test,cy}.{js,jsx,ts,tsx}
+    │   ├╴󰍔 issue-test-manifest.md (canonical record of test location in app/client or app/server)
+    │   ├╴󰝰 issue-tests-0001
+    │   │ ├╴󰍔 log.md (documents where issue test was created in codebase)
+    │   │ └╴󰍔 revisions.md (only if reviewer rejected)
     │   └╴󰝰 attempt-0001
     │     ├╴󰍔 fix-plan.md
     │     ├╴󰍔 log.md
-    │     ├╴󰍔 revisions.md
-    │     └╴󰌞 issue.{spec,test,cy}.{js,jsx,ts,tsx}
+    │     └╴󰍔 revisions.md
     └╴󰝰 fixed
       └╴󰝰 <fixed-issue>
 ```
+
+**Real issue test files** live in the codebase:
+
+- **Client tests:** `app/client/src/__tests__/` or `app/client/tests/`
+- **Server tests:** `app/server/src/**/__tests__/` or `app/server/src/tests/`
 
 ### 3.1) Issue Clarification & User Confirmation
 * Agent: `agents/initiative/fix/clarifier.md`

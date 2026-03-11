@@ -1,173 +1,175 @@
 {
-  "agents": {
-    "base": {
-      "context-gatherer.md": {
-        "type": "base-agent",
-        "role": "Searches codebase and documentation based on plans to generate necessary technical context.",
-        "skills": []
-      },
-      "implementer.md": {
-        "type": "base-agent",
-        "role": "Executes finalized plans and writes code to satisfy tests.",
-        "skills": []
-      },
-      "planner.md": {
-        "type": "base-agent",
-        "role": "Analyzes requirements and drafts structured, logical plans.",
-        "skills": []
-      },
-      "reviewer.md": {
-        "type": "base-agent",
-        "role": "Critiques outputs against constraints and requirements, suggesting specific revisions.",
-        "skills": []
-      },
-      "testers": {
-        "writer.md": {
-          "type": "base-agent",
-          "role": "Writes robust, automated test suites based on provided plans.",
-          "skills": []
-        },
-        "reviewer.md": {
-          "type": "base-agent",
-          "role": "Reviews tests for coverage, accuracy, and logical soundness.",
-          "skills": []
+    ".opencode": {
+        "agents": {
+            "base": {
+                "context-gatherer.md": {
+                    "type": "base-agent",
+                    "role": "Searches codebase and documentation based on plans to generate necessary technical context.",
+                    "skills": []
+                },
+                "implementer.md": {
+                    "type": "base-agent",
+                    "role": "Executes finalized plans and writes code to satisfy tests.",
+                    "skills": []
+                },
+                "planner.md": {
+                    "type": "base-agent",
+                    "role": "Analyzes requirements and drafts structured, logical plans.",
+                    "skills": []
+                },
+                "reviewer.md": {
+                    "type": "base-agent",
+                    "role": "Critiques outputs against constraints and requirements, suggesting specific revisions.",
+                    "skills": []
+                },
+                "testers": {
+                    "writer.md": {
+                        "type": "base-agent",
+                        "role": "Writes robust, automated test suites based on provided plans.",
+                        "skills": []
+                    },
+                    "reviewer.md": {
+                        "type": "base-agent",
+                        "role": "Reviews tests for coverage, accuracy, and logical soundness.",
+                        "skills": []
+                    }
+                }
+            },
+            "initiative": {
+                "planning": {
+                    "clarifier.md": {
+                        "type": "agent",
+                        "base_template": null,
+                        "role": "Reads the user's raw initiative prompt and project overview to produce a structured requirements understanding with clarifying questions. Enables prompt refinement before planning begins.",
+                        "model_tier": "sonnet",
+                        "skills": []
+                    },
+                    "reviewer": {
+                        "high-level.md": {
+                            "type": "agent",
+                            "base_template": "base/reviewer.md",
+                            "role": "Reviews the high-level plan for logical soundness, user goal alignment, and codebase alignment using gathered context from context.md.",
+                            "model_tier": "sonnet",
+                            "skills": []
+                        },
+                        "low-level.md": {
+                            "type": "agent",
+                            "base_template": "base/reviewer.md",
+                            "role": "Reviews the low-level plan against gathered context to prevent hallucinations and ensure technical feasibility.",
+                            "model_tier": "sonnet",
+                            "skills": []
+                        }
+                    },
+                    "context-gatherer.md": {
+                        "type": "agent",
+                        "base_template": "base/context-gatherer.md",
+                        "role": "Searches codebase and documentation based on the high-level plan to provide necessary technical context for the low-level planner and high-level reviewer.",
+                        "model_tier": "sonnet",
+                        "skills": []
+                    },
+                    "high-level.md": {
+                        "type": "agent",
+                        "base_template": "base/planner.md",
+                        "role": "Drafts a broad, milestone-based architectural plan grounded in the project overview and confirmed requirements understanding.",
+                        "model_tier": "opus",
+                        "skills": []
+                    },
+                    "low-level.md": {
+                        "type": "agent",
+                        "base_template": "base/planner.md",
+                        "role": "Drafts highly specific, step-by-step implementation instructions utilizing codebase context.",
+                        "model_tier": "opus",
+                        "skills": []
+                    },
+                    "testers": {
+                        "writer.md": {
+                            "type": "agent",
+                            "base_template": "base/testers/writer.md",
+                            "role": "Writes comprehensive initiative-level tests based on the finalized low-level plan.",
+                            "model_tier": "sonnet",
+                            "skills": []
+                        },
+                        "reviewer.md": {
+                            "type": "agent",
+                            "base_template": "base/testers/reviewer.md",
+                            "role": "Reviews initiative tests. Once approved by this agent, passes control to the user for final HITL validation.",
+                            "model_tier": "sonnet",
+                            "skills": [],
+                            "requires_hitl": true
+                        }
+                    }
+                },
+                "implement": {
+                    "implementer.md": {
+                        "type": "agent",
+                        "base_template": "base/implementer.md",
+                        "role": "Writes the actual codebase changes for the initiative, driven by the finalized low-level plan and passing the validated tests.",
+                        "model_tier": "opus",
+                        "skills": []
+                    },
+                    "reviewer.md": {
+                        "type": "agent",
+                        "base_template": "base/reviewer.md",
+                        "role": "Reviews implemented code to ensure all tests pass and implementation aligns strictly with the plans.",
+                        "model_tier": "sonnet",
+                        "skills": []
+                    }
+                },
+                "fix": {
+                    "clarifier.md": {
+                        "type": "agent",
+                        "base_template": null,
+                        "role": "Reads the user's issue description to produce a structured issue understanding with clarifying questions. Enables issue refinement before investigation begins.",
+                        "model_tier": "sonnet",
+                        "skills": []
+                    },
+                    "planner.md": {
+                        "type": "agent",
+                        "base_template": "base/planner.md",
+                        "role": "Drafts a specific step-by-step fix plan based on the user's issue description, confirmed issue understanding, and gathered codebase context.",
+                        "model_tier": "sonnet",
+                        "skills": []
+                    },
+                    "context-gatherer.md": {
+                        "type": "agent",
+                        "base_template": "base/context-gatherer.md",
+                        "role": "Gathers stack traces, relevant files, and system state related specifically to the user's reported issue and confirmed issue understanding.",
+                        "model_tier": "sonnet",
+                        "skills": []
+                    },
+                    "testers": {
+                        "writer.md": {
+                            "type": "agent",
+                            "base_template": "base/testers/writer.md",
+                            "role": "Writes targeted tests designed to reproduce the issue and verify its fix.",
+                            "model_tier": "sonnet",
+                            "skills": []
+                        },
+                        "reviewer.md": {
+                            "type": "agent",
+                            "base_template": "base/testers/reviewer.md",
+                            "role": "Reviews issue tests. Once approved by this agent, passes control to the user for final HITL validation.",
+                            "model_tier": "sonnet",
+                            "skills": [],
+                            "requires_hitl": true
+                        }
+                    },
+                    "implementer.md": {
+                        "type": "agent",
+                        "base_template": "base/implementer.md",
+                        "role": "Implements the code changes to resolve the issue according to the validated fix plan and tests.",
+                        "model_tier": "opus",
+                        "skills": []
+                    },
+                    "reviewer.md": {
+                        "type": "agent",
+                        "base_template": "base/reviewer.md",
+                        "role": "Reviews the bug fix to ensure the issue is resolved and tests pass without regressions.",
+                        "model_tier": "sonnet",
+                        "skills": []
+                    }
+                }
+            }
         }
-      }
-    },
-    "initiative": {
-      "planning": {
-        "clarifier.md": {
-          "type": "agent",
-          "base_template": null,
-          "role": "Reads the user's raw initiative prompt and project overview to produce a structured requirements understanding with clarifying questions. Enables prompt refinement before planning begins.",
-          "model_tier": "sonnet",
-          "skills": []
-        },
-        "reviewer": {
-          "high-level.md": {
-            "type": "agent",
-            "base_template": "base/reviewer.md",
-            "role": "Reviews the high-level plan for logical soundness, user goal alignment, and codebase alignment using gathered context from context.md.",
-            "model_tier": "sonnet",
-            "skills": []
-          },
-          "low-level.md": {
-            "type": "agent",
-            "base_template": "base/reviewer.md",
-            "role": "Reviews the low-level plan against gathered context to prevent hallucinations and ensure technical feasibility.",
-            "model_tier": "sonnet",
-            "skills": []
-          }
-        },
-        "context-gatherer.md": {
-          "type": "agent",
-          "base_template": "base/context-gatherer.md",
-          "role": "Searches codebase and documentation based on the high-level plan to provide necessary technical context for the low-level planner and high-level reviewer.",
-          "model_tier": "sonnet",
-          "skills": []
-        },
-        "high-level.md": {
-          "type": "agent",
-          "base_template": "base/planner.md",
-          "role": "Drafts a broad, milestone-based architectural plan grounded in the project overview and confirmed requirements understanding.",
-          "model_tier": "opus",
-          "skills": []
-        },
-        "low-level.md": {
-          "type": "agent",
-          "base_template": "base/planner.md",
-          "role": "Drafts highly specific, step-by-step implementation instructions utilizing codebase context.",
-          "model_tier": "opus",
-          "skills": []
-        },
-        "testers": {
-          "writer.md": {
-            "type": "agent",
-            "base_template": "base/testers/writer.md",
-            "role": "Writes comprehensive initiative-level tests based on the finalized low-level plan.",
-            "model_tier": "sonnet",
-            "skills": []
-          },
-          "reviewer.md": {
-            "type": "agent",
-            "base_template": "base/testers/reviewer.md",
-            "role": "Reviews initiative tests. Once approved by this agent, passes control to the user for final HITL validation.",
-            "model_tier": "sonnet",
-            "skills": [],
-            "requires_hitl": true
-          }
-        }
-      },
-      "implement": {
-        "implementer.md": {
-          "type": "agent",
-          "base_template": "base/implementer.md",
-          "role": "Writes the actual codebase changes for the initiative, driven by the finalized low-level plan and passing the validated tests.",
-          "model_tier": "opus",
-          "skills": []
-        },
-        "reviewer.md": {
-          "type": "agent",
-          "base_template": "base/reviewer.md",
-          "role": "Reviews implemented code to ensure all tests pass and implementation aligns strictly with the plans.",
-          "model_tier": "sonnet",
-          "skills": []
-        }
-      },
-      "fix": {
-        "clarifier.md": {
-          "type": "agent",
-          "base_template": null,
-          "role": "Reads the user's issue description to produce a structured issue understanding with clarifying questions. Enables issue refinement before investigation begins.",
-          "model_tier": "sonnet",
-          "skills": []
-        },
-        "planner.md": {
-          "type": "agent",
-          "base_template": "base/planner.md",
-          "role": "Drafts a specific step-by-step fix plan based on the user's issue description, confirmed issue understanding, and gathered codebase context.",
-          "model_tier": "sonnet",
-          "skills": []
-        },
-        "context-gatherer.md": {
-          "type": "agent",
-          "base_template": "base/context-gatherer.md",
-          "role": "Gathers stack traces, relevant files, and system state related specifically to the user's reported issue and confirmed issue understanding.",
-          "model_tier": "sonnet",
-          "skills": []
-        },
-        "testers": {
-          "writer.md": {
-            "type": "agent",
-            "base_template": "base/testers/writer.md",
-            "role": "Writes targeted tests designed to reproduce the issue and verify its fix.",
-            "model_tier": "sonnet",
-            "skills": []
-          },
-          "reviewer.md": {
-            "type": "agent",
-            "base_template": "base/testers/reviewer.md",
-            "role": "Reviews issue tests. Once approved by this agent, passes control to the user for final HITL validation.",
-            "model_tier": "sonnet",
-            "skills": [],
-            "requires_hitl": true
-          }
-        },
-        "implementer.md": {
-          "type": "agent",
-          "base_template": "base/implementer.md",
-          "role": "Implements the code changes to resolve the issue according to the validated fix plan and tests.",
-          "model_tier": "opus",
-          "skills": []
-        },
-        "reviewer.md": {
-          "type": "agent",
-          "base_template": "base/reviewer.md",
-          "role": "Reviews the bug fix to ensure the issue is resolved and tests pass without regressions.",
-          "model_tier": "sonnet",
-          "skills": []
-        }
-      }
     }
-  }
 }

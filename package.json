@@ -16,15 +16,18 @@
         "render:build": "bun install && bun --filter=@packages/core run generate && bun --filter=server run render:build",
         "render:start": "bun --filter=@packages/core run render:start && bun --filter=server run render:start",
         "commit:skip": "SKIP_E2E=1 git commit",
+        "commit:skip:all": "SKIP_ALL=1 git commit",
         "type-check": "bun --filter=client run type-check && bun --filter=server run type-check",
         "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,vue,css,scss}\"",
         "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,vue,css,scss}\"",
-        "prepare": "husky"
+        "prepare": "husky",
+        "ping-bot": "node docs/agents/scripts/ping-bot.mjs"
     },
     "devDependencies": {
         "@commitlint/cli": "^20.4.2",
         "@commitlint/config-conventional": "^20.4.2",
         "@types/ms": "^2.1.0",
+        "dotenv": "^17.3.1",
         "husky": "^9.1.7",
         "prettier": "^3.8.1",
         "prettier-plugin-prisma": "^5.0.0"
