@@ -1,6 +1,6 @@
 # Tally Tracker
 
-> **Current Status:** 🚧 WIP
+> **Current Status:** MVP
 
 A cross-platform, offline-first counter application built to handle complex synchronization scenarios and real-time collaboration. This project demonstrates a robust implementation of local-first architecture using Vue 3 and Capacitor. The server side infrastructure is designed to handle eventually consistent data synchronization and real-time event broadcasting. Deployed on Render with a PostgreSQL database.
 
