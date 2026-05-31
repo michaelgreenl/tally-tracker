@@ -7,7 +7,7 @@ if [ "$SKIP_ALL" = "1" ]; then
 fi
 
 echo "🛂 Running type check..."
-bun run type-check
+bun run typecheck
 
 echo "🧪 Running unit tests..."
 bun run test:unit

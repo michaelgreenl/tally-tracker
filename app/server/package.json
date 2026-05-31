@@ -11,7 +11,7 @@
         "test": "vitest",
         "start": "node dist/server.js",
         "lint": "eslint src --ext .ts",
-        "type-check": "tsc --noEmit"
+        "typecheck": "tsc --noEmit"
     },
     "keywords": [],
     "author": "",

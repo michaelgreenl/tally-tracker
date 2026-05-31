@@ -17,7 +17,7 @@
         "render:start": "bun --filter=@packages/core run render:start && bun --filter=server run render:start",
         "commit:skip": "SKIP_E2E=1 git commit",
         "commit:skip:all": "SKIP_ALL=1 git commit",
-        "type-check": "bun --filter=client run type-check && bun --filter=server run type-check",
+        "typecheck": "bun --filter=client run typecheck && bun --filter=server run typecheck",
         "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,vue,css,scss}\"",
         "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,vue,css,scss}\"",
         "prepare": "husky",

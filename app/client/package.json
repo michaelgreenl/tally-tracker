@@ -23,7 +23,7 @@
         "ionic:native:ios": "bun run build && npx cap sync && npx cap run ios",
         "lint": "eslint . --fix --cache",
         "lint:style": "stylelint \"**/*.{vue,css,scss}\" --fix",
-        "type-check": "vue-tsc --noEmit -p tsconfig.app.json"
+        "typecheck": "vue-tsc --noEmit -p tsconfig.app.json"
     },
     "dependencies": {
         "@capacitor/android": "^8.0.0",
