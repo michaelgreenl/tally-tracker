@@ -15,14 +15,21 @@ Rules:
 - Return exactly one decision: `accept`, `revise`, `blocked`, or `manual_smoke`.
 - Use `manual_smoke` only when a human must confirm smoke behavior.
 - `manualSmokeInstructions` must be non-empty only for `manual_smoke`.
-- `verificationSummary` should describe commands run and evidence found whenever possible.
+- When included, `verificationSummary` should describe commands run and evidence found.
+- When the decision is `accept`, do not list what is already correct or restate passed checks.
 
 Final response:
 
-Return a short review followed by a final JSON block:
+Return only a single JSON object. Do not use markdown fences or any prose before or after it.
 
-```json
-{"decision":"accept|revise|blocked|manual_smoke","summary":"...","revisions":"...","manualSmokeInstructions":"...","verificationSummary":"..."}
-```
+When the decision is `accept`, prefer the smallest valid payload:
 
-- Keep the JSON valid and ensure it is the last block in your response.
+`{"decision":"accept"}`
+
+If you accept but the manager still needs a note, add only the minimum necessary fields.
+
+For `revise`, `blocked`, or `manual_smoke`, include only the fields needed to explain the decision and guide the next step:
+
+`{"decision":"accept|revise|blocked|manual_smoke","summary":"...","revisions":"...","manualSmokeInstructions":"...","verificationSummary":"..."}`
+
+- Keep the JSON valid.

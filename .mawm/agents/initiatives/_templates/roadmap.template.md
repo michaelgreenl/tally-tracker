@@ -19,18 +19,6 @@
 - Remove or rewrite superseded statements instead of adding contradictory notes elsewhere in the active set.
 - NEVER refer to historical references (archived/, complete/ directories), unless explicitly requested.
 
-## Direction
-
-### North Star
-
-<1 short paragraph describing the project state this roadmap is trying to create>
-
-### Strategic Outcomes
-
-- <outcome the roadmap should produce>
-- <outcome the roadmap should produce>
-- <outcome the roadmap should produce>
-
 ## State Model
 
 - `queued/` contains not-yet-started initiatives, draft plans, or ideas that still need decisions. It is planning input, not the active source of truth.
@@ -93,8 +81,3 @@
 - Not before: <dependency, maturity gate, or strategic precondition>
 - Working doc: `<optional draft path, note, or research placeholder>`
 - Notes: <largest uncertainty, risk, or missing decision>
-
-## Review Triggers
-
-- <time cadence such as monthly, per release, or per milestone>
-- <strategy change, architecture reset, or staffing change that should force a roadmap update>
