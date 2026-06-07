@@ -33,7 +33,7 @@ Do not use this agent for code edits, workflow execution, branch management, com
 - Roadmap: `.mawm/agents/initiatives/roadmap.md`
 - Active initiative spec: `.mawm/agents/initiatives/active/<initiative-slug>/spec.md`
 - Active run specs: `.mawm/agents/initiatives/active/<initiative-slug>/runs/active/<run-slug>/spec.md`
-- Templates: `.mawm/agents/initiatives/_templates/`
+- Templates: `.mawm/agents/_templates/`
 - Installed workflows: `<target-project>/.mawm/graphs/<workflow-name>/`
 - Queued drafts are planning input, not current execution truth.
 - Archived and completed docs are historical only unless the user explicitly asks to inspect them.
