@@ -3,12 +3,13 @@ import { ref } from 'vue';
 import { onIonViewWillEnter } from '@ionic/vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/authStore';
-import { useCounterStore } from '@/stores/counterStore';
+import { GUEST_COUNTER_CAP, GUEST_COUNTER_LIMIT_MESSAGE, useCounterStore } from '@/stores/counterStore';
 import { useNetwork } from '@/composables/useNetwork';
 import { useSync } from '@/composables/useSync';
 import { cloudDoneOutline, cloudOfflineOutline, diamond } from 'ionicons/icons';
 
 import BaseButton from '@/components/base/BaseButton.vue';
+import BaseModal from '@/components/base/BaseModal.vue';
 import Counter from '@/components/counter/Counter.vue';
 import CounterForm from '@/components/counter/CounterForm.vue';
 import {
@@ -32,6 +33,7 @@ const counterStore = useCounterStore();
 const router = useRouter();
 
 const showCounterForm = ref(false);
+const showGuestLimitModal = ref(false);
 const counterToUpdate = ref<ClientCounter | null>(null);
 
 const { isOnline } = useNetwork();
@@ -41,8 +43,21 @@ onIonViewWillEnter(async () => {
     await counterStore.init();
 });
 
-const startUpdateCounter = async (counter: ClientCounter) => {
+const startUpdateCounter = (counter: ClientCounter) => {
     counterToUpdate.value = counter;
+    showGuestLimitModal.value = false;
+    showCounterForm.value = true;
+};
+
+const handleAddCounterClick = () => {
+    if (!authStore.isAuthenticated && counterStore.eligibleCount >= GUEST_COUNTER_CAP) {
+        showCounterForm.value = false;
+        showGuestLimitModal.value = true;
+        return;
+    }
+
+    counterToUpdate.value = null;
+    showGuestLimitModal.value = false;
     showCounterForm.value = true;
 };
 
@@ -93,12 +108,28 @@ const closeCounterForm = () => {
                 </ion-list>
 
                 <p v-else>No counter's yet.</p>
-                <BaseButton v-if="!showCounterForm" @click="showCounterForm = true">Add counter</BaseButton>
+                <BaseButton v-if="!showCounterForm" test-id="add-counter-button" @click="handleAddCounterClick()">
+                    Add counter
+                </BaseButton>
                 <template v-else>
-                    <CounterForm :counter="counterToUpdate ?? undefined" @done="closeCounterForm()" />
-                    <BaseButton @click="closeCounterForm()">Cancel</BaseButton>
+                    <div class="form-wrapper" data-testid="home-counter-form">
+                        <CounterForm :counter="counterToUpdate ?? undefined" @done="closeCounterForm()" />
+                        <BaseButton @click="closeCounterForm()">Cancel</BaseButton>
+                    </div>
                 </template>
             </div>
+
+            <BaseModal
+                test-id="guest-limit-modal"
+                :is-open="showGuestLimitModal"
+                :title="GUEST_COUNTER_LIMIT_MESSAGE"
+                @close="showGuestLimitModal = false"
+            >
+                <p class="guest-limit-copy">
+                    Guest sessions can create up to {{ GUEST_COUNTER_CAP }} counters. Your existing counters remain
+                    usable.
+                </p>
+            </BaseModal>
         </ion-content>
     </ion-page>
 </template>
@@ -121,5 +152,15 @@ const closeCounterForm = () => {
     justify-content: space-between;
     width: 100%;
     padding-right: 1em;
+}
+
+.form-wrapper {
+    display: flex;
+    flex-direction: column;
+}
+
+.guest-limit-copy {
+    margin: 0;
+    line-height: 1.5;
 }
 </style>

@@ -37,8 +37,8 @@ describe('Counters', () => {
                 },
             }).as('createCounter');
 
-            cy.contains('ion-button:visible', 'Add counter').click();
-            cy.contains('h1', 'Create Counter').should('be.visible');
+            cy.get('[data-testid="add-counter-button"]').click();
+            cy.get('[data-testid="home-counter-form"]').should('be.visible');
 
             cy.get('form input[type="text"]').type('New Counter');
             cy.get('[data-testid="counter-form-submit"]').click();
@@ -135,8 +135,8 @@ describe('Counters', () => {
         });
 
         const createGuestCounter = (title: string) => {
-            cy.contains('ion-button:visible', 'Add counter').click();
-            cy.contains('h1', 'Create Counter').should('be.visible');
+            cy.get('[data-testid="add-counter-button"]').click();
+            cy.get('[data-testid="home-counter-form"]').should('be.visible');
             cy.get('form input[type="text"]').type(title);
             cy.get('[data-testid="counter-form-submit"]').click();
             cy.contains(title).should('be.visible');
@@ -234,6 +234,23 @@ describe('Counters', () => {
             cy.contains('Guest Counter Y').should('be.visible');
             cy.contains('Books Read').should('be.visible');
             cy.contains('Miles Ran').should('be.visible');
+        });
+
+        it('should open the guest-limit modal instead of the form at the cap', () => {
+            createGuestCounter('Guest Counter 1');
+            createGuestCounter('Guest Counter 2');
+            createGuestCounter('Guest Counter 3');
+
+            cy.get('[data-testid="add-counter-button"]').click();
+
+            cy.get('[data-testid="guest-limit-modal"]').should('be.visible');
+            cy.get('[data-testid="home-counter-form"]').should('not.exist');
+            cy.get('ion-list ion-item').should('have.length', 3);
+
+            cy.get('[data-testid="guest-limit-modal-dismiss"]').click();
+
+            cy.get('[data-testid="guest-limit-modal"]').should('not.exist');
+            cy.get('[data-testid="add-counter-button"]').should('be.visible');
         });
     });
 });

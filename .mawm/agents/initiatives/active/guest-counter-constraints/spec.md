@@ -48,7 +48,7 @@
 
 ### Run 2: Surface the guest-limit modal (`coding`)
 
-- [ ] complete
+- [x] complete
 - Run spec path: `.mawm/agents/initiatives/active/guest-counter-constraints/runs/active/surface-guest-limit-modal/spec.md` (created by the assigned workflow when this run starts)
 - Task: Add a reusable modal component and wire the `Add counter` entry point so it opens the modal directly when a guest session is at the cap, without opening the create form.
 - Current state: After Run 1, the store exports `eligibleCount` and enforces the cap at `createCounter()` as defense-in-depth. The `Add counter` button in `HomeView.vue` still always opens the create form regardless of eligible count. The client has no reusable modal component.
