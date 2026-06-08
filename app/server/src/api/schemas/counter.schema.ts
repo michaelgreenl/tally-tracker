@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-import { HexColorSchema } from '@packages/core';
-import { CounterTypeSchema } from '@packages/core';
+import { HexColorSchema } from '@tally/core';
+import { CounterTypeSchema } from '@tally/core';
 
 export const createCounterSchema = z.object({
     body: z

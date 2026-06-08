@@ -1,16 +1,16 @@
-import { CREATED, BAD_REQUEST, NOT_FOUND, CONFLICT, SERVER_ERROR } from '@packages/utils';
+import { CREATED, BAD_REQUEST, NOT_FOUND, CONFLICT, SERVER_ERROR } from '@tally/utils';
 import * as counterRepository from '../../db/repositories/counter.repository.js';
 
 import type { Request, Response } from 'express';
-import type { ShareStatusType } from '@packages/core';
-import type { CounterResponse } from '@packages/core';
+import type { ShareStatusType } from '@tally/core';
+import type { CounterResponse } from '@tally/core';
 import type {
     CreateCounterRequest,
     UpdateCounterRequest,
     IncrementCounterRequest,
     JoinCounterRequest,
     UpdateShareRequest,
-} from '@packages/core';
+} from '@tally/core';
 
 const getErrorMessage = (error: unknown): string => {
     if (error instanceof Error && error.message) {

@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { OK_NO_CONTENT } from '@packages/utils';
+import { OK_NO_CONTENT } from '@tally/utils';
 import * as idempotencyRepository from '../db/repositories/idempotency.repository.js';
 
 export const idempotency = async (req: Request, res: Response, next: NextFunction) => {

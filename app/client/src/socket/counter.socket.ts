@@ -1,7 +1,7 @@
 import { Socket } from 'socket.io-client';
 import { useCounterStore } from '@/stores/counterStore';
 
-import type { ClientCounter } from '@packages/core';
+import type { ClientCounter } from '@tally/core';
 
 // Inbound real-time updates from the server. Bypasses the service/sync layer
 // since there's no local mutation to queue — just state reconciliation.

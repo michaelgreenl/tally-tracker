@@ -1,5 +1,5 @@
-import type { ClientCounter } from '@packages/core';
-import type { HexColor } from '@packages/core';
+import type { ClientCounter } from '@tally/core';
+import type { HexColor } from '@tally/core';
 import type { MutationCommand } from '@/services/sync/types';
 
 export const TEST_COUNTER_ID = crypto.randomUUID();

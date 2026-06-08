@@ -1,4 +1,4 @@
-import { OK, CREATED, NOT_FOUND, CONFLICT } from '@packages/utils';
+import { OK, CREATED, NOT_FOUND, CONFLICT } from '@tally/utils';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Request, Response, NextFunction } from 'express';
 import request from 'supertest';

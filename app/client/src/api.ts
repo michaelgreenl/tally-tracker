@@ -19,13 +19,13 @@
  * - 204 responses return an empty object (handles idempotency "already processed" responses).
  */
 
-import { OK_NO_CONTENT, REQUEST_TIMEOUT, UNAUTHORIZED } from '@packages/utils';
+import { OK_NO_CONTENT, REQUEST_TIMEOUT, UNAUTHORIZED } from '@tally/utils';
 import { Preferences } from '@capacitor/preferences';
 import { Capacitor } from '@capacitor/core';
 import { ApiError, getErrorMessage } from '@/utils/errors';
 import { useAuthStore } from './stores/authStore';
 
-import type { AuthResponse } from '@packages/core';
+import type { AuthResponse } from '@tally/core';
 
 export interface ApiRequestOptions<T = unknown> extends Omit<RequestInit, 'body'> {
     body?: T;

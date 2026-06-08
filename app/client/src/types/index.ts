@@ -1,4 +1,4 @@
-import type { ApiResponse } from '@packages/core';
+import type { ApiResponse } from '@tally/core';
 
 // Re-used as the return type for all store actions, giving views a
 // consistent { success, message? } contract without needing try/catch.

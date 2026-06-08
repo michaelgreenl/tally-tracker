@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 
 import type { CounterShare, RefreshToken } from '@prisma/client';
-import type { CounterTypeType as CounterType } from '@packages/core';
+import type { CounterTypeType as CounterType } from '@tally/core';
 
 type CounterFixture = {
     id: string;

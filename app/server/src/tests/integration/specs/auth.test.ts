@@ -1,4 +1,4 @@
-import { OK, CREATED, UNAUTHORIZED, NOT_FOUND, UNPROCESSABLE_ENTITY } from '@packages/utils';
+import { OK, CREATED, UNAUTHORIZED, NOT_FOUND, UNPROCESSABLE_ENTITY } from '@tally/utils';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import { randomUUID } from 'crypto';

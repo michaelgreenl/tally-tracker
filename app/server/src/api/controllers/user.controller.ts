@@ -1,4 +1,4 @@
-import { CREATED, UNAUTHORIZED, NOT_FOUND, UNPROCESSABLE_ENTITY, SERVER_ERROR } from '@packages/utils';
+import { CREATED, UNAUTHORIZED, NOT_FOUND, UNPROCESSABLE_ENTITY, SERVER_ERROR } from '@tally/utils';
 import * as userRepository from '../../db/repositories/user.repository.js';
 import * as tokenRepository from '../../db/repositories/token.repository.js';
 import {
@@ -12,8 +12,8 @@ import bcrypt from 'bcrypt';
 import { Prisma } from '@prisma/client';
 
 import type { Request, Response } from 'express';
-import type { AuthResponse } from '@packages/core';
-import type { AuthRequest, RefreshRequest } from '@packages/core';
+import type { AuthResponse } from '@tally/core';
+import type { AuthRequest, RefreshRequest } from '@tally/core';
 
 const REFRESH_TOKEN_TTL = 30 * 24 * 60 * 60 * 1000; // 30d
 

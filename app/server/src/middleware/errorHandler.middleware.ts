@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 
-import type { ApiResponse } from '@packages/core';
+import type { ApiResponse } from '@tally/core';
 
 type ErrorWithStatus = Error & {
     status?: number;

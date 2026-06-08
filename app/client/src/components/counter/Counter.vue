@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import BaseButton from '@/components/base/BaseButton.vue';
 
-import type { ClientCounter } from '@packages/core';
+import type { ClientCounter } from '@tally/core';
 
 defineOptions({
     name: 'CounterCard',

@@ -2,7 +2,7 @@ import bcrypt from 'bcrypt';
 import { TEST_USER_ID } from './counter.fixture.js';
 
 import type { User } from '@prisma/client';
-import type { ClientUser } from '@packages/core';
+import type { ClientUser } from '@tally/core';
 
 const hashedPassword = bcrypt.hashSync('password123', 10);
 

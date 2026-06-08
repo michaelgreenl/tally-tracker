@@ -1,4 +1,4 @@
-import type { ClientUser } from '@packages/core';
+import type { ClientUser } from '@tally/core';
 
 export const TEST_USER_ID = crypto.randomUUID();
 export const TEST_OTHER_USER_ID = crypto.randomUUID();

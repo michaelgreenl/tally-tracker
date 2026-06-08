@@ -13,7 +13,7 @@
  * - 5xx / Network: Retryable. Stop processing, retry on next trigger.
  */
 
-import { UNAUTHORIZED } from '@packages/utils';
+import { UNAUTHORIZED } from '@tally/utils';
 import { Network } from '@capacitor/network';
 import { SyncQueueService } from '@/services/sync/queue';
 import { useAuthStore } from '@/stores/authStore';
@@ -21,8 +21,8 @@ import apiFetch from '@/api';
 import { ApiError } from '@/utils/errors';
 
 import type { MutationCommand } from './types';
-import type { CounterResponse } from '@packages/core';
-import type { CreateCounterRequest, IncrementCounterRequest, UpdateCounterRequest } from '@packages/core';
+import type { CounterResponse } from '@tally/core';
+import type { CreateCounterRequest, IncrementCounterRequest, UpdateCounterRequest } from '@tally/core';
 
 export const SyncManager = {
     isSyncing: false,

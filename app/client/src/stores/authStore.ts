@@ -1,4 +1,4 @@
-import { UNAUTHORIZED } from '@packages/utils';
+import { UNAUTHORIZED } from '@tally/utils';
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { Capacitor } from '@capacitor/core';
@@ -9,8 +9,8 @@ import { ApiError, getErrorMessage } from '@/utils/errors';
 import { ok, fail } from '@/utils/result';
 
 import type { StoreResponse } from '@/types/index';
-import type { AuthRequest, UpdateUserRequest } from '@packages/core';
-import type { ClientUser } from '@packages/core';
+import type { AuthRequest, UpdateUserRequest } from '@tally/core';
+import type { ClientUser } from '@tally/core';
 
 export const useAuthStore = defineStore('auth', () => {
     const user = ref<ClientUser | null>(null);

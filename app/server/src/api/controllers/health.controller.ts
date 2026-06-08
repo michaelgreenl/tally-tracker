@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import type { ApiResponse } from '@packages/core';
+import type { ApiResponse } from '@tally/core';
 
 export const checkHealth = (req: Request, res: Response) => {
     const response: ApiResponse<object> = {

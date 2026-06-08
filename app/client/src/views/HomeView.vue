@@ -25,7 +25,7 @@ import {
     IonSpinner,
 } from '@ionic/vue';
 
-import type { ClientCounter } from '@packages/core';
+import type { ClientCounter } from '@tally/core';
 
 const authStore = useAuthStore();
 const counterStore = useCounterStore();

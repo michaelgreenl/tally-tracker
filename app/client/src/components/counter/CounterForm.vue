@@ -7,10 +7,10 @@ import TextInput from '@/components/inputs/TextInput.vue';
 import { IonItem, IonLabel, IonToggle, IonIcon } from '@ionic/vue';
 import { diamond } from 'ionicons/icons';
 
-import type { UpdateCounterRequest } from '@packages/core';
-import type { ClientCounter } from '@packages/core';
-import type { CounterTypeType as CounterType } from '@packages/core';
-import type { HexColor } from '@packages/core';
+import type { UpdateCounterRequest } from '@tally/core';
+import type { ClientCounter } from '@tally/core';
+import type { CounterTypeType as CounterType } from '@tally/core';
+import type { HexColor } from '@tally/core';
 
 const props = defineProps<{
     counter?: ClientCounter;

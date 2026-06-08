@@ -5,10 +5,10 @@ import { SyncManager } from '@/services/sync/manager';
 import { useAuthStore } from '@/stores/authStore';
 import { randomUUID } from '@/utils/safeUUID';
 
-import type { ClientCounter } from '@packages/core';
-import type { CounterResponse } from '@packages/core';
-import type { JoinCounterRequest } from '@packages/core';
-import type { UpdateCounterRequest } from '@packages/core';
+import type { ClientCounter } from '@tally/core';
+import type { CounterResponse } from '@tally/core';
+import type { JoinCounterRequest } from '@tally/core';
+import type { UpdateCounterRequest } from '@tally/core';
 
 export const CounterService = {
     async getAllLocal() {

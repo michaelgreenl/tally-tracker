@@ -1,7 +1,7 @@
 import { Preferences } from '@capacitor/preferences';
 import { randomUUID } from '@/utils/safeUUID';
 
-import type { ClientCounter } from '@packages/core';
+import type { ClientCounter } from '@tally/core';
 
 const GUEST_COUNTERS_KEY = 'guest_counters';
 

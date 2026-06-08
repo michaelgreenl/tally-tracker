@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from '@packages/core';
+import { PrismaClient } from '@tally/core';
 
 const connectionString = process.env.POSTGRES_URL;
 

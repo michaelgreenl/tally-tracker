@@ -1,7 +1,7 @@
 import prisma from '../prisma.js';
 import { Prisma } from '@prisma/client';
 
-import type { ShareStatusType, CounterTypeType as CounterType } from '@packages/core';
+import type { ShareStatusType, CounterTypeType as CounterType } from '@tally/core';
 
 export const post = async ({
     id,
