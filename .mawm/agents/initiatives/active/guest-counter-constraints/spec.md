@@ -37,7 +37,7 @@
 
 ### Run 1: Codify guest counter cap policy (`coding`)
 
-- [ ] complete
+- [x] complete
 - Run spec path: `.mawm/agents/initiatives/active/guest-counter-constraints/runs/active/codify-guest-counter-cap-policy/spec.md` (created by the assigned workflow when this run starts)
 - Task: Add the guest-only three-counter policy to the client store so over-limit guest creates fail before any local mutation or persistence.
 - Current state: `counterStore.ts` keeps one mixed `counters` array and `createCounter()` always pushes a new guest counter into local state before any remote work. There is no explicit eligible-counter rule, and no unit coverage for a guest limit or shared-counter exclusion.

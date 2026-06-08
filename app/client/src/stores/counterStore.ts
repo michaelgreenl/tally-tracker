@@ -13,6 +13,10 @@ import type { HexColor } from '@tally/core';
 import type { UpdateCounterRequest } from '@tally/core';
 
 const DEFAULT_COUNTER_COLOR = '#000000' as HexColor;
+export const GUEST_COUNTER_CAP = 3;
+export const GUEST_COUNTER_LIMIT_MESSAGE = 'Guest counter limit reached';
+
+const isGuestEligible = (type: CounterType): boolean => type !== 'SHARED';
 
 export const useCounterStore = defineStore('counter', () => {
     const authStore = useAuthStore();
@@ -66,7 +70,13 @@ export const useCounterStore = defineStore('counter', () => {
         return result;
     };
 
+    const eligibleCount = computed(() => counters.value.filter((counter) => isGuestEligible(counter.type)).length);
+
     async function createCounter(title: string, color: HexColor | null, type: CounterType): Promise<StoreResponse> {
+        if (isGuest.value && isGuestEligible(type) && eligibleCount.value >= GUEST_COUNTER_CAP) {
+            return fail(GUEST_COUNTER_LIMIT_MESSAGE);
+        }
+
         // Invite code is generated client-side and sent with the CREATE command,
         // so it's available locally before the server roundtrip completes.
         const inviteCode = type === 'SHARED' ? generateInviteCode() : null;
@@ -186,6 +196,7 @@ export const useCounterStore = defineStore('counter', () => {
     return {
         counters,
         loading,
+        eligibleCount,
         saveState,
         clearState,
         init,
