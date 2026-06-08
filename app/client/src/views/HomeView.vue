@@ -1,18 +1,14 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref } from 'vue';
 import { onIonViewWillEnter } from '@ionic/vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/authStore';
 import { useCounterStore } from '@/stores/counterStore';
 import { useNetwork } from '@/composables/useNetwork';
 import { useSync } from '@/composables/useSync';
-import { SyncManager } from '@/services/sync/manager';
-import { Network } from '@capacitor/network';
 import { cloudDoneOutline, cloudOfflineOutline, diamond } from 'ionicons/icons';
 
-import BaseNavLink from '@/components/base/BaseNavLink.vue';
 import BaseButton from '@/components/base/BaseButton.vue';
-import TextInput from '@/components/inputs/TextInput.vue';
 import Counter from '@/components/counter/Counter.vue';
 import CounterForm from '@/components/counter/CounterForm.vue';
 import {
@@ -23,14 +19,12 @@ import {
     IonContent,
     IonList,
     IonItem,
-    IonLabel,
     IonButtons,
     IonButton,
     IonIcon,
     IonSpinner,
 } from '@ionic/vue';
 
-import type { HexColor } from '@packages/core';
 import type { ClientCounter } from '@packages/core';
 
 const authStore = useAuthStore();
@@ -101,7 +95,7 @@ const closeCounterForm = () => {
                 <p v-else>No counter's yet.</p>
                 <BaseButton v-if="!showCounterForm" @click="showCounterForm = true">Add counter</BaseButton>
                 <template v-else>
-                    <CounterForm :counter="counterToUpdate as ClientCounter | undefined" @done="closeCounterForm()" />
+                    <CounterForm :counter="counterToUpdate ?? undefined" @done="closeCounterForm()" />
                     <BaseButton @click="closeCounterForm()">Cancel</BaseButton>
                 </template>
             </div>
@@ -112,8 +106,8 @@ const closeCounterForm = () => {
 <style lang="scss" scoped>
 .title-wrapper {
     display: flex;
-    align-items: center;
     gap: 0.5em;
+    align-items: center;
 }
 
 .content-wrapper {

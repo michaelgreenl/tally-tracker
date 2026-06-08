@@ -1,6 +1,5 @@
 import { gsap } from 'gsap';
 import { useGsap } from '@/composables/useGsap';
-// @ts-ignore
 import Flip from 'gsap/Flip';
 
 gsap.registerPlugin(Flip);
@@ -9,7 +8,12 @@ interface AnimationOptions {
     selector?: string | Element | null;
     opts?: gsap.TweenVars;
     onComplete?: () => void;
+}
+
+interface FlipAnimationOptions {
     state?: Flip.FlipState;
+    opts?: Flip.FromToVars;
+    onComplete?: () => void;
 }
 
 export function useUtilAnimations() {
@@ -22,7 +26,7 @@ export function useUtilAnimations() {
             duration: 0.2,
             ease: 'linear',
             opacity: 1,
-            ...(opts as any),
+            ...(opts ?? {}),
             onComplete,
         });
     });
@@ -34,17 +38,17 @@ export function useUtilAnimations() {
             duration: 0.2,
             ease: 'linear',
             opacity: 0,
-            ...(opts as any),
+            ...(opts ?? {}),
             onComplete,
         });
     });
 
-    const flipFrom = ({ state, opts, onComplete = () => {} }: AnimationOptions) => {
+    const flipFrom = ({ state, opts, onComplete = () => {} }: FlipAnimationOptions) => {
         if (!state) return;
         Flip.from(state, {
             duration: 0.3,
             ease: 'power3.out',
-            ...(opts as any),
+            ...(opts ?? {}),
             onComplete,
         });
     };

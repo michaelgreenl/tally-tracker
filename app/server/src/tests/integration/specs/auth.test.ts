@@ -156,11 +156,21 @@ describe('Auth Routes', () => {
         it('should rotate tokens with valid refresh token', async () => {
             const oldToken = buildRefreshToken();
             const newToken = buildRefreshToken({ id: NEW_REFRESH_TOKEN_ID });
+            const clientUser = buildClientUser();
+            const refreshedUser = {
+                id: clientUser.id,
+                email: clientUser.email,
+                phone: clientUser.phone,
+                tier: clientUser.tier,
+                createdAt: new Date('2026-01-01'),
+                updatedAt: new Date('2026-01-01'),
+                sharedCounters: [],
+            } satisfies NonNullable<Awaited<ReturnType<typeof userRepository.getUserById>>>;
 
             vi.mocked(tokenRepository.get).mockResolvedValue(oldToken);
             vi.mocked(tokenRepository.remove).mockResolvedValue(oldToken);
             vi.mocked(tokenRepository.create).mockResolvedValue(newToken);
-            vi.mocked(userRepository.getUserById).mockResolvedValue(buildClientUser() as any);
+            vi.mocked(userRepository.getUserById).mockResolvedValue(refreshedUser);
 
             const res = await request(app).post('/users/refresh').send({ refreshToken: TEST_REFRESH_TOKEN_ID });
 
@@ -202,8 +212,12 @@ describe('Auth Routes', () => {
     describe('POST /users/logout', () => {
         it('should clear tokens and cookies', async () => {
             const token = buildRefreshToken();
+            const removedTokens = {
+                count: 1,
+            } satisfies Awaited<ReturnType<typeof tokenRepository.removeAllForUser>>;
+
             vi.mocked(tokenRepository.get).mockResolvedValue(token);
-            vi.mocked(tokenRepository.removeAllForUser).mockResolvedValue({ count: 1 } as any);
+            vi.mocked(tokenRepository.removeAllForUser).mockResolvedValue(removedTokens);
 
             const res = await request(app)
                 .post('/users/logout')

@@ -17,6 +17,14 @@ import type { AuthRequest, RefreshRequest } from '@packages/core';
 
 const REFRESH_TOKEN_TTL = 30 * 24 * 60 * 60 * 1000; // 30d
 
+const getErrorMessage = (error: unknown): string => {
+    if (error instanceof Error && error.message) {
+        return error.message;
+    }
+
+    return 'Unknown error';
+};
+
 // Access token is validated by the jwt middleware before reaching here.
 // Just look up the user and return their data.
 export const checkAuth = async (req: Request, res: Response<AuthResponse>) => {
@@ -36,11 +44,11 @@ export const checkAuth = async (req: Request, res: Response<AuthResponse>) => {
             success: true,
             data: { user },
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Authentication Check Error:', error);
         res.status(SERVER_ERROR).json({
             success: false,
-            message: 'Authentication Check Error: ' + error.message,
+            message: 'Authentication Check Error: ' + getErrorMessage(error),
         });
     }
 };
@@ -49,7 +57,10 @@ const sanitizeEmail = (email: string): string => {
     return email.trim().toLowerCase();
 };
 
-export const post = async (req: Request<{}, {}, AuthRequest>, res: Response<AuthResponse>) => {
+export const post = async (
+    req: Request<Record<string, never>, AuthResponse, AuthRequest>,
+    res: Response<AuthResponse>,
+) => {
     try {
         const { email, phone, password } = req.body;
 
@@ -62,7 +73,7 @@ export const post = async (req: Request<{}, {}, AuthRequest>, res: Response<Auth
         await userRepository.createUser({ email: sanitizedEmail, phone, password: hash });
 
         res.status(CREATED).json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
             // P2002 = unique constraint violation
             const target = (error.meta?.target as string[])?.[0] || 'Account';
@@ -76,7 +87,7 @@ export const post = async (req: Request<{}, {}, AuthRequest>, res: Response<Auth
             console.error('User Controller Error: ', error);
             res.status(SERVER_ERROR).json({
                 success: false,
-                message: 'Server error: ' + error.message,
+                message: 'Server error: ' + getErrorMessage(error),
             });
         }
     }
@@ -84,7 +95,10 @@ export const post = async (req: Request<{}, {}, AuthRequest>, res: Response<Auth
 
 // Returns tokens both as cookies (web) and in the response body (native).
 // See: docs/diagrams/sequence/auth/login.md
-export const login = async (req: Request<{}, {}, AuthRequest>, res: Response<AuthResponse>) => {
+export const login = async (
+    req: Request<Record<string, never>, AuthResponse, AuthRequest>,
+    res: Response<AuthResponse>,
+) => {
     try {
         const { email, phone, password, rememberMe } = req.body;
 
@@ -126,17 +140,20 @@ export const login = async (req: Request<{}, {}, AuthRequest>, res: Response<Aut
         }
 
         res.json({ success: true, data: { user: clientUser, accessToken, refreshToken } });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('User Controller Error: ', error);
         res.status(SERVER_ERROR).json({
             success: false,
-            message: 'Server error: ' + error.message,
+            message: 'Server error: ' + getErrorMessage(error),
         });
     }
 };
 
 // See: docs/diagrams/sequence/auth/token-refresh.md
-export const refresh = async (req: Request<{}, {}, RefreshRequest>, res: Response<AuthResponse>) => {
+export const refresh = async (
+    req: Request<Record<string, never>, AuthResponse, RefreshRequest>,
+    res: Response<AuthResponse>,
+) => {
     try {
         // Web sends refresh token via cookie, native sends it in the body
         const refreshTokenId = req.cookies?.refresh_token || req.body?.refreshToken;
@@ -172,11 +189,11 @@ export const refresh = async (req: Request<{}, {}, RefreshRequest>, res: Respons
             success: true,
             data: { accessToken, refreshToken: newTokenRecord.id },
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Refresh Token Error:', error);
         res.status(SERVER_ERROR).json({
             success: false,
-            message: 'Server error: ' + error.message,
+            message: 'Server error: ' + getErrorMessage(error),
         });
     }
 };
@@ -198,21 +215,24 @@ export const logout = async (req: Request, res: Response<AuthResponse>) => {
         res.clearCookie('refresh_token', clearCookieConfig);
 
         res.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('User Controller Error: ', error);
         res.status(SERVER_ERROR).json({
             success: false,
-            message: 'Server error: ' + error.message,
+            message: 'Server error: ' + getErrorMessage(error),
         });
     }
 };
 
-export const put = async (req: Request<{}, {}, AuthRequest>, res: Response<AuthResponse>) => {
+export const put = async (
+    req: Request<Record<string, never>, AuthResponse, AuthRequest>,
+    res: Response<AuthResponse>,
+) => {
     try {
         const userId = req.user?.id;
         const { email, phone, password } = req.body;
 
-        const updateData: any = {};
+        const updateData: Prisma.UserUpdateInput = {};
         if (email) updateData.email = email;
         if (phone) updateData.phone = phone;
 
@@ -225,7 +245,7 @@ export const put = async (req: Request<{}, {}, AuthRequest>, res: Response<AuthR
         }
 
         res.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
             const target = (error.meta?.target as string[])?.[0] || 'Account';
             const field = target.charAt(0).toUpperCase() + target.slice(1);
@@ -238,7 +258,7 @@ export const put = async (req: Request<{}, {}, AuthRequest>, res: Response<AuthR
             console.error('User Controller Error: ', error);
             res.status(SERVER_ERROR).json({
                 success: false,
-                message: 'Server error: ' + error.message,
+                message: 'Server error: ' + getErrorMessage(error),
             });
         }
     }
@@ -253,11 +273,11 @@ export const remove = async (req: Request, res: Response<AuthResponse>) => {
         }
 
         res.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('User Controller Error: ', error);
         res.status(SERVER_ERROR).json({
             success: false,
-            message: 'Server error: ' + error.message,
+            message: 'Server error: ' + getErrorMessage(error),
         });
     }
 };

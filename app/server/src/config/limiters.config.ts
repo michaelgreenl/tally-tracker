@@ -4,7 +4,7 @@ import slowDown from 'express-slow-down';
 
 import { Request } from 'express';
 
-const skip = (req: Request) => (process.env.NODE_ENV === 'development' ? true : false);
+const skip = (_req: Request) => process.env.NODE_ENV === 'development';
 
 export const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,

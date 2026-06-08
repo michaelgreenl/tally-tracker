@@ -43,11 +43,11 @@ html,
 body,
 #app,
 .app-container {
-    font-size: 12px;
     min-height: 100vh;
     padding: 0;
     margin: 0;
     font-family: $primary-font-stack;
+    font-size: 12px;
     background: $color-bg-primary;
 }
 
@@ -59,9 +59,10 @@ body,
 
 main {
     @include flexCenterAll;
+
     flex-direction: column;
-    height: 100%;
     gap: 1em;
+    height: 100%;
 }
 
 button {
@@ -76,7 +77,7 @@ a {
     text-decoration: none;
 }
 
-a:visted {
+a:visited {
     color: inherit;
 }
 </style>

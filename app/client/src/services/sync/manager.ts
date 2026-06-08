@@ -60,7 +60,7 @@ export const SyncManager = {
             try {
                 await this.executeCommand(command);
                 await SyncQueueService.removeCommand(command.id);
-            } catch (error: any) {
+            } catch (error: unknown) {
                 console.error(`[Sync] Command ${command.id} Failed:`, error);
 
                 let status = 0;
@@ -106,21 +106,21 @@ export const SyncManager = {
             case 'CREATE':
                 await apiFetch<CounterResponse, CreateCounterRequest>('/counters', {
                     method: 'POST',
-                    body: cmd.payload,
+                    body: cmd.payload as CreateCounterRequest,
                     ...options,
                 });
                 break;
             case 'UPDATE':
                 await apiFetch<CounterResponse, UpdateCounterRequest>(`/counters/update/${cmd.entityId}`, {
                     method: 'PUT',
-                    body: cmd.payload,
+                    body: cmd.payload as UpdateCounterRequest,
                     ...options,
                 });
                 break;
             case 'INCREMENT':
                 await apiFetch<CounterResponse, IncrementCounterRequest>(`/counters/increment/${cmd.entityId}`, {
                     method: 'PUT',
-                    body: cmd.payload,
+                    body: cmd.payload as IncrementCounterRequest,
                     ...options,
                 });
                 break;

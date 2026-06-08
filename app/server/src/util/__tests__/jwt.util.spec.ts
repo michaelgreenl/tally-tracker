@@ -1,13 +1,22 @@
 import { describe, it, expect, vi } from 'vitest';
+import jsonwebtoken, { type JwtPayload } from 'jsonwebtoken';
 
 vi.stubEnv('JWT_SECRET', 'test-secret-key-for-testing');
 
 import jwt from '../jwt.util.js';
 
+type VerifiedToken = JwtPayload & {
+    id: string;
+    aud: string;
+    exp: number;
+    iat: number;
+    iss: string;
+};
+
 describe('JWT Util', () => {
     it('should sign and verify a token', () => {
         const token = jwt.sign({ id: 'user-123' });
-        const decoded = jwt.verify(token) as any;
+        const decoded = jwt.verify(token) as VerifiedToken;
 
         expect(decoded.id).toBe('user-123');
         expect(decoded.iss).toBe('reaction-api');
@@ -16,7 +25,7 @@ describe('JWT Util', () => {
 
     it('should default to 45m expiry', () => {
         const token = jwt.sign({ id: 'user-123' });
-        const decoded = jwt.verify(token) as any;
+        const decoded = jwt.verify(token) as VerifiedToken;
 
         // exp - iat should be 2700 seconds (45 minutes)
         expect(decoded.exp - decoded.iat).toBe(2700);
@@ -24,7 +33,7 @@ describe('JWT Util', () => {
 
     it('should accept custom expiry', () => {
         const token = jwt.sign({ id: 'user-123' }, '1d');
-        const decoded = jwt.verify(token) as any;
+        const decoded = jwt.verify(token) as VerifiedToken;
 
         expect(decoded.exp - decoded.iat).toBe(86400);
     });
@@ -34,7 +43,6 @@ describe('JWT Util', () => {
     });
 
     it('should throw on token with wrong issuer', () => {
-        const jsonwebtoken = require('jsonwebtoken');
         const badToken = jsonwebtoken.sign({ id: '123' }, 'test-secret-key-for-testing', {
             issuer: 'wrong-issuer',
         });

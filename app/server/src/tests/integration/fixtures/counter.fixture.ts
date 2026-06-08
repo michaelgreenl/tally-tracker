@@ -3,13 +3,30 @@ import { randomUUID } from 'crypto';
 import type { CounterShare, RefreshToken } from '@prisma/client';
 import type { CounterTypeType as CounterType } from '@packages/core';
 
+type CounterFixture = {
+    id: string;
+    title: string;
+    count: number;
+    color: string | null;
+    type: CounterType;
+    inviteCode: string | null;
+    userId: string;
+    createdAt: Date;
+    updatedAt: Date;
+    shares: CounterShare[];
+    owner: {
+        id: string;
+        email: string;
+    };
+};
+
 export const TEST_COUNTER_ID = randomUUID();
 export const TEST_USER_ID = randomUUID();
 export const TEST_OTHER_USER_ID = randomUUID();
 export const TEST_SHARE_ID = randomUUID();
 export const TEST_REFRESH_TOKEN_ID = randomUUID();
 
-export const buildCounter = (overrides: Record<string, any> = {}) => ({
+export const buildCounter = (overrides: Partial<CounterFixture> = {}): CounterFixture => ({
     id: TEST_COUNTER_ID,
     title: 'Test Counter',
     count: 0,

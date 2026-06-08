@@ -1,5 +1,5 @@
 {
-    "name": "@packages/core",
+    "name": "@tally/core",
     "version": "0.1.0",
     "type": "module",
     "main": "src/index.ts",
@@ -12,7 +12,12 @@
     },
     "scripts": {
         "generate": "npx prisma generate",
-        "render:start": "npx prisma db push && npx prisma db seed"
+        "render:start": "npx prisma db push && npx prisma db seed",
+        "typecheck": "tsc --noEmit",
+        "format": "prettier --write src/",
+        "format:check": "prettier --check src/",
+        "lint": "eslint src --ext .ts",
+        "lint:all": "bun typecheck && bun format:check && bun lint"
     },
     "dependencies": {
         "@prisma/client": "^7.3.0",
@@ -20,12 +25,19 @@
         "zod": "^4.3.5"
     },
     "devDependencies": {
+        "@eslint/js": "^10.0.1",
         "@prisma/adapter-pg": "^7.4.1",
         "@prisma/config": "^7.4.2",
         "dotenv": "^17.3.1",
         "pg": "^8.19.0",
         "prisma": "^7.3.0",
         "prisma-erd-generator": "^2.4.2",
+        "@typescript-eslint/eslint-plugin": "^8.52.0",
+        "@typescript-eslint/parser": "^8.52.0",
+        "eslint": "^9.39.2",
+        "eslint-config-prettier": "^10.1.8",
+        "eslint-plugin-prettier": "^5.5.4",
+        "globals": "^17.0.0",
         "typescript": "^5.9.3",
         "zod-prisma-types": "^3.3.11"
     }

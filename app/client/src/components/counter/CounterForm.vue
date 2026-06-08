@@ -4,7 +4,7 @@ import { useCounterStore } from '@/stores/counterStore';
 import { useAuthStore } from '@/stores/authStore';
 import BaseButton from '@/components/base/BaseButton.vue';
 import TextInput from '@/components/inputs/TextInput.vue';
-import { IonItem, IonLabel, IonToggle, IonNote, IonIcon } from '@ionic/vue';
+import { IonItem, IonLabel, IonToggle, IonIcon } from '@ionic/vue';
 import { diamond } from 'ionicons/icons';
 
 import type { UpdateCounterRequest } from '@packages/core';

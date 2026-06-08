@@ -4,6 +4,15 @@ import { errorHandler } from '../middleware/errorHandler.middleware.js';
 import helmetConfig from './helmet.config.js';
 import { limiter, speedLimiter } from './limiters.config.js';
 
-const config: Array<any> = [...expressConfig, helmetConfig, limiter, speedLimiter, routes, errorHandler];
+import type { ErrorRequestHandler, RequestHandler } from 'express';
+
+const config: Array<RequestHandler | ErrorRequestHandler> = [
+    ...expressConfig,
+    helmetConfig,
+    limiter,
+    speedLimiter,
+    routes,
+    errorHandler,
+];
 
 export default config;

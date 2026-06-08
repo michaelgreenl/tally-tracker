@@ -1,5 +1,5 @@
-import { OK, OK_NO_CONTENT, BAD_REQUEST, UNAUTHORIZED, REQUEST_TIMEOUT } from '@packages/utils';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { OK, OK_NO_CONTENT, BAD_REQUEST, REQUEST_TIMEOUT } from '@packages/utils';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('@capacitor/core', () => ({
     Capacitor: {

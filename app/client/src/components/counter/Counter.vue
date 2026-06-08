@@ -3,7 +3,11 @@ import BaseButton from '@/components/base/BaseButton.vue';
 
 import type { ClientCounter } from '@packages/core';
 
-const props = defineProps<{
+defineOptions({
+    name: 'CounterCard',
+});
+
+defineProps<{
     counter: ClientCounter;
 }>();
 

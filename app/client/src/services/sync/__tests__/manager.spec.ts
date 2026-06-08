@@ -85,7 +85,7 @@ describe('SyncManager', () => {
 
         it('should stop processing and trigger logout on 401', async () => {
             const mockLogout = vi.fn();
-            vi.mocked(useAuthStore).mockReturnValue({ logout: mockLogout } as any);
+            vi.mocked(useAuthStore).mockReturnValue({ logout: mockLogout } as ReturnType<typeof useAuthStore>);
 
             vi.mocked(Network.getStatus).mockResolvedValue({ connected: true, connectionType: 'wifi' });
             vi.mocked(SyncQueueService.getQueue).mockResolvedValue([

@@ -1,5 +1,4 @@
 import { Request, Response, NextFunction } from 'express';
-import prisma from '../db/prisma.js';
 import { OK_NO_CONTENT } from '@packages/utils';
 import * as idempotencyRepository from '../db/repositories/idempotency.repository.js';
 

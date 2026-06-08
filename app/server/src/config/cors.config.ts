@@ -1,5 +1,4 @@
 import 'dotenv/config';
-import cors from 'cors';
 
 const getAllowedOrigins = () => {
     const { FRONTEND_URL } = process.env;

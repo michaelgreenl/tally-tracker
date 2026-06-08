@@ -39,11 +39,11 @@ const handleNavigation = async (ev: Event) => {
     --padding-end: 0;
     --ripple-color: transparent;
 
-    font-weight: 600;
-    text-transform: none;
-    font-size: 0.95rem;
-    margin: 0;
     height: auto;
     min-height: 0;
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-transform: none;
 }
 </style>

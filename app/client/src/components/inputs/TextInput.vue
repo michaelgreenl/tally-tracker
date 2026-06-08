@@ -2,7 +2,7 @@
 import { IonItem, IonInput, IonLabel, IonIcon, IonNote } from '@ionic/vue';
 import { eye, eyeOff } from 'ionicons/icons';
 
-const props = defineProps<{
+defineProps<{
     label: string;
     modelValue: string;
     type?: 'text' | 'password' | 'email';
@@ -52,6 +52,7 @@ const emit = defineEmits<{
 .input-wrapper {
     margin-bottom: 20px;
 }
+
 .password-icon {
     cursor: pointer;
     opacity: 0.7;

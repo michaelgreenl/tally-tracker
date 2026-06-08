@@ -2,9 +2,8 @@
 // contract between stores and views without throwing errors for expected failures.
 import type { StoreResponse } from '@/types/index';
 
-export const ok = (data?: any): StoreResponse => ({
+export const ok = (): StoreResponse => ({
     success: true,
-    data,
 });
 
 export const fail = (message: string): StoreResponse => ({

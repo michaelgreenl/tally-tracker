@@ -7,7 +7,6 @@ import {
     createCounterSchema,
     updateCounterSchema,
     incrementCounterSchema,
-    getCounterSchema,
     deleteCounterSchema,
     joinCounterSchema,
     updateShareSchema,

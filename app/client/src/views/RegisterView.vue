@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { getErrorMessage } from '@/utils/errors';
 import { IonPage, IonContent, IonGrid, IonRow, IonCol } from '@ionic/vue';
 import TextInput from '@/components/inputs/TextInput.vue';
 import BaseButton from '@/components/base/BaseButton.vue';
@@ -36,8 +37,8 @@ const handleRegister = async () => {
 
         if (res.success) router.push('/login');
         else errorMessage.value = res.message || 'Registration failed';
-    } catch (error: any) {
-        errorMessage.value = 'Server error occurred';
+    } catch (error: unknown) {
+        errorMessage.value = getErrorMessage(error, 'Server error occurred');
         console.error('Server error occurred', error);
     } finally {
         loading.value = false;
@@ -88,27 +89,27 @@ const handleRegister = async () => {
 
 <style scoped>
 .header {
-    text-align: center;
     margin-bottom: 30px;
+    text-align: center;
 }
 
 .footer {
-    text-align: center;
     margin-top: 20px;
+    text-align: center;
 }
 
 .footer a {
-    text-decoration: none;
     font-weight: bold;
     color: var(--ion-color-primary);
+    text-decoration: none;
 }
 
 .error-box {
-    color: var(--ion-color-danger);
-    background: rgba(var(--ion-color-danger-rgb), 0.1);
     padding: 10px;
-    border-radius: 8px;
     margin-bottom: 20px;
+    color: var(--ion-color-danger);
     text-align: center;
+    background: rgb(var(--ion-color-danger-rgb), 0.1);
+    border-radius: 8px;
 }
 </style>

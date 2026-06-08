@@ -6,15 +6,15 @@ if [ "$SKIP_ALL" = "1" ]; then
     exit 0
 fi
 
-echo "🛂 Running type check..."
-bun run typecheck
+echo "🛂 Running lint..."
+bun lint:all
 
 echo "🧪 Running unit tests..."
-bun run test:unit
+bun test:unit
 
 if [ "$SKIP_E2E" = "1" ]; then
     echo "⏭️  Skipping E2E tests"
 else
     echo "🌐 Running E2E tests..."
-    bun run test:e2e
+    bun test:e2e
 fi

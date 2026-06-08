@@ -12,7 +12,18 @@ import type {
     UpdateShareRequest,
 } from '@packages/core';
 
-export const post = async (req: Request<{}, {}, CreateCounterRequest>, res: Response<CounterResponse>) => {
+const getErrorMessage = (error: unknown): string => {
+    if (error instanceof Error && error.message) {
+        return error.message;
+    }
+
+    return 'Unknown error';
+};
+
+export const post = async (
+    req: Request<Record<string, never>, CounterResponse, CreateCounterRequest>,
+    res: Response<CounterResponse>,
+) => {
     try {
         const userId = req.user?.id;
         const { id, title, count, color, type, inviteCode } = req.body;
@@ -32,11 +43,11 @@ export const post = async (req: Request<{}, {}, CreateCounterRequest>, res: Resp
             message: 'Counter created successfully',
             data: { counter },
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Counter Controller Error: ', error);
         res.status(SERVER_ERROR).json({
             success: false,
-            message: 'Server error: ' + error.message,
+            message: 'Server error: ' + getErrorMessage(error),
         });
     }
 };
@@ -56,11 +67,11 @@ export const remove = async (req: Request, res: Response<CounterResponse>) => {
         await counterRepository.remove({ counterId, userId });
 
         res.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Counter Controller Error: ', error);
         res.status(SERVER_ERROR).json({
             success: false,
-            message: 'Server error: ' + error.message,
+            message: 'Server error: ' + getErrorMessage(error),
         });
     }
 };
@@ -80,17 +91,17 @@ export const getAllByUser = async (req: Request, res: Response<CounterResponse>)
         }
 
         res.json({ success: true, data: { counters } });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Counter Controller Error: ', error);
         res.status(SERVER_ERROR).json({
             success: false,
-            message: 'Server error: ' + error.message,
+            message: 'Server error: ' + getErrorMessage(error),
         });
     }
 };
 
 export const put = async (
-    req: Request<{ counterId: string }, {}, UpdateCounterRequest>,
+    req: Request<{ counterId: string }, CounterResponse, UpdateCounterRequest>,
     res: Response<CounterResponse>,
 ) => {
     try {
@@ -113,17 +124,17 @@ export const put = async (
             message: 'Counter updated successfully',
             data: { counter },
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Counter Controller Error: ', error);
         res.status(SERVER_ERROR).json({
             success: false,
-            message: 'Server error: ' + error.message,
+            message: 'Server error: ' + getErrorMessage(error),
         });
     }
 };
 
 export const increment = async (
-    req: Request<{ counterId: string }, {}, IncrementCounterRequest>,
+    req: Request<{ counterId: string }, CounterResponse, IncrementCounterRequest>,
     res: Response<CounterResponse>,
 ) => {
     try {
@@ -157,16 +168,19 @@ export const increment = async (
             message: 'Counter incremented successfully',
             data: { counter },
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Counter Controller Error: ', error);
         res.status(SERVER_ERROR).json({
             success: false,
-            message: 'Server error: ' + error.message,
+            message: 'Server error: ' + getErrorMessage(error),
         });
     }
 };
 
-export const join = async (req: Request<{}, {}, JoinCounterRequest>, res: Response<CounterResponse>) => {
+export const join = async (
+    req: Request<Record<string, never>, CounterResponse, JoinCounterRequest>,
+    res: Response<CounterResponse>,
+) => {
     try {
         const userId = req.user?.id;
         const { inviteCode } = req.body;
@@ -209,13 +223,16 @@ export const join = async (req: Request<{}, {}, JoinCounterRequest>, res: Respon
             message: 'Shared counter successfully joined',
             data: { counter },
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Join Error:', error);
-        return res.status(SERVER_ERROR).json({ success: false, message: 'Server error: ' + error.message });
+        return res.status(SERVER_ERROR).json({ success: false, message: 'Server error: ' + getErrorMessage(error) });
     }
 };
 
-export const removeShare = async (req: Request<{ counterId: string }, {}, UpdateShareRequest>, res: Response) => {
+export const removeShare = async (
+    req: Request<{ counterId: string }, CounterResponse, UpdateShareRequest>,
+    res: Response,
+) => {
     try {
         const userId = req.user?.id;
         const counterId = req.params.counterId as string;
@@ -244,8 +261,8 @@ export const removeShare = async (req: Request<{ counterId: string }, {}, Update
             success: true,
             message: 'Shared counter successfully removed',
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Remove Shared Counter Error: ', error);
-        return res.status(SERVER_ERROR).json({ success: false, message: 'Server error: ' + error.message });
+        return res.status(SERVER_ERROR).json({ success: false, message: 'Server error: ' + getErrorMessage(error) });
     }
 };

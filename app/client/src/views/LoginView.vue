@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { Capacitor } from '@capacitor/core';
 import { useAuthStore } from '@/stores/authStore';
+import { getErrorMessage } from '@/utils/errors';
 import { IonPage, IonContent, IonGrid, IonRow, IonCol, IonItem, IonLabel, IonToggle } from '@ionic/vue';
 import TextInput from '@/components/inputs/TextInput.vue';
 import BaseButton from '@/components/base/BaseButton.vue';
@@ -33,8 +34,8 @@ const handleLogin = async () => {
 
         if (res.success) router.push('/home');
         else errorMessage.value = res.message || 'Login Failed';
-    } catch (error: any) {
-        errorMessage.value = 'Server error occurred';
+    } catch (error: unknown) {
+        errorMessage.value = getErrorMessage(error, 'Server error occurred');
         console.error('Server error occurred', error);
     } finally {
         loading.value = false;
@@ -90,14 +91,14 @@ const handleLogin = async () => {
 
 <style scoped>
 .header {
-    text-align: center;
     margin-bottom: 30px;
+    text-align: center;
 }
 
 .header h1 {
+    margin-bottom: 5px;
     font-size: 2rem;
     font-weight: bold;
-    margin-bottom: 5px;
 }
 
 .header p {
@@ -106,26 +107,27 @@ const handleLogin = async () => {
 
 .remember-me {
     --padding-start: 0;
+
     margin-bottom: 20px;
 }
 
 .footer {
-    text-align: center;
     margin-top: 20px;
+    text-align: center;
 }
 
 .footer a {
-    text-decoration: none;
     font-weight: bold;
     color: var(--ion-color-primary);
+    text-decoration: none;
 }
 
 .error-box {
+    padding: 10px;
+    margin-bottom: 20px;
     color: var(--ion-color-danger);
     text-align: center;
-    margin-bottom: 20px;
-    background: rgba(var(--ion-color-danger-rgb), 0.1);
-    padding: 10px;
+    background: rgb(var(--ion-color-danger-rgb), 0.1);
     border-radius: 8px;
 }
 </style>

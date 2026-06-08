@@ -22,7 +22,7 @@ export const jwt = (req: Request, res: Response, next: NextFunction) => {
         const decoded = jwtUtil.verify(token);
         req.user = decoded;
         next();
-    } catch (error) {
+    } catch {
         return res.status(UNAUTHORIZED).json({ success: false, message: 'Invalid token' });
     }
 };

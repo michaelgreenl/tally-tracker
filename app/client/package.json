@@ -21,9 +21,12 @@
         "ionic:native": "bun run ionic:native:android",
         "ionic:native:android": "bun run build && npx cap sync && npx cap run android",
         "ionic:native:ios": "bun run build && npx cap sync && npx cap run ios",
-        "lint": "eslint . --fix --cache",
-        "lint:style": "stylelint \"**/*.{vue,css,scss}\" --fix",
-        "typecheck": "vue-tsc --noEmit -p tsconfig.app.json"
+        "typecheck": "vue-tsc --noEmit -p tsconfig.app.json",
+        "format": "prettier --write src/",
+        "format:check": "prettier --check src/",
+        "lint": "eslint src --ext .ts,.vue",
+        "lint:style": "stylelint \"src/**/*.{vue,css,scss}\" --fix",
+        "lint:all": "bun typecheck && bun format:check && bun lint:style && bun lint"
     },
     "dependencies": {
         "@capacitor/android": "^8.0.0",
@@ -38,8 +41,8 @@
         "@capacitor/status-bar": "^8.0.0",
         "@ionic/vue": "^8.0.0",
         "@ionic/vue-router": "^8.0.0",
-        "@packages/core": "^0.1.0",
-        "@packages/utils": "^0.1.0",
+        "@tally/core": "^0.1.0",
+        "@tally/utils": "^0.1.0",
         "@prisma/client": "^7.2.0",
         "gsap": "^3.14.2",
         "ionicons": "^7.0.0",
@@ -51,6 +54,8 @@
         "zod": "^4.3.5"
     },
     "devDependencies": {
+        "@typescript-eslint/eslint-plugin": "^6.21.0",
+        "@typescript-eslint/parser": "^6.21.0",
         "@capacitor/cli": "^8.0.0",
         "@commitlint/cli": "^20.3.1",
         "@commitlint/config-conventional": "^20.3.1",
@@ -78,6 +83,7 @@
         "typescript": "~5.9.0",
         "vite": "^7.3.1",
         "vitest": "^4.0.17",
+        "vue-eslint-parser": "^9.3.1",
         "vue-tsc": "^2.2.12",
         "zod-prisma-types": "^3.3.10"
     },

@@ -8,6 +8,7 @@ import { randomUUID } from '@/utils/safeUUID';
 import type { ClientCounter } from '@packages/core';
 import type { CounterResponse } from '@packages/core';
 import type { JoinCounterRequest } from '@packages/core';
+import type { UpdateCounterRequest } from '@packages/core';
 
 export const CounterService = {
     async getAllLocal() {
@@ -47,7 +48,7 @@ export const CounterService = {
         SyncManager.processQueue();
     },
 
-    async update(counterId: string, updates: Partial<ClientCounter>) {
+    async update(counterId: string, updates: UpdateCounterRequest) {
         await SyncQueueService.addCommand({
             id: randomUUID(),
             type: 'UPDATE',
@@ -127,7 +128,7 @@ export const CounterService = {
 
     // Migrates guest counters to the authenticated user's account after login.
     // FIXME: should the userId be sent with the payload here? if not why is it here?
-    async consolidate(countersToSync: ClientCounter[], userId: string) {
+    async consolidate(countersToSync: ClientCounter[]) {
         console.log(`[Consolidation] Syncing ${countersToSync.length} counters...`);
 
         for (const counter of countersToSync) {

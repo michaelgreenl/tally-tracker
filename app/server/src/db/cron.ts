@@ -1,4 +1,3 @@
-import prisma from './prisma.js';
 import * as idempotencyRepository from './repositories/idempotency.repository.js';
 import * as tokenRepository from './repositories/token.repository.js';
 

@@ -6,6 +6,13 @@ import { gsap } from 'gsap';
 
 import type { Ref } from 'vue';
 
+export interface AnimationDefaults {
+    tl: gsap.core.Timeline;
+    delay: number;
+    onComplete: () => void;
+    onStart: () => void;
+}
+
 export function useGsap(scope?: Ref<HTMLElement | null | undefined>) {
     const ctx = shallowRef<gsap.Context | null>(null);
 
@@ -15,8 +22,10 @@ export function useGsap(scope?: Ref<HTMLElement | null | undefined>) {
         }
     };
 
-    const registerAnim = (animationLogic: (defaults: any) => void) => {
-        return (userOptions: Record<string, any> = {}) => {
+    const registerAnim = <TOptions extends Record<string, unknown>>(
+        animationLogic: (defaults: AnimationDefaults & TOptions) => void,
+    ) => {
+        return (userOptions: Partial<AnimationDefaults & TOptions> = {}) => {
             init();
 
             const defaults = {
@@ -25,7 +34,7 @@ export function useGsap(scope?: Ref<HTMLElement | null | undefined>) {
                 onComplete: () => {},
                 onStart: () => {},
                 ...userOptions,
-            };
+            } as AnimationDefaults & TOptions;
 
             ctx.value?.add(() => {
                 animationLogic(defaults);

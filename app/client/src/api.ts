@@ -22,10 +22,12 @@
 import { OK_NO_CONTENT, REQUEST_TIMEOUT, UNAUTHORIZED } from '@packages/utils';
 import { Preferences } from '@capacitor/preferences';
 import { Capacitor } from '@capacitor/core';
-import { ApiError } from '@/utils/errors';
+import { ApiError, getErrorMessage } from '@/utils/errors';
 import { useAuthStore } from './stores/authStore';
 
-export interface ApiRequestOptions<T = any> extends Omit<RequestInit, 'body'> {
+import type { AuthResponse } from '@packages/core';
+
+export interface ApiRequestOptions<T = unknown> extends Omit<RequestInit, 'body'> {
     body?: T;
 }
 
@@ -71,7 +73,7 @@ async function executeRefresh(): Promise<boolean> {
 
         if (!res.ok) return false;
 
-        const data = await res.json();
+        const data = (await res.json()) as AuthResponse;
 
         // Native needs to store the new tokens explicitly; web gets them via Set-Cookie
         if (isNative && data.data) {
@@ -89,7 +91,7 @@ async function executeRefresh(): Promise<boolean> {
     }
 }
 
-async function apiFetch<ResT = unknown, ReqT = any>(
+async function apiFetch<ResT = unknown, ReqT = unknown>(
     endpoint: string,
     options: ApiRequestOptions<ReqT> = {},
     _isRetry = false,
@@ -139,7 +141,7 @@ async function apiFetch<ResT = unknown, ReqT = any>(
             const authStore = useAuthStore();
             await authStore.logout(false);
 
-            const errorData = await res.json().catch(() => ({}));
+            const errorData = (await res.json().catch(() => ({}))) as { message?: string } & Record<string, unknown>;
             throw new ApiError(errorData.message || 'An API error occurred', res.status, errorData);
         }
 
@@ -150,14 +152,16 @@ async function apiFetch<ResT = unknown, ReqT = any>(
         const data = await res.json();
         console.log(`[API] ${endpoint} Response:`, data);
         return data;
-    } catch (error: any) {
+    } catch (error: unknown) {
         clearTimeout(id);
 
-        if (error.name === 'AbortError') throw new ApiError('Network timeout', REQUEST_TIMEOUT);
+        if (typeof error === 'object' && error !== null && 'name' in error && error.name === 'AbortError') {
+            throw new ApiError('Network timeout', REQUEST_TIMEOUT);
+        }
 
         if (error instanceof ApiError) throw error;
 
-        throw new ApiError(error.message || 'Network Error', 0);
+        throw new ApiError(getErrorMessage(error, 'Network Error'), 0);
     }
 }
 

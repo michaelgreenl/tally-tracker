@@ -5,7 +5,7 @@ import { Capacitor } from '@capacitor/core';
 import router from '@/router';
 import { useCounterStore } from '@/stores/counterStore';
 import { AuthService } from '@/services/auth.service';
-import { ApiError } from '@/utils/errors';
+import { ApiError, getErrorMessage } from '@/utils/errors';
 import { ok, fail } from '@/utils/result';
 
 import type { StoreResponse } from '@/types/index';
@@ -52,7 +52,7 @@ export const useAuthStore = defineStore('auth', () => {
             }
 
             return fail('Auth check failed');
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Auth check error:', error);
 
             let status = 0;
@@ -101,15 +101,15 @@ export const useAuthStore = defineStore('auth', () => {
             }
 
             return fail('Login Failed');
-        } catch (error: any) {
-            return fail(error.message);
+        } catch (error: unknown) {
+            return fail(getErrorMessage(error, 'Login Failed'));
         }
     }
 
     async function logout(notifyServer = true): Promise<StoreResponse> {
         try {
             if (notifyServer) await AuthService.logout();
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.warn('Server logout failed', error);
         } finally {
             user.value = null;
@@ -130,9 +130,10 @@ export const useAuthStore = defineStore('auth', () => {
             if (res.success) return ok();
 
             return fail('Registration failed');
-        } catch (error: any) {
-            console.error('Registration failed:', error.message);
-            return fail(error.message);
+        } catch (error: unknown) {
+            const message = getErrorMessage(error, 'Registration failed');
+            console.error('Registration failed:', message);
+            return fail(message);
         }
     }
 
@@ -149,9 +150,10 @@ export const useAuthStore = defineStore('auth', () => {
             }
 
             return fail('Failed to update user');
-        } catch (error: any) {
-            console.error('Failed to update user: ', error.message);
-            return fail(error.message);
+        } catch (error: unknown) {
+            const message = getErrorMessage(error, 'Failed to update user');
+            console.error('Failed to update user: ', message);
+            return fail(message);
         }
     }
 

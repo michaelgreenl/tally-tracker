@@ -1,5 +1,3 @@
-import type { ClientCounter } from '@packages/core';
-
 // Maps to API endpoints: CREATE/UPDATE/DELETE operate on owned counters,
 // INCREMENT uses the atomic increment endpoint, REMOVE sets a share to REJECTED.
 export type MutationType = 'CREATE' | 'UPDATE' | 'DELETE' | 'INCREMENT' | 'REMOVE';
@@ -9,7 +7,7 @@ export interface MutationCommand {
     type: MutationType;
     entity: 'counter';
     entityId: string;
-    payload: any;
+    payload: unknown;
     timestamp: number;
     retryCount: number;
 }

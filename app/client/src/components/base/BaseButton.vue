@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { IonButton, IonSpinner } from '@ionic/vue';
 
-const props = defineProps<{
+defineProps<{
     loading?: boolean;
     disabled?: boolean;
     type?: 'button' | 'submit';
@@ -23,7 +23,7 @@ const emit = defineEmits<{
         :color="color"
         :data-testid="testId"
         mode="md"
-        @click="$emit('click', $event)"
+        @click="emit('click', $event)"
     >
         <ion-spinner v-if="loading" name="crescent"></ion-spinner>
         <slot v-else />

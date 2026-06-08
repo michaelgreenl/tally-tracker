@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { useAuthStore } from '@/stores/authStore';
 import { CounterService } from '@/services/counter.service';
+import { getErrorMessage } from '@/utils/errors';
 import { ok, fail } from '@/utils/result';
 import { randomUUID } from '@/utils/safeUUID';
 
@@ -9,6 +10,7 @@ import type { StoreResponse } from '@/types/index';
 import type { CounterTypeType as CounterType } from '@packages/core';
 import type { ClientCounter } from '@packages/core';
 import type { HexColor } from '@packages/core';
+import type { UpdateCounterRequest } from '@packages/core';
 
 const DEFAULT_COUNTER_COLOR = '#000000' as HexColor;
 
@@ -47,7 +49,7 @@ export const useCounterStore = defineStore('counter', () => {
                     counters.value = [...remoteCounters, ...pendingLocal];
                     await saveState();
                 }
-            } catch (error: any) {
+            } catch {
                 console.warn('Background fetch failed, using local cache.');
             } finally {
                 loading.value = false;
@@ -99,11 +101,13 @@ export const useCounterStore = defineStore('counter', () => {
         return ok();
     }
 
-    async function updateCounter(counterId: string, data: any): Promise<StoreResponse> {
+    async function updateCounter(counterId: string, data: UpdateCounterRequest): Promise<StoreResponse> {
         const index = counters.value.findIndex((c) => c.id === counterId);
         if (index === -1) return fail('Not found');
+        const existingCounter = counters.value[index];
+        if (!existingCounter) return fail('Not found');
 
-        counters.value[index] = { ...counters.value[index], ...data };
+        counters.value[index] = { ...existingCounter, ...data };
         await saveState();
 
         if (!isGuest.value) await CounterService.update(counterId, data);
@@ -148,7 +152,7 @@ export const useCounterStore = defineStore('counter', () => {
         await saveState();
 
         if (newGuestCounters.length > 0) {
-            await CounterService.consolidate(newGuestCounters, authStore.user?.id || '');
+            await CounterService.consolidate(newGuestCounters);
         }
     }
 
@@ -171,9 +175,9 @@ export const useCounterStore = defineStore('counter', () => {
             }
 
             return fail(res.message || 'Failed to join counter');
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Join counter failed:', error);
-            return fail(error.message || 'Network error');
+            return fail(getErrorMessage(error, 'Network error'));
         } finally {
             loading.value = false;
         }

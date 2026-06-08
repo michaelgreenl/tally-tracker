@@ -1,5 +1,4 @@
 import prisma from '../prisma.js';
-import { Prisma } from '@prisma/client';
 
 export const get = (key: string) =>
     prisma.idempotencyLog.findUnique({
