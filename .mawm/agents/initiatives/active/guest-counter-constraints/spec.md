@@ -9,7 +9,7 @@
 ## Target State
 
 - Guest sessions can create and keep using up to three eligible counters without changing the authenticated counter experience.
-- The `Add counter` entry point remains available after the third eligible counter exists, but a fourth eligible create attempt is blocked before local state changes.
+- The `Add counter` entry point remains available after the third eligible counter exists; clicking it when a guest session is at the cap opens the guest-limit modal directly without showing the create form.
 - The blocked path uses a reusable modal that explains the cap and links to a new upgrade placeholder route/page.
 - Shared counters do not count toward the guest cap, and this initiative does not add real upgrade billing, server-side enforcement, or tier changes.
 
@@ -19,8 +19,8 @@
 - The cap applies only while `authStore.isAuthenticated` is false.
 - The cap threshold is three eligible counters; if a guest already has three or more eligible counters in local state, additional eligible create submissions are blocked until the eligible count drops below three.
 - Shared counters never count toward the guest cap.
-- The add-counter entry point remains visible after the third eligible counter exists; enforcement happens on the create submit action, not by removing the entry point.
-- A blocked guest create must not append a new counter to `counterStore.counters` or persist a new local counter.
+- The `Add counter` entry point remains visible after the third eligible counter exists; enforcement happens at the entry point — when a guest session has three or more eligible counters, clicking `Add counter` opens the guest-limit modal directly and the create form does not open.
+- Because the create form does not open when a guest is at the cap, no create is attempted. The store-level `createCounter()` guard remains as defense-in-depth to ensure no code path can bypass the cap.
 - Authenticated users, premium sharing controls, guest-to-account consolidation, and sync contracts remain unchanged in this initiative.
 - The upgrade route/page is informational only and must not imply functional billing or tier changes.
 
@@ -37,7 +37,7 @@
 
 ### Run 1: Codify guest counter cap policy (`coding`)
 
-- [ ] complete
+- [x] complete
 - Run spec path: `.mawm/agents/initiatives/active/guest-counter-constraints/runs/active/codify-guest-counter-cap-policy/spec.md` (created by the assigned workflow when this run starts)
 - Task: Add the guest-only three-counter policy to the client store so over-limit guest creates fail before any local mutation or persistence.
 - Current state: `counterStore.ts` keeps one mixed `counters` array and `createCounter()` always pushes a new guest counter into local state before any remote work. There is no explicit eligible-counter rule, and no unit coverage for a guest limit or shared-counter exclusion.
@@ -48,18 +48,18 @@
 
 ### Run 2: Surface the guest-limit modal (`coding`)
 
-- [ ] complete
+- [x] complete
 - Run spec path: `.mawm/agents/initiatives/active/guest-counter-constraints/runs/active/surface-guest-limit-modal/spec.md` (created by the assigned workflow when this run starts)
-- Task: Add a reusable modal component and wire the guest create flow to show it when the store returns the guest-limit failure.
-- Current state: After Run 1, the store can block over-limit guest creates, but the UI still has no dedicated feedback path. `CounterForm.vue` currently emits `done` after create/update attempts, and the client has no reusable modal component.
-- Outcome: A blocked guest create shows a reusable max-counters modal instead of silently closing or browser-alerting, while keeping the add flow available and leaving the existing counter list unchanged.
-- Scope: reusable client modal component, `HomeView.vue` and `CounterForm.vue` flow changes needed to react to a failed guest create, and max-counters modal copy; no upgrade route/page or navigation yet.
-- Contracts: The `Add counter` entry point remains available whenever the create form is closed; blocked guest create attempts do not add a counter and do not emit a successful completion path; the create form stays in place when the limit modal opens so dismissing the modal returns the user to the same create context; authenticated create/update behavior remains unchanged; the limit message uses reusable modal UI rather than a one-off alert.
-- Smoke verification: `headless` - Cypress guest flow creates three eligible counters, attempts a fourth eligible create, and confirms the max-counters modal appears without a fourth counter being added.
+- Task: Add a reusable modal component and wire the `Add counter` entry point so it opens the modal directly when a guest session is at the cap, without opening the create form.
+- Current state: After Run 1, the store exports `eligibleCount` and enforces the cap at `createCounter()` as defense-in-depth. The `Add counter` button in `HomeView.vue` still always opens the create form regardless of eligible count. The client has no reusable modal component.
+- Outcome: When a guest at the cap clicks `Add counter`, the guest-limit modal opens immediately and the create form does not open. Guests under the cap and authenticated users continue to see the create form as before.
+- Scope: reusable client modal component, `HomeView.vue` entry-point guard that checks `eligibleCount` before opening the form, max-counters modal copy, and Cypress at-cap coverage; `CounterForm.vue` does not need changes in this run; no upgrade route/page or navigation yet.
+- Contracts: The `Add counter` entry point remains visible always; when a guest at the cap clicks it the modal opens and the form does not; dismissing the modal leaves the home state unchanged with no new counter; authenticated and under-cap guest flows open the form unchanged; the limit message uses reusable modal UI rather than a one-off alert.
+- Smoke verification: `headless` - Cypress guest flow creates three eligible counters, clicks `Add counter`, and confirms the guest-limit modal opens without the create form appearing and without a fourth counter being added.
 
 ### Run 3: Add upgrade placeholder navigation (`coding`)
 
-- [ ] complete
+- [x] complete
 - Run spec path: `.mawm/agents/initiatives/active/guest-counter-constraints/runs/active/add-upgrade-placeholder-navigation/spec.md` (created by the assigned workflow when this run starts)
 - Task: Add a guest-accessible upgrade placeholder route/page and connect the max-counters modal CTA to it, then finish end-to-end coverage for the blocked-create navigation path.
 - Current state: After Run 2, guests see the max-counters modal on blocked create, but the router still has no `/upgrade` destination and the modal has nowhere real to send an upgrade CTA.
@@ -71,7 +71,7 @@
 ## Initiative Verification Gates
 
 - Every run is complete, verified, reviewed, smoke-tested, and committed.
-- Guest users can create exactly three eligible counters, cannot create a fourth eligible counter, and still see the `Add counter` entry point after the third eligible counter exists.
+- Guest users can create exactly three eligible counters; clicking `Add counter` when at the cap opens the guest-limit modal directly (not the create form); and the `Add counter` entry point remains visible after the third eligible counter exists.
 - Shared counters are excluded from the cap calculation.
 - The max-counters modal is reusable UI rather than a one-off browser alert.
 - The upgrade placeholder page is reachable from the blocked create path and clearly non-functional.

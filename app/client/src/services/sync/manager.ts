@@ -21,8 +21,7 @@ import apiFetch from '@/api';
 import { ApiError } from '@/utils/errors';
 
 import type { MutationCommand } from './types';
-import type { CounterResponse } from '@tally/core';
-import type { CreateCounterRequest, IncrementCounterRequest, UpdateCounterRequest } from '@tally/core';
+import type { CounterResponse, CreateCounterRequest, IncrementCounterRequest, UpdateCounterRequest } from '@tally/core';
 
 export const SyncManager = {
     isSyncing: false,

@@ -1,5 +1,17 @@
 import { OK, CREATED } from '../support/status-codes';
 import { buildCounter } from '../fixtures/counter.fixture';
+import { buildClientUser } from '../fixtures/user.fixture';
+
+const authRes = (email: string, tier: 'BASIC' | 'PREMIUM' = 'PREMIUM') => ({
+    statusCode: OK,
+    body: {
+        success: true,
+        data: {
+            user: buildClientUser({ email, tier }),
+            accessToken: 'token',
+        },
+    },
+});
 
 describe('Counters', () => {
     beforeEach(() => {
@@ -9,7 +21,15 @@ describe('Counters', () => {
 
     describe('Authenticated User', () => {
         beforeEach(() => {
+            cy.intercept('POST', '/users/login', authRes('alice@example.com'));
+            cy.intercept('GET', '/users/check-auth', authRes('alice@example.com'));
+            cy.intercept('GET', '/counters', {
+                statusCode: OK,
+                body: { success: true, data: { counters: [] } },
+            }).as('getCountersInit');
+
             cy.login('alice@example.com', 'password123');
+            cy.wait('@getCountersInit');
         });
 
         it('should display existing counters', () => {
@@ -37,8 +57,8 @@ describe('Counters', () => {
                 },
             }).as('createCounter');
 
-            cy.contains('ion-button:visible', 'Add counter').click();
-            cy.contains('h1', 'Create Counter').should('be.visible');
+            cy.get('[data-testid="add-counter-button"]').click();
+            cy.get('[data-testid="home-counter-form"]').should('be.visible');
 
             cy.get('form input[type="text"]').type('New Counter');
             cy.get('[data-testid="counter-form-submit"]').click();
@@ -135,8 +155,8 @@ describe('Counters', () => {
         });
 
         const createGuestCounter = (title: string) => {
-            cy.contains('ion-button:visible', 'Add counter').click();
-            cy.contains('h1', 'Create Counter').should('be.visible');
+            cy.get('[data-testid="add-counter-button"]').click();
+            cy.get('[data-testid="home-counter-form"]').should('be.visible');
             cy.get('form input[type="text"]').type(title);
             cy.get('[data-testid="counter-form-submit"]').click();
             cy.contains(title).should('be.visible');
@@ -164,7 +184,10 @@ describe('Counters', () => {
             createGuestCounter('Guest Counter B');
             createGuestCounter('Guest Counter C');
 
-            cy.intercept('POST', '/users').as('registerReq');
+            cy.intercept('POST', '/users', {
+                statusCode: CREATED,
+                body: { success: true },
+            }).as('registerReq');
 
             cy.visit('/register');
 
@@ -182,7 +205,7 @@ describe('Counters', () => {
 
             cy.contains('h1', 'Welcome to Tally Tracker').closest('.ion-page').as('loginPage');
 
-            cy.intercept('POST', '/users/login').as('loginReq');
+            cy.intercept('POST', '/users/login', authRes(email, 'BASIC')).as('loginReq');
 
             let getCountersCallCount = 0;
             cy.intercept('GET', '/counters', (req) => {
@@ -226,6 +249,7 @@ describe('Counters', () => {
                 });
             }).as('getCounters');
 
+            cy.intercept('POST', '/users/login', authRes('alice@example.com'));
             cy.login('alice@example.com', 'password123');
 
             cy.wait('@getCounters');
@@ -234,6 +258,56 @@ describe('Counters', () => {
             cy.contains('Guest Counter Y').should('be.visible');
             cy.contains('Books Read').should('be.visible');
             cy.contains('Miles Ran').should('be.visible');
+        });
+
+        it('should open the guest-limit modal instead of the form at the cap', () => {
+            createGuestCounter('Guest Counter 1');
+            createGuestCounter('Guest Counter 2');
+            createGuestCounter('Guest Counter 3');
+
+            cy.get('[data-testid="add-counter-button"]').click();
+
+            cy.get('[data-testid="guest-limit-modal"]').should('be.visible');
+            cy.get('[data-testid="home-counter-form"]').should('not.exist');
+            cy.get('ion-list ion-item').should('have.length', 3);
+
+            cy.get('[data-testid="guest-limit-modal-dismiss"]').click();
+
+            cy.get('[data-testid="guest-limit-modal"]').should('not.exist');
+            cy.get('[data-testid="add-counter-button"]').should('be.visible');
+        });
+
+        it('should return home from the upgrade placeholder without changing guest counters', () => {
+            createGuestCounter('Guest Counter 1');
+            createGuestCounter('Guest Counter 2');
+            createGuestCounter('Guest Counter 3');
+
+            cy.get('[data-testid="add-counter-button"]').click();
+
+            cy.get('[data-testid="guest-limit-modal"]').should('be.visible');
+            cy.get('[data-testid="home-counter-form"]').should('not.exist');
+
+            cy.get('[data-testid="guest-limit-modal-upgrade"]').click();
+
+            cy.location('pathname').should('eq', '/upgrade');
+            cy.get('[data-testid="upgrade-placeholder-page"]').should('be.visible');
+            cy.contains('This page is informational only').should('be.visible');
+            cy.contains('Upgrade and billing functionality are not implemented yet').should('be.visible');
+
+            cy.get('[data-testid="upgrade-placeholder-back"]').click();
+
+            cy.location('pathname').should('eq', '/home');
+            cy.contains('Welcome Guest!').should('be.visible');
+            cy.contains('Guest Counter 1').should('be.visible');
+            cy.contains('Guest Counter 2').should('be.visible');
+            cy.contains('Guest Counter 3').should('be.visible');
+            cy.get('ion-list ion-item').should('have.length', 3);
+            cy.get('[data-testid="home-counter-form"]').should('not.exist');
+
+            cy.get('[data-testid="add-counter-button"]').click();
+
+            cy.get('[data-testid="guest-limit-modal"]').should('be.visible');
+            cy.get('[data-testid="home-counter-form"]').should('not.exist');
         });
     });
 });
