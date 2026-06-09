@@ -65,6 +65,12 @@ const closeCounterForm = () => {
     counterToUpdate.value = null;
     showCounterForm.value = false;
 };
+
+const openUpgrade = () => {
+    closeCounterForm();
+    showGuestLimitModal.value = false;
+    router.push('/upgrade');
+};
 </script>
 
 <template>
@@ -129,6 +135,11 @@ const closeCounterForm = () => {
                     Guest sessions can create up to {{ GUEST_COUNTER_CAP }} counters. Your existing counters remain
                     usable.
                 </p>
+                <div class="guest-limit-action">
+                    <BaseButton test-id="guest-limit-modal-upgrade" @click="openUpgrade()"
+                        >View upgrade info</BaseButton
+                    >
+                </div>
             </BaseModal>
         </ion-content>
     </ion-page>
@@ -162,5 +173,9 @@ const closeCounterForm = () => {
 .guest-limit-copy {
     margin: 0;
     line-height: 1.5;
+}
+
+.guest-limit-action {
+    margin-top: 1rem;
 }
 </style>

@@ -5,6 +5,7 @@ import HomeView from '@/views/HomeView.vue';
 import LoginView from '@/views/LoginView.vue';
 import RegisterView from '@/views/RegisterView.vue';
 import JoinView from '@/views/JoinView.vue';
+import UpgradeView from '@/views/UpgradeView.vue';
 
 import type { RouteRecordRaw } from 'vue-router';
 
@@ -16,6 +17,7 @@ const routes: Array<RouteRecordRaw> = [
     { path: '/register', name: 'Register', component: RegisterView, meta: { title: 'Register' } },
     { path: '/home', name: 'Home', component: HomeView },
     { path: '/join', name: 'Join', component: JoinView },
+    { path: '/upgrade', name: 'Upgrade', component: UpgradeView, meta: { title: 'Upgrade' } },
 ];
 
 const router = createRouter({

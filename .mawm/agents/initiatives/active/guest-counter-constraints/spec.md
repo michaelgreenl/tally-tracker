@@ -59,7 +59,7 @@
 
 ### Run 3: Add upgrade placeholder navigation (`coding`)
 
-- [ ] complete
+- [x] complete
 - Run spec path: `.mawm/agents/initiatives/active/guest-counter-constraints/runs/active/add-upgrade-placeholder-navigation/spec.md` (created by the assigned workflow when this run starts)
 - Task: Add a guest-accessible upgrade placeholder route/page and connect the max-counters modal CTA to it, then finish end-to-end coverage for the blocked-create navigation path.
 - Current state: After Run 2, guests see the max-counters modal on blocked create, but the router still has no `/upgrade` destination and the modal has nowhere real to send an upgrade CTA.
