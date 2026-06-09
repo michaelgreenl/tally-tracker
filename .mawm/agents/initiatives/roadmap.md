@@ -22,18 +22,10 @@
 
 | Initiative                   | State    | Horizon | Why it matters                                                                                       | Depends on | Working doc                                                          |
 | ---------------------------- | -------- | ------- | ---------------------------------------------------------------------------------------------------- | ---------- | -------------------------------------------------------------------- |
-| `Guest counter constraints` | `active` | `Now`   | Prevents guest counter sprawl, preserves the existing add flow, and introduces a clear upgrade path. | `none`     | `.mawm/agents/initiatives/active/guest-counter-constraints/spec.md` |
 
 ## Now
 
-### Guest counter constraints
-
-- State: `active`
-- Goal: Cap guest-owned eligible counters at three, keep the add flow available, and route over-limit guests toward an upgrade placeholder.
-- Exit signal: Guest users can create up to three eligible counters, the fourth eligible create attempt is blocked with a modal, and the modal can navigate to the upgrade placeholder page.
-- Review trigger: Re-plan before execution if guest users gain shared-counter join/create capability, if authenticated users also need a cap, or if real billing/upgrade functionality becomes part of the same delivery window.
-- Working doc: `.mawm/agents/initiatives/active/guest-counter-constraints/spec.md`
-- Notes: This is a client-side initiative against the current local guest flow; shared counters must not count toward the cap.
+- No additional queued initiatives are committed for now yet.
 
 ## Next
 
