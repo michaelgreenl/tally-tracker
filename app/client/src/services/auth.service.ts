@@ -1,9 +1,7 @@
 import apiFetch from '@/api';
 import { Preferences } from '@capacitor/preferences';
 
-import type { AuthResponse } from '@tally/core';
-import type { ClientUser } from '@tally/core';
-import type { AuthRequest, UpdateUserRequest } from '@tally/core';
+import type { ClientUser, AuthRequest, AuthResponse, UpdateUserRequest } from '@tally/core';
 
 const USER_KEY = 'auth_user_profile';
 const ACCESS_TOKEN_KEY = 'access_token';

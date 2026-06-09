@@ -7,10 +7,7 @@ import { ok, fail } from '@/utils/result';
 import { randomUUID } from '@/utils/safeUUID';
 
 import type { StoreResponse } from '@/types/index';
-import type { CounterTypeType as CounterType } from '@tally/core';
-import type { ClientCounter } from '@tally/core';
-import type { HexColor } from '@tally/core';
-import type { UpdateCounterRequest } from '@tally/core';
+import type { UpdateCounterRequest, HexColor, ClientCounter, CounterTypeType as CounterType } from '@tally/core';
 
 const DEFAULT_COUNTER_COLOR = '#000000' as HexColor;
 export const GUEST_COUNTER_CAP = 3;
