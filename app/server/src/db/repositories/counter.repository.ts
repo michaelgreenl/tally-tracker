@@ -154,6 +154,14 @@ export const join = (inviteCode: string) =>
         },
     });
 
+export const countAcceptedJoinedSharesByUserId = (userId: string) =>
+    prisma.counterShare.count({
+        where: {
+            userId,
+            status: 'ACCEPTED' as ShareStatusType,
+        },
+    });
+
 export const createShare = ({
     counterId,
     userId,

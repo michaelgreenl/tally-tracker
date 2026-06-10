@@ -42,7 +42,7 @@ Authenticated BASIC users keep unlimited personal counter creation while tier-sp
 
 ### Run 1: Server-authoritative BASIC sharing limits (`coding`)
 
-- [ ] complete
+- [x] complete
 - Run spec path: `.mawm/agents/initiatives/active/basic-tier-account-constraints/runs/active/server-basic-sharing-limits/spec.md` (created by the assigned workflow when this run starts)
 - Task: Add server-side enforcement and tests for BASIC tier shared-counter creation and joined-shared-counter limits.
 - Current state: `app/server/src/api/controllers/counter.controller.ts` creates counters without checking the authenticated user's persisted tier. `app/server/src/api/schemas/counter.schema.ts` already requires an invite code for `type: SHARED`. `app/server/src/db/repositories/counter.repository.ts` can fetch shared counters by invite code and create/update `CounterShare` rows, but it has no helper to count accepted joined shares for a user. `app/server/src/db/repositories/user.repository.ts` can fetch users with `tier`, but `jwt.sign` in `app/server/src/api/controllers/user.controller.ts` signs access tokens without tier, so production controllers cannot rely on `req.user.tier`.

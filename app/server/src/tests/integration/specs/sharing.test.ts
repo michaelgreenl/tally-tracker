@@ -1,4 +1,4 @@
-import { OK, CREATED, NOT_FOUND, CONFLICT } from '@tally/utils';
+import { OK, CREATED, FORBIDDEN, NOT_FOUND, CONFLICT } from '@tally/utils';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Request, Response, NextFunction } from 'express';
 import request from 'supertest';
@@ -27,8 +27,13 @@ vi.mock('../../../db/repositories/counter.repository', () => ({
     increment: vi.fn(),
     getParticipants: vi.fn(),
     join: vi.fn(),
+    countAcceptedJoinedSharesByUserId: vi.fn(),
     createShare: vi.fn(),
     updateShare: vi.fn(),
+}));
+
+vi.mock('../../../db/repositories/user.repository', () => ({
+    getUserTierById: vi.fn(),
 }));
 
 vi.mock('../../../db/repositories/idempotency.repository', () => ({
@@ -37,6 +42,7 @@ vi.mock('../../../db/repositories/idempotency.repository', () => ({
 }));
 
 import * as counterRepo from '../../../db/repositories/counter.repository.js';
+import * as userRepo from '../../../db/repositories/user.repository.js';
 
 describe('Sharing Routes', () => {
     beforeEach(() => {
@@ -45,36 +51,17 @@ describe('Sharing Routes', () => {
     });
 
     describe('POST /counters/join', () => {
-        it('should join a shared counter', async () => {
-            const counter = buildCounter({
-                type: 'SHARED',
-                inviteCode: 'ABC123',
-                userId: TEST_OTHER_USER_ID,
-            });
-            vi.mocked(counterRepo.join).mockResolvedValue(counter);
-            vi.mocked(counterRepo.createShare).mockResolvedValue(buildShare());
-
-            const res = await request(app).post('/counters/join').send({ inviteCode: 'ABC123' });
-
-            expect(res.status).toBe(CREATED);
-            expect(counterRepo.createShare).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    counterId: TEST_COUNTER_ID,
-                    userId: TEST_USER_ID,
-                    status: 'ACCEPTED',
-                }),
-            );
-        });
-
-        it('should return 404 for invalid invite code', async () => {
+        it('should return 404 for invalid invite code without tier lookup', async () => {
             vi.mocked(counterRepo.join).mockResolvedValue(null);
 
             const res = await request(app).post('/counters/join').send({ inviteCode: 'INVALID' });
 
             expect(res.status).toBe(NOT_FOUND);
+            expect(userRepo.getUserTierById).not.toHaveBeenCalled();
+            expect(counterRepo.countAcceptedJoinedSharesByUserId).not.toHaveBeenCalled();
         });
 
-        it('should return 409 when owner tries to join own counter', async () => {
+        it('should return 409 when owner tries to join own counter without tier lookup', async () => {
             const counter = buildCounter({
                 type: 'SHARED',
                 inviteCode: 'ABC123',
@@ -85,9 +72,11 @@ describe('Sharing Routes', () => {
             const res = await request(app).post('/counters/join').send({ inviteCode: 'ABC123' });
 
             expect(res.status).toBe(CONFLICT);
+            expect(userRepo.getUserTierById).not.toHaveBeenCalled();
+            expect(counterRepo.countAcceptedJoinedSharesByUserId).not.toHaveBeenCalled();
         });
 
-        it('should return 200 when already joined', async () => {
+        it('should return 200 when already joined without tier lookup', async () => {
             const counter = buildCounter({
                 type: 'SHARED',
                 userId: TEST_OTHER_USER_ID,
@@ -99,16 +88,81 @@ describe('Sharing Routes', () => {
 
             expect(res.status).toBe(OK);
             expect(res.body.message).toContain('Already joined');
+            expect(userRepo.getUserTierById).not.toHaveBeenCalled();
+            expect(counterRepo.countAcceptedJoinedSharesByUserId).not.toHaveBeenCalled();
             expect(counterRepo.createShare).not.toHaveBeenCalled();
         });
 
-        it('should re-accept a previously rejected share', async () => {
+        it('should return 404 when the persisted user record is missing', async () => {
+            const counter = buildCounter({
+                type: 'SHARED',
+                inviteCode: 'ABC123',
+                userId: TEST_OTHER_USER_ID,
+            });
+            vi.mocked(counterRepo.join).mockResolvedValue(counter);
+            vi.mocked(userRepo.getUserTierById).mockResolvedValue(null);
+
+            const res = await request(app).post('/counters/join').send({ inviteCode: 'ABC123' });
+
+            expect(res.status).toBe(NOT_FOUND);
+            expect(res.body.message).toBe('User not found');
+            expect(counterRepo.countAcceptedJoinedSharesByUserId).not.toHaveBeenCalled();
+            expect(counterRepo.createShare).not.toHaveBeenCalled();
+            expect(counterRepo.updateShare).not.toHaveBeenCalled();
+        });
+
+        it('should allow a BASIC user to join a first shared counter', async () => {
+            const counter = buildCounter({
+                type: 'SHARED',
+                inviteCode: 'ABC123',
+                userId: TEST_OTHER_USER_ID,
+            });
+            vi.mocked(counterRepo.join).mockResolvedValue(counter);
+            vi.mocked(userRepo.getUserTierById).mockResolvedValue({ id: TEST_USER_ID, tier: 'BASIC' });
+            vi.mocked(counterRepo.countAcceptedJoinedSharesByUserId).mockResolvedValue(0);
+            vi.mocked(counterRepo.createShare).mockResolvedValue(buildShare());
+
+            const res = await request(app).post('/counters/join').send({ inviteCode: 'ABC123' });
+
+            expect(res.status).toBe(CREATED);
+            expect(userRepo.getUserTierById).toHaveBeenCalledWith(TEST_USER_ID);
+            expect(counterRepo.countAcceptedJoinedSharesByUserId).toHaveBeenCalledWith(TEST_USER_ID);
+            expect(counterRepo.createShare).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    counterId: TEST_COUNTER_ID,
+                    userId: TEST_USER_ID,
+                    status: 'ACCEPTED',
+                }),
+            );
+        });
+
+        it('should reject a BASIC user joining a second distinct shared counter', async () => {
+            const counter = buildCounter({
+                type: 'SHARED',
+                inviteCode: 'ABC123',
+                userId: TEST_OTHER_USER_ID,
+            });
+            vi.mocked(counterRepo.join).mockResolvedValue(counter);
+            vi.mocked(userRepo.getUserTierById).mockResolvedValue({ id: TEST_USER_ID, tier: 'BASIC' });
+            vi.mocked(counterRepo.countAcceptedJoinedSharesByUserId).mockResolvedValue(1);
+
+            const res = await request(app).post('/counters/join').send({ inviteCode: 'ABC123' });
+
+            expect(res.status).toBe(FORBIDDEN);
+            expect(res.body.message).toBe('Basic accounts can only join one shared counter.');
+            expect(counterRepo.createShare).not.toHaveBeenCalled();
+            expect(counterRepo.updateShare).not.toHaveBeenCalled();
+        });
+
+        it('should allow a BASIC user to re-accept a rejected share when no accepted shares exist', async () => {
             const counter = buildCounter({
                 type: 'SHARED',
                 userId: TEST_OTHER_USER_ID,
                 shares: [buildShare({ userId: TEST_USER_ID, status: 'REJECTED' })],
             });
             vi.mocked(counterRepo.join).mockResolvedValue(counter);
+            vi.mocked(userRepo.getUserTierById).mockResolvedValue({ id: TEST_USER_ID, tier: 'BASIC' });
+            vi.mocked(counterRepo.countAcceptedJoinedSharesByUserId).mockResolvedValue(0);
             vi.mocked(counterRepo.updateShare).mockResolvedValue(buildShare({ status: 'ACCEPTED' }));
 
             const res = await request(app).post('/counters/join').send({ inviteCode: 'ABC123' });
@@ -116,6 +170,42 @@ describe('Sharing Routes', () => {
             expect(res.status).toBe(CREATED);
             expect(counterRepo.updateShare).toHaveBeenCalledWith(expect.objectContaining({ status: 'ACCEPTED' }));
             expect(counterRepo.createShare).not.toHaveBeenCalled();
+        });
+
+        it('should reject a BASIC user re-accepting a rejected share when another accepted share exists', async () => {
+            const counter = buildCounter({
+                type: 'SHARED',
+                userId: TEST_OTHER_USER_ID,
+                shares: [buildShare({ userId: TEST_USER_ID, status: 'REJECTED' })],
+            });
+            vi.mocked(counterRepo.join).mockResolvedValue(counter);
+            vi.mocked(userRepo.getUserTierById).mockResolvedValue({ id: TEST_USER_ID, tier: 'BASIC' });
+            vi.mocked(counterRepo.countAcceptedJoinedSharesByUserId).mockResolvedValue(1);
+
+            const res = await request(app).post('/counters/join').send({ inviteCode: 'ABC123' });
+
+            expect(res.status).toBe(FORBIDDEN);
+            expect(res.body.message).toBe('Basic accounts can only join one shared counter.');
+            expect(counterRepo.createShare).not.toHaveBeenCalled();
+            expect(counterRepo.updateShare).not.toHaveBeenCalled();
+        });
+
+        it('should allow a PREMIUM user to join even when the BASIC cap would block the request', async () => {
+            const counter = buildCounter({
+                type: 'SHARED',
+                inviteCode: 'ABC123',
+                userId: TEST_OTHER_USER_ID,
+            });
+            vi.mocked(counterRepo.join).mockResolvedValue(counter);
+            vi.mocked(userRepo.getUserTierById).mockResolvedValue({ id: TEST_USER_ID, tier: 'PREMIUM' });
+            vi.mocked(counterRepo.countAcceptedJoinedSharesByUserId).mockResolvedValue(1);
+            vi.mocked(counterRepo.createShare).mockResolvedValue(buildShare());
+
+            const res = await request(app).post('/counters/join').send({ inviteCode: 'ABC123' });
+
+            expect(res.status).toBe(CREATED);
+            expect(counterRepo.countAcceptedJoinedSharesByUserId).not.toHaveBeenCalled();
+            expect(counterRepo.createShare).toHaveBeenCalledWith(expect.objectContaining({ status: 'ACCEPTED' }));
         });
     });
 
