@@ -22,14 +22,10 @@
 
 | Initiative                    | State  | Horizon | Why it matters                                                                                           | Depends on                                | Working doc                                                                               |
 | ----------------------------- | ------ | ------- | -------------------------------------------------------------------------------------------------------- | ----------------------------------------- | ----------------------------------------------------------------------------------------- |
-| Basic Tier Account Constraints | active | Now     | Makes free-authenticated sharing limits enforceable beyond client UI and protects shared-counter capacity. | Current auth, user tier, and sharing flow | `.mawm/agents/initiatives/active/basic-tier-account-constraints/spec.md` |
 
 ## Now
 
-- Basic Tier Account Constraints (`active`): enforce BASIC/free-authenticated account constraints for shared counters while keeping unlimited personal counter creation. The work starts with server-authoritative limits, then adds client-side join feedback for the one-joined-shared-counter rule. Working doc: `.mawm/agents/initiatives/active/basic-tier-account-constraints/spec.md`.
-  - Dependencies: current authenticated counter routes, persisted `User.tier`, existing `CounterShare` status model, and the existing client sharing UI.
-  - Exit signals: BASIC users cannot create shared counters server-side; BASIC users can only hold one accepted joined shared counter; PREMIUM behavior is unchanged; client join UX surfaces the limit without replacing server enforcement.
-  - Review triggers: revisit if tier names change, shared-counter ownership semantics change, invite links gain expiration, or premium purchase/upgrade flows are introduced.
+- No additional initiatives are committed for now yet.
 
 ## Next
 

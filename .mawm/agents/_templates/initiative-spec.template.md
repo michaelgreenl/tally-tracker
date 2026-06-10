@@ -29,11 +29,11 @@
 ## Branch and PR Plan
 
 - Target repo: `<repo path or name>`
-- Base branch: `main`
+- Base branch: `main` (or specified base branch)
 - Initiative branch: `<initiative-branch-name>`
-- Branch creation rule: create the initiative branch from `main` only when implementation is ready to begin.
+- Branch creation rule: create the initiative branch from `main` (or specified base branch) only when implementation is ready to begin.
 - Run commit rule: each clean completed run becomes one commit.
-- PR rule: open a PR from the initiative branch to `main` after all runs and initiative gates are complete.
+- PR rule: open a PR from the initiative branch to `main` (or specified base branch) after all runs and initiative gates are complete.
 
 ## Execution Plan
 
@@ -86,4 +86,4 @@
 - Every run is complete, verified, reviewed, smoke-tested, and committed.
 - Manual smoke-test instructions, if any, have been completed by HITL and recorded.
 - Initiative-wide contracts still match the current codebase after the final run.
-- PR from `<initiative-branch-name>` to `main` is opened with the initiative summary and verification evidence.
+- PR from `<initiative-branch-name>` to `main` (or specified base branch) is opened with the initiative summary and verification evidence.
