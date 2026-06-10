@@ -53,7 +53,7 @@ Authenticated BASIC users keep unlimited personal counter creation while tier-sp
 
 ### Run 2: Client BASIC shared-join UX guard (`coding`)
 
-- [ ] complete
+- [x] complete
 - Run spec path: `.mawm/agents/initiatives/active/basic-tier-account-constraints/runs/active/client-basic-join-ux/spec.md` (created by the assigned workflow when this run starts)
 - Task: Reflect the BASIC one-joined-shared-counter rule in client state and join feedback while preserving server authority.
 - Current state: `app/client/src/components/counter/CounterForm.vue` already disables shared-counter creation for non-premium users using `authStore.isPremium`. `app/client/src/stores/counterStore.ts` has guest personal-counter cap logic and a `joinCounter(inviteCode)` path, but no BASIC joined-shared-counter count or preflight guard. `app/client/src/views/JoinView.vue` surfaces `joinCounter` failures through an alert and then routes home.

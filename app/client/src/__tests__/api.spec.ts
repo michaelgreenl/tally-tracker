@@ -1,5 +1,11 @@
-import { OK, OK_NO_CONTENT, BAD_REQUEST, REQUEST_TIMEOUT } from '@tally/utils';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { FORBIDDEN, OK, OK_NO_CONTENT, REQUEST_TIMEOUT, UNAUTHORIZED } from '@tally/utils';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const { auth } = vi.hoisted(() => ({
+    auth: {
+        logout: vi.fn(),
+    },
+}));
 
 vi.mock('@capacitor/core', () => ({
     Capacitor: {
@@ -16,9 +22,7 @@ vi.mock('@capacitor/preferences', () => ({
 }));
 
 vi.mock('@/stores/authStore', () => ({
-    useAuthStore: vi.fn(() => ({
-        logout: vi.fn(),
-    })),
+    useAuthStore: vi.fn(() => auth),
 }));
 
 const mockFetch = vi.fn();
@@ -29,7 +33,10 @@ describe('apiFetch', () => {
 
     beforeEach(async () => {
         mockFetch.mockReset();
+        auth.logout.mockReset();
+        auth.logout.mockResolvedValue({ success: true });
         vi.resetModules();
+
         const module = await import('@/api');
         apiFetch = module.default;
     });
@@ -42,14 +49,15 @@ describe('apiFetch', () => {
                 json: () => Promise.resolve({ success: true, data: { id: '123' } }),
             });
 
-            const result = await apiFetch('/test');
-            expect(result).toEqual({ success: true, data: { id: '123' } });
+            const res = await apiFetch('/test');
+            expect(res).toEqual({ success: true, data: { id: '123' } });
         });
 
         it('should return empty object on 204', async () => {
             mockFetch.mockResolvedValueOnce({ ok: true, status: OK_NO_CONTENT });
-            const result = await apiFetch('/test');
-            expect(result).toEqual({});
+
+            const res = await apiFetch('/test');
+            expect(res).toEqual({});
         });
 
         it('should set Content-Type and stringify body', async () => {
@@ -72,17 +80,38 @@ describe('apiFetch', () => {
     });
 
     describe('error handling', () => {
-        it('should throw ApiError on non-ok response', async () => {
+        it('should throw ApiError on non-401 response without logging out', async () => {
             mockFetch.mockResolvedValueOnce({
                 ok: false,
-                status: BAD_REQUEST,
-                json: () => Promise.resolve({ message: 'Bad request' }),
+                status: FORBIDDEN,
+                json: () => Promise.resolve({ message: 'Forbidden' }),
             });
 
             await expect(apiFetch('/test')).rejects.toMatchObject({
                 name: 'ApiError',
-                status: BAD_REQUEST,
+                status: FORBIDDEN,
             });
+            expect(auth.logout).not.toHaveBeenCalled();
+        });
+
+        it('should log out after a 401 when refresh fails', async () => {
+            mockFetch
+                .mockResolvedValueOnce({
+                    ok: false,
+                    status: UNAUTHORIZED,
+                    json: () => Promise.resolve({ message: 'Unauthorized' }),
+                })
+                .mockResolvedValueOnce({
+                    ok: false,
+                    status: UNAUTHORIZED,
+                });
+
+            await expect(apiFetch('/test')).rejects.toMatchObject({
+                name: 'ApiError',
+                status: UNAUTHORIZED,
+            });
+            expect(auth.logout).toHaveBeenCalledTimes(1);
+            expect(auth.logout).toHaveBeenCalledWith(false);
         });
 
         it('should throw ApiError with status 0 on network failure', async () => {

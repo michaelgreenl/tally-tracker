@@ -138,8 +138,10 @@ async function apiFetch<ResT = unknown, ReqT = unknown>(
                 }
             }
 
-            const authStore = useAuthStore();
-            await authStore.logout(false);
+            if (res.status === UNAUTHORIZED) {
+                const authStore = useAuthStore();
+                await authStore.logout(false);
+            }
 
             const errorData = (await res.json().catch(() => ({}))) as { message?: string } & Record<string, unknown>;
             throw new ApiError(errorData.message || 'An API error occurred', res.status, errorData);
