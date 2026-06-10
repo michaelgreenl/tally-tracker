@@ -1,5 +1,6 @@
-import { CREATED, BAD_REQUEST, NOT_FOUND, CONFLICT, SERVER_ERROR } from '@tally/utils';
+import { CREATED, BAD_REQUEST, FORBIDDEN, NOT_FOUND, CONFLICT, SERVER_ERROR } from '@tally/utils';
 import * as counterRepository from '../../db/repositories/counter.repository.js';
+import * as userRepository from '../../db/repositories/user.repository.js';
 
 import type { Request, Response } from 'express';
 import type { ShareStatusType } from '@tally/core';
@@ -30,6 +31,21 @@ export const post = async (
 
         if (!userId) {
             return res.status(BAD_REQUEST).json({ success: false, message: 'Invalid userId' });
+        }
+
+        if (type === 'SHARED') {
+            const user = await userRepository.getUserTierById(userId);
+
+            if (!user) {
+                return res.status(NOT_FOUND).json({ success: false, message: 'User not found' });
+            }
+
+            if (user.tier === 'BASIC') {
+                return res.status(FORBIDDEN).json({
+                    success: false,
+                    message: 'Basic accounts cannot create shared counters.',
+                });
+            }
         }
 
         const counter = await counterRepository.post({ id, userId, title, count, color, type, inviteCode });
@@ -199,10 +215,27 @@ export const join = async (
             return res.status(CONFLICT).json({ success: false, message: 'User owns this counter' });
         }
 
-        const existingShare = counter.shares.find((s) => s.userId === userId);
+        const share = counter.shares.find((item) => item.userId === userId);
 
-        if (existingShare && existingShare.status === ('ACCEPTED' as ShareStatusType)) {
+        if (share && share.status === ('ACCEPTED' as ShareStatusType)) {
             return res.json({ success: true, message: 'Already joined', data: { counter } });
+        }
+
+        const user = await userRepository.getUserTierById(userId);
+
+        if (!user) {
+            return res.status(NOT_FOUND).json({ success: false, message: 'User not found' });
+        }
+
+        if (user.tier === 'BASIC') {
+            const total = await counterRepository.countAcceptedJoinedSharesByUserId(userId);
+
+            if (total > 0) {
+                return res.status(FORBIDDEN).json({
+                    success: false,
+                    message: 'Basic accounts can only join one shared counter.',
+                });
+            }
         }
 
         const shareUpdates = {
@@ -211,7 +244,7 @@ export const join = async (
             status: 'ACCEPTED' as ShareStatusType,
         };
 
-        if (!existingShare) {
+        if (!share) {
             await counterRepository.createShare(shareUpdates);
         } else {
             // Previously rejected — flip back to accepted (re-join)

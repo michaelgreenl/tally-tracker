@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 
+import type { ClientCounter, HexColor } from '@tally/core';
+
 const { auth } = vi.hoisted(() => ({
     auth: {
         isAuthenticated: false,
-        user: null as { id: string } | null,
+        user: null as { id: string; tier: 'BASIC' | 'PREMIUM' } | null,
     },
 }));
 
@@ -28,18 +30,43 @@ vi.mock('@/services/counter.service', () => ({
 }));
 
 import { CounterService } from '@/services/counter.service';
-import { GUEST_COUNTER_LIMIT_MESSAGE, useCounterStore } from '../counterStore';
+import { BASIC_JOIN_LIMIT_MESSAGE, GUEST_COUNTER_LIMIT_MESSAGE, useCounterStore } from '../counterStore';
+
+const signin = (tier: 'BASIC' | 'PREMIUM' = 'BASIC'): void => {
+    auth.isAuthenticated = true;
+    auth.user = { id: 'user-1', tier };
+};
+
+const counter = (overrides: Partial<ClientCounter> = {}): ClientCounter => ({
+    id: 'counter-1',
+    title: 'Counter',
+    color: '#000000' as HexColor,
+    count: 0,
+    inviteCode: null,
+    userId: 'user-1',
+    type: 'PERSONAL',
+    ...overrides,
+});
+
+beforeEach(() => {
+    setActivePinia(createPinia());
+    auth.isAuthenticated = false;
+    auth.user = null;
+    vi.clearAllMocks();
+
+    vi.mocked(CounterService.persist).mockResolvedValue(undefined);
+    vi.mocked(CounterService.create).mockResolvedValue(undefined);
+    vi.mocked(CounterService.clearLocalCounters).mockResolvedValue(undefined);
+    vi.mocked(CounterService.getAllLocal).mockResolvedValue([]);
+    vi.mocked(CounterService.fetchRemote).mockResolvedValue(null);
+    vi.mocked(CounterService.increment).mockResolvedValue(undefined);
+    vi.mocked(CounterService.update).mockResolvedValue(undefined);
+    vi.mocked(CounterService.delete).mockResolvedValue(undefined);
+    vi.mocked(CounterService.consolidate).mockResolvedValue(undefined);
+    vi.mocked(CounterService.join).mockResolvedValue({ success: false, message: 'Join failed' });
+});
 
 describe('counterStore.eligibleCount', () => {
-    beforeEach(() => {
-        setActivePinia(createPinia());
-        auth.isAuthenticated = false;
-        auth.user = null;
-        vi.clearAllMocks();
-        vi.mocked(CounterService.persist).mockResolvedValue(undefined);
-        vi.mocked(CounterService.create).mockResolvedValue(undefined);
-    });
-
     it('counts only non-SHARED counters', async () => {
         const store = useCounterStore();
 
@@ -56,15 +83,6 @@ describe('counterStore.eligibleCount', () => {
 });
 
 describe('counterStore.createCounter', () => {
-    beforeEach(() => {
-        setActivePinia(createPinia());
-        auth.isAuthenticated = false;
-        auth.user = null;
-        vi.clearAllMocks();
-        vi.mocked(CounterService.persist).mockResolvedValue(undefined);
-        vi.mocked(CounterService.create).mockResolvedValue(undefined);
-    });
-
     it('allows three guest personal counters and blocks the fourth before persistence', async () => {
         const store = useCounterStore();
 
@@ -77,7 +95,7 @@ describe('counterStore.createCounter', () => {
 
         expect(res).toEqual({ success: false, message: GUEST_COUNTER_LIMIT_MESSAGE });
         expect(store.counters).toHaveLength(3);
-        expect(store.counters.map((counter) => counter.title)).toEqual(['One', 'Two', 'Three']);
+        expect(store.counters.map((item) => item.title)).toEqual(['One', 'Two', 'Three']);
         expect(CounterService.persist).toHaveBeenCalledTimes(calls);
         expect(CounterService.create).not.toHaveBeenCalled();
     });
@@ -98,8 +116,7 @@ describe('counterStore.createCounter', () => {
     });
 
     it('keeps authenticated create behavior unchanged', async () => {
-        auth.isAuthenticated = true;
-        auth.user = { id: 'user-1' };
+        signin();
 
         const store = useCounterStore();
         const res = await store.createCounter('Owned', null, 'PERSONAL');
@@ -116,5 +133,131 @@ describe('counterStore.createCounter', () => {
                 inviteCode: null,
             }),
         );
+    });
+});
+
+describe('counterStore.joinCounter', () => {
+    it('blocks BASIC users when hydrated counters already prove they joined a shared counter', async () => {
+        signin();
+
+        const store = useCounterStore();
+        store.counters = [counter({ id: 'joined-1', type: 'SHARED', userId: 'owner-2' })];
+
+        const res = await store.joinCounter('invite-1');
+
+        expect(res).toEqual({ success: false, message: BASIC_JOIN_LIMIT_MESSAGE });
+        expect(CounterService.getAllLocal).not.toHaveBeenCalled();
+        expect(CounterService.join).not.toHaveBeenCalled();
+        expect(store.loading).toBe(false);
+    });
+
+    it('blocks BASIC users from persisted counters when the store starts empty', async () => {
+        signin();
+        vi.mocked(CounterService.getAllLocal).mockResolvedValue([
+            counter({ id: 'joined-1', type: 'SHARED', userId: 'owner-2' }),
+        ]);
+
+        const store = useCounterStore();
+        const res = await store.joinCounter('invite-1');
+
+        expect(res).toEqual({ success: false, message: BASIC_JOIN_LIMIT_MESSAGE });
+        expect(CounterService.getAllLocal).toHaveBeenCalledTimes(1);
+        expect(store.counters.map((item) => item.id)).toEqual(['joined-1']);
+        expect(CounterService.join).not.toHaveBeenCalled();
+        expect(CounterService.persist).not.toHaveBeenCalled();
+        expect(store.loading).toBe(false);
+    });
+
+    it('ignores owned shared counters for BASIC users', async () => {
+        signin();
+        vi.mocked(CounterService.join).mockResolvedValue({ success: false, message: 'Server denied' });
+
+        const store = useCounterStore();
+        store.counters = [counter({ id: 'owned-1', type: 'SHARED', userId: 'user-1' })];
+
+        const res = await store.joinCounter('invite-1');
+
+        expect(res).toEqual({ success: false, message: 'Server denied' });
+        expect(CounterService.join).toHaveBeenCalledWith('invite-1');
+    });
+
+    it('falls through to the server for PREMIUM users', async () => {
+        signin('PREMIUM');
+        vi.mocked(CounterService.join).mockResolvedValue({
+            success: true,
+            data: {
+                counter: counter({ id: 'joined-2', type: 'SHARED', userId: 'owner-2' }),
+            },
+        });
+
+        const store = useCounterStore();
+        store.counters = [counter({ id: 'joined-1', type: 'SHARED', userId: 'owner-3' })];
+
+        const res = await store.joinCounter('invite-1');
+
+        expect(res).toEqual({ success: true });
+        expect(CounterService.join).toHaveBeenCalledWith('invite-1');
+    });
+
+    it('falls through to the server for unauthenticated users', async () => {
+        vi.mocked(CounterService.join).mockResolvedValue({ success: false, message: 'Invite expired' });
+
+        const store = useCounterStore();
+        store.counters = [counter({ id: 'joined-1', type: 'SHARED', userId: 'owner-2' })];
+
+        const res = await store.joinCounter('invite-1');
+
+        expect(res).toEqual({ success: false, message: 'Invite expired' });
+        expect(CounterService.join).toHaveBeenCalledWith('invite-1');
+    });
+
+    it('falls through to the server when local state cannot prove the BASIC cap', async () => {
+        signin();
+        vi.mocked(CounterService.join).mockResolvedValue({ success: false, message: 'Invite invalid' });
+
+        const store = useCounterStore();
+        const res = await store.joinCounter('invite-1');
+
+        expect(res).toEqual({ success: false, message: 'Invite invalid' });
+        expect(CounterService.getAllLocal).toHaveBeenCalledTimes(1);
+        expect(CounterService.join).toHaveBeenCalledWith('invite-1');
+    });
+
+    it('keeps successful joins deduplicated', async () => {
+        signin('PREMIUM');
+        const joined = counter({ id: 'joined-1', type: 'SHARED', userId: 'owner-2' });
+        vi.mocked(CounterService.join).mockResolvedValue({
+            success: true,
+            data: { counter: joined },
+        });
+
+        const store = useCounterStore();
+        store.counters = [joined];
+
+        const res = await store.joinCounter('invite-1');
+
+        expect(res).toEqual({ success: true });
+        expect(store.counters).toHaveLength(1);
+        expect(CounterService.persist).not.toHaveBeenCalled();
+    });
+
+    it('preserves cached counters on direct-link join success', async () => {
+        signin('PREMIUM');
+        const cached = counter({ id: 'cached-1', title: 'Cached', userId: 'user-1' });
+        const joined = counter({ id: 'joined-1', title: 'Joined', type: 'SHARED', userId: 'owner-2' });
+        vi.mocked(CounterService.getAllLocal).mockResolvedValue([cached]);
+        vi.mocked(CounterService.join).mockResolvedValue({
+            success: true,
+            data: { counter: joined },
+        });
+
+        const store = useCounterStore();
+        const res = await store.joinCounter('invite-1');
+
+        expect(res).toEqual({ success: true });
+        expect(CounterService.join).toHaveBeenCalledWith('invite-1');
+        expect(store.counters.map((item) => item.id)).toEqual(['cached-1', 'joined-1']);
+        expect(CounterService.persist).toHaveBeenCalledTimes(1);
+        expect(CounterService.persist).toHaveBeenCalledWith([cached, joined]);
     });
 });

@@ -41,6 +41,17 @@ export const getUserById = (userId: string) =>
         },
     });
 
+export const getUserTierById = (userId: string) =>
+    prisma.user.findUnique({
+        where: {
+            id: userId,
+        },
+        select: {
+            id: true,
+            tier: true,
+        },
+    });
+
 export const getUserByEmail = (email: string) =>
     prisma.user.findUnique({
         where: {

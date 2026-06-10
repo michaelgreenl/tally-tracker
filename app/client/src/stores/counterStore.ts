@@ -12,8 +12,11 @@ import type { UpdateCounterRequest, HexColor, ClientCounter, CounterTypeType as 
 const DEFAULT_COUNTER_COLOR = '#000000' as HexColor;
 export const GUEST_COUNTER_CAP = 3;
 export const GUEST_COUNTER_LIMIT_MESSAGE = 'Guest counter limit reached';
+export const BASIC_JOIN_LIMIT_MESSAGE = 'Basic accounts can only join one shared counter.';
 
 const isGuestEligible = (type: CounterType): boolean => type !== 'SHARED';
+const hasJoinedShared = (list: readonly ClientCounter[], userId: string): boolean =>
+    list.some((counter) => counter.type === 'SHARED' && counter.userId !== userId);
 
 export const useCounterStore = defineStore('counter', () => {
     const authStore = useAuthStore();
@@ -167,6 +170,15 @@ export const useCounterStore = defineStore('counter', () => {
         loading.value = true;
 
         try {
+            if (counters.value.length === 0) {
+                counters.value = await CounterService.getAllLocal();
+            }
+
+            const userId = authStore.user?.id;
+            if (authStore.user?.tier === 'BASIC' && userId && hasJoinedShared(counters.value, userId)) {
+                return fail(BASIC_JOIN_LIMIT_MESSAGE);
+            }
+
             const res = await CounterService.join(inviteCode);
 
             if (res.success && res.data?.counter) {

@@ -1,4 +1,4 @@
-import { OK, CREATED, NOT_FOUND, UNPROCESSABLE_ENTITY } from '@tally/utils';
+import { OK, CREATED, FORBIDDEN, NOT_FOUND, UNPROCESSABLE_ENTITY } from '@tally/utils';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Request, Response, NextFunction } from 'express';
 import request from 'supertest';
@@ -26,12 +26,17 @@ vi.mock('../../../db/repositories/counter.repository', () => ({
     updateShare: vi.fn(),
 }));
 
+vi.mock('../../../db/repositories/user.repository', () => ({
+    getUserTierById: vi.fn(),
+}));
+
 vi.mock('../../../db/repositories/idempotency.repository', () => ({
     get: vi.fn().mockResolvedValue(null),
     create: vi.fn().mockResolvedValue({}),
 }));
 
 import * as counterRepository from '../../../db/repositories/counter.repository.js';
+import * as userRepository from '../../../db/repositories/user.repository.js';
 
 describe('Counter Routes', () => {
     beforeEach(() => {
@@ -40,18 +45,34 @@ describe('Counter Routes', () => {
     });
 
     describe('POST /counters', () => {
-        it('should create a personal counter', async () => {
+        it('should create a personal counter without tier lookup', async () => {
             const counter = buildCounter({ title: 'Push Ups' });
+            vi.mocked(userRepository.getUserTierById).mockResolvedValue({ id: TEST_USER_ID, tier: 'BASIC' });
             vi.mocked(counterRepository.post).mockResolvedValue(counter);
 
             const res = await request(app).post('/counters').send({ title: 'Push Ups' });
 
             expect(res.status).toBe(CREATED);
             expect(res.body.data.counter.title).toBe('Push Ups');
+            expect(userRepository.getUserTierById).not.toHaveBeenCalled();
         });
 
-        it('should create a shared counter with invite code', async () => {
+        it('should reject shared counter creation for persisted BASIC users', async () => {
+            vi.mocked(userRepository.getUserTierById).mockResolvedValue({ id: TEST_USER_ID, tier: 'BASIC' });
+
+            const res = await request(app)
+                .post('/counters')
+                .send({ title: 'Shared', type: 'SHARED', inviteCode: 'ABC123' });
+
+            expect(res.status).toBe(FORBIDDEN);
+            expect(res.body.message).toBe('Basic accounts cannot create shared counters.');
+            expect(userRepository.getUserTierById).toHaveBeenCalledWith(TEST_USER_ID);
+            expect(counterRepository.post).not.toHaveBeenCalled();
+        });
+
+        it('should create a shared counter for persisted PREMIUM users', async () => {
             const counter = buildCounter({ type: 'SHARED', inviteCode: 'ABC123' });
+            vi.mocked(userRepository.getUserTierById).mockResolvedValue({ id: TEST_USER_ID, tier: 'PREMIUM' });
             vi.mocked(counterRepository.post).mockResolvedValue(counter);
 
             const res = await request(app)
@@ -60,6 +81,20 @@ describe('Counter Routes', () => {
 
             expect(res.status).toBe(CREATED);
             expect(res.body.data.counter.type).toBe('SHARED');
+            expect(userRepository.getUserTierById).toHaveBeenCalledWith(TEST_USER_ID);
+        });
+
+        it('should return 404 when the persisted user record is missing for shared counters', async () => {
+            vi.mocked(userRepository.getUserTierById).mockResolvedValue(null);
+
+            const res = await request(app)
+                .post('/counters')
+                .send({ title: 'Shared', type: 'SHARED', inviteCode: 'ABC123' });
+
+            expect(res.status).toBe(NOT_FOUND);
+            expect(res.body.message).toBe('User not found');
+            expect(userRepository.getUserTierById).toHaveBeenCalledWith(TEST_USER_ID);
+            expect(counterRepository.post).not.toHaveBeenCalled();
         });
 
         it('should reject shared counter without invite code', async () => {
