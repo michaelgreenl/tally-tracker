@@ -55,14 +55,14 @@ export const seedCounters = async (prisma: PrismaClient) => {
             title: "Weekly Workout's",
             count: 4,
             color: '#CAFFF1',
-            userId: unknown.id,
+            userId: joe.id,
             type: 'PERSONAL',
         },
         {
             title: 'Cigerettes',
             count: 6,
             color: null,
-            userId: unknown.id,
+            userId: joe.id,
             type: 'PERSONAL',
         },
     ];
