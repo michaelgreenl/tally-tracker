@@ -9,7 +9,6 @@ import { buildRefreshToken, TEST_USER_ID, TEST_REFRESH_TOKEN_ID } from '../fixtu
 vi.mock('../../../db/repositories/user.repository', () => ({
     createUser: vi.fn(),
     getUserByEmail: vi.fn(),
-    getUserByPhone: vi.fn(),
     getUserById: vi.fn(),
     updateUserInfo: vi.fn(),
     deleteUser: vi.fn(),
@@ -44,7 +43,7 @@ describe('Auth Routes', () => {
             expect(userRepository.createUser).toHaveBeenCalledWith(expect.objectContaining({ email: 'new@test.com' }));
         });
 
-        it('should reject registration without email or phone', async () => {
+        it('should reject registration without email', async () => {
             const res = await request(app).post('/users').send({
                 password: 'password123',
             });
@@ -134,20 +133,6 @@ describe('Auth Routes', () => {
 
             expect(res.status).toBe(UNAUTHORIZED);
         });
-
-        it('should login with phone number', async () => {
-            vi.mocked(userRepository.getUserByPhone).mockResolvedValue(
-                buildUser({ email: null, phone: '+15551234567' }),
-            );
-
-            const res = await request(app).post('/users/login').send({
-                phone: '+15551234567',
-                password: 'password123',
-            });
-
-            expect(res.status).toBe(OK);
-            expect(res.body.data.user.phone).toBe('+15551234567');
-        });
     });
 
     describe('POST /users/refresh', () => {
@@ -160,7 +145,6 @@ describe('Auth Routes', () => {
             const refreshedUser = {
                 id: clientUser.id,
                 email: clientUser.email,
-                phone: clientUser.phone,
                 tier: clientUser.tier,
                 createdAt: new Date('2026-01-01'),
                 updatedAt: new Date('2026-01-01'),

@@ -11,7 +11,6 @@ export const seedUsers = async (prisma: PrismaClient) => {
         },
         create: {
             email: 'admin@example.com',
-            phone: '+15550000000',
             password: password,
         },
     });
@@ -28,13 +27,12 @@ export const seedUsers = async (prisma: PrismaClient) => {
     });
 
     await prisma.user.upsert({
-        where: { email: 'joe@example.com', phone: '+15559999999' },
+        where: { email: 'joe@example.com' },
         update: {
             tier: 'BASIC',
         },
         create: {
             email: 'joe@example.com',
-            phone: '+15559999999',
             password: password,
         },
     });

@@ -5,8 +5,7 @@ enum UserTier {
 
 model User {
     id       String   @id @default(uuid()) @db.Uuid
-    email    String?  @unique
-    phone    String?  @unique
+    email    String   @unique
     password String
     tier     UserTier @default(BASIC)
 

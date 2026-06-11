@@ -9,7 +9,6 @@ const hashedPassword = bcrypt.hashSync('password123', 10);
 export const buildUser = (overrides: Partial<User> = {}): User => ({
     id: TEST_USER_ID,
     email: 'test@test.com',
-    phone: null,
     password: hashedPassword,
     tier: 'BASIC',
     createdAt: new Date('2026-01-01'),
@@ -20,7 +19,6 @@ export const buildUser = (overrides: Partial<User> = {}): User => ({
 export const buildClientUser = (overrides: Partial<ClientUser> = {}): ClientUser => ({
     id: TEST_USER_ID,
     email: 'test@test.com',
-    phone: null,
     tier: 'BASIC',
     ...overrides,
 });

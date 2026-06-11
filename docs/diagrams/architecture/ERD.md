@@ -61,8 +61,7 @@ BASIC BASIC
 
   "users" {
     String id "🗝️"
-    String email "❓"
-    String phone "❓"
+    String email 
     String password 
     UserTier tier 
     DateTime created_at 

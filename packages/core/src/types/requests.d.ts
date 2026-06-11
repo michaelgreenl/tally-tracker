@@ -13,8 +13,7 @@ declare global {
 
 // ***** User Requests *****
 export interface AuthRequest {
-    email?: string;
-    phone?: string;
+    email: string;
     password: string;
     rememberMe?: boolean;
 }
@@ -24,8 +23,7 @@ export interface RefreshRequest {
 }
 
 export interface UpdateUserRequest {
-    email?: string;
-    phone?: string;
+    email: string;
     password?: string;
     tier?: UserTier;
 }

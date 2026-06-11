@@ -49,8 +49,8 @@ export const seedCounters = async (prisma: PrismaClient) => {
         },
     ];
 
-    const unknown = await prisma.user.findUnique({ where: { phone: '+15559999999' } });
-    const unknownCounters = [
+    const joe = await prisma.user.findUnique({ where: { email: 'joe@example.com' } });
+    const joeCounters = [
         {
             title: "Weekly Workout's",
             count: 4,
@@ -67,8 +67,8 @@ export const seedCounters = async (prisma: PrismaClient) => {
         },
     ];
 
-    const users = [admin, alice, unknown];
-    const counters = [adminCounters, aliceCounters, unknownCounters];
+    const users = [admin, alice, joe];
+    const counters = [adminCounters, aliceCounters, joeCounters];
 
     for (const [index, user] of users.entries()) {
         await upsertCounters(user, counters[index]);

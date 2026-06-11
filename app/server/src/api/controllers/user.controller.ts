@@ -62,15 +62,12 @@ export const post = async (
     res: Response<AuthResponse>,
 ) => {
     try {
-        const { email, phone, password } = req.body;
+        const { email, password } = req.body;
 
-        let sanitizedEmail: string | undefined;
-        if (email) {
-            sanitizedEmail = sanitizeEmail(email);
-        }
+        const sanitizedEmail = sanitizeEmail(email);
 
         const hash = await bcrypt.hash(password, 10);
-        await userRepository.createUser({ email: sanitizedEmail, phone, password: hash });
+        await userRepository.createUser({ email: sanitizedEmail, password: hash });
 
         res.status(CREATED).json({ success: true });
     } catch (error: unknown) {
@@ -100,15 +97,10 @@ export const login = async (
     res: Response<AuthResponse>,
 ) => {
     try {
-        const { email, phone, password, rememberMe } = req.body;
+        const { email, password, rememberMe } = req.body;
 
-        let user;
-        if (email) {
-            const sanitizedEmail = sanitizeEmail(email);
-            user = await userRepository.getUserByEmail(sanitizedEmail);
-        } else if (phone) {
-            user = await userRepository.getUserByPhone(phone);
-        }
+        const sanitizedEmail = sanitizeEmail(email);
+        const user = await userRepository.getUserByEmail(sanitizedEmail);
 
         if (!user) {
             return res.status(NOT_FOUND).json({
@@ -124,7 +116,7 @@ export const login = async (
 
         const { password: _, ...clientUser } = user;
 
-        const accessToken = jwt.sign({ id: user.id, email: user.email, phone: user.phone }, rememberMe ? '60m' : '1d');
+        const accessToken = jwt.sign({ id: user.id, email: user.email }, rememberMe ? '60m' : '1d');
 
         let refreshToken: string | undefined;
 
@@ -180,7 +172,7 @@ export const refresh = async (
         const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL);
         const newTokenRecord = await tokenRepository.create({ userId: tokenRecord.userId, expiresAt });
 
-        const accessToken = jwt.sign({ id: user.id, email: user.email, phone: user.phone });
+        const accessToken = jwt.sign({ id: user.id, email: user.email });
 
         res.cookie('access_token', accessToken, shortAccessCookieConfig);
         res.cookie('refresh_token', newTokenRecord.id, refreshCookieConfig);
@@ -230,11 +222,10 @@ export const put = async (
 ) => {
     try {
         const userId = req.user?.id;
-        const { email, phone, password } = req.body;
+        const { email, password } = req.body;
 
         const updateData: Prisma.UserUpdateInput = {};
         if (email) updateData.email = email;
-        if (phone) updateData.phone = phone;
 
         if (password) {
             updateData.password = await bcrypt.hash(password, 10);

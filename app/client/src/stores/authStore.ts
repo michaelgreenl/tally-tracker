@@ -123,7 +123,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     async function register(data: AuthRequest): Promise<StoreResponse> {
         try {
-            if (!data.email && !data.phone) return fail('Registration requires phone or email as input');
+            if (!data.email) return fail('Registration requires email as input');
 
             const res = await AuthService.register(data);
             if (res.success) return ok();
