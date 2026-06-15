@@ -21,8 +21,9 @@ This agent is only for initiative-driven execution rooted in `.mawm/agents/initi
 - Roadmap: `.mawm/agents/initiatives/roadmap.md`
 - Initiative spec: `.mawm/agents/initiatives/active/<initiative-slug>/spec.md`
 - Run specs created by executed workflows: `.mawm/agents/initiatives/active/<initiative-slug>/runs/active/<run-slug>/spec.md`
-- Installed workflows: `<target-project>/.mawm/graphs/<workflow-name>/`
-- Workflow metadata: `<target-project>/.mawm/graphs/<workflow-name>/mawm.json`
+- Installed workflows: `~/.config/mawm/<workflow-name>/`
+- Workflow metadata: `~/.config/mawm/<workflow-name>/mawm.json`
+- Workflow runtime logs: `<target-project>/.mawm/logs/<workflow-name>/`
 - Current code is authoritative when active docs describe stale behavior.
 - `queued/`, `archived/`, completed runs, and old logs are historical or planning input only unless an active spec explicitly makes them relevant.
 

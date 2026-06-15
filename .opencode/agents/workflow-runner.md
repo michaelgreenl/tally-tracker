@@ -15,9 +15,10 @@ Use this agent when the user wants to launch or resume a workflow directly. For 
 
 ## Source of Truth
 
-- Installed workflow root: `<target-project>/.mawm/graphs/<workflow-name>/`
-- Workflow metadata: `<target-project>/.mawm/graphs/<workflow-name>/mawm.json`
-- LangGraph config: `<target-project>/.mawm/graphs/<workflow-name>/langgraph.json`
+- Installed workflow root: `~/.config/mawm/<workflow-name>/`
+- Workflow metadata: `~/.config/mawm/<workflow-name>/mawm.json`
+- LangGraph config: `~/.config/mawm/<workflow-name>/langgraph.json`
+- Workflow runtime logs: `<target-project>/.mawm/logs/<workflow-name>/`
 - Current code and explicitly provided user input are authoritative over guesses.
 
 The workflow metadata contract defines:

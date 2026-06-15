@@ -1,7 +1,0 @@
-{
-  "node_version": "20",
-  "graphs": {
-    "agent": "./graph.js:graph"
-  },
-  "env": ".env"
-}

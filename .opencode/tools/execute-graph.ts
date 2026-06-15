@@ -1,32 +1,35 @@
 import { spawn } from "node:child_process";
-import { access, open, readFile, rm, writeFile } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { access, mkdir, open, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { createServer } from "node:net";
+import { join, relative } from "node:path";
 import { tool } from "@opencode-ai/plugin";
 import {
     DEFAULT_AGENT_SERVER_URL,
     buildRunPayload,
     extractAgentServerUrl,
+    normalizeLangGraphConfig,
     readAssistantIDs,
-    resolveRunContext,
     resolveAssistantID,
+    resolveGlobalWorkflowRoot,
+    resolveProjectRoot,
+    resolveRunContext,
+    resolveWorkflowRuntimeDir,
     summarizeRunResult,
+    type RunToolContext,
 } from "./execute-graph-lib.ts";
 
 const DEV_STATE_FILE = ".langgraph-dev.json";
+const GITIGNORE_FILE = ".gitignore";
 const HEALTHCHECK_PATH = "/ok";
 const HEALTHCHECK_TIMEOUT_MS = 1000;
 const PROCESS_SHUTDOWN_POLL_INTERVAL_MS = 100;
 const PROCESS_SHUTDOWN_TIMEOUT_MS = 2000;
+const RUNTIME_CONFIG_FILE = "langgraph.runtime.json";
+const RUNTIME_GITIGNORE = "*";
 const STARTUP_POLL_INTERVAL_MS = 250;
 const STARTUP_TIMEOUT_MS = 15000;
 const WORKFLOW_NAME_PATTERN = /^[A-Za-z0-9._-]+$/;
-const LANGGRAPH_DEV_COMMAND = [
-    "npx",
-    "--yes",
-    "@langchain/langgraph-cli",
-    "dev",
-    "--no-browser",
-] as const;
+const LANGGRAPH_DEV_COMMAND = ["npx", "--yes", "@langchain/langgraph-cli", "dev"] as const;
 const WORKFLOW_RUNTIME_INSTALL_COMMAND = [
     "npm",
     "install",
@@ -36,10 +39,13 @@ const WORKFLOW_RUNTIME_INSTALL_COMMAND = [
     "--omit=dev",
 ] as const;
 
-type ToolContext = {
-    readonly directory?: string;
-    readonly sessionID?: string;
-    readonly worktree?: string;
+type WorkflowLocation = {
+    readonly langgraphConfigPath: string;
+    readonly logPath: string;
+    readonly runtimeConfigPath: string;
+    readonly runtimeDir: string;
+    readonly workflowMetadataPath: string;
+    readonly workflowRoot: string;
 };
 
 type DevServerState = {
@@ -185,57 +191,145 @@ const waitForExit = async (child: ReturnType<typeof spawn>, task: string): Promi
 
 const resolveWorkflowLocation = async (
     workflow: string,
-    context: ToolContext,
-): Promise<{ projectRoot: string; workflowRoot: string }> => {
-    const candidateRoots = [context.directory, context.worktree]
-        .filter(
-            (candidate): candidate is string =>
-                typeof candidate === "string" && candidate.length > 0,
-        )
-        .map((candidate) => resolve(candidate));
+    context: RunToolContext,
+): Promise<WorkflowLocation> => {
+    let projectRoot = "";
 
-    if (candidateRoots.length === 0) {
+    try {
+        projectRoot = resolveProjectRoot(context);
+    } catch {
         throw new Error(
-            `Unable to resolve a target project for workflow \`${workflow}\`: tool context did not provide a directory or worktree.`,
+            `Unable to resolve a target project for workflow \`${workflow}\`: tool context did not provide a usable worktree or directory.`,
         );
     }
 
-    const searchedWorkflowRoots: string[] = [];
-    const visitedRoots = new Set<string>();
+    const info = await stat(projectRoot).catch(() => undefined);
 
-    for (const candidateRoot of candidateRoots) {
-        let currentRoot = candidateRoot;
-
-        while (!visitedRoots.has(currentRoot)) {
-            visitedRoots.add(currentRoot);
-
-            const workflowRoot = join(currentRoot, ".mawm", "graphs", workflow);
-            searchedWorkflowRoots.push(workflowRoot);
-
-            if (await exists(workflowRoot)) {
-                return {
-                    projectRoot: currentRoot,
-                    workflowRoot,
-                };
-            }
-
-            const parentRoot = dirname(currentRoot);
-
-            if (parentRoot === currentRoot) {
-                break;
-            }
-
-            currentRoot = parentRoot;
-        }
+    if (!info?.isDirectory()) {
+        throw new Error(
+            `Unable to resolve a target project for workflow \`${workflow}\`: ${projectRoot} is not a directory.`,
+        );
     }
 
-    throw new Error(
-        `Installed workflow not found for \`${workflow}\`. Searched:\n${searchedWorkflowRoots.join("\n")}`,
-    );
+    const workflowRoot = resolveGlobalWorkflowRoot(process.env, workflow);
+    const runtimeDir = resolveWorkflowRuntimeDir(projectRoot, workflow);
+
+    return {
+        langgraphConfigPath: join(workflowRoot, "langgraph.json"),
+        logPath: join(runtimeDir, ".langgraph-dev.log"),
+        runtimeConfigPath: join(runtimeDir, RUNTIME_CONFIG_FILE),
+        runtimeDir,
+        workflowMetadataPath: join(workflowRoot, "mawm.json"),
+        workflowRoot,
+    };
+};
+
+const prepareRuntimeDir = async (
+    langgraphConfigPath: string,
+    runtimeConfigPath: string,
+    runtimeDir: string,
+    workflowRoot: string,
+): Promise<string> => {
+    await mkdir(runtimeDir, {
+        recursive: true,
+    });
+    await writeFile(join(runtimeDir, GITIGNORE_FILE), RUNTIME_GITIGNORE);
+
+    const langgraphConfig = await readFile(langgraphConfigPath, "utf8");
+    const runtimeConfig = normalizeLangGraphConfig(langgraphConfig, workflowRoot);
+
+    if (
+        typeof runtimeConfig.graphs === "object" &&
+        runtimeConfig.graphs !== null &&
+        !Array.isArray(runtimeConfig.graphs)
+    ) {
+        // LangGraph preloads the first graph with path.join(cwd, file), so
+        // graph specs must stay relative when the config lives in runtimeDir.
+        const rebase = (value: string): string => {
+            const index = value.lastIndexOf(":");
+
+            if (index <= 1 || index === value.length - 1) {
+                return relative(runtimeDir, value);
+            }
+
+            const suffix = value.slice(index + 1);
+
+            if (suffix.includes("/") || suffix.includes("\\")) {
+                return relative(runtimeDir, value);
+            }
+
+            return `${relative(runtimeDir, value.slice(0, index))}:${suffix}`;
+        };
+        const next: Record<string, unknown> = {};
+
+        for (const [id, value] of Object.entries(runtimeConfig.graphs)) {
+            if (typeof value === "string") {
+                next[id] = rebase(value);
+                continue;
+            }
+
+            if (
+                typeof value === "object" &&
+                value !== null &&
+                !Array.isArray(value) &&
+                typeof value.path === "string"
+            ) {
+                next[id] = {
+                    ...value,
+                    path: rebase(value.path),
+                };
+                continue;
+            }
+
+            next[id] = value;
+        }
+
+        runtimeConfig.graphs = next;
+    }
+
+    await writeFile(runtimeConfigPath, `${JSON.stringify(runtimeConfig, null, 2)}\n`);
+
+    return langgraphConfig;
+};
+
+const agentUrl = (port: number): string => {
+    const url = new URL(DEFAULT_AGENT_SERVER_URL);
+    url.port = String(port);
+
+    return url.origin;
+};
+
+const freePort = async (): Promise<number> => {
+    const server = createServer();
+    server.unref();
+
+    return await new Promise<number>((resolve, reject) => {
+        server.once("error", reject);
+        server.listen(0, "127.0.0.1", () => {
+            const address = server.address();
+
+            if (!address || typeof address === "string") {
+                server.close((error) => {
+                    reject(error ?? new Error("Unable to determine a free port for LangGraph."));
+                });
+                return;
+            }
+
+            server.close((error) => {
+                if (error) {
+                    reject(error);
+                    return;
+                }
+
+                resolve(address.port);
+            });
+        });
+    });
 };
 
 const waitForStartup = async (
     child: ReturnType<typeof spawn>,
+    fallbackUrl: string,
     logPath: string,
 ): Promise<string> => {
     let startupError: Error | undefined;
@@ -275,8 +369,6 @@ const waitForStartup = async (
         if (startupError) {
             throw startupError;
         }
-
-        const fallbackUrl = detectedUrl || DEFAULT_AGENT_SERVER_URL;
 
         if (await isAgentServerReachable(fallbackUrl)) {
             return fallbackUrl;
@@ -365,11 +457,13 @@ const writeDevServerState = async (statePath: string, state: DevServerState): Pr
 };
 
 const ensureLangGraphServer = async (
+    runtimeConfigPath: string,
+    runtimeDir: string,
     workflow: string,
     workflowRoot: string,
 ): Promise<DevServerState> => {
-    const logPath = join(workflowRoot, ".langgraph-dev.log");
-    const statePath = join(workflowRoot, DEV_STATE_FILE);
+    const logPath = join(runtimeDir, ".langgraph-dev.log");
+    const statePath = join(runtimeDir, DEV_STATE_FILE);
     const existing = await readDevServerState(statePath);
 
     if (existing) {
@@ -394,14 +488,25 @@ const ensureLangGraphServer = async (
         throw await formatStartupError(workflow, logPath, error);
     }
 
+    const port = await freePort();
+    const apiUrl = agentUrl(port);
+    const command = [
+        ...LANGGRAPH_DEV_COMMAND,
+        "--config",
+        runtimeConfigPath,
+        "--port",
+        String(port),
+        "--no-browser",
+        "--no-reload",
+    ];
     const logFile = await open(logPath, "a");
 
     try {
         await logFile.write(
-            `\n[${new Date().toISOString()}] Starting workflow ${workflow} with ${LANGGRAPH_DEV_COMMAND.join(" ")}\n`,
+            `\n[${new Date().toISOString()}] Starting workflow ${workflow} with ${command.join(" ")}\n`,
         );
 
-        const child = spawn(LANGGRAPH_DEV_COMMAND[0], LANGGRAPH_DEV_COMMAND.slice(1), {
+        const child = spawn(command[0], command.slice(1), {
             cwd: workflowRoot,
             detached: true,
             stdio: ["ignore", logFile.fd, logFile.fd],
@@ -411,10 +516,10 @@ const ensureLangGraphServer = async (
             throw new Error("LangGraph process did not report a PID.");
         }
 
-        let apiUrl = DEFAULT_AGENT_SERVER_URL;
+        let serverUrl = apiUrl;
 
         try {
-            apiUrl = await waitForStartup(child, logPath);
+            serverUrl = await waitForStartup(child, apiUrl, logPath);
         } catch (error) {
             await discardDevServer(
                 statePath,
@@ -430,7 +535,7 @@ const ensureLangGraphServer = async (
         child.unref();
 
         const state = {
-            apiUrl,
+            apiUrl: serverUrl,
             logPath,
             pid: child.pid,
         } satisfies DevServerState;
@@ -479,14 +584,14 @@ const createThread = async (apiUrl: string): Promise<string> => {
     return thread.thread_id;
 };
 
-/** Execute or resume an installed workflow through the local LangGraph server. */
+/** Execute or resume a globally installed workflow through the local LangGraph server. */
 export default tool({
     description:
-        "Executes or resumes an installed workflow from <target-project>/.mawm/graphs/<workflow> through the local LangGraph Agent Server.",
+        "Executes or resumes a globally installed workflow from ~/.config/mawm/<workflow> with project-local runtime state under <target-project>/.mawm/logs/<workflow> through the local LangGraph Agent Server.",
     args: {
         workflow: tool.schema
             .string()
-            .describe("Installed workflow name under <target-project>/.mawm/graphs"),
+            .describe("Globally installed workflow name under ~/.config/mawm"),
         input: tool.schema
             .record(tool.schema.string(), tool.schema.unknown())
             .optional()
@@ -516,31 +621,43 @@ export default tool({
             throw new Error("The resume argument requires an existing threadID.");
         }
 
-        const { workflowRoot } = await resolveWorkflowLocation(workflow, context);
-        const workflowMetadataPath = join(workflowRoot, "mawm.json");
-        const langgraphConfigPath = join(workflowRoot, "langgraph.json");
-        const logPath = join(workflowRoot, ".langgraph-dev.log");
-
-        if (!(await exists(workflowMetadataPath))) {
-            throw new Error(`Missing workflow metadata: ${workflowMetadataPath}`);
-        }
-
-        if (!(await exists(langgraphConfigPath))) {
-            throw new Error(`Missing LangGraph config: ${langgraphConfigPath}`);
-        }
-
+        const location = await resolveWorkflowLocation(workflow, context);
         let resolvedAssistantID = assistantID;
         let resolvedThreadID = threadID;
         const resolvedContext = resolveRunContext(runContext, context);
 
         try {
-            const langgraphConfig = await readFile(langgraphConfigPath, "utf8");
+            if (!(await exists(location.workflowRoot))) {
+                throw new Error(
+                    `Installed global workflow not found for \`${workflow}\`: ${location.workflowRoot}`,
+                );
+            }
+
+            if (!(await exists(location.workflowMetadataPath))) {
+                throw new Error(`Missing workflow metadata: ${location.workflowMetadataPath}`);
+            }
+
+            if (!(await exists(location.langgraphConfigPath))) {
+                throw new Error(`Missing LangGraph config: ${location.langgraphConfigPath}`);
+            }
+
+            const langgraphConfig = await prepareRuntimeDir(
+                location.langgraphConfigPath,
+                location.runtimeConfigPath,
+                location.runtimeDir,
+                location.workflowRoot,
+            );
             resolvedAssistantID = resolveAssistantID(
                 readAssistantIDs(langgraphConfig),
                 assistantID,
             );
 
-            const server = await ensureLangGraphServer(workflow, workflowRoot);
+            const server = await ensureLangGraphServer(
+                location.runtimeConfigPath,
+                location.runtimeDir,
+                workflow,
+                location.workflowRoot,
+            );
             resolvedThreadID = threadID ?? (await createThread(server.apiUrl));
             const output = await request<Record<string, unknown>>(
                 server.apiUrl,
@@ -569,7 +686,7 @@ export default tool({
                     status: result.status,
                     summary: result.summary,
                     threadID: resolvedThreadID,
-                    workflowRoot,
+                    workflowRoot: location.workflowRoot,
                 },
                 null,
                 2,
@@ -580,11 +697,11 @@ export default tool({
             return JSON.stringify(
                 {
                     assistantID: resolvedAssistantID,
-                    logPath,
+                    logPath: location.logPath,
                     status: "failed",
                     summary: message,
                     threadID: resolvedThreadID,
-                    workflowRoot,
+                    workflowRoot: location.workflowRoot,
                 },
                 null,
                 2,

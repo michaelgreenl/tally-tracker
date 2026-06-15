@@ -1,3 +1,6 @@
+import { homedir } from "node:os";
+import { join, resolve } from "node:path";
+
 /** Default local LangGraph dev server URL. */
 export const DEFAULT_AGENT_SERVER_URL = "http://localhost:2024";
 
@@ -37,6 +40,177 @@ const text = (value: unknown): string | undefined => {
     const trimmed = value.trim();
 
     return trimmed.length > 0 ? trimmed : undefined;
+};
+
+const pathString = (value: unknown, key: string): string => {
+    if (typeof value !== "string" || value.trim().length === 0) {
+        throw new Error(`Unsupported LangGraph config at \`${key}\`: expected a string path.`);
+    }
+
+    return value;
+};
+
+const modulePath = (value: string, root: string): string => {
+    const index = value.lastIndexOf(":");
+
+    if (index <= 1 || index === value.length - 1) {
+        return resolve(root, value);
+    }
+
+    const suffix = value.slice(index + 1);
+
+    if (suffix.includes("/") || suffix.includes("\\")) {
+        return resolve(root, value);
+    }
+
+    return `${resolve(root, value.slice(0, index))}:${suffix}`;
+};
+
+/**
+ * Resolve the current user's home directory from an environment object.
+ * Mirrors the standalone-tool precedence used by MAWM runtime code.
+ */
+export const resolveHomeDirectory = (env: NodeJS.ProcessEnv): string => {
+    const home = env["HOME"];
+
+    if (home) {
+        return home;
+    }
+
+    const userProfile = env["USERPROFILE"];
+
+    if (userProfile) {
+        return userProfile;
+    }
+
+    const homeDrive = env["HOMEDRIVE"];
+    const homePath = env["HOMEPATH"];
+
+    if (homeDrive && homePath) {
+        return `${homeDrive}${homePath}`;
+    }
+
+    return homedir();
+};
+
+/** Resolve the globally installed workflow root under the MAWM config directory. */
+export const resolveGlobalWorkflowRoot = (env: NodeJS.ProcessEnv, workflow: string): string => {
+    return join(resolveHomeDirectory(env), ".config", "mawm", workflow);
+};
+
+/** Resolve the target project root from tool context, preferring worktree over directory. */
+export const resolveProjectRoot = (context: RunToolContext): string => {
+    const root = text(context.worktree) ?? text(context.directory);
+
+    if (!root) {
+        throw new Error("Unable to resolve a target project path from tool context.");
+    }
+
+    return resolve(root);
+};
+
+/** Resolve the per-project runtime directory for a workflow execution. */
+export const resolveWorkflowRuntimeDir = (projectRoot: string, workflow: string): string => {
+    return join(resolve(projectRoot), ".mawm", "logs", workflow);
+};
+
+/**
+ * Normalize supported LangGraph config paths so project-local runtime config
+ * can run from the global workflow install directory.
+ */
+export const normalizeLangGraphConfig = (
+    langgraphConfigText: string,
+    workflowRoot: string,
+): RecordValue => {
+    const parsed = JSON.parse(langgraphConfigText) as unknown;
+
+    if (!isRecord(parsed)) {
+        throw new Error("langgraph.json must define a JSON object.");
+    }
+
+    const normalized = {
+        ...parsed,
+    } satisfies RecordValue;
+
+    if (typeof parsed.env !== "undefined") {
+        normalized.env = resolve(workflowRoot, pathString(parsed.env, "env"));
+    }
+
+    if (typeof parsed.graphs !== "undefined") {
+        if (!isRecord(parsed.graphs)) {
+            throw new Error("langgraph.json must define a `graphs` object.");
+        }
+
+        const graphs: RecordValue = {};
+
+        for (const [id, value] of Object.entries(parsed.graphs)) {
+            if (typeof value === "string") {
+                graphs[id] = modulePath(value, workflowRoot);
+                continue;
+            }
+
+            if (!isRecord(value) || !Object.hasOwn(value, "path")) {
+                throw new Error(
+                    `Unsupported LangGraph config at \`graphs.${id}\`: expected a string path or an object with a string \`path\`.`,
+                );
+            }
+
+            graphs[id] = {
+                ...value,
+                path: modulePath(pathString(value.path, `graphs.${id}.path`), workflowRoot),
+            };
+        }
+
+        normalized.graphs = graphs;
+    }
+
+    if (typeof parsed.auth !== "undefined") {
+        if (!isRecord(parsed.auth)) {
+            throw new Error(
+                "Unsupported LangGraph config at `auth`: expected an object with a string `path`.",
+            );
+        }
+
+        normalized.auth = Object.hasOwn(parsed.auth, "path")
+            ? {
+                  ...parsed.auth,
+                  path: modulePath(pathString(parsed.auth.path, "auth.path"), workflowRoot),
+              }
+            : parsed.auth;
+    }
+
+    if (typeof parsed.http !== "undefined") {
+        if (!isRecord(parsed.http)) {
+            throw new Error(
+                "Unsupported LangGraph config at `http`: expected an object with a string `app`.",
+            );
+        }
+
+        normalized.http = Object.hasOwn(parsed.http, "app")
+            ? {
+                  ...parsed.http,
+                  app: modulePath(pathString(parsed.http.app, "http.app"), workflowRoot),
+              }
+            : parsed.http;
+    }
+
+    if (typeof parsed.ui !== "undefined") {
+        if (!isRecord(parsed.ui)) {
+            throw new Error(
+                "Unsupported LangGraph config at `ui`: expected an object of string paths.",
+            );
+        }
+
+        const ui: RecordValue = {};
+
+        for (const [id, value] of Object.entries(parsed.ui)) {
+            ui[id] = modulePath(pathString(value, `ui.${id}`), workflowRoot);
+        }
+
+        normalized.ui = ui;
+    }
+
+    return normalized;
 };
 
 /** Read the assistant ids declared in a LangGraph config file. */
@@ -85,7 +259,7 @@ export const extractAgentServerUrl = (
     logOutput: string,
     fallback = DEFAULT_AGENT_SERVER_URL,
 ): string => {
-    const matches = [...logOutput.matchAll(/https?:\/\/[\w.:_-]+/g)];
+    const matches = [...logOutput.matchAll(/http:\/\/(?:localhost|127\.0\.0\.1):\d+/g)];
     const lastMatch = matches.at(-1)?.[0];
 
     return lastMatch ?? fallback;
@@ -105,7 +279,7 @@ export const buildRunPayload = ({ context, input, resume }: RunPayloadInput) => 
 
     return {
         ...(typeof context === "undefined" ? {} : { context }),
-        ...(typeof input === "undefined" ? {} : { input }),
+        input: input ?? {},
     };
 };
 
@@ -144,7 +318,6 @@ export const summarizeRunResult = (values: unknown): RunSummary => {
     const summary = text(values.summary);
     const implementationSummary = text(values.implementationSummary);
     const planningSummary = text(values.planningSummary);
-    const finalStatus = text(values.finalStatus);
     const interrupts = Array.isArray(values.__interrupt__) ? values.__interrupt__ : undefined;
     const interruptValue = isRecord(interrupts?.[0]) ? interrupts[0].value : undefined;
     const interruptSummary = isRecord(interruptValue) ? text(interruptValue.summary) : undefined;
@@ -176,7 +349,7 @@ export const summarizeRunResult = (values: unknown): RunSummary => {
 
     return {
         runSpecPath,
-        status: finalStatus === "completed" ? "completed" : "completed",
+        status: "completed",
         summary: summary ?? implementationSummary ?? planningSummary ?? "Workflow completed.",
     };
 };

@@ -34,7 +34,8 @@ Do not use this agent for code edits, workflow execution, branch management, com
 - Active initiative spec: `.mawm/agents/initiatives/active/<initiative-slug>/spec.md`
 - Active run specs: `.mawm/agents/initiatives/active/<initiative-slug>/runs/active/<run-slug>/spec.md`
 - Templates: `.mawm/agents/_templates/`
-- Installed workflows: `<target-project>/.mawm/graphs/<workflow-name>/`
+- Installed workflows: `~/.config/mawm/<workflow-name>/`
+- Workflow runtime logs: `<target-project>/.mawm/logs/<workflow-name>/`
 - Queued drafts are planning input, not current execution truth.
 - Archived and completed docs are historical only unless the user explicitly asks to inspect them.
 - Current code is authoritative when active docs describe stale behavior.
@@ -106,4 +107,4 @@ Do not leave open questions in active specs. If a decision is missing, keep the 
 - Do not mark runs complete.
 - Do not invent implementation details to make the roadmap or initiative spec look complete.
 - Do not rely on archived or completed docs as current truth.
-- Do not invent workflow names; assigned workflows must exist under `<target-project>/.mawm/graphs/` or be explicitly provided by the user.
+- Do not invent workflow names; assigned workflows must exist under `~/.config/mawm/` or be explicitly provided by the user.
