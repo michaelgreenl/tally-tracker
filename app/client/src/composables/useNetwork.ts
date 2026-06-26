@@ -3,6 +3,7 @@ import { Network } from '@capacitor/network';
 
 export function useNetwork() {
     const isOnline = ref(true);
+    let networkStatusListener: Awaited<ReturnType<typeof Network.addListener>> | undefined;
 
     const updateStatus = async () => {
         const status = await Network.getStatus();
@@ -11,13 +12,13 @@ export function useNetwork() {
 
     onMounted(async () => {
         await updateStatus();
-        Network.addListener('networkStatusChange', (status) => {
+        networkStatusListener = await Network.addListener('networkStatusChange', (status) => {
             isOnline.value = status.connected;
         });
     });
 
     onUnmounted(() => {
-        Network.removeAllListeners();
+        void networkStatusListener?.remove();
     });
 
     return { isOnline };
