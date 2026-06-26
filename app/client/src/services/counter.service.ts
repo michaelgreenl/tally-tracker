@@ -40,7 +40,6 @@ export const CounterService = {
                 inviteCode: counter.inviteCode,
             },
             timestamp: Date.now(),
-            retryCount: 0,
         });
         SyncManager.processQueue();
     },
@@ -53,7 +52,6 @@ export const CounterService = {
             entityId: counterId,
             payload: updates,
             timestamp: Date.now(),
-            retryCount: 0,
         });
         SyncManager.processQueue();
     },
@@ -69,7 +67,6 @@ export const CounterService = {
                 entityId: counter.id,
                 payload: { amount },
                 timestamp: Date.now(),
-                retryCount: 0,
             });
         } else {
             await SyncQueueService.addCommand({
@@ -79,7 +76,6 @@ export const CounterService = {
                 entityId: counter.id,
                 payload: { count: counter.count },
                 timestamp: Date.now(),
-                retryCount: 0,
             });
         }
         SyncManager.processQueue();
@@ -97,7 +93,6 @@ export const CounterService = {
                 entityId: counter.id,
                 payload: {},
                 timestamp: Date.now(),
-                retryCount: 0,
             });
         } else {
             await SyncQueueService.addCommand({
@@ -107,7 +102,6 @@ export const CounterService = {
                 entityId: counter.id,
                 payload: {},
                 timestamp: Date.now(),
-                retryCount: 0,
             });
         }
         SyncManager.processQueue();
@@ -142,7 +136,6 @@ export const CounterService = {
                     type: counter.type,
                 },
                 timestamp: Date.now(),
-                retryCount: 0,
             });
         }
         SyncManager.processQueue();

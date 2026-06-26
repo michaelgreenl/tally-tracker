@@ -30,6 +30,5 @@ export const buildCommand = (overrides: Partial<MutationCommand> = {}): Mutation
     entityId: TEST_COUNTER_ID,
     payload: { title: 'Test Counter' },
     timestamp: Date.now(),
-    retryCount: 0,
     ...overrides,
 });

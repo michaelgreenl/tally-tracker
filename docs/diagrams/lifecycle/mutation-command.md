@@ -46,9 +46,9 @@ stateDiagram-v2
     end note
 
     note right of Processing
-        retryCount exists on MutationCommand
-        but is not incremented, inspected,
-        or used for max-retry handling.
+        Temporary failures leave the record queued
+        for the next sync trigger.
+        There is no max-retry counter.
     end note
 
     note right of Dropped

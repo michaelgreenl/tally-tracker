@@ -9,7 +9,6 @@ export interface MutationCommand {
     entityId: string;
     payload: unknown;
     timestamp: number;
-    retryCount: number;
 }
 
 export interface SyncState {
