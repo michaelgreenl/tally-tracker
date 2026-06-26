@@ -33,7 +33,7 @@ sequenceDiagram
     alt isNative is TRUE (iOS/Android)
         Client->>Storage: Get 'refresh_token'
         Storage-->>Client: Returns refresh token
-        Client->>API: POST /users/refresh (Bearer header)
+        Client->>API: POST /users/refresh (JSON body: refreshToken)
     else isNative is FALSE (Web)
         Client->>API: POST /users/refresh (Cookie)
     end

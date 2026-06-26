@@ -30,7 +30,7 @@ sequenceDiagram
     Note over Owner, DB: The Write Path
     Owner->>API: PUT /increment (Amount: 1)
 
-    API->>Repo: increment({ counterId, userId })
+    API->>Repo: increment({ counterId, userId, amount })
 
     Note right of API: Security Check (The OR Logic)
     Repo->>DB: Find Counter where:<br/>1. User is Owner<br/>OR<br/>2. Share is ACCEPTED
@@ -42,7 +42,7 @@ sequenceDiagram
     else Permission Denied
         DB-->>Repo: Null
         Repo-->>API: Null
-        API-->>Owner: 404/403 Error
+        API-->>Owner: 404 Not Found
     end
 
     Note over API, Viewer: The Read Path (Broadcast)
@@ -51,7 +51,7 @@ sequenceDiagram
     Repo-->>API: Returns [OwnerID, ViewerID]
 
     loop For Each Participant
-        API->>Socket: io.to(UserID).emit('counter-update')
+        API->>Socket: io.to(UserID).emit('counter-update', counter)
     end
 
     Socket-->>Viewer: Event: 'counter-update'

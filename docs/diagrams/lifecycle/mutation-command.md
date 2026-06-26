@@ -1,5 +1,7 @@
 ### Mutation Command Lifecycle
 
+These are conceptual processing phases. `MutationCommand` records do not carry a status field; they are either present in the queue or removed from it.
+
 ```mermaid
 %%{
   init: {
@@ -19,32 +21,40 @@
 }%%
 
 stateDiagram-v2
-    [*] --> Pending: User Action (Store)
+    [*] --> Pending: Store adds command
 
-    state "Pending (In Queue)" as Pending
-    state "Processing (In Flight)" as Processing
-    state "Completed (Success)" as Completed
-    state "Dead (Fatal Error)" as Dead
+    state "Queued (record exists)" as Pending
+    state "Processing (in flight)" as Processing
+    state "Removed (success)" as Completed
+    state "Dropped (fatal 4xx)" as Dropped
 
-    Pending --> Processing: Network Connected
+    Pending --> Processing: SyncManager.processQueue()
 
-    Processing --> Completed: API Returns 200/201
-    Processing --> Pending: API Returns 500 / Network Fail
-    Processing --> Pending: API Returns 401 (Session Expired)
-    Processing --> Dead: API Returns 400/422 (Validation)
+    Processing --> Completed: API returns 200/201
+    Processing --> Pending: API returns 500 / network fail
+    Processing --> Pending: API returns 401 after refresh fails
+    Processing --> Dropped: API returns 400/422
 
     Completed --> [*]: Removed from Queue
-    Dead --> [*]: Removed from Queue
+    Dropped --> [*]: Removed from Queue
 
     note right of Pending
-        Persisted in LocalStorage.
-        Safe from app restart.
-        401 commands return here
+        Persisted in Capacitor Preferences
+        under app_sync_queue.
+        401 commands stay queued
         and resume after re-auth.
     end note
 
-    note right of Dead
-        Logic Error (Bug).
+    note right of Processing
+        retryCount exists on MutationCommand
+        but is not incremented, inspected,
+        or used for max-retry handling.
+    end note
+
+    note right of Dropped
+        Logic error (bug).
+        Only non-401 4xx errors
+        are discarded as fatal.
         Discarded to unblock queue.
     end note
 ```

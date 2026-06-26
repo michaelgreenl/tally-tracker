@@ -49,17 +49,37 @@ sequenceDiagram
         DB-->>API: Counter Data
 
         API->>API: Check 1: Am I the Owner?
-        API->>API: Check 2: Already Joined?
 
-        alt New Share
-            API->>DB: INSERT CounterShare (Status: ACCEPTED)
-        else Re-Joining (Was Rejected)
-            API->>DB: UPDATE CounterShare (Status: ACCEPTED)
+        alt User Owns Counter
+            API-->>App: 409 Conflict
+            App-->>User: Show Error Toast
+        else User Does Not Own Counter
+            API->>API: Check 2: Already Joined?
+
+            alt Already ACCEPTED
+                API-->>App: 200 OK (Already joined + Counter Data)
+                App->>App: Add to Store
+                App-->>User: Redirect to Home
+            else Not Joined or Previously Rejected
+                API->>DB: Get User Tier
+                DB-->>API: User Tier
+
+                alt BASIC user already joined one shared counter
+                    API-->>App: 403 Forbidden
+                    App-->>User: Show Error Toast
+                else Join Allowed
+                    alt New Share
+                        API->>DB: INSERT CounterShare (Status: ACCEPTED)
+                    else Re-Joining (Was Rejected)
+                        API->>DB: UPDATE CounterShare (Status: ACCEPTED)
+                    end
+
+                    API-->>App: 201 Created (+ Counter Data)
+                    App->>App: Add to Store
+                    App-->>User: Redirect to Home
+                end
+            end
         end
-
-        API-->>App: 201 Created (+ Counter Data)
-        App->>App: Add to Store
-        App-->>User: Redirect to Home
     end
     deactivate API
 ```

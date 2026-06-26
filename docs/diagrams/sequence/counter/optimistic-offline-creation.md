@@ -23,7 +23,7 @@ sequenceDiagram
     actor User
     participant View as HomeView
     participant Store as CounterStore
-    participant Queue as SyncQueue
+    participant Queue as SyncQueue (Capacitor Preferences)
     participant Svc as CounterService
     participant API as Backend
 
@@ -40,12 +40,18 @@ sequenceDiagram
     View-->>User: Show new counter in list
 
     Note right of Store: 2. BACKGROUND WORK
-    Store->>Svc: Service.create(counter)
-    Svc->>Queue: Add "CREATE" Command
 
-    par Async Sync
-        Queue-->>Svc: Command Queued
-        Svc->>Svc: Trigger SyncManager
-        Svc->>API: POST /counters (Payload + InviteCode)
+    alt Authenticated user (!isGuest)
+        Store->>Svc: Service.create(counter)
+        Svc->>Queue: Add "CREATE" Command
+
+        par Async Sync
+            Queue-->>Svc: Command Queued
+            Svc->>Svc: Trigger SyncManager
+            Svc->>API: POST /counters (Payload + InviteCode)
+        end
+    else Guest user
+        Store-->>Store: Skip CounterService.create()
+        Note right of Store: Guest counters stay local<br/>and do not enter SyncQueue.
     end
 ```

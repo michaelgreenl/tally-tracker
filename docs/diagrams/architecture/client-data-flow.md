@@ -26,6 +26,7 @@ classDiagram
         class JoinView
         class LoginView
         class RegisterView
+        class UpgradeView
     }
 
     namespace Stores {
@@ -51,14 +52,16 @@ classDiagram
             +register()
         }
         class SyncManager {
+            +init()
             +processQueue()
+            +executeCommand()
         }
     }
 
     namespace Infrastructure {
         class apiFetch
         class Socket
-        class StorageService
+        class LocalStorageService
         class CapacitorPlugins
     }
 
@@ -73,12 +76,12 @@ classDiagram
     CounterStore ..> CounterService : Business Logic
     AuthStore ..> AuthService : Business Logic
 
-    CounterService ..> SyncManager : Adds Commands
-    CounterService ..> StorageService : Persists Data
+    CounterService ..> SyncManager : Triggers Sync
+    CounterService ..> LocalStorageService : Persists Data
 
     SyncManager ..> apiFetch : Network Req
     AuthService ..> apiFetch : Network Req
 
     Socket ..> CounterStore : Pushes Updates
-    CapacitorPlugins ..> StorageService : Preferences API
+    CapacitorPlugins ..> LocalStorageService : Preferences API
 ```
