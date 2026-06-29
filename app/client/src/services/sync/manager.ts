@@ -21,7 +21,13 @@ import apiFetch from '@/api';
 import { ApiError } from '@/utils/errors';
 
 import type { MutationCommand } from './types';
-import type { CounterResponse, CreateCounterRequest, IncrementCounterRequest, UpdateCounterRequest } from '@tally/core';
+import type {
+    CounterResponse,
+    CreateCounterRequest,
+    IncrementCounterRequest,
+    SetCounterCountRequest,
+    UpdateCounterRequest,
+} from '@tally/core';
 
 export const SyncManager = {
     isSyncing: false,
@@ -113,6 +119,13 @@ export const SyncManager = {
                 await apiFetch<CounterResponse, UpdateCounterRequest>(`/counters/update/${cmd.entityId}`, {
                     method: 'PUT',
                     body: cmd.payload as UpdateCounterRequest,
+                    ...options,
+                });
+                break;
+            case 'SET_COUNT':
+                await apiFetch<CounterResponse, SetCounterCountRequest>(`/counters/${cmd.entityId}/count`, {
+                    method: 'PUT',
+                    body: cmd.payload as SetCounterCountRequest,
                     ...options,
                 });
                 break;

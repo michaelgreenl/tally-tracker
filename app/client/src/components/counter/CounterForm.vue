@@ -22,7 +22,6 @@ const authStore = useAuthStore();
 
 const localCounter = ref({
     title: props.counter?.title ?? '',
-    count: props.counter?.count ?? 0,
     color: (props.counter?.color ?? '#000000') as HexColor,
     type: props.counter?.type ?? ('PERSONAL' as CounterType),
 });

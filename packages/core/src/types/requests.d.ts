@@ -40,9 +40,12 @@ export interface CreateCounterRequest {
 
 export interface UpdateCounterRequest {
     title?: string;
-    count?: number;
     color?: HexColor;
     type?: CounterType;
+}
+
+export interface SetCounterCountRequest {
+    count: number;
 }
 
 export interface IncrementCounterRequest {

@@ -122,6 +122,21 @@ export const put = async ({
     });
 };
 
+export const setCount = async ({ counterId, userId, count }: { counterId: string; userId: string; count: number }) => {
+    const result = await prisma.counter.updateMany({
+        where: {
+            id: counterId,
+            userId,
+            type: 'PERSONAL' as CounterType,
+        },
+        data: { count },
+    });
+
+    if (result.count === 0) return null;
+
+    return prisma.counter.findUnique({ where: { id: counterId } });
+};
+
 export const increment = async ({
     counterId,
     userId,
