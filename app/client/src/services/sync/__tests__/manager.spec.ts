@@ -163,6 +163,17 @@ describe('SyncManager', () => {
             );
         });
 
+        it('should PUT to /counters/:id/count for SET_COUNT', async () => {
+            await SyncManager.executeCommand(
+                buildCommand({ type: 'SET_COUNT', entityId: 'counter-123', payload: { count: -1 } }),
+            );
+
+            expect(apiFetch).toHaveBeenCalledWith(
+                '/counters/counter-123/count',
+                expect.objectContaining({ method: 'PUT' }),
+            );
+        });
+
         it('should PUT to /counters/increment/:id for INCREMENT', async () => {
             await SyncManager.executeCommand(
                 buildCommand({ type: 'INCREMENT', entityId: 'counter-123', payload: { amount: 1 } }),

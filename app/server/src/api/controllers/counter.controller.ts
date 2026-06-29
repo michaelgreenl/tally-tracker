@@ -8,6 +8,7 @@ import type { CounterResponse } from '@tally/core';
 import type {
     CreateCounterRequest,
     UpdateCounterRequest,
+    SetCounterCountRequest,
     IncrementCounterRequest,
     JoinCounterRequest,
     UpdateShareRequest,
@@ -123,13 +124,13 @@ export const put = async (
     try {
         const userId = req.user?.id;
         const counterId = req.params.counterId as string;
-        const { title, count, color } = req.body;
+        const { title, color } = req.body;
 
         if (!userId) {
             return res.status(BAD_REQUEST).json({ success: false, message: 'Invalid userId' });
         }
 
-        const counter = await counterRepository.put({ counterId, userId, data: { title, count, color } });
+        const counter = await counterRepository.put({ counterId, userId, data: { title, color } });
 
         if (!counter) {
             return res.status(NOT_FOUND).json({ success: false, message: 'Counter not found' });
@@ -138,6 +139,39 @@ export const put = async (
         res.json({
             success: true,
             message: 'Counter updated successfully',
+            data: { counter },
+        });
+    } catch (error: unknown) {
+        console.error('Counter Controller Error: ', error);
+        res.status(SERVER_ERROR).json({
+            success: false,
+            message: 'Server error: ' + getErrorMessage(error),
+        });
+    }
+};
+
+export const setCount = async (
+    req: Request<{ counterId: string }, CounterResponse, SetCounterCountRequest>,
+    res: Response<CounterResponse>,
+) => {
+    try {
+        const userId = req.user?.id;
+        const counterId = req.params.counterId as string;
+        const { count } = req.body;
+
+        if (!userId) {
+            return res.status(BAD_REQUEST).json({ success: false, message: 'Invalid userId' });
+        }
+
+        const counter = await counterRepository.setCount({ counterId, userId, count });
+
+        if (!counter) {
+            return res.status(NOT_FOUND).json({ success: false, message: 'Counter not found' });
+        }
+
+        res.json({
+            success: true,
+            message: 'Counter count updated successfully',
             data: { counter },
         });
     } catch (error: unknown) {

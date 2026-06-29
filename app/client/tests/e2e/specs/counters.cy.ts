@@ -77,7 +77,7 @@ describe('Counters', () => {
                 },
             }).as('getCounters');
 
-            cy.intercept('PUT', '/counters/increment/*', {
+            cy.intercept('PUT', '/counters/*/count', {
                 statusCode: OK,
                 body: {
                     success: true,
@@ -106,7 +106,7 @@ describe('Counters', () => {
                 },
             }).as('getCounters');
 
-            cy.intercept('PUT', '/counters/increment/*', {
+            cy.intercept('PUT', '/counters/*/count', {
                 statusCode: OK,
                 body: {
                     success: true,

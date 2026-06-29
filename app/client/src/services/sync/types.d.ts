@@ -1,6 +1,7 @@
 // Maps to API endpoints: CREATE/UPDATE/DELETE operate on owned counters,
-// INCREMENT uses the atomic increment endpoint, REMOVE sets a share to REJECTED.
-export type MutationType = 'CREATE' | 'UPDATE' | 'DELETE' | 'INCREMENT' | 'REMOVE';
+// SET_COUNT sets personal counts, INCREMENT uses the atomic shared counter endpoint,
+// REMOVE sets a share to REJECTED.
+export type MutationType = 'CREATE' | 'UPDATE' | 'SET_COUNT' | 'DELETE' | 'INCREMENT' | 'REMOVE';
 
 export interface MutationCommand {
     id: string; // Also used as the X-Idempotency-Key header

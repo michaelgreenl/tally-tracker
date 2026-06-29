@@ -71,7 +71,7 @@ export const CounterService = {
         } else {
             await SyncQueueService.addCommand({
                 id: randomUUID(),
-                type: 'UPDATE',
+                type: 'SET_COUNT',
                 entity: 'counter',
                 entityId: counter.id,
                 payload: { count: counter.count },
