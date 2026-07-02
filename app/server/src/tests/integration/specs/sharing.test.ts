@@ -36,11 +36,6 @@ vi.mock('../../../db/repositories/user.repository', () => ({
     getUserTierById: vi.fn(),
 }));
 
-vi.mock('../../../db/repositories/idempotency.repository', () => ({
-    get: vi.fn().mockResolvedValue(null),
-    create: vi.fn().mockResolvedValue({}),
-}));
-
 import * as counterRepo from '../../../db/repositories/counter.repository.js';
 import * as userRepo from '../../../db/repositories/user.repository.js';
 
@@ -125,14 +120,15 @@ describe('Sharing Routes', () => {
             const res = await request(app).post('/counters/join').send({ inviteCode: 'ABC123' });
 
             expect(res.status).toBe(CREATED);
-            expect(userRepo.getUserTierById).toHaveBeenCalledWith(TEST_USER_ID);
-            expect(counterRepo.countAcceptedJoinedSharesByUserId).toHaveBeenCalledWith(TEST_USER_ID);
+            expect(userRepo.getUserTierById).toHaveBeenCalledWith(TEST_USER_ID, expect.anything());
+            expect(counterRepo.countAcceptedJoinedSharesByUserId).toHaveBeenCalledWith(TEST_USER_ID, expect.anything());
             expect(counterRepo.createShare).toHaveBeenCalledWith(
                 expect.objectContaining({
                     counterId: TEST_COUNTER_ID,
                     userId: TEST_USER_ID,
                     status: 'ACCEPTED',
                 }),
+                expect.anything(),
             );
         });
 
@@ -168,7 +164,10 @@ describe('Sharing Routes', () => {
             const res = await request(app).post('/counters/join').send({ inviteCode: 'ABC123' });
 
             expect(res.status).toBe(CREATED);
-            expect(counterRepo.updateShare).toHaveBeenCalledWith(expect.objectContaining({ status: 'ACCEPTED' }));
+            expect(counterRepo.updateShare).toHaveBeenCalledWith(
+                expect.objectContaining({ status: 'ACCEPTED' }),
+                expect.anything(),
+            );
             expect(counterRepo.createShare).not.toHaveBeenCalled();
         });
 
@@ -205,7 +204,10 @@ describe('Sharing Routes', () => {
 
             expect(res.status).toBe(CREATED);
             expect(counterRepo.countAcceptedJoinedSharesByUserId).not.toHaveBeenCalled();
-            expect(counterRepo.createShare).toHaveBeenCalledWith(expect.objectContaining({ status: 'ACCEPTED' }));
+            expect(counterRepo.createShare).toHaveBeenCalledWith(
+                expect.objectContaining({ status: 'ACCEPTED' }),
+                expect.anything(),
+            );
         });
     });
 
@@ -218,7 +220,10 @@ describe('Sharing Routes', () => {
             const res = await request(app).put(`/counters/remove-shared/${TEST_COUNTER_ID}`);
 
             expect(res.status).toBe(OK);
-            expect(counterRepo.updateShare).toHaveBeenCalledWith(expect.objectContaining({ status: 'REJECTED' }));
+            expect(counterRepo.updateShare).toHaveBeenCalledWith(
+                expect.objectContaining({ status: 'REJECTED' }),
+                expect.anything(),
+            );
         });
 
         it('should return 409 when owner tries to remove own counter', async () => {

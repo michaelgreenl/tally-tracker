@@ -1,6 +1,8 @@
 import prisma from '../prisma.js';
 import { Prisma } from '@prisma/client';
 
+type DbClient = typeof prisma | Prisma.TransactionClient;
+
 const userSelectSchema = {
     id: true,
     email: true,
@@ -39,8 +41,8 @@ export const getUserById = (userId: string) =>
         },
     });
 
-export const getUserTierById = (userId: string) =>
-    prisma.user.findUnique({
+export const getUserTierById = (userId: string, db: DbClient = prisma) =>
+    db.user.findUnique({
         where: {
             id: userId,
         },
