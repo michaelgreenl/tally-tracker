@@ -1,4 +1,4 @@
-import { OK, CREATED, FORBIDDEN, NOT_FOUND, UNPROCESSABLE_ENTITY } from '@tally/utils';
+import { OK, CREATED, FORBIDDEN, NOT_FOUND, UNPROCESSABLE_ENTITY, SERVER_ERROR } from '@tally/utils';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Request, Response, NextFunction } from 'express';
 import request from 'supertest';
@@ -6,11 +6,83 @@ import { randomUUID } from 'crypto';
 import app from '../../../app.js';
 import { buildCounter, TEST_COUNTER_ID, TEST_OTHER_USER_ID, TEST_USER_ID } from '../fixtures/counter.fixture.js';
 
+const prismaMock = vi.hoisted(() => {
+    type IdempotencyLog = {
+        key: string;
+        userId: string;
+        requestHash?: string;
+        status: 'IN_PROGRESS' | 'COMPLETED';
+        responseStatus?: number;
+        responseBody?: unknown;
+        createdAt: Date;
+        updatedAt: Date;
+    };
+
+    const idempotencyLogs = new Map<string, IdempotencyLog>();
+
+    const restoreLogs = (snapshot: Map<string, IdempotencyLog>) => {
+        idempotencyLogs.clear();
+        snapshot.forEach((value, key) => idempotencyLogs.set(key, { ...value }));
+    };
+
+    const tx = {
+        idempotencyLog: {
+            create: vi.fn(async ({ data }: { data: Omit<IdempotencyLog, 'createdAt' | 'updatedAt'> }) => {
+                if (idempotencyLogs.has(data.key)) {
+                    throw { code: 'P2002' };
+                }
+
+                const log = {
+                    ...data,
+                    createdAt: new Date('2026-01-01'),
+                    updatedAt: new Date('2026-01-01'),
+                };
+                idempotencyLogs.set(data.key, log);
+                return log;
+            }),
+            update: vi.fn(async ({ where, data }: { where: { key: string }; data: Partial<IdempotencyLog> }) => {
+                const existing = idempotencyLogs.get(where.key);
+                if (!existing) throw new Error(`Missing idempotency log ${where.key}`);
+
+                const log = {
+                    ...existing,
+                    ...data,
+                    updatedAt: new Date('2026-01-01'),
+                };
+                idempotencyLogs.set(where.key, log);
+                return log;
+            }),
+        },
+    };
+
+    const prisma = {
+        $transaction: vi.fn(async (handler: (txClient: unknown) => Promise<unknown>) => {
+            const snapshot = new Map(idempotencyLogs);
+
+            try {
+                return await handler(tx);
+            } catch (error) {
+                restoreLogs(snapshot);
+                throw error;
+            }
+        }),
+        idempotencyLog: {
+            findUnique: vi.fn(async ({ where }: { where: { key: string } }) => idempotencyLogs.get(where.key) ?? null),
+        },
+    };
+
+    return { idempotencyLogs, prisma, tx };
+});
+
 vi.mock('../../../middleware/auth.middleware', () => ({
     jwt: (req: Request, res: Response, next: NextFunction) => {
         req.user = { id: TEST_USER_ID, email: 'test@test.com', tier: 'PREMIUM' };
         next();
     },
+}));
+
+vi.mock('../../../db/prisma', () => ({
+    default: prismaMock.prisma,
 }));
 
 vi.mock('../../../db/repositories/counter.repository', () => ({
@@ -31,17 +103,13 @@ vi.mock('../../../db/repositories/user.repository', () => ({
     getUserTierById: vi.fn(),
 }));
 
-vi.mock('../../../db/repositories/idempotency.repository', () => ({
-    get: vi.fn().mockResolvedValue(null),
-    create: vi.fn().mockResolvedValue({}),
-}));
-
 import * as counterRepository from '../../../db/repositories/counter.repository.js';
 import * as userRepository from '../../../db/repositories/user.repository.js';
 
 describe('Counter Routes', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        prismaMock.idempotencyLogs.clear();
         app.set('io', { to: () => ({ emit: vi.fn() }) });
     });
 
@@ -67,7 +135,7 @@ describe('Counter Routes', () => {
 
             expect(res.status).toBe(FORBIDDEN);
             expect(res.body.message).toBe('Basic accounts cannot create shared counters.');
-            expect(userRepository.getUserTierById).toHaveBeenCalledWith(TEST_USER_ID);
+            expect(userRepository.getUserTierById).toHaveBeenCalledWith(TEST_USER_ID, expect.anything());
             expect(counterRepository.post).not.toHaveBeenCalled();
         });
 
@@ -82,7 +150,7 @@ describe('Counter Routes', () => {
 
             expect(res.status).toBe(CREATED);
             expect(res.body.data.counter.type).toBe('SHARED');
-            expect(userRepository.getUserTierById).toHaveBeenCalledWith(TEST_USER_ID);
+            expect(userRepository.getUserTierById).toHaveBeenCalledWith(TEST_USER_ID, expect.anything());
         });
 
         it('should return 404 when the persisted user record is missing for shared counters', async () => {
@@ -94,7 +162,7 @@ describe('Counter Routes', () => {
 
             expect(res.status).toBe(NOT_FOUND);
             expect(res.body.message).toBe('User not found');
-            expect(userRepository.getUserTierById).toHaveBeenCalledWith(TEST_USER_ID);
+            expect(userRepository.getUserTierById).toHaveBeenCalledWith(TEST_USER_ID, expect.anything());
             expect(counterRepository.post).not.toHaveBeenCalled();
         });
 
@@ -150,10 +218,13 @@ describe('Counter Routes', () => {
             const res = await request(app).delete(`/counters/${TEST_COUNTER_ID}`);
 
             expect(res.status).toBe(OK);
-            expect(counterRepository.remove).toHaveBeenCalledWith({
-                counterId: TEST_COUNTER_ID,
-                userId: TEST_USER_ID,
-            });
+            expect(counterRepository.remove).toHaveBeenCalledWith(
+                {
+                    counterId: TEST_COUNTER_ID,
+                    userId: TEST_USER_ID,
+                },
+                expect.anything(),
+            );
         });
 
         it('should reject invalid UUID', async () => {
@@ -177,7 +248,7 @@ describe('Counter Routes', () => {
 
             expect(res.status).toBe(OK);
             expect(res.body.data.counter.count).toBe(6);
-            expect(counterRepository.getParticipants).toHaveBeenCalledWith(TEST_COUNTER_ID);
+            expect(counterRepository.getParticipants).toHaveBeenCalledWith(TEST_COUNTER_ID, expect.anything());
             expect(mockEmit).toHaveBeenCalledTimes(2);
             expect(mockEmit).toHaveBeenCalledWith('counter-update', counter);
         });
@@ -229,6 +300,52 @@ describe('Counter Routes', () => {
 
             expect(res.status).toBe(NOT_FOUND);
         });
+
+        it('should retry a failed mutation with the same idempotency key', async () => {
+            const idempotencyKey = 'retry-after-failure';
+            const counter = buildCounter({ title: 'Retried Title' });
+
+            vi.mocked(counterRepository.put)
+                .mockRejectedValueOnce(new Error('Transient database failure'))
+                .mockResolvedValueOnce(counter);
+
+            const first = await request(app)
+                .put(`/counters/update/${TEST_COUNTER_ID}`)
+                .set('X-Idempotency-Key', idempotencyKey)
+                .send({ title: 'Retried Title' });
+
+            const second = await request(app)
+                .put(`/counters/update/${TEST_COUNTER_ID}`)
+                .set('X-Idempotency-Key', idempotencyKey)
+                .send({ title: 'Retried Title' });
+
+            expect(first.status).toBe(SERVER_ERROR);
+            expect(second.status).toBe(OK);
+            expect(counterRepository.put).toHaveBeenCalledTimes(2);
+            expect(second.body.data.counter.title).toBe('Retried Title');
+        });
+
+        it('should replay a completed mutation response for duplicate idempotency keys', async () => {
+            const idempotencyKey = 'already-completed';
+            const counter = buildCounter({ title: 'Saved Title' });
+
+            vi.mocked(counterRepository.put).mockResolvedValue(counter);
+
+            const first = await request(app)
+                .put(`/counters/update/${TEST_COUNTER_ID}`)
+                .set('X-Idempotency-Key', idempotencyKey)
+                .send({ title: 'Saved Title' });
+
+            const second = await request(app)
+                .put(`/counters/update/${TEST_COUNTER_ID}`)
+                .set('X-Idempotency-Key', idempotencyKey)
+                .send({ title: 'Saved Title' });
+
+            expect(first.status).toBe(OK);
+            expect(second.status).toBe(OK);
+            expect(counterRepository.put).toHaveBeenCalledTimes(1);
+            expect(second.body.data.counter.title).toBe('Saved Title');
+        });
     });
 
     describe('PUT /counters/:counterId/count', () => {
@@ -239,11 +356,14 @@ describe('Counter Routes', () => {
             const res = await request(app).put(`/counters/${TEST_COUNTER_ID}/count`).send({ count });
 
             expect(res.status).toBe(OK);
-            expect(counterRepository.setCount).toHaveBeenCalledWith({
-                counterId: TEST_COUNTER_ID,
-                userId: TEST_USER_ID,
-                count,
-            });
+            expect(counterRepository.setCount).toHaveBeenCalledWith(
+                {
+                    counterId: TEST_COUNTER_ID,
+                    userId: TEST_USER_ID,
+                    count,
+                },
+                expect.anything(),
+            );
             expect(res.body.data.counter.count).toBe(count);
         });
 

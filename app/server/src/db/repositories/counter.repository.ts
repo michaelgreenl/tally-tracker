@@ -3,24 +3,29 @@ import { Prisma } from '@prisma/client';
 
 import type { ShareStatusType, CounterTypeType as CounterType } from '@tally/core';
 
-export const post = async ({
-    id,
-    userId,
-    title,
-    count,
-    color,
-    type,
-    inviteCode,
-}: {
-    id?: string; // Client-generated UUID for optimistic/offline creation
-    userId: string;
-    title: string;
-    count?: number;
-    color?: string;
-    type?: CounterType;
-    inviteCode?: string;
-}) => {
-    return prisma.counter.create({
+type DbClient = typeof prisma | Prisma.TransactionClient;
+
+export const post = async (
+    {
+        id,
+        userId,
+        title,
+        count,
+        color,
+        type,
+        inviteCode,
+    }: {
+        id?: string; // Client-generated UUID for optimistic/offline creation
+        userId: string;
+        title: string;
+        count?: number;
+        color?: string;
+        type?: CounterType;
+        inviteCode?: string;
+    },
+    db: DbClient = prisma,
+) => {
+    return db.counter.create({
         data: {
             id,
             userId,
@@ -33,8 +38,8 @@ export const post = async ({
     });
 };
 
-export const remove = async ({ counterId, userId }: { counterId: string; userId: string }) =>
-    prisma.counter.delete({ where: { id: counterId, userId: userId } });
+export const remove = async ({ counterId, userId }: { counterId: string; userId: string }, db: DbClient = prisma) =>
+    db.counter.delete({ where: { id: counterId, userId: userId } });
 
 // Returns owned counters + counters shared with this user (ACCEPTED status)
 export const getAllByUser = async (userId: string) =>
@@ -64,8 +69,11 @@ export const getAllByUser = async (userId: string) =>
     });
 
 // Authorization check: user must be the owner OR have an accepted share
-export const getByIdOrShare = async ({ counterId, userId }: { counterId: string; userId: string }) =>
-    await prisma.counter.findFirst({
+export const getByIdOrShare = async (
+    { counterId, userId }: { counterId: string; userId: string },
+    db: DbClient = prisma,
+) =>
+    await db.counter.findFirst({
         where: {
             id: counterId,
             OR: [
@@ -83,8 +91,8 @@ export const getByIdOrShare = async ({ counterId, userId }: { counterId: string;
     });
 
 // Returns all user IDs that should receive socket broadcasts for this counter
-export const getParticipants = async (counterId: string) => {
-    const counter = await prisma.counter.findUnique({
+export const getParticipants = async (counterId: string, db: DbClient = prisma) => {
+    const counter = await db.counter.findUnique({
         where: { id: counterId },
         select: {
             userId: true,
@@ -103,27 +111,33 @@ export const getParticipants = async (counterId: string) => {
     return [ownerId, ...sharedIds];
 };
 
-export const put = async ({
-    counterId,
-    userId,
-    data,
-}: {
-    counterId: string;
-    userId: string;
-    data: Prisma.CounterUpdateInput;
-}) => {
-    const counter = await getByIdOrShare({ counterId, userId });
+export const put = async (
+    {
+        counterId,
+        userId,
+        data,
+    }: {
+        counterId: string;
+        userId: string;
+        data: Prisma.CounterUpdateInput;
+    },
+    db: DbClient = prisma,
+) => {
+    const counter = await getByIdOrShare({ counterId, userId }, db);
 
     if (!counter) return null;
 
-    return prisma.counter.update({
+    return db.counter.update({
         where: { id: counterId },
         data,
     });
 };
 
-export const setCount = async ({ counterId, userId, count }: { counterId: string; userId: string; count: number }) => {
-    const result = await prisma.counter.updateMany({
+export const setCount = async (
+    { counterId, userId, count }: { counterId: string; userId: string; count: number },
+    db: DbClient = prisma,
+) => {
+    const result = await db.counter.updateMany({
         where: {
             id: counterId,
             userId,
@@ -134,24 +148,27 @@ export const setCount = async ({ counterId, userId, count }: { counterId: string
 
     if (result.count === 0) return null;
 
-    return prisma.counter.findUnique({ where: { id: counterId } });
+    return db.counter.findUnique({ where: { id: counterId } });
 };
 
-export const increment = async ({
-    counterId,
-    userId,
-    amount,
-}: {
-    counterId: string;
-    userId: string;
-    amount: number;
-}) => {
-    const counter = await getByIdOrShare({ counterId, userId });
+export const increment = async (
+    {
+        counterId,
+        userId,
+        amount,
+    }: {
+        counterId: string;
+        userId: string;
+        amount: number;
+    },
+    db: DbClient = prisma,
+) => {
+    const counter = await getByIdOrShare({ counterId, userId }, db);
 
     if (!counter) return null;
 
     // Atomic increment avoids race conditions on concurrent shared counter updates
-    return prisma.counter.update({
+    return db.counter.update({
         where: { id: counterId },
         data: {
             count: {
@@ -161,32 +178,35 @@ export const increment = async ({
     });
 };
 
-export const join = (inviteCode: string) =>
-    prisma.counter.findUnique({
+export const join = (inviteCode: string, db: DbClient = prisma) =>
+    db.counter.findUnique({
         where: { inviteCode },
         include: {
             shares: true,
         },
     });
 
-export const countAcceptedJoinedSharesByUserId = (userId: string) =>
-    prisma.counterShare.count({
+export const countAcceptedJoinedSharesByUserId = (userId: string, db: DbClient = prisma) =>
+    db.counterShare.count({
         where: {
             userId,
             status: 'ACCEPTED' as ShareStatusType,
         },
     });
 
-export const createShare = ({
-    counterId,
-    userId,
-    status,
-}: {
-    counterId: string;
-    userId: string;
-    status: ShareStatusType;
-}) =>
-    prisma.counterShare.create({
+export const createShare = (
+    {
+        counterId,
+        userId,
+        status,
+    }: {
+        counterId: string;
+        userId: string;
+        status: ShareStatusType;
+    },
+    db: DbClient = prisma,
+) =>
+    db.counterShare.create({
         data: {
             counterId,
             userId,
@@ -195,16 +215,19 @@ export const createShare = ({
     });
 
 // Uses the compound unique (counterId, userId) to target the specific share record
-export const updateShare = ({
-    counterId,
-    userId,
-    status,
-}: {
-    counterId: string;
-    userId: string;
-    status: ShareStatusType;
-}) =>
-    prisma.counterShare.update({
+export const updateShare = (
+    {
+        counterId,
+        userId,
+        status,
+    }: {
+        counterId: string;
+        userId: string;
+        status: ShareStatusType;
+    },
+    db: DbClient = prisma,
+) =>
+    db.counterShare.update({
         where: {
             counterId_userId: {
                 counterId,
