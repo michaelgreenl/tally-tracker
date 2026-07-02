@@ -1,9 +1,65 @@
 import { z } from 'zod';
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 
 /////////////////////////////////////////
 // HELPER FUNCTIONS
 /////////////////////////////////////////
+
+// JSON
+//------------------------------------------------------
+
+export type NullableJsonInput =
+    | Prisma.JsonValue
+    | null
+    | 'JsonNull'
+    | 'DbNull'
+    | Prisma.NullTypes.DbNull
+    | Prisma.NullTypes.JsonNull;
+
+export const transformJsonNull = (v?: NullableJsonInput) => {
+    if (!v || v === 'DbNull') return Prisma.NullTypes.DbNull;
+    if (v === 'JsonNull') return Prisma.NullTypes.JsonNull;
+    return v;
+};
+
+export const JsonValueSchema: z.ZodType<Prisma.JsonValue> = z.lazy(() =>
+    z.union([
+        z.string(),
+        z.number(),
+        z.boolean(),
+        z.literal(null),
+        z.record(
+            z.string(),
+            z.lazy(() => JsonValueSchema.optional()),
+        ),
+        z.array(z.lazy(() => JsonValueSchema)),
+    ]),
+);
+
+export type JsonValueType = z.infer<typeof JsonValueSchema>;
+
+export const NullableJsonValue = z
+    .union([JsonValueSchema, z.literal('DbNull'), z.literal('JsonNull')])
+    .nullable()
+    .transform((v) => transformJsonNull(v));
+
+export type NullableJsonValueType = z.infer<typeof NullableJsonValue>;
+
+export const InputJsonValueSchema: z.ZodType<Prisma.InputJsonValue> = z.lazy(() =>
+    z.union([
+        z.string(),
+        z.number(),
+        z.boolean(),
+        z.object({ toJSON: z.any() }),
+        z.record(
+            z.string(),
+            z.lazy(() => z.union([InputJsonValueSchema, z.literal(null)])),
+        ),
+        z.array(z.lazy(() => z.union([InputJsonValueSchema, z.literal(null)]))),
+    ]),
+);
+
+export type InputJsonValueType = z.infer<typeof InputJsonValueSchema>;
 
 /////////////////////////////////////////
 // ENUMS
@@ -37,7 +93,16 @@ export const CounterShareScalarFieldEnumSchema = z.enum([
     'updatedAt',
 ]);
 
-export const IdempotencyLogScalarFieldEnumSchema = z.enum(['key', 'userId', 'createdAt']);
+export const IdempotencyLogScalarFieldEnumSchema = z.enum([
+    'key',
+    'userId',
+    'requestHash',
+    'status',
+    'responseStatus',
+    'responseBody',
+    'createdAt',
+    'updatedAt',
+]);
 
 export const RefreshTokenScalarFieldEnumSchema = z.enum(['id', 'userId', 'expiresAt', 'createdAt']);
 
@@ -45,9 +110,25 @@ export const UserScalarFieldEnumSchema = z.enum(['id', 'email', 'password', 'tie
 
 export const SortOrderSchema = z.enum(['asc', 'desc']);
 
+export const NullableJsonNullValueInputSchema: z.ZodType<Prisma.NullableJsonNullValueInput> = z
+    .enum(['DbNull', 'JsonNull'])
+    .transform((value) => (value === 'JsonNull' ? Prisma.JsonNull : value === 'DbNull' ? Prisma.DbNull : value));
+
 export const QueryModeSchema = z.enum(['default', 'insensitive']);
 
 export const NullsOrderSchema = z.enum(['first', 'last']);
+
+export const JsonNullValueFilterSchema: z.ZodType<Prisma.JsonNullValueFilter> = z
+    .enum(['DbNull', 'JsonNull', 'AnyNull'])
+    .transform((value) =>
+        value === 'JsonNull'
+            ? Prisma.JsonNull
+            : value === 'DbNull'
+              ? Prisma.DbNull
+              : value === 'AnyNull'
+                ? Prisma.AnyNull
+                : value,
+    );
 
 export const CounterTypeSchema = z.enum(['PERSONAL', 'SHARED']);
 
@@ -56,6 +137,10 @@ export type CounterTypeType = `${z.infer<typeof CounterTypeSchema>}`;
 export const ShareStatusSchema = z.enum(['PENDING', 'ACCEPTED', 'REJECTED']);
 
 export type ShareStatusType = `${z.infer<typeof ShareStatusSchema>}`;
+
+export const IdempotencyStatusSchema = z.enum(['IN_PROGRESS', 'COMPLETED']);
+
+export type IdempotencyStatusType = `${z.infer<typeof IdempotencyStatusSchema>}`;
 
 export const UserTierSchema = z.enum(['PREMIUM', 'BASIC']);
 
@@ -103,9 +188,14 @@ export type CounterShare = z.infer<typeof CounterShareSchema>;
 /////////////////////////////////////////
 
 export const IdempotencyLogSchema = z.object({
+    status: IdempotencyStatusSchema,
     key: z.string(),
     userId: z.string(),
+    requestHash: z.string().nullable(),
+    responseStatus: z.number().int().nullable(),
+    responseBody: JsonValueSchema.nullable(),
     createdAt: z.coerce.date(),
+    updatedAt: z.coerce.date(),
 });
 
 export type IdempotencyLog = z.infer<typeof IdempotencyLogSchema>;
@@ -226,7 +316,12 @@ export const IdempotencyLogSelectSchema: z.ZodType<Prisma.IdempotencyLogSelect> 
     .object({
         key: z.boolean().optional(),
         userId: z.boolean().optional(),
+        requestHash: z.boolean().optional(),
+        status: z.boolean().optional(),
+        responseStatus: z.boolean().optional(),
+        responseBody: z.boolean().optional(),
         createdAt: z.boolean().optional(),
+        updatedAt: z.boolean().optional(),
     })
     .strict();
 
@@ -577,14 +672,32 @@ export const IdempotencyLogWhereInputSchema: z.ZodType<Prisma.IdempotencyLogWher
         .optional(),
     key: z.union([z.lazy(() => StringFilterSchema), z.string()]).optional(),
     userId: z.union([z.lazy(() => UuidFilterSchema), z.string()]).optional(),
+    requestHash: z
+        .union([z.lazy(() => StringNullableFilterSchema), z.string()])
+        .optional()
+        .nullable(),
+    status: z
+        .union([z.lazy(() => EnumIdempotencyStatusFilterSchema), z.lazy(() => IdempotencyStatusSchema)])
+        .optional(),
+    responseStatus: z
+        .union([z.lazy(() => IntNullableFilterSchema), z.number()])
+        .optional()
+        .nullable(),
+    responseBody: z.lazy(() => JsonNullableFilterSchema).optional(),
     createdAt: z.union([z.lazy(() => DateTimeFilterSchema), z.coerce.date()]).optional(),
+    updatedAt: z.union([z.lazy(() => DateTimeFilterSchema), z.coerce.date()]).optional(),
 });
 
 export const IdempotencyLogOrderByWithRelationInputSchema: z.ZodType<Prisma.IdempotencyLogOrderByWithRelationInput> =
     z.strictObject({
         key: z.lazy(() => SortOrderSchema).optional(),
         userId: z.lazy(() => SortOrderSchema).optional(),
+        requestHash: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
+        status: z.lazy(() => SortOrderSchema).optional(),
+        responseStatus: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
+        responseBody: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
         createdAt: z.lazy(() => SortOrderSchema).optional(),
+        updatedAt: z.lazy(() => SortOrderSchema).optional(),
     });
 
 export const IdempotencyLogWhereUniqueInputSchema: z.ZodType<Prisma.IdempotencyLogWhereUniqueInput> = z
@@ -611,7 +724,20 @@ export const IdempotencyLogWhereUniqueInputSchema: z.ZodType<Prisma.IdempotencyL
                 ])
                 .optional(),
             userId: z.union([z.lazy(() => UuidFilterSchema), z.string()]).optional(),
+            requestHash: z
+                .union([z.lazy(() => StringNullableFilterSchema), z.string()])
+                .optional()
+                .nullable(),
+            status: z
+                .union([z.lazy(() => EnumIdempotencyStatusFilterSchema), z.lazy(() => IdempotencyStatusSchema)])
+                .optional(),
+            responseStatus: z
+                .union([z.lazy(() => IntNullableFilterSchema), z.number().int()])
+                .optional()
+                .nullable(),
+            responseBody: z.lazy(() => JsonNullableFilterSchema).optional(),
             createdAt: z.union([z.lazy(() => DateTimeFilterSchema), z.coerce.date()]).optional(),
+            updatedAt: z.union([z.lazy(() => DateTimeFilterSchema), z.coerce.date()]).optional(),
         }),
     );
 
@@ -619,10 +745,17 @@ export const IdempotencyLogOrderByWithAggregationInputSchema: z.ZodType<Prisma.I
     z.strictObject({
         key: z.lazy(() => SortOrderSchema).optional(),
         userId: z.lazy(() => SortOrderSchema).optional(),
+        requestHash: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
+        status: z.lazy(() => SortOrderSchema).optional(),
+        responseStatus: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
+        responseBody: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
         createdAt: z.lazy(() => SortOrderSchema).optional(),
+        updatedAt: z.lazy(() => SortOrderSchema).optional(),
         _count: z.lazy(() => IdempotencyLogCountOrderByAggregateInputSchema).optional(),
+        _avg: z.lazy(() => IdempotencyLogAvgOrderByAggregateInputSchema).optional(),
         _max: z.lazy(() => IdempotencyLogMaxOrderByAggregateInputSchema).optional(),
         _min: z.lazy(() => IdempotencyLogMinOrderByAggregateInputSchema).optional(),
+        _sum: z.lazy(() => IdempotencyLogSumOrderByAggregateInputSchema).optional(),
     });
 
 export const IdempotencyLogScalarWhereWithAggregatesInputSchema: z.ZodType<Prisma.IdempotencyLogScalarWhereWithAggregatesInput> =
@@ -645,7 +778,23 @@ export const IdempotencyLogScalarWhereWithAggregatesInputSchema: z.ZodType<Prism
             .optional(),
         key: z.union([z.lazy(() => StringWithAggregatesFilterSchema), z.string()]).optional(),
         userId: z.union([z.lazy(() => UuidWithAggregatesFilterSchema), z.string()]).optional(),
+        requestHash: z
+            .union([z.lazy(() => StringNullableWithAggregatesFilterSchema), z.string()])
+            .optional()
+            .nullable(),
+        status: z
+            .union([
+                z.lazy(() => EnumIdempotencyStatusWithAggregatesFilterSchema),
+                z.lazy(() => IdempotencyStatusSchema),
+            ])
+            .optional(),
+        responseStatus: z
+            .union([z.lazy(() => IntNullableWithAggregatesFilterSchema), z.number()])
+            .optional()
+            .nullable(),
+        responseBody: z.lazy(() => JsonNullableWithAggregatesFilterSchema).optional(),
         createdAt: z.union([z.lazy(() => DateTimeWithAggregatesFilterSchema), z.coerce.date()]).optional(),
+        updatedAt: z.union([z.lazy(() => DateTimeWithAggregatesFilterSchema), z.coerce.date()]).optional(),
     });
 
 export const RefreshTokenWhereInputSchema: z.ZodType<Prisma.RefreshTokenWhereInput> = z.strictObject({
@@ -1032,47 +1181,126 @@ export const CounterShareUncheckedUpdateManyInputSchema: z.ZodType<Prisma.Counte
 export const IdempotencyLogCreateInputSchema: z.ZodType<Prisma.IdempotencyLogCreateInput> = z.strictObject({
     key: z.string(),
     userId: z.string(),
+    requestHash: z.string().optional().nullable(),
+    status: z.lazy(() => IdempotencyStatusSchema).optional(),
+    responseStatus: z.number().int().optional().nullable(),
+    responseBody: z.union([z.lazy(() => NullableJsonNullValueInputSchema), InputJsonValueSchema]).optional(),
     createdAt: z.coerce.date().optional(),
+    updatedAt: z.coerce.date().optional(),
 });
 
 export const IdempotencyLogUncheckedCreateInputSchema: z.ZodType<Prisma.IdempotencyLogUncheckedCreateInput> =
     z.strictObject({
         key: z.string(),
         userId: z.string(),
+        requestHash: z.string().optional().nullable(),
+        status: z.lazy(() => IdempotencyStatusSchema).optional(),
+        responseStatus: z.number().int().optional().nullable(),
+        responseBody: z.union([z.lazy(() => NullableJsonNullValueInputSchema), InputJsonValueSchema]).optional(),
         createdAt: z.coerce.date().optional(),
+        updatedAt: z.coerce.date().optional(),
     });
 
 export const IdempotencyLogUpdateInputSchema: z.ZodType<Prisma.IdempotencyLogUpdateInput> = z.strictObject({
     key: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
     userId: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+    requestHash: z
+        .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
+    status: z
+        .union([
+            z.lazy(() => IdempotencyStatusSchema),
+            z.lazy(() => EnumIdempotencyStatusFieldUpdateOperationsInputSchema),
+        ])
+        .optional(),
+    responseStatus: z
+        .union([z.number().int(), z.lazy(() => NullableIntFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
+    responseBody: z.union([z.lazy(() => NullableJsonNullValueInputSchema), InputJsonValueSchema]).optional(),
     createdAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
+    updatedAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
 });
 
 export const IdempotencyLogUncheckedUpdateInputSchema: z.ZodType<Prisma.IdempotencyLogUncheckedUpdateInput> =
     z.strictObject({
         key: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
         userId: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+        requestHash: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        status: z
+            .union([
+                z.lazy(() => IdempotencyStatusSchema),
+                z.lazy(() => EnumIdempotencyStatusFieldUpdateOperationsInputSchema),
+            ])
+            .optional(),
+        responseStatus: z
+            .union([z.number().int(), z.lazy(() => NullableIntFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        responseBody: z.union([z.lazy(() => NullableJsonNullValueInputSchema), InputJsonValueSchema]).optional(),
         createdAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
+        updatedAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
     });
 
 export const IdempotencyLogCreateManyInputSchema: z.ZodType<Prisma.IdempotencyLogCreateManyInput> = z.strictObject({
     key: z.string(),
     userId: z.string(),
+    requestHash: z.string().optional().nullable(),
+    status: z.lazy(() => IdempotencyStatusSchema).optional(),
+    responseStatus: z.number().int().optional().nullable(),
+    responseBody: z.union([z.lazy(() => NullableJsonNullValueInputSchema), InputJsonValueSchema]).optional(),
     createdAt: z.coerce.date().optional(),
+    updatedAt: z.coerce.date().optional(),
 });
 
 export const IdempotencyLogUpdateManyMutationInputSchema: z.ZodType<Prisma.IdempotencyLogUpdateManyMutationInput> =
     z.strictObject({
         key: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
         userId: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+        requestHash: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        status: z
+            .union([
+                z.lazy(() => IdempotencyStatusSchema),
+                z.lazy(() => EnumIdempotencyStatusFieldUpdateOperationsInputSchema),
+            ])
+            .optional(),
+        responseStatus: z
+            .union([z.number().int(), z.lazy(() => NullableIntFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        responseBody: z.union([z.lazy(() => NullableJsonNullValueInputSchema), InputJsonValueSchema]).optional(),
         createdAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
+        updatedAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
     });
 
 export const IdempotencyLogUncheckedUpdateManyInputSchema: z.ZodType<Prisma.IdempotencyLogUncheckedUpdateManyInput> =
     z.strictObject({
         key: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
         userId: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+        requestHash: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        status: z
+            .union([
+                z.lazy(() => IdempotencyStatusSchema),
+                z.lazy(() => EnumIdempotencyStatusFieldUpdateOperationsInputSchema),
+            ])
+            .optional(),
+        responseStatus: z
+            .union([z.number().int(), z.lazy(() => NullableIntFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        responseBody: z.union([z.lazy(() => NullableJsonNullValueInputSchema), InputJsonValueSchema]).optional(),
         createdAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
+        updatedAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
     });
 
 export const RefreshTokenCreateInputSchema: z.ZodType<Prisma.RefreshTokenCreateInput> = z.strictObject({
@@ -1533,25 +1761,156 @@ export const EnumShareStatusWithAggregatesFilterSchema: z.ZodType<Prisma.EnumSha
         _max: z.lazy(() => NestedEnumShareStatusFilterSchema).optional(),
     });
 
+export const EnumIdempotencyStatusFilterSchema: z.ZodType<Prisma.EnumIdempotencyStatusFilter> = z.strictObject({
+    equals: z.lazy(() => IdempotencyStatusSchema).optional(),
+    in: z
+        .lazy(() => IdempotencyStatusSchema)
+        .array()
+        .optional(),
+    notIn: z
+        .lazy(() => IdempotencyStatusSchema)
+        .array()
+        .optional(),
+    not: z
+        .union([z.lazy(() => IdempotencyStatusSchema), z.lazy(() => NestedEnumIdempotencyStatusFilterSchema)])
+        .optional(),
+});
+
+export const IntNullableFilterSchema: z.ZodType<Prisma.IntNullableFilter> = z.strictObject({
+    equals: z.number().optional().nullable(),
+    in: z.number().array().optional().nullable(),
+    notIn: z.number().array().optional().nullable(),
+    lt: z.number().optional(),
+    lte: z.number().optional(),
+    gt: z.number().optional(),
+    gte: z.number().optional(),
+    not: z
+        .union([z.number(), z.lazy(() => NestedIntNullableFilterSchema)])
+        .optional()
+        .nullable(),
+});
+
+export const JsonNullableFilterSchema: z.ZodType<Prisma.JsonNullableFilter> = z.strictObject({
+    equals: InputJsonValueSchema.optional(),
+    path: z.string().array().optional(),
+    mode: z.lazy(() => QueryModeSchema).optional(),
+    string_contains: z.string().optional(),
+    string_starts_with: z.string().optional(),
+    string_ends_with: z.string().optional(),
+    array_starts_with: InputJsonValueSchema.optional().nullable(),
+    array_ends_with: InputJsonValueSchema.optional().nullable(),
+    array_contains: InputJsonValueSchema.optional().nullable(),
+    lt: InputJsonValueSchema.optional(),
+    lte: InputJsonValueSchema.optional(),
+    gt: InputJsonValueSchema.optional(),
+    gte: InputJsonValueSchema.optional(),
+    not: InputJsonValueSchema.optional(),
+});
+
 export const IdempotencyLogCountOrderByAggregateInputSchema: z.ZodType<Prisma.IdempotencyLogCountOrderByAggregateInput> =
     z.strictObject({
         key: z.lazy(() => SortOrderSchema).optional(),
         userId: z.lazy(() => SortOrderSchema).optional(),
+        requestHash: z.lazy(() => SortOrderSchema).optional(),
+        status: z.lazy(() => SortOrderSchema).optional(),
+        responseStatus: z.lazy(() => SortOrderSchema).optional(),
+        responseBody: z.lazy(() => SortOrderSchema).optional(),
         createdAt: z.lazy(() => SortOrderSchema).optional(),
+        updatedAt: z.lazy(() => SortOrderSchema).optional(),
+    });
+
+export const IdempotencyLogAvgOrderByAggregateInputSchema: z.ZodType<Prisma.IdempotencyLogAvgOrderByAggregateInput> =
+    z.strictObject({
+        responseStatus: z.lazy(() => SortOrderSchema).optional(),
     });
 
 export const IdempotencyLogMaxOrderByAggregateInputSchema: z.ZodType<Prisma.IdempotencyLogMaxOrderByAggregateInput> =
     z.strictObject({
         key: z.lazy(() => SortOrderSchema).optional(),
         userId: z.lazy(() => SortOrderSchema).optional(),
+        requestHash: z.lazy(() => SortOrderSchema).optional(),
+        status: z.lazy(() => SortOrderSchema).optional(),
+        responseStatus: z.lazy(() => SortOrderSchema).optional(),
         createdAt: z.lazy(() => SortOrderSchema).optional(),
+        updatedAt: z.lazy(() => SortOrderSchema).optional(),
     });
 
 export const IdempotencyLogMinOrderByAggregateInputSchema: z.ZodType<Prisma.IdempotencyLogMinOrderByAggregateInput> =
     z.strictObject({
         key: z.lazy(() => SortOrderSchema).optional(),
         userId: z.lazy(() => SortOrderSchema).optional(),
+        requestHash: z.lazy(() => SortOrderSchema).optional(),
+        status: z.lazy(() => SortOrderSchema).optional(),
+        responseStatus: z.lazy(() => SortOrderSchema).optional(),
         createdAt: z.lazy(() => SortOrderSchema).optional(),
+        updatedAt: z.lazy(() => SortOrderSchema).optional(),
+    });
+
+export const IdempotencyLogSumOrderByAggregateInputSchema: z.ZodType<Prisma.IdempotencyLogSumOrderByAggregateInput> =
+    z.strictObject({
+        responseStatus: z.lazy(() => SortOrderSchema).optional(),
+    });
+
+export const EnumIdempotencyStatusWithAggregatesFilterSchema: z.ZodType<Prisma.EnumIdempotencyStatusWithAggregatesFilter> =
+    z.strictObject({
+        equals: z.lazy(() => IdempotencyStatusSchema).optional(),
+        in: z
+            .lazy(() => IdempotencyStatusSchema)
+            .array()
+            .optional(),
+        notIn: z
+            .lazy(() => IdempotencyStatusSchema)
+            .array()
+            .optional(),
+        not: z
+            .union([
+                z.lazy(() => IdempotencyStatusSchema),
+                z.lazy(() => NestedEnumIdempotencyStatusWithAggregatesFilterSchema),
+            ])
+            .optional(),
+        _count: z.lazy(() => NestedIntFilterSchema).optional(),
+        _min: z.lazy(() => NestedEnumIdempotencyStatusFilterSchema).optional(),
+        _max: z.lazy(() => NestedEnumIdempotencyStatusFilterSchema).optional(),
+    });
+
+export const IntNullableWithAggregatesFilterSchema: z.ZodType<Prisma.IntNullableWithAggregatesFilter> = z.strictObject({
+    equals: z.number().optional().nullable(),
+    in: z.number().array().optional().nullable(),
+    notIn: z.number().array().optional().nullable(),
+    lt: z.number().optional(),
+    lte: z.number().optional(),
+    gt: z.number().optional(),
+    gte: z.number().optional(),
+    not: z
+        .union([z.number(), z.lazy(() => NestedIntNullableWithAggregatesFilterSchema)])
+        .optional()
+        .nullable(),
+    _count: z.lazy(() => NestedIntNullableFilterSchema).optional(),
+    _avg: z.lazy(() => NestedFloatNullableFilterSchema).optional(),
+    _sum: z.lazy(() => NestedIntNullableFilterSchema).optional(),
+    _min: z.lazy(() => NestedIntNullableFilterSchema).optional(),
+    _max: z.lazy(() => NestedIntNullableFilterSchema).optional(),
+});
+
+export const JsonNullableWithAggregatesFilterSchema: z.ZodType<Prisma.JsonNullableWithAggregatesFilter> =
+    z.strictObject({
+        equals: InputJsonValueSchema.optional(),
+        path: z.string().array().optional(),
+        mode: z.lazy(() => QueryModeSchema).optional(),
+        string_contains: z.string().optional(),
+        string_starts_with: z.string().optional(),
+        string_ends_with: z.string().optional(),
+        array_starts_with: InputJsonValueSchema.optional().nullable(),
+        array_ends_with: InputJsonValueSchema.optional().nullable(),
+        array_contains: InputJsonValueSchema.optional().nullable(),
+        lt: InputJsonValueSchema.optional(),
+        lte: InputJsonValueSchema.optional(),
+        gt: InputJsonValueSchema.optional(),
+        gte: InputJsonValueSchema.optional(),
+        not: InputJsonValueSchema.optional(),
+        _count: z.lazy(() => NestedIntNullableFilterSchema).optional(),
+        _min: z.lazy(() => NestedJsonNullableFilterSchema).optional(),
+        _max: z.lazy(() => NestedJsonNullableFilterSchema).optional(),
     });
 
 export const RefreshTokenCountOrderByAggregateInputSchema: z.ZodType<Prisma.RefreshTokenCountOrderByAggregateInput> =
@@ -1970,6 +2329,20 @@ export const UserUpdateOneRequiredWithoutSharedCountersNestedInputSchema: z.ZodT
                 z.lazy(() => UserUncheckedUpdateWithoutSharedCountersInputSchema),
             ])
             .optional(),
+    });
+
+export const EnumIdempotencyStatusFieldUpdateOperationsInputSchema: z.ZodType<Prisma.EnumIdempotencyStatusFieldUpdateOperationsInput> =
+    z.strictObject({
+        set: z.lazy(() => IdempotencyStatusSchema).optional(),
+    });
+
+export const NullableIntFieldUpdateOperationsInputSchema: z.ZodType<Prisma.NullableIntFieldUpdateOperationsInput> =
+    z.strictObject({
+        set: z.number().optional().nullable(),
+        increment: z.number().optional(),
+        decrement: z.number().optional(),
+        multiply: z.number().optional(),
+        divide: z.number().optional(),
     });
 
 export const UserCreateNestedOneWithoutRefreshTokensInputSchema: z.ZodType<Prisma.UserCreateNestedOneWithoutRefreshTokensInput> =
@@ -2761,6 +3134,95 @@ export const NestedEnumShareStatusWithAggregatesFilterSchema: z.ZodType<Prisma.N
         _min: z.lazy(() => NestedEnumShareStatusFilterSchema).optional(),
         _max: z.lazy(() => NestedEnumShareStatusFilterSchema).optional(),
     });
+
+export const NestedEnumIdempotencyStatusFilterSchema: z.ZodType<Prisma.NestedEnumIdempotencyStatusFilter> =
+    z.strictObject({
+        equals: z.lazy(() => IdempotencyStatusSchema).optional(),
+        in: z
+            .lazy(() => IdempotencyStatusSchema)
+            .array()
+            .optional(),
+        notIn: z
+            .lazy(() => IdempotencyStatusSchema)
+            .array()
+            .optional(),
+        not: z
+            .union([z.lazy(() => IdempotencyStatusSchema), z.lazy(() => NestedEnumIdempotencyStatusFilterSchema)])
+            .optional(),
+    });
+
+export const NestedEnumIdempotencyStatusWithAggregatesFilterSchema: z.ZodType<Prisma.NestedEnumIdempotencyStatusWithAggregatesFilter> =
+    z.strictObject({
+        equals: z.lazy(() => IdempotencyStatusSchema).optional(),
+        in: z
+            .lazy(() => IdempotencyStatusSchema)
+            .array()
+            .optional(),
+        notIn: z
+            .lazy(() => IdempotencyStatusSchema)
+            .array()
+            .optional(),
+        not: z
+            .union([
+                z.lazy(() => IdempotencyStatusSchema),
+                z.lazy(() => NestedEnumIdempotencyStatusWithAggregatesFilterSchema),
+            ])
+            .optional(),
+        _count: z.lazy(() => NestedIntFilterSchema).optional(),
+        _min: z.lazy(() => NestedEnumIdempotencyStatusFilterSchema).optional(),
+        _max: z.lazy(() => NestedEnumIdempotencyStatusFilterSchema).optional(),
+    });
+
+export const NestedIntNullableWithAggregatesFilterSchema: z.ZodType<Prisma.NestedIntNullableWithAggregatesFilter> =
+    z.strictObject({
+        equals: z.number().optional().nullable(),
+        in: z.number().array().optional().nullable(),
+        notIn: z.number().array().optional().nullable(),
+        lt: z.number().optional(),
+        lte: z.number().optional(),
+        gt: z.number().optional(),
+        gte: z.number().optional(),
+        not: z
+            .union([z.number(), z.lazy(() => NestedIntNullableWithAggregatesFilterSchema)])
+            .optional()
+            .nullable(),
+        _count: z.lazy(() => NestedIntNullableFilterSchema).optional(),
+        _avg: z.lazy(() => NestedFloatNullableFilterSchema).optional(),
+        _sum: z.lazy(() => NestedIntNullableFilterSchema).optional(),
+        _min: z.lazy(() => NestedIntNullableFilterSchema).optional(),
+        _max: z.lazy(() => NestedIntNullableFilterSchema).optional(),
+    });
+
+export const NestedFloatNullableFilterSchema: z.ZodType<Prisma.NestedFloatNullableFilter> = z.strictObject({
+    equals: z.number().optional().nullable(),
+    in: z.number().array().optional().nullable(),
+    notIn: z.number().array().optional().nullable(),
+    lt: z.number().optional(),
+    lte: z.number().optional(),
+    gt: z.number().optional(),
+    gte: z.number().optional(),
+    not: z
+        .union([z.number(), z.lazy(() => NestedFloatNullableFilterSchema)])
+        .optional()
+        .nullable(),
+});
+
+export const NestedJsonNullableFilterSchema: z.ZodType<Prisma.NestedJsonNullableFilter> = z.strictObject({
+    equals: InputJsonValueSchema.optional(),
+    path: z.string().array().optional(),
+    mode: z.lazy(() => QueryModeSchema).optional(),
+    string_contains: z.string().optional(),
+    string_starts_with: z.string().optional(),
+    string_ends_with: z.string().optional(),
+    array_starts_with: InputJsonValueSchema.optional().nullable(),
+    array_ends_with: InputJsonValueSchema.optional().nullable(),
+    array_contains: InputJsonValueSchema.optional().nullable(),
+    lt: InputJsonValueSchema.optional(),
+    lte: InputJsonValueSchema.optional(),
+    gt: InputJsonValueSchema.optional(),
+    gte: InputJsonValueSchema.optional(),
+    not: InputJsonValueSchema.optional(),
+});
 
 export const NestedEnumUserTierFilterSchema: z.ZodType<Prisma.NestedEnumUserTierFilter> = z.strictObject({
     equals: z.lazy(() => UserTierSchema).optional(),
