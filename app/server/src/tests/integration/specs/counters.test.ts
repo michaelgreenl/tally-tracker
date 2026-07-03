@@ -126,6 +126,16 @@ describe('Counter Routes', () => {
             expect(userRepository.getUserTierById).not.toHaveBeenCalled();
         });
 
+        it('should reject personal counter creation with an invite code', async () => {
+            const res = await request(app)
+                .post('/counters')
+                .send({ title: 'Personal', type: 'PERSONAL', inviteCode: 'ABC123' });
+
+            expect(res.status).toBe(UNPROCESSABLE_ENTITY);
+            expect(userRepository.getUserTierById).not.toHaveBeenCalled();
+            expect(counterRepository.post).not.toHaveBeenCalled();
+        });
+
         it('should reject shared counter creation for persisted BASIC users', async () => {
             vi.mocked(userRepository.getUserTierById).mockResolvedValue({ id: TEST_USER_ID, tier: 'BASIC' });
 

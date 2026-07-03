@@ -179,8 +179,11 @@ export const increment = async (
 };
 
 export const join = (inviteCode: string, db: DbClient = prisma) =>
-    db.counter.findUnique({
-        where: { inviteCode },
+    db.counter.findFirst({
+        where: {
+            inviteCode,
+            type: 'SHARED' as CounterType,
+        },
         include: {
             shares: true,
         },
