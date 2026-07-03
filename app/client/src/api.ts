@@ -16,7 +16,8 @@
  * - Non-OK responses are thrown as `ApiError` with the server's status and message.
  * - Timeouts (10s) throw `ApiError` with status 408.
  * - Network failures throw `ApiError` with status 0 (used by SyncManager to distinguish retryable errors).
- * - 204 responses return an empty object (handles idempotency "already processed" responses).
+ * - Successful JSON responses are parsed and returned, including replayed idempotent mutation responses.
+ * - 204 responses return an empty object for successful endpoints with no response body.
  */
 
 import { OK_NO_CONTENT, REQUEST_TIMEOUT, UNAUTHORIZED } from '@tally/utils';
