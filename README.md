@@ -104,11 +104,20 @@ bun install
 Start the API and client in separate terminals:
 
 ```bash
+bun run dev:db
 bun run dev:server
 bun run dev:client
 ```
 
 The API defaults to port `3000`. The Vite client runs on port `8100` and proxies `/users`, `/counters`, and `/health` to `VITE_API_URL` or `http://localhost:3000`.
+
+Reset and seed the local database:
+
+```bash
+bun run dev:db:reset
+```
+
+This command force-resets the local PostgreSQL database. Stop the database with `bun run dev:db:stop`, or delete its local volume with `bun run dev:db:clean`.
 
 Build both workspaces:
 
