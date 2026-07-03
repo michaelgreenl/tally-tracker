@@ -25,13 +25,14 @@ import { createApp } from 'vue';
 import { createPinia } from 'pinia';
 import router from './router';
 import socket from './socket/index.ts';
+import { registerCounterListeners } from './socket/counter.socket.ts';
 import App from './App.vue';
 import { IonicVue } from '@ionic/vue';
 
 const app = createApp(App).use(IonicVue).use(router);
 
 app.use(createPinia());
-socket.connect();
+registerCounterListeners(socket);
 
 router.isReady().then(() => {
     app.mount('#app');

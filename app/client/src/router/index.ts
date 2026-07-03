@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from '@ionic/vue-router';
 import { useAuthStore } from '@/stores/authStore';
-import socket from '@/socket/index';
 import HomeView from '@/views/HomeView.vue';
 import LoginView from '@/views/LoginView.vue';
 import RegisterView from '@/views/RegisterView.vue';
@@ -49,13 +48,6 @@ router.beforeEach(async (to, from, next) => {
 });
 
 router.afterEach((to) => {
-    const authStore = useAuthStore();
-
-    // Re-join socket room on every navigation to handle reconnections and page refreshes
-    if (authStore.isAuthenticated) {
-        socket.emit('join-room', authStore.user?.id);
-    }
-
     let title = DEFAULT_TITLE;
     if (to.meta.title) title += ' | ' + to.meta.title;
 
