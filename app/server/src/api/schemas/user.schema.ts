@@ -25,11 +25,16 @@ export const loginSchema = z.object({
         }),
 });
 
-export const refreshSchema = z.object({
-    body: z.object({
-        refreshToken: z.string().uuid().optional(),
-    }),
+const refreshTokenBodySchema = z.object({
+    body: z
+        .object({
+            refreshToken: z.string().uuid().optional(),
+        })
+        .optional(),
 });
+
+export const refreshSchema = refreshTokenBodySchema;
+export const logoutSchema = refreshTokenBodySchema;
 
 export const updateUserSchema = z.object({
     body: z.object({

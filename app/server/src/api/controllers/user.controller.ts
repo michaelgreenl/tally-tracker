@@ -194,7 +194,7 @@ export const refresh = async (
 // so logout works even when the access token is expired.
 export const logout = async (req: Request, res: Response<AuthResponse>) => {
     try {
-        const refreshTokenId = req.cookies?.refresh_token;
+        const refreshTokenId = req.cookies?.refresh_token || req.body?.refreshToken;
 
         if (refreshTokenId) {
             const tokenRecord = await tokenRepository.get(refreshTokenId);

@@ -211,6 +211,22 @@ describe('Auth Routes', () => {
             expect(tokenRepository.removeAllForUser).toHaveBeenCalledWith(TEST_USER_ID);
         });
 
+        it('should clear tokens using a refresh token in the request body', async () => {
+            const token = buildRefreshToken();
+            const removedTokens = {
+                count: 1,
+            } satisfies Awaited<ReturnType<typeof tokenRepository.removeAllForUser>>;
+
+            vi.mocked(tokenRepository.get).mockResolvedValue(token);
+            vi.mocked(tokenRepository.removeAllForUser).mockResolvedValue(removedTokens);
+
+            const res = await request(app).post('/users/logout').send({ refreshToken: TEST_REFRESH_TOKEN_ID });
+
+            expect(res.status).toBe(OK);
+            expect(tokenRepository.get).toHaveBeenCalledWith(TEST_REFRESH_TOKEN_ID);
+            expect(tokenRepository.removeAllForUser).toHaveBeenCalledWith(TEST_USER_ID);
+        });
+
         it('should succeed even without a refresh token cookie', async () => {
             const res = await request(app).post('/users/logout');
 

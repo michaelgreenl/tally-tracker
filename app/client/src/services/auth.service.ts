@@ -1,7 +1,8 @@
 import apiFetch from '@/api';
+import { Capacitor } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
 
-import type { ClientUser, AuthRequest, AuthResponse, UpdateUserRequest } from '@tally/core';
+import type { ClientUser, AuthRequest, AuthResponse, RefreshRequest, UpdateUserRequest } from '@tally/core';
 
 const USER_KEY = 'auth_user_profile';
 const ACCESS_TOKEN_KEY = 'access_token';
@@ -55,7 +56,12 @@ export const AuthService = {
     },
 
     async logout() {
-        return apiFetch<AuthResponse>('/users/logout', { method: 'POST' });
+        const { value: refreshToken } = Capacitor.isNativePlatform()
+            ? await Preferences.get({ key: REFRESH_TOKEN_KEY })
+            : { value: null };
+        const body: RefreshRequest | undefined = refreshToken ? { refreshToken } : undefined;
+
+        return apiFetch<AuthResponse, RefreshRequest>('/users/logout', { method: 'POST', body });
     },
 
     async register(data: AuthRequest) {
