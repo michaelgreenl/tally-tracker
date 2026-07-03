@@ -1,8 +1,6 @@
 services:
     postgres:
         image: postgres:16
-        container_name: template-postgres
-        restart: unless-stopped
         environment:
             POSTGRES_DB: template_db
             POSTGRES_USER: template_user
