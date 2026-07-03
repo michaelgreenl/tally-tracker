@@ -298,7 +298,7 @@ export const join = async (
 
             const counter = await counterRepository.join(inviteCode, tx);
 
-            if (!counter) {
+            if (!counter || counter.type !== 'SHARED') {
                 return { status: NOT_FOUND, body: { success: false, message: 'Invalid or expired invite link' } };
             }
 

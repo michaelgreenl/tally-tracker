@@ -56,6 +56,24 @@ describe('Sharing Routes', () => {
             expect(counterRepo.countAcceptedJoinedSharesByUserId).not.toHaveBeenCalled();
         });
 
+        it('should return 404 when invite code resolves to a personal counter', async () => {
+            const counter = buildCounter({
+                type: 'PERSONAL',
+                inviteCode: 'ABC123',
+                userId: TEST_OTHER_USER_ID,
+            });
+            vi.mocked(counterRepo.join).mockResolvedValue(counter);
+
+            const res = await request(app).post('/counters/join').send({ inviteCode: 'ABC123' });
+
+            expect(res.status).toBe(NOT_FOUND);
+            expect(res.body.message).toBe('Invalid or expired invite link');
+            expect(userRepo.getUserTierById).not.toHaveBeenCalled();
+            expect(counterRepo.countAcceptedJoinedSharesByUserId).not.toHaveBeenCalled();
+            expect(counterRepo.createShare).not.toHaveBeenCalled();
+            expect(counterRepo.updateShare).not.toHaveBeenCalled();
+        });
+
         it('should return 409 when owner tries to join own counter without tier lookup', async () => {
             const counter = buildCounter({
                 type: 'SHARED',
