@@ -1,4 +1,4 @@
-import { OK, CREATED, UNAUTHORIZED, NOT_FOUND, UNPROCESSABLE_ENTITY } from '@tally/utils';
+import { OK, CREATED, OK_NO_CONTENT, UNAUTHORIZED, NOT_FOUND, UNPROCESSABLE_ENTITY } from '@tally/utils';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import { randomUUID } from 'crypto';
@@ -27,6 +27,22 @@ import * as tokenRepository from '../../../db/repositories/token.repository.js';
 describe('Auth Routes', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+    });
+
+    describe('OPTIONS /users/check-auth', () => {
+        it('should allow native Authorization preflight requests', async () => {
+            const res = await request(app)
+                .options('/users/check-auth')
+                .set('Origin', 'capacitor://localhost')
+                .set('Access-Control-Request-Method', 'GET')
+                .set('Access-Control-Request-Headers', 'Authorization');
+
+            const allowedHeaders = res.headers['access-control-allow-headers'];
+
+            expect(res.status).toBe(OK_NO_CONTENT);
+            expect(res.headers['access-control-allow-origin']).toBe('capacitor://localhost');
+            expect(allowedHeaders?.toLowerCase().split(/\s*,\s*/)).toContain('authorization');
+        });
     });
 
     describe('POST /users (register)', () => {
