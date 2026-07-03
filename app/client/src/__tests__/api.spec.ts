@@ -53,6 +53,28 @@ describe('apiFetch', () => {
             expect(res).toEqual({ success: true, data: { id: '123' } });
         });
 
+        it('should return replayed idempotent mutation response bodies', async () => {
+            const replayedResponse = {
+                success: true,
+                message: 'Counter updated successfully',
+                data: { counter: { id: 'counter-123', title: 'Saved Title' } },
+            };
+
+            mockFetch.mockResolvedValueOnce({
+                ok: true,
+                status: OK,
+                json: () => Promise.resolve(replayedResponse),
+            });
+
+            const res = await apiFetch('/counters/update/counter-123', {
+                method: 'PUT',
+                headers: { 'X-Idempotency-Key': 'already-completed' },
+                body: { title: 'Saved Title' },
+            });
+
+            expect(res).toEqual(replayedResponse);
+        });
+
         it('should return empty object on 204', async () => {
             mockFetch.mockResolvedValueOnce({ ok: true, status: OK_NO_CONTENT });
 

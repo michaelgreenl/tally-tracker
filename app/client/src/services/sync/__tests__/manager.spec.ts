@@ -56,10 +56,14 @@ describe('SyncManager', () => {
             expect(SyncQueueService.getQueue).not.toHaveBeenCalled();
         });
 
-        it('should process and remove successful commands', async () => {
+        it('should process and remove successful commands, including replayed idempotency responses', async () => {
             vi.mocked(Network.getStatus).mockResolvedValue({ connected: true, connectionType: 'wifi' });
             vi.mocked(SyncQueueService.getQueue).mockResolvedValue([buildCommand()]);
-            vi.mocked(apiFetch).mockResolvedValue({ success: true });
+            vi.mocked(apiFetch).mockResolvedValue({
+                success: true,
+                message: 'Counter updated successfully',
+                data: { counter: { id: 'counter-123' } },
+            });
 
             await SyncManager.processQueue();
 

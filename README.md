@@ -65,7 +65,7 @@ The API supports email/password registration, login, logout, auth checks, refres
 
 - **Socket rooms:** Socket.io clients join rooms keyed by user ID.
 - **Broadcasting:** Shared counter increments use Prisma atomic increments, then emit `counter-update` to the owner and accepted sharers.
-- **Duplicate protection:** Counter routes accept `X-Idempotency-Key`; duplicate keys return `204` before the mutation runs again.
+- **Duplicate protection:** Counter routes accept `X-Idempotency-Key`; completed duplicate requests replay the original mutation status and body without running the mutation again. Reusing a key for a different user/request, or while the original request is still processing, returns `409`.
 - **Cleanup jobs:** Server startup begins cleanup for expired refresh tokens and old idempotency logs.
 
 ## Tech Stack

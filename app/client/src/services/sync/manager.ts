@@ -2,8 +2,9 @@
  * Singleton responsible for processing the offline sync queue.
  *
  * Listens for network restoration via Capacitor and processes commands in FIFO order.
- * Each command includes its ID as an X-Idempotency-Key header, so replayed commands
- * (e.g., client didn't receive the response but server processed it) are safely deduplicated.
+ * Each command includes its ID as an X-Idempotency-Key header. If the server already
+ * processed a command but the client missed the response, the retry receives the
+ * original mutation response without running the mutation again.
  *
  * Error strategy:
  * - 2xx: Success. Remove command from queue.
