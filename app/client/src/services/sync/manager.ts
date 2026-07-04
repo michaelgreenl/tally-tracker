@@ -5,6 +5,7 @@
  * Each command includes its ID as an X-Idempotency-Key header. If the server already
  * processed a command but the client missed the response, the retry receives the
  * original mutation response without running the mutation again.
+ * Commands are scoped to the user that queued them and only replay for that user.
  *
  * Error strategy:
  * - 2xx: Success. Remove command from queue.
@@ -60,9 +61,24 @@ export const SyncManager = {
             return;
         }
 
-        console.log(`[Sync] Processing ${queue.length} commands...`);
+        const authStore = useAuthStore();
+        const currentUserId = authStore.user?.id;
+        if (!currentUserId) {
+            console.log('[Sync] No authenticated user. Keeping commands in queue.');
+            this.isSyncing = false;
+            return;
+        }
 
-        for (const command of queue) {
+        const commandsForCurrentUser = queue.filter((command) => command.queuedByUserId === currentUserId);
+        if (commandsForCurrentUser.length === 0) {
+            console.log('[Sync] No commands queued for current user.');
+            this.isSyncing = false;
+            return;
+        }
+
+        console.log(`[Sync] Processing ${commandsForCurrentUser.length} commands...`);
+
+        for (const command of commandsForCurrentUser) {
             try {
                 await this.executeCommand(command);
                 await SyncQueueService.removeCommand(command.id);
@@ -80,7 +96,6 @@ export const SyncManager = {
                     console.warn('[Sync] Session expired. Keeping commands for after re-auth.');
                     this.isSyncing = false;
 
-                    const authStore = useAuthStore();
                     await authStore.logout(false);
                     return;
                 }

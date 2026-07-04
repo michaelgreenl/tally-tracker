@@ -5,6 +5,7 @@ export type MutationType = 'CREATE' | 'UPDATE' | 'SET_COUNT' | 'DELETE' | 'INCRE
 
 export interface MutationCommand {
     id: string; // Also used as the X-Idempotency-Key header
+    queuedByUserId: string;
     type: MutationType;
     entity: 'counter';
     entityId: string;

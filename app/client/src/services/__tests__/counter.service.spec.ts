@@ -29,6 +29,7 @@ vi.mock('@/utils/safeUUID', () => ({
 import { CounterService } from '../counter.service';
 import { SyncQueueService } from '@/services/sync/queue';
 import { SyncManager } from '@/services/sync/manager';
+import { useAuthStore } from '@/stores/authStore';
 
 const buildCounter = (overrides: Partial<ClientCounter> = {}): ClientCounter => ({
     id: 'counter-1',
@@ -45,6 +46,10 @@ describe('CounterService.increment', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         vi.mocked(SyncQueueService.addCommand).mockResolvedValue(undefined);
+        vi.mocked(useAuthStore).mockReturnValue({
+            isAuthenticated: true,
+            user: { id: 'user-1' },
+        } as ReturnType<typeof useAuthStore>);
     });
 
     it.each([0, -1])('queues SET_COUNT with absolute personal count %i', async (count) => {
@@ -52,6 +57,7 @@ describe('CounterService.increment', () => {
 
         expect(SyncQueueService.addCommand).toHaveBeenCalledWith({
             id: 'command-1',
+            queuedByUserId: 'user-1',
             type: 'SET_COUNT',
             entity: 'counter',
             entityId: 'counter-1',
@@ -66,6 +72,7 @@ describe('CounterService.increment', () => {
 
         expect(SyncQueueService.addCommand).toHaveBeenCalledWith({
             id: 'command-1',
+            queuedByUserId: 'user-1',
             type: 'INCREMENT',
             entity: 'counter',
             entityId: 'counter-1',

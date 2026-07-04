@@ -7,6 +7,12 @@ import { randomUUID } from '@/utils/safeUUID';
 
 import type { ClientCounter, CounterResponse, UpdateCounterRequest, JoinCounterRequest } from '@tally/core';
 
+const getQueuedByUserId = (): string => {
+    const userId = useAuthStore().user?.id;
+    if (!userId) throw new Error('Cannot queue a mutation without an authenticated user');
+    return userId;
+};
+
 export const CounterService = {
     async getAllLocal() {
         return LocalStorageService.getAllCounters();
@@ -28,6 +34,7 @@ export const CounterService = {
     async create(counter: ClientCounter) {
         await SyncQueueService.addCommand({
             id: randomUUID(),
+            queuedByUserId: getQueuedByUserId(),
             type: 'CREATE',
             entity: 'counter',
             entityId: counter.id,
@@ -47,6 +54,7 @@ export const CounterService = {
     async update(counterId: string, updates: UpdateCounterRequest) {
         await SyncQueueService.addCommand({
             id: randomUUID(),
+            queuedByUserId: getQueuedByUserId(),
             type: 'UPDATE',
             entity: 'counter',
             entityId: counterId,
@@ -62,6 +70,7 @@ export const CounterService = {
         if (counter.type === 'SHARED') {
             await SyncQueueService.addCommand({
                 id: randomUUID(),
+                queuedByUserId: getQueuedByUserId(),
                 type: 'INCREMENT',
                 entity: 'counter',
                 entityId: counter.id,
@@ -71,6 +80,7 @@ export const CounterService = {
         } else {
             await SyncQueueService.addCommand({
                 id: randomUUID(),
+                queuedByUserId: getQueuedByUserId(),
                 type: 'SET_COUNT',
                 entity: 'counter',
                 entityId: counter.id,
@@ -88,6 +98,7 @@ export const CounterService = {
         if (!authStore.isAuthenticated || counter.userId === authStore.user?.id) {
             await SyncQueueService.addCommand({
                 id: randomUUID(),
+                queuedByUserId: getQueuedByUserId(),
                 type: 'DELETE',
                 entity: 'counter',
                 entityId: counter.id,
@@ -97,6 +108,7 @@ export const CounterService = {
         } else {
             await SyncQueueService.addCommand({
                 id: randomUUID(),
+                queuedByUserId: getQueuedByUserId(),
                 type: 'REMOVE',
                 entity: 'counter',
                 entityId: counter.id,
@@ -125,6 +137,7 @@ export const CounterService = {
         for (const counter of countersToSync) {
             await SyncQueueService.addCommand({
                 id: randomUUID(),
+                queuedByUserId: getQueuedByUserId(),
                 type: 'CREATE',
                 entity: 'counter',
                 entityId: counter.id,

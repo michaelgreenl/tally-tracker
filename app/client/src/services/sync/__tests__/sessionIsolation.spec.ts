@@ -113,18 +113,18 @@ describe('sync queue session isolation', () => {
 
         authServiceMock.cacheUser.mockResolvedValue(undefined);
         authServiceMock.clearLocalAuth.mockResolvedValue(undefined);
-        authServiceMock.login.mockResolvedValue({
+        authServiceMock.login.mockImplementation(async ({ email }: { email?: string }) => ({
             success: true,
             data: {
                 user: {
-                    id: 'user-b',
-                    email: 'user-b@test.com',
+                    id: email === 'user-a@test.com' ? 'user-a' : 'user-b',
+                    email: email ?? 'user-b@test.com',
                     tier: 'BASIC',
                 },
-                accessToken: 'user-b-access-token',
-                refreshToken: 'user-b-refresh-token',
+                accessToken: 'access-token',
+                refreshToken: 'refresh-token',
             },
-        });
+        }));
         authServiceMock.setAccessToken.mockResolvedValue(undefined);
         authServiceMock.setRefreshToken.mockResolvedValue(undefined);
         counterStoreMock.clearState.mockResolvedValue(undefined);
@@ -133,20 +133,40 @@ describe('sync queue session isolation', () => {
         networkGetStatusMock.mockResolvedValue({ connected: true, connectionType: 'wifi' });
     });
 
-    it('does not replay a prior session command after logout and another login', async () => {
-        await SyncQueueService.addCommand(
-            buildCommand({
-                id: 'user-a-command',
-                payload: { title: 'User A offline counter' },
-            }),
-        );
+    it('keeps a prior session command when another user logs in', async () => {
+        const userACommand = buildCommand({
+            id: 'user-a-command',
+            queuedByUserId: 'user-a',
+            payload: { title: 'User A offline counter' },
+        });
+
+        await SyncQueueService.addCommand(userACommand);
 
         const authStore = useAuthStore();
         await authStore.logout(false);
         await authStore.login({ email: 'user-b@test.com', password: 'password123' });
         await SyncManager.processQueue();
 
-        expect(await SyncQueueService.getQueue()).toEqual([]);
+        expect(await SyncQueueService.getQueue()).toEqual([userACommand]);
         expect(apiFetchMock).not.toHaveBeenCalled();
+    });
+
+    it('replays a prior session command when the same user logs back in', async () => {
+        await SyncQueueService.addCommand(
+            buildCommand({
+                id: 'user-a-command',
+                queuedByUserId: 'user-a',
+                payload: { title: 'User A offline counter' },
+            }),
+        );
+        apiFetchMock.mockResolvedValue({ success: true });
+
+        const authStore = useAuthStore();
+        await authStore.logout(false);
+        await authStore.login({ email: 'user-a@test.com', password: 'password123' });
+        await SyncManager.processQueue();
+
+        expect(apiFetchMock).toHaveBeenCalledTimes(1);
+        expect(await SyncQueueService.getQueue()).toEqual([]);
     });
 });

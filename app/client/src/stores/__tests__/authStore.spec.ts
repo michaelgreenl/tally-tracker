@@ -8,7 +8,7 @@ const {
     disconnectSocketMock,
     localStorageMock,
     routerPushMock,
-    syncQueueServiceMock,
+    syncManagerMock,
 } = vi.hoisted(() => ({
     authServiceMock: {
         cacheUser: vi.fn(),
@@ -36,8 +36,8 @@ const {
         setItem: vi.fn(),
     },
     routerPushMock: vi.fn(),
-    syncQueueServiceMock: {
-        clearQueue: vi.fn(),
+    syncManagerMock: {
+        processQueue: vi.fn(),
     },
 }));
 
@@ -63,8 +63,8 @@ vi.mock('@/services/auth.service', () => ({
     AuthService: authServiceMock,
 }));
 
-vi.mock('@/services/sync/queue', () => ({
-    SyncQueueService: syncQueueServiceMock,
+vi.mock('@/services/sync/manager', () => ({
+    SyncManager: syncManagerMock,
 }));
 
 vi.mock('@/socket', () => ({
@@ -96,7 +96,7 @@ describe('authStore socket lifecycle', () => {
         authServiceMock.setRefreshToken.mockResolvedValue(undefined);
         counterStoreMock.clearState.mockResolvedValue(undefined);
         counterStoreMock.consolidateGuestCounters.mockResolvedValue(undefined);
-        syncQueueServiceMock.clearQueue.mockResolvedValue(undefined);
+        syncManagerMock.processQueue.mockResolvedValue(undefined);
     });
 
     it('connects the socket after login stores the authenticated session', async () => {
@@ -118,6 +118,7 @@ describe('authStore socket lifecycle', () => {
         expect(authServiceMock.setRefreshToken).toHaveBeenCalledWith('refresh-token');
         expect(counterStoreMock.consolidateGuestCounters).toHaveBeenCalledTimes(1);
         expect(connectSocketMock).toHaveBeenCalledTimes(1);
+        expect(syncManagerMock.processQueue).toHaveBeenCalledTimes(1);
     });
 
     it('connects the socket after cold-start auth is verified by the server', async () => {
@@ -161,7 +162,6 @@ describe('authStore socket lifecycle', () => {
         expect(authServiceMock.logout).toHaveBeenCalledTimes(1);
         expect(disconnectSocketMock).toHaveBeenCalledTimes(1);
         expect(authServiceMock.clearLocalAuth).toHaveBeenCalledTimes(1);
-        expect(syncQueueServiceMock.clearQueue).toHaveBeenCalledTimes(1);
         expect(counterStoreMock.clearState).toHaveBeenCalledTimes(1);
         expect(routerPushMock).toHaveBeenCalledWith('/login');
     });
