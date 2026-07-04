@@ -28,22 +28,21 @@ classDiagram
         class Middleware {
             +auth (JWT)
             +validate (Zod)
-            +idempotency
         }
     }
 
     namespace Logic_Layer {
         class CounterController
         class UserController
+        class IdempotencyService {
+            +runIdempotentMutation()
+        }
     }
 
     namespace Data_Layer {
         class CounterRepository
         class UserRepository
-        class IdempotencyRepository {
-            +get()
-            +create()
-        }
+        class TokenRepository
     }
 
     namespace Infrastructure {
@@ -58,17 +57,17 @@ classDiagram
     Router --> CounterController : Dispatches Request
     Router --> UserController : Dispatches Request
 
-    %% The Update: Middleware calls Repository
-    Middleware ..> IdempotencyRepository : Checks Keys
-
+    CounterController ..> IdempotencyService : Wraps Mutations
     CounterController ..> CounterRepository : Calls Data Methods
     UserController ..> UserRepository : Calls Data Methods
+    UserController ..> TokenRepository : Manages Refresh Tokens
 
     CounterController ..> SocketIO : Emits Events
 
+    IdempotencyService ..> PrismaClient : Inserts/Replays Logs
     CounterRepository ..> PrismaClient : Queries
     UserRepository ..> PrismaClient : Queries
-    IdempotencyRepository ..> PrismaClient : Queries
+    TokenRepository ..> PrismaClient : Queries
 
     PrismaClient ..> PostgresDB : SQL
 ```

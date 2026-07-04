@@ -48,8 +48,8 @@ sequenceDiagram
             Manager->>Queue: removeCommand(Cmd1)
             Note right of Manager: Permanent success.<br/>Remove from disk.
 
-        else Fatal Error (400/422)
-            API-->>Client: 400 Bad Request
+        else Fatal Error (non-401 4xx)
+            API-->>Client: 400/403/404/409/422
             Client-->>Manager: ApiError (4xx)
             Manager->>Queue: removeCommand(Cmd1)
             Note right of Manager: Invalid command (bug).<br/>Remove to unblock queue.

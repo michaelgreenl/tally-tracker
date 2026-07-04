@@ -28,8 +28,9 @@ sequenceDiagram
     actor Viewer as User B (Shared)
 
     Note over Owner, DB: The Write Path
-    Owner->>API: PUT /increment (Amount: 1)
+    Owner->>API: PUT /counters/increment/:counterId (Amount: 1)
 
+    API->>API: runIdempotentMutation()
     API->>Repo: increment({ counterId, userId, amount })
 
     Note right of API: Security Check (The OR Logic)
@@ -45,16 +46,20 @@ sequenceDiagram
         API-->>Owner: 404 Not Found
     end
 
-    Note over API, Viewer: The Read Path (Broadcast)
+    alt Fresh Mutation
+        Note over API, Viewer: The Read Path (Broadcast)
 
-    API->>Repo: getParticipants(counterId)
-    Repo-->>API: Returns [OwnerID, ViewerID]
+        API->>Repo: getParticipants(counterId)
+        Repo-->>API: Returns [OwnerID, ViewerID]
 
-    loop For Each Participant
-        API->>Socket: io.to(UserID).emit('counter-update', counter)
+        loop For Each Participant
+            API->>Socket: io.to(UserID).emit('counter-update', counter)
+        end
+
+        Socket-->>Viewer: Event: 'counter-update'
+        Viewer->>Viewer: Store Updates State (UI Refreshes)
+    else Replayed Idempotency Response
+        API-->>Owner: Return original response without re-emitting
     end
-
-    Socket-->>Viewer: Event: 'counter-update'
-    Viewer->>Viewer: Store Updates State (UI Refreshes)
 
 ```

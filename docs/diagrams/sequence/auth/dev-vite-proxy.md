@@ -28,7 +28,7 @@ sequenceDiagram
 
     User->>Browser: Click "Login" (remember me ON)
 
-    Note right of Browser: src/api.ts uses relative path ""<br/> -> so request hits localhost
+    Note right of Browser: api.ts uses a relative API base<br/>in web dev, so the request hits localhost.
     Browser->>Proxy: POST http://localhost:8100/users/login
 
     Note right of Proxy: vite.config.ts intercepts request<br/>Target: VITE_API_URL

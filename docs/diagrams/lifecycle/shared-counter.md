@@ -40,7 +40,7 @@ stateDiagram-v2
         History preserved in DB.
     end note
 
-    note bottom of [*]
+    note left of Accepted
         Prisma Cascade Delete
         removes the Share record.
     end note
