@@ -34,9 +34,11 @@ classDiagram
             +state: counters[]
             +create()
             +increment()
+            +joinCounter()
         }
         class AuthStore {
             +state: user
+            +initializeAuth()
             +login()
             +register()
         }
@@ -56,6 +58,11 @@ classDiagram
             +processQueue()
             +executeCommand()
         }
+        class SyncQueueService {
+            +addCommand()
+            +getQueue()
+            +removeCommand()
+        }
     }
 
     namespace Infrastructure {
@@ -68,7 +75,7 @@ classDiagram
     %% Relationships
     HomeView ..> CounterStore : Calls Actions
     HomeView ..> AuthStore : Checks State
-    JoinView ..> CounterStore : Calls join()
+    JoinView ..> CounterStore : Calls joinCounter()
 
     LoginView ..> AuthStore : Calls login()
     RegisterView ..> AuthStore : Calls register()
@@ -76,9 +83,11 @@ classDiagram
     CounterStore ..> CounterService : Business Logic
     AuthStore ..> AuthService : Business Logic
 
+    CounterService ..> SyncQueueService : Queues Mutations
     CounterService ..> SyncManager : Triggers Sync
     CounterService ..> LocalStorageService : Persists Data
 
+    SyncManager ..> SyncQueueService : Reads/Removes Commands
     SyncManager ..> apiFetch : Network Req
     AuthService ..> apiFetch : Network Req
 

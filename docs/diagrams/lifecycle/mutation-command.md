@@ -33,7 +33,7 @@ stateDiagram-v2
     Processing --> Completed: API returns 200/201
     Processing --> Pending: API returns 500 / network fail
     Processing --> Pending: API returns 401 after refresh fails
-    Processing --> Dropped: API returns 400/422
+    Processing --> Dropped: API returns non-401 4xx
 
     Completed --> [*]: Removed from Queue
     Dropped --> [*]: Removed from Queue

@@ -1,4 +1,3 @@
-````markdown
 ### Check Auth (Cold Start)
 
 ```mermaid
@@ -71,4 +70,3 @@ sequenceDiagram
     end
     deactivate API
 ```
-````

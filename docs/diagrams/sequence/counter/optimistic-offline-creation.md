@@ -25,6 +25,7 @@ sequenceDiagram
     participant Store as CounterStore
     participant Queue as SyncQueue (Capacitor Preferences)
     participant Svc as CounterService
+    participant Manager as SyncManager
     participant API as Backend
 
     User->>View: Click "Create Counter"
@@ -44,11 +45,15 @@ sequenceDiagram
     alt Authenticated user (!isGuest)
         Store->>Svc: Service.create(counter)
         Svc->>Queue: Add "CREATE" Command
+        Queue-->>Svc: Command Queued
+        Svc->>Manager: processQueue()
 
-        par Async Sync
-            Queue-->>Svc: Command Queued
-            Svc->>Svc: Trigger SyncManager
-            Svc->>API: POST /counters (Payload + InviteCode)
+        par Background Sync
+            Manager->>Queue: getQueue()
+            Queue-->>Manager: Pending Commands
+            Manager->>API: POST /counters (Payload + InviteCode + Idempotency Key)
+            API-->>Manager: 201 Created or replayed response
+            Manager->>Queue: removeCommand(Command)
         end
     else Guest user
         Store-->>Store: Skip CounterService.create()

@@ -83,7 +83,3 @@ sequenceDiagram
     end
     deactivate API
 ```
-
-```
-
-```

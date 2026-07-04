@@ -1,7 +1,6 @@
 ### Cross-Platform Auth Strategy
 
 ```mermaid
-
 %%{
   init: {
     'theme': 'base',
