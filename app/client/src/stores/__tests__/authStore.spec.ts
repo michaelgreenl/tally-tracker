@@ -1,35 +1,45 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 
-const { authServiceMock, connectSocketMock, counterStoreMock, disconnectSocketMock, localStorageMock, routerPushMock } =
-    vi.hoisted(() => ({
-        authServiceMock: {
-            cacheUser: vi.fn(),
-            checkAuth: vi.fn(),
-            clearLocalAuth: vi.fn(),
-            getAccessToken: vi.fn(),
-            getCachedUser: vi.fn(),
-            getRefreshToken: vi.fn(),
-            login: vi.fn(),
-            logout: vi.fn(),
-            register: vi.fn(),
-            setAccessToken: vi.fn(),
-            setRefreshToken: vi.fn(),
-            updateUser: vi.fn(),
-        },
-        connectSocketMock: vi.fn(),
-        counterStoreMock: {
-            clearState: vi.fn(),
-            consolidateGuestCounters: vi.fn(),
-        },
-        disconnectSocketMock: vi.fn(),
-        localStorageMock: {
-            getItem: vi.fn(),
-            removeItem: vi.fn(),
-            setItem: vi.fn(),
-        },
-        routerPushMock: vi.fn(),
-    }));
+const {
+    authServiceMock,
+    connectSocketMock,
+    counterStoreMock,
+    disconnectSocketMock,
+    localStorageMock,
+    routerPushMock,
+    syncQueueServiceMock,
+} = vi.hoisted(() => ({
+    authServiceMock: {
+        cacheUser: vi.fn(),
+        checkAuth: vi.fn(),
+        clearLocalAuth: vi.fn(),
+        getAccessToken: vi.fn(),
+        getCachedUser: vi.fn(),
+        getRefreshToken: vi.fn(),
+        login: vi.fn(),
+        logout: vi.fn(),
+        register: vi.fn(),
+        setAccessToken: vi.fn(),
+        setRefreshToken: vi.fn(),
+        updateUser: vi.fn(),
+    },
+    connectSocketMock: vi.fn(),
+    counterStoreMock: {
+        clearState: vi.fn(),
+        consolidateGuestCounters: vi.fn(),
+    },
+    disconnectSocketMock: vi.fn(),
+    localStorageMock: {
+        getItem: vi.fn(),
+        removeItem: vi.fn(),
+        setItem: vi.fn(),
+    },
+    routerPushMock: vi.fn(),
+    syncQueueServiceMock: {
+        clearQueue: vi.fn(),
+    },
+}));
 
 vi.stubGlobal('localStorage', {
     getItem: localStorageMock.getItem,
@@ -51,6 +61,10 @@ vi.mock('@/router', () => ({
 
 vi.mock('@/services/auth.service', () => ({
     AuthService: authServiceMock,
+}));
+
+vi.mock('@/services/sync/queue', () => ({
+    SyncQueueService: syncQueueServiceMock,
 }));
 
 vi.mock('@/socket', () => ({
@@ -82,6 +96,7 @@ describe('authStore socket lifecycle', () => {
         authServiceMock.setRefreshToken.mockResolvedValue(undefined);
         counterStoreMock.clearState.mockResolvedValue(undefined);
         counterStoreMock.consolidateGuestCounters.mockResolvedValue(undefined);
+        syncQueueServiceMock.clearQueue.mockResolvedValue(undefined);
     });
 
     it('connects the socket after login stores the authenticated session', async () => {
@@ -146,6 +161,7 @@ describe('authStore socket lifecycle', () => {
         expect(authServiceMock.logout).toHaveBeenCalledTimes(1);
         expect(disconnectSocketMock).toHaveBeenCalledTimes(1);
         expect(authServiceMock.clearLocalAuth).toHaveBeenCalledTimes(1);
+        expect(syncQueueServiceMock.clearQueue).toHaveBeenCalledTimes(1);
         expect(counterStoreMock.clearState).toHaveBeenCalledTimes(1);
         expect(routerPushMock).toHaveBeenCalledWith('/login');
     });

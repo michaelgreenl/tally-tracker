@@ -6,6 +6,7 @@ import router from '@/router';
 import { connectSocket, disconnectSocket } from '@/socket';
 import { useCounterStore } from '@/stores/counterStore';
 import { AuthService } from '@/services/auth.service';
+import { SyncQueueService } from '@/services/sync/queue';
 import { ApiError, getErrorMessage } from '@/utils/errors';
 import { ok, fail } from '@/utils/result';
 
@@ -117,6 +118,7 @@ export const useAuthStore = defineStore('auth', () => {
             disconnectSocket();
             user.value = null;
             await AuthService.clearLocalAuth();
+            await SyncQueueService.clearQueue();
             const counterStore = useCounterStore();
             await counterStore.clearState();
             router.push('/login');
