@@ -92,6 +92,7 @@
         "@tally/utils": "^0.1.0",
         "bcrypt": "^6.0.0",
         "body-parser": "^2.2.2",
+        "cookie": "^0.7.2",
         "cookie-parser": "^1.4.7",
         "cors": "^2.8.5",
         "dotenv": "^17.2.3",
@@ -110,6 +111,7 @@
         "@commitlint/config-conventional": "^20.3.1",
         "@eslint/js": "^10.0.1",
         "@types/bcrypt": "^6.0.0",
+        "@types/cookie": "^0.6.0",
         "@types/cookie-parser": "^1.4.10",
         "@types/cors": "^2.8.19",
         "@types/express": "^5.0.6",
@@ -125,6 +127,7 @@
         "globals": "^17.0.0",
         "jsdom": "^28.0.0",
         "prisma": "^7.3.0",
+        "socket.io-client": "^4.8.3",
         "supertest": "^7.2.2",
         "tsup": "^8.5.1",
         "tsx": "^4.21.0",
@@ -170,6 +173,7 @@
         "eslint-config-prettier": "^10.1.8",
         "eslint-plugin-prettier": "^5.5.4",
         "globals": "^17.0.0",
+        "typescript": "^5.9.3",
       },
     },
   },
@@ -811,6 +815,8 @@
     "@types/chai": ["@types/chai@5.2.3", "", { "dependencies": { "@types/deep-eql": "*", "assertion-error": "^2.0.1" } }, "sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA=="],
 
     "@types/connect": ["@types/connect@3.4.38", "", { "dependencies": { "@types/node": "*" } }, "sha512-K6uROf1LD88uDQqJCktA4yzL1YYAK6NgfsI0v/mTgyPKWsX1CnJ0XPSDhViejru1GcRkLWb8RlzFYJRqGUbaug=="],
+
+    "@types/cookie": ["@types/cookie@0.6.0", "", {}, "sha512-4Kh9a6B2bQciAhf7FSuMRRkUWecJgJu9nPnx3yzpsfXX/c50REIqpHY4C82bXP90qrLtXtkDxTZosYO3UpOwlA=="],
 
     "@types/cookie-parser": ["@types/cookie-parser@1.4.10", "", { "peerDependencies": { "@types/express": "*" } }, "sha512-B4xqkqfZ8Wek+rCOeRxsjMS9OgvzebEzzLYw7NHYuvzb7IdxOkI0ZHGgeEBX4PUM7QGVvNSK60T3OvWj3YfBRg=="],
 

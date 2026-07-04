@@ -3,6 +3,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { Capacitor } from '@capacitor/core';
 import router from '@/router';
+import { connectSocket, disconnectSocket } from '@/socket';
 import { useCounterStore } from '@/stores/counterStore';
 import { AuthService } from '@/services/auth.service';
 import { ApiError, getErrorMessage } from '@/utils/errors';
@@ -47,6 +48,7 @@ export const useAuthStore = defineStore('auth', () => {
             if (res.success && res.data?.user) {
                 user.value = res.data.user;
                 await AuthService.cacheUser(user.value);
+                connectSocket();
                 return ok();
             }
 
@@ -95,6 +97,7 @@ export const useAuthStore = defineStore('auth', () => {
 
                 const counterStore = useCounterStore();
                 await counterStore.consolidateGuestCounters();
+                connectSocket();
 
                 return ok();
             }
@@ -111,6 +114,7 @@ export const useAuthStore = defineStore('auth', () => {
         } catch (error: unknown) {
             console.warn('Server logout failed', error);
         } finally {
+            disconnectSocket();
             user.value = null;
             await AuthService.clearLocalAuth();
             const counterStore = useCounterStore();
