@@ -1,6 +1,6 @@
 import { UNAUTHORIZED, UNPROCESSABLE_ENTITY, SERVER_ERROR } from '@tally/utils';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { buildCommand } from '../../../../tests/e2e/fixtures/counter.fixture';
+import { buildCommand, TEST_USER_ID } from '../../../../tests/e2e/fixtures/counter.fixture';
 import { ApiError } from '@/utils/errors';
 
 vi.mock('@capacitor/network', () => ({
@@ -23,6 +23,7 @@ vi.mock('@/api', () => ({
 
 vi.mock('@/stores/authStore', () => ({
     useAuthStore: vi.fn(() => ({
+        user: { id: 'default-user' },
         logout: vi.fn(),
     })),
 }));
@@ -37,6 +38,10 @@ describe('SyncManager', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         SyncManager.isSyncing = false;
+        vi.mocked(useAuthStore).mockReturnValue({
+            user: { id: TEST_USER_ID },
+            logout: vi.fn(),
+        } as ReturnType<typeof useAuthStore>);
     });
 
     describe('processQueue', () => {
@@ -72,6 +77,37 @@ describe('SyncManager', () => {
             expect(SyncManager.isSyncing).toBe(false);
         });
 
+        it('should process only commands queued by the current user', async () => {
+            const currentUserCommand = buildCommand({ id: 'current-user-command' });
+            const otherUserCommand = buildCommand({ id: 'other-user-command', queuedByUserId: 'other-user' });
+
+            vi.mocked(Network.getStatus).mockResolvedValue({ connected: true, connectionType: 'wifi' });
+            vi.mocked(SyncQueueService.getQueue).mockResolvedValue([otherUserCommand, currentUserCommand]);
+            vi.mocked(apiFetch).mockResolvedValue({ success: true });
+
+            await SyncManager.processQueue();
+
+            expect(apiFetch).toHaveBeenCalledTimes(1);
+            expect(SyncQueueService.removeCommand).toHaveBeenCalledTimes(1);
+            expect(SyncQueueService.removeCommand).toHaveBeenCalledWith('current-user-command');
+        });
+
+        it('should keep queued commands when there is no authenticated user', async () => {
+            vi.mocked(useAuthStore).mockReturnValue({
+                user: null,
+                logout: vi.fn(),
+            } as ReturnType<typeof useAuthStore>);
+
+            vi.mocked(Network.getStatus).mockResolvedValue({ connected: true, connectionType: 'wifi' });
+            vi.mocked(SyncQueueService.getQueue).mockResolvedValue([buildCommand()]);
+
+            await SyncManager.processQueue();
+
+            expect(apiFetch).not.toHaveBeenCalled();
+            expect(SyncQueueService.removeCommand).not.toHaveBeenCalled();
+            expect(SyncManager.isSyncing).toBe(false);
+        });
+
         it('should remove command and continue on 4xx errors (except 401)', async () => {
             const cmd1 = buildCommand({ id: 'cmd-1' });
             const cmd2 = buildCommand({ id: 'cmd-2' });
@@ -89,7 +125,10 @@ describe('SyncManager', () => {
 
         it('should stop processing and trigger logout on 401', async () => {
             const mockLogout = vi.fn();
-            vi.mocked(useAuthStore).mockReturnValue({ logout: mockLogout } as ReturnType<typeof useAuthStore>);
+            vi.mocked(useAuthStore).mockReturnValue({
+                user: { id: TEST_USER_ID },
+                logout: mockLogout,
+            } as ReturnType<typeof useAuthStore>);
 
             vi.mocked(Network.getStatus).mockResolvedValue({ connected: true, connectionType: 'wifi' });
             vi.mocked(SyncQueueService.getQueue).mockResolvedValue([
