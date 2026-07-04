@@ -25,6 +25,7 @@ export const buildSharedCounter = (overrides: Partial<ClientCounter> = {}): Clie
 
 export const buildCommand = (overrides: Partial<MutationCommand> = {}): MutationCommand => ({
     id: crypto.randomUUID(),
+    queuedByUserId: TEST_USER_ID,
     type: 'CREATE',
     entity: 'counter',
     entityId: TEST_COUNTER_ID,

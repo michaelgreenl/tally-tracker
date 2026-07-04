@@ -6,6 +6,7 @@ import router from '@/router';
 import { connectSocket, disconnectSocket } from '@/socket';
 import { useCounterStore } from '@/stores/counterStore';
 import { AuthService } from '@/services/auth.service';
+import { SyncManager } from '@/services/sync/manager';
 import { ApiError, getErrorMessage } from '@/utils/errors';
 import { ok, fail } from '@/utils/result';
 
@@ -98,6 +99,7 @@ export const useAuthStore = defineStore('auth', () => {
                 const counterStore = useCounterStore();
                 await counterStore.consolidateGuestCounters();
                 connectSocket();
+                await SyncManager.processQueue();
 
                 return ok();
             }
