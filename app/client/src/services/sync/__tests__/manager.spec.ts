@@ -1,4 +1,4 @@
-import { UNAUTHORIZED, UNPROCESSABLE_ENTITY, SERVER_ERROR } from '@tally/utils';
+import { UNAUTHORIZED, NOT_FOUND, UNPROCESSABLE_ENTITY, SERVER_ERROR } from '@tally/utils';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { buildCommand, TEST_USER_ID } from '../../../../tests/e2e/fixtures/counter.fixture';
 import { ApiError } from '@/utils/errors';
@@ -121,6 +121,27 @@ describe('SyncManager', () => {
             await SyncManager.processQueue();
 
             expect(SyncQueueService.removeCommand).toHaveBeenCalledTimes(2);
+        });
+
+        it('should remove a stale DELETE command and continue processing the queue', async () => {
+            const staleDelete = buildCommand({ id: 'stale-delete', type: 'DELETE', entityId: 'counter-123' });
+            const nextCommand = buildCommand({ id: 'next-command' });
+
+            vi.mocked(Network.getStatus).mockResolvedValue({ connected: true, connectionType: 'wifi' });
+            vi.mocked(SyncQueueService.getQueue).mockResolvedValue([staleDelete, nextCommand]);
+            vi.mocked(apiFetch)
+                .mockRejectedValueOnce(new ApiError('Counter not found', NOT_FOUND))
+                .mockResolvedValueOnce({ success: true });
+
+            await SyncManager.processQueue();
+
+            expect(apiFetch).toHaveBeenCalledWith(
+                '/counters/counter-123',
+                expect.objectContaining({ method: 'DELETE' }),
+            );
+            expect(SyncQueueService.removeCommand).toHaveBeenCalledTimes(2);
+            expect(SyncQueueService.removeCommand).toHaveBeenCalledWith('stale-delete');
+            expect(SyncQueueService.removeCommand).toHaveBeenCalledWith('next-command');
         });
 
         it('should stop processing and trigger logout on 401', async () => {
