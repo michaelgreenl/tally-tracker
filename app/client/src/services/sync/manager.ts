@@ -33,6 +33,7 @@ import type {
 
 export const SyncManager = {
     isSyncing: false,
+    syncRequested: false,
 
     // Register network listener. Called once on app mount (App.vue).
     async init() {
@@ -45,35 +46,49 @@ export const SyncManager = {
     },
 
     async processQueue() {
-        if (this.isSyncing) return;
-
-        const status = await Network.getStatus();
-        if (!status.connected) {
-            console.log('[Sync] Offline. Keeping commands in queue.');
+        if (this.isSyncing) {
+            this.syncRequested = true;
             return;
         }
 
         this.isSyncing = true;
+
+        try {
+            let drained = true;
+            do {
+                this.syncRequested = false;
+                drained = await this.processQueuePass();
+            } while (drained && this.syncRequested);
+        } finally {
+            this.isSyncing = false;
+            this.syncRequested = false;
+        }
+    },
+
+    async processQueuePass(): Promise<boolean> {
+        const status = await Network.getStatus();
+        if (!status.connected) {
+            console.log('[Sync] Offline. Keeping commands in queue.');
+            return false;
+        }
+
         const queue = await SyncQueueService.getQueue();
 
         if (queue.length === 0) {
-            this.isSyncing = false;
-            return;
+            return true;
         }
 
         const authStore = useAuthStore();
         const currentUserId = authStore.user?.id;
         if (!currentUserId) {
             console.log('[Sync] No authenticated user. Keeping commands in queue.');
-            this.isSyncing = false;
-            return;
+            return false;
         }
 
         const commandsForCurrentUser = queue.filter((command) => command.queuedByUserId === currentUserId);
         if (commandsForCurrentUser.length === 0) {
             console.log('[Sync] No commands queued for current user.');
-            this.isSyncing = false;
-            return;
+            return true;
         }
 
         console.log(`[Sync] Processing ${commandsForCurrentUser.length} commands...`);
@@ -94,10 +109,9 @@ export const SyncManager = {
                 // Keep commands for after re-auth.
                 if (status === UNAUTHORIZED) {
                     console.warn('[Sync] Session expired. Keeping commands for after re-auth.');
-                    this.isSyncing = false;
 
                     await authStore.logout(false);
-                    return;
+                    return false;
                 }
 
                 // Other 4xx = invalid command (bug). Discard to unblock queue.
@@ -108,12 +122,11 @@ export const SyncManager = {
                 }
 
                 // 5xx or network failure = retryable. Stop and wait for next trigger.
-                this.isSyncing = false;
-                return;
+                return false;
             }
         }
 
-        this.isSyncing = false;
+        return true;
     },
 
     async executeCommand(cmd: MutationCommand) {

@@ -56,6 +56,40 @@ describe('SyncQueueService', () => {
             const parsed = JSON.parse(savedValue);
             expect(parsed).toHaveLength(2);
         });
+
+        it('should serialize writes when a command is added while another mutation is pending', async () => {
+            const existingCommand = buildCommand({ id: 'existing' });
+            const newCommand = buildCommand({ id: 'new' });
+            const savedValues: string[] = [];
+            let resolveFirstRead: (value: { value: string }) => void = () => undefined;
+
+            vi.mocked(Preferences.get)
+                .mockImplementationOnce(
+                    () =>
+                        new Promise((resolve) => {
+                            resolveFirstRead = resolve;
+                        }),
+                )
+                .mockImplementation(async () => ({
+                    value: savedValues[savedValues.length - 1] ?? JSON.stringify([existingCommand]),
+                }));
+            vi.mocked(Preferences.set).mockImplementation(async ({ value }) => {
+                savedValues.push(value);
+            });
+
+            const addPromise = SyncQueueService.addCommand(newCommand);
+            const removePromise = SyncQueueService.removeCommand('existing');
+
+            await Promise.resolve();
+            expect(Preferences.get).toHaveBeenCalledTimes(1);
+
+            resolveFirstRead({ value: JSON.stringify([existingCommand]) });
+            await Promise.all([addPromise, removePromise]);
+
+            const finalQueue = JSON.parse(savedValues[savedValues.length - 1] ?? '[]');
+            expect(finalQueue).toHaveLength(1);
+            expect(finalQueue[0].id).toBe('new');
+        });
     });
 
     describe('removeCommand', () => {
