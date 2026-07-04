@@ -223,7 +223,7 @@ describe('Counter Routes', () => {
 
     describe('DELETE /counters/:counterId', () => {
         it('should delete an owned counter', async () => {
-            vi.mocked(counterRepository.remove).mockResolvedValue(buildCounter());
+            vi.mocked(counterRepository.remove).mockResolvedValue(true);
 
             const res = await request(app).delete(`/counters/${TEST_COUNTER_ID}`);
 
@@ -235,6 +235,14 @@ describe('Counter Routes', () => {
                 },
                 expect.anything(),
             );
+        });
+
+        it('should return 404 when the owned counter no longer exists', async () => {
+            vi.mocked(counterRepository.remove).mockResolvedValue(false);
+
+            const res = await request(app).delete(`/counters/${TEST_COUNTER_ID}`);
+
+            expect(res.status).toBe(NOT_FOUND);
         });
 
         it('should reject invalid UUID', async () => {

@@ -104,7 +104,11 @@ export const remove = async (req: Request, res: Response<CounterResponse>) => {
                 };
             }
 
-            await counterRepository.remove({ counterId, userId }, tx);
+            const deleted = await counterRepository.remove({ counterId, userId }, tx);
+
+            if (!deleted) {
+                return { status: NOT_FOUND, body: { success: false, message: 'Counter not found' } };
+            }
 
             return { status: OK, body: { success: true } };
         });

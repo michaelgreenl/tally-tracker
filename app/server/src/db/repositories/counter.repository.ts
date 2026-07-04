@@ -38,8 +38,11 @@ export const post = async (
     });
 };
 
-export const remove = async ({ counterId, userId }: { counterId: string; userId: string }, db: DbClient = prisma) =>
-    db.counter.delete({ where: { id: counterId, userId: userId } });
+export const remove = async ({ counterId, userId }: { counterId: string; userId: string }, db: DbClient = prisma) => {
+    const result = await db.counter.deleteMany({ where: { id: counterId, userId: userId } });
+
+    return result.count > 0;
+};
 
 // Returns owned counters + counters shared with this user (ACCEPTED status)
 export const getAllByUser = async (userId: string) =>
