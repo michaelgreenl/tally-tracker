@@ -11,9 +11,9 @@
         "test": "vitest",
         "start": "node dist/server.js",
         "typecheck": "tsc --noEmit",
-        "format": "prettier --write src/",
-        "format:check": "prettier --check src/",
-        "lint": "eslint src --ext .ts",
+        "format": "prettier --write src/ tests/",
+        "format:check": "prettier --check src/ tests/",
+        "lint": "eslint src tests --ext .ts",
         "lint:all": "bun typecheck && bun format:check && bun lint"
     },
     "dependencies": {

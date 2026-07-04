@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Request, Response, NextFunction } from 'express';
 import request from 'supertest';
 import { randomUUID } from 'crypto';
-import app from '../../../app.js';
+import app from '../../../src/app.js';
 import { buildCounter, TEST_COUNTER_ID, TEST_OTHER_USER_ID, TEST_USER_ID } from '../fixtures/counter.fixture.js';
 
 const prismaMock = vi.hoisted(() => {
@@ -74,18 +74,18 @@ const prismaMock = vi.hoisted(() => {
     return { idempotencyLogs, prisma, tx };
 });
 
-vi.mock('../../../middleware/auth.middleware', () => ({
+vi.mock('../../../src/middleware/auth.middleware', () => ({
     jwt: (req: Request, res: Response, next: NextFunction) => {
         req.user = { id: TEST_USER_ID, email: 'test@test.com', tier: 'PREMIUM' };
         next();
     },
 }));
 
-vi.mock('../../../db/prisma', () => ({
+vi.mock('../../../src/db/prisma', () => ({
     default: prismaMock.prisma,
 }));
 
-vi.mock('../../../db/repositories/counter.repository', () => ({
+vi.mock('../../../src/db/repositories/counter.repository', () => ({
     post: vi.fn(),
     getAllByUser: vi.fn(),
     getByIdOrShare: vi.fn(),
@@ -99,12 +99,12 @@ vi.mock('../../../db/repositories/counter.repository', () => ({
     updateShare: vi.fn(),
 }));
 
-vi.mock('../../../db/repositories/user.repository', () => ({
+vi.mock('../../../src/db/repositories/user.repository', () => ({
     getUserTierById: vi.fn(),
 }));
 
-import * as counterRepository from '../../../db/repositories/counter.repository.js';
-import * as userRepository from '../../../db/repositories/user.repository.js';
+import * as counterRepository from '../../../src/db/repositories/counter.repository.js';
+import * as userRepository from '../../../src/db/repositories/user.repository.js';
 
 describe('Counter Routes', () => {
     beforeEach(() => {
