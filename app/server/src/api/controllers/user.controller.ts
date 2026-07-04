@@ -225,7 +225,7 @@ export const put = async (
         const { email, password } = req.body;
 
         const updateData: Prisma.UserUpdateInput = {};
-        if (email) updateData.email = email;
+        if (email) updateData.email = sanitizeEmail(email);
 
         if (password) {
             updateData.password = await bcrypt.hash(password, 10);

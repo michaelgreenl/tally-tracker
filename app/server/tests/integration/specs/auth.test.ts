@@ -2,9 +2,17 @@ import { OK, CREATED, OK_NO_CONTENT, UNAUTHORIZED, NOT_FOUND, UNPROCESSABLE_ENTI
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import { randomUUID } from 'crypto';
+import type { Request, Response, NextFunction } from 'express';
 import app from '../../../src/app.js';
 import { buildUser, buildClientUser } from '../fixtures/user.fixture.js';
 import { buildRefreshToken, TEST_USER_ID, TEST_REFRESH_TOKEN_ID } from '../fixtures/counter.fixture.js';
+
+vi.mock('../../../src/middleware/auth.middleware', () => ({
+    jwt: (req: Request, _res: Response, next: NextFunction) => {
+        req.user = { id: TEST_USER_ID, email: 'test@test.com', tier: 'BASIC' };
+        next();
+    },
+}));
 
 vi.mock('../../../src/db/repositories/user.repository', () => ({
     createUser: vi.fn(),
@@ -247,6 +255,20 @@ describe('Auth Routes', () => {
             const res = await request(app).post('/users/logout');
 
             expect(res.status).toBe(OK);
+        });
+    });
+
+    describe('PUT /users', () => {
+        it('should normalize mixed-case email updates before persisting', async () => {
+            vi.mocked(userRepository.updateUserInfo).mockResolvedValue(true);
+
+            const res = await request(app).put('/users').send({ email: 'NewEmail@Example.com' });
+
+            expect(res.status).toBe(OK);
+            expect(userRepository.updateUserInfo).toHaveBeenCalledWith(
+                TEST_USER_ID,
+                expect.objectContaining({ email: 'newemail@example.com' }),
+            );
         });
     });
 });
