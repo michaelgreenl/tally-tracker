@@ -38,6 +38,7 @@ describe('SyncManager', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         SyncManager.isSyncing = false;
+        SyncManager.syncRequested = false;
         vi.mocked(useAuthStore).mockReturnValue({
             user: { id: TEST_USER_ID },
             logout: vi.fn(),
@@ -50,6 +51,7 @@ describe('SyncManager', () => {
 
             await SyncManager.processQueue();
 
+            expect(SyncManager.syncRequested).toBe(true);
             expect(SyncQueueService.getQueue).not.toHaveBeenCalled();
         });
 
@@ -75,6 +77,38 @@ describe('SyncManager', () => {
             expect(apiFetch).toHaveBeenCalled();
             expect(SyncQueueService.removeCommand).toHaveBeenCalled();
             expect(SyncManager.isSyncing).toBe(false);
+        });
+
+        it('should process commands added while a sync pass is active', async () => {
+            const firstCommand = buildCommand({ id: 'first-command' });
+            const secondCommand = buildCommand({ id: 'second-command' });
+            let resolveFirstRequest: (value: unknown) => void = () => undefined;
+
+            vi.mocked(Network.getStatus).mockResolvedValue({ connected: true, connectionType: 'wifi' });
+            vi.mocked(SyncQueueService.getQueue)
+                .mockResolvedValueOnce([firstCommand])
+                .mockResolvedValueOnce([secondCommand]);
+            vi.mocked(apiFetch)
+                .mockImplementationOnce(
+                    () =>
+                        new Promise((resolve) => {
+                            resolveFirstRequest = resolve;
+                        }),
+                )
+                .mockResolvedValueOnce({ success: true });
+
+            const activeSync = SyncManager.processQueue();
+            await vi.waitFor(() => expect(apiFetch).toHaveBeenCalledTimes(1));
+
+            await SyncManager.processQueue();
+            resolveFirstRequest({ success: true });
+            await activeSync;
+
+            expect(apiFetch).toHaveBeenCalledTimes(2);
+            expect(SyncQueueService.removeCommand).toHaveBeenCalledWith('first-command');
+            expect(SyncQueueService.removeCommand).toHaveBeenCalledWith('second-command');
+            expect(SyncManager.isSyncing).toBe(false);
+            expect(SyncManager.syncRequested).toBe(false);
         });
 
         it('should process only commands queued by the current user', async () => {

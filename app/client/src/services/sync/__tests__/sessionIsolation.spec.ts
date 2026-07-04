@@ -110,6 +110,7 @@ describe('sync queue session isolation', () => {
         vi.clearAllMocks();
         preferencesStore.clear();
         SyncManager.isSyncing = false;
+        SyncManager.syncRequested = false;
 
         authServiceMock.cacheUser.mockResolvedValue(undefined);
         authServiceMock.clearLocalAuth.mockResolvedValue(undefined);

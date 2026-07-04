@@ -7,6 +7,17 @@ import type { MutationCommand } from './types';
 
 const QUEUE_KEY = 'app_sync_queue';
 
+let queueMutation = Promise.resolve();
+
+const runQueueMutation = async <T>(operation: () => Promise<T>): Promise<T> => {
+    const result = queueMutation.then(operation, operation);
+    queueMutation = result.then(
+        () => undefined,
+        () => undefined,
+    );
+    return result;
+};
+
 export const SyncQueueService = {
     async getQueue(): Promise<MutationCommand[]> {
         const { value } = await Preferences.get({ key: QUEUE_KEY });
@@ -21,15 +32,19 @@ export const SyncQueueService = {
     },
 
     async addCommand(command: MutationCommand): Promise<void> {
-        const queue = await this.getQueue();
-        queue.push(command);
-        await this.saveQueue(queue);
+        await runQueueMutation(async () => {
+            const queue = await this.getQueue();
+            queue.push(command);
+            await this.saveQueue(queue);
+        });
     },
 
     async removeCommand(id: string): Promise<void> {
-        const queue = await this.getQueue();
-        const filtered = queue.filter((cmd) => cmd.id !== id);
-        await this.saveQueue(filtered);
+        await runQueueMutation(async () => {
+            const queue = await this.getQueue();
+            const filtered = queue.filter((cmd) => cmd.id !== id);
+            await this.saveQueue(filtered);
+        });
     },
 
     async clearQueue(): Promise<void> {
