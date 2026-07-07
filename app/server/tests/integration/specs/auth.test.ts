@@ -8,7 +8,11 @@ import { buildUser, buildClientUser } from '../fixtures/user.fixture.js';
 import { buildRefreshToken, TEST_USER_ID, TEST_REFRESH_TOKEN_ID } from '../fixtures/counter.fixture.js';
 
 vi.mock('../../../src/middleware/auth.middleware', () => ({
-    jwt: (req: Request, _res: Response, next: NextFunction) => {
+    jwt: (req: Request, res: Response, next: NextFunction) => {
+        if (req.headers.authorization === 'Bearer invalid-token') {
+            return res.status(401).json({ success: false, message: 'Invalid token' });
+        }
+
         req.user = { id: TEST_USER_ID, email: 'test@test.com', tier: 'BASIC' };
         next();
     },
@@ -19,6 +23,7 @@ vi.mock('../../../src/db/repositories/user.repository', () => ({
     getUserByEmail: vi.fn(),
     getUserById: vi.fn(),
     updateUserInfo: vi.fn(),
+    deleteAccount: vi.fn(),
     deleteUser: vi.fn(),
 }));
 
@@ -255,6 +260,65 @@ describe('Auth Routes', () => {
             const res = await request(app).post('/users/logout');
 
             expect(res.status).toBe(OK);
+        });
+    });
+
+    describe('DELETE /users', () => {
+        it('should delete the authenticated account', async () => {
+            const deletionResult = {
+                deleted: true,
+                idempotencyLogsDeleted: 2,
+            } satisfies Awaited<ReturnType<typeof userRepository.deleteAccount>>;
+
+            vi.mocked(userRepository.deleteAccount).mockResolvedValue(deletionResult);
+
+            const res = await request(app).delete('/users');
+
+            expect(res.status).toBe(OK);
+            expect(res.body.success).toBe(true);
+            expect(userRepository.deleteAccount).toHaveBeenCalledWith(TEST_USER_ID);
+        });
+
+        it('should clear access and refresh cookies after deletion', async () => {
+            const deletionResult = {
+                deleted: true,
+                idempotencyLogsDeleted: 0,
+            } satisfies Awaited<ReturnType<typeof userRepository.deleteAccount>>;
+
+            vi.mocked(userRepository.deleteAccount).mockResolvedValue(deletionResult);
+
+            const res = await request(app)
+                .delete('/users')
+                .set('Cookie', [`access_token=old-access`, `refresh_token=${TEST_REFRESH_TOKEN_ID}`]);
+
+            const cookies = res.headers['set-cookie'];
+            const cookieStr = Array.isArray(cookies) ? cookies.join('; ') : cookies;
+
+            expect(res.status).toBe(OK);
+            expect(cookieStr).toContain('access_token=;');
+            expect(cookieStr).toContain('refresh_token=;');
+            expect(cookieStr).toContain('Expires=Thu, 01 Jan 1970 00:00:00 GMT');
+        });
+
+        it('should succeed when the account is already deleted', async () => {
+            const deletionResult = {
+                deleted: false,
+                idempotencyLogsDeleted: 0,
+            } satisfies Awaited<ReturnType<typeof userRepository.deleteAccount>>;
+
+            vi.mocked(userRepository.deleteAccount).mockResolvedValue(deletionResult);
+
+            const res = await request(app).delete('/users');
+
+            expect(res.status).toBe(OK);
+            expect(res.body.success).toBe(true);
+        });
+
+        it('should reject unauthenticated deletion', async () => {
+            const res = await request(app).delete('/users').set('Authorization', 'Bearer invalid-token');
+
+            expect(res.status).toBe(UNAUTHORIZED);
+            expect(userRepository.deleteAccount).not.toHaveBeenCalled();
         });
     });
 

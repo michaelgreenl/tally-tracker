@@ -259,9 +259,14 @@ export const remove = async (req: Request, res: Response<AuthResponse>) => {
     try {
         const userId = req.user?.id;
 
-        if (typeof userId === 'string') {
-            await userRepository.deleteUser(userId);
+        if (typeof userId !== 'string') {
+            return res.status(UNAUTHORIZED).json({ success: false, message: 'Not authenticated' });
         }
+
+        await userRepository.deleteAccount(userId);
+
+        res.clearCookie('access_token', clearCookieConfig);
+        res.clearCookie('refresh_token', clearCookieConfig);
 
         res.json({ success: true });
     } catch (error: unknown) {

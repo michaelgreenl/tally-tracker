@@ -19,7 +19,23 @@ export const createUser = async ({ email, password }: { email: string; password:
         },
     });
 
-export const deleteUser = async (userId: string) => prisma.user.delete({ where: { id: userId } });
+export const deleteAccount = async (userId: string) =>
+    prisma.$transaction(async (tx) => {
+        const idempotencyLogs = await tx.idempotencyLog.deleteMany({
+            where: { userId },
+        });
+
+        const users = await tx.user.deleteMany({
+            where: { id: userId },
+        });
+
+        return {
+            deleted: users.count > 0,
+            idempotencyLogsDeleted: idempotencyLogs.count,
+        };
+    });
+
+export const deleteUser = deleteAccount;
 
 export const getAllUsers = async ({ limit, offset }: { limit: number; offset: number }) =>
     prisma.user.findMany({
