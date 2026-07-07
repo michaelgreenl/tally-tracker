@@ -26,6 +26,7 @@
         "format:check": "prettier --check src/",
         "lint": "eslint src --ext .ts,.vue",
         "lint:style": "stylelint \"src/**/*.{vue,css,scss}\" --fix",
+        "lint:style:check": "stylelint \"src/**/*.{vue,css,scss}\"",
         "lint:all": "bun typecheck && bun format:check && bun lint:style && bun lint"
     },
     "dependencies": {
