@@ -1,0 +1,123 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Static checks and unit tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      HUSKY: 0
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.x
+          package-manager-cache: false
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Generate Prisma artifacts
+        run: bun --filter=@tally/core run generate
+
+      - name: Check formatting
+        run: bun run format:check
+
+      - name: Lint TypeScript and Vue
+        run: bun run lint
+
+      - name: Lint client styles
+        run: bun --filter=client run lint:style:check
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Unit tests
+        run: bun run test:unit
+
+      - name: Build
+        run: bun run build
+
+  e2e:
+    name: Cypress with Postgres
+    runs-on: ubuntu-24.04
+    needs: checks
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: template_db
+          POSTGRES_USER: template_user
+          POSTGRES_PASSWORD: template_pass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U template_user -d template_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      HUSKY: 0
+      NODE_ENV: development
+      PORT: 3000
+      FRONTEND_URL: http://localhost:8100
+      VITE_API_URL: http://localhost:3000
+      POSTGRES_URL: postgresql://template_user:template_pass@localhost:5432/template_db
+      JWT_SECRET: ci-jwt-secret-for-e2e
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.x
+          package-manager-cache: false
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Generate Prisma artifacts
+        run: bun --filter=@tally/core run generate
+
+      - name: Reset and seed database
+        run: bun --filter=@tally/core run render:start
+
+      - name: Run Cypress
+        uses: cypress-io/github-action@v7
+        with:
+          install: false
+          command: bun run test:e2e
+          start: |
+            bun run dev:server
+            bun run dev:client
+          wait-on: 'http://localhost:3000/health, http://localhost:8100'
+          wait-on-timeout: 120
