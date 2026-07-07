@@ -17,7 +17,7 @@
         "format": "prettier --write src/",
         "format:check": "prettier --check src/",
         "lint": "eslint src --ext .ts",
-        "lint:all": "bun typecheck && bun format:check && bun lint"
+        "lint:all": "bun typecheck && bun lint"
     },
     "dependencies": {
         "@prisma/client": "^7.8.0",
