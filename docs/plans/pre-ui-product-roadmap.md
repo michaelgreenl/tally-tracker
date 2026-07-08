@@ -13,6 +13,8 @@ This plan covers the product and platform work to complete before deeper UI/UX p
 
 ### 1. Settings, Legal Links, and Account Deletion
 
+- [x] complete
+
 Ship the compliance foundation first:
 
 - Add a Settings page.
@@ -25,6 +27,8 @@ This should happen before OAuth and billing because both features depend on clea
 
 ### 2. Sentry Crash and Error Reporting
 
+- [ ] complete
+
 Add minimal monitoring early:
 
 - Client/native error reporting.
@@ -35,6 +39,8 @@ Add minimal monitoring early:
 Avoid broader observability changes in this slice. The immediate value is catching regressions during the remaining account and payment work.
 
 ### 3. Email Verification and Forgot Password
+
+- [ ] complete
 
 Implement these together because they share token and email infrastructure:
 
@@ -48,6 +54,8 @@ Email verification can gate account trust later without blocking the account del
 
 ### 4. Apple and Google OAuth
 
+- [ ] complete
+
 Treat OAuth as an identity-model change, not a button-only change:
 
 - Add a provider identity model.
@@ -60,6 +68,8 @@ If Google sign-in ships on iOS, Sign in with Apple should ship in the same relea
 
 ### 5. Payment and Entitlement Foundation
 
+- [ ] complete
+
 Use RevenueCat or equivalent entitlement infrastructure before building the final paywall:
 
 - Configure monthly, yearly, and lifetime products.
@@ -71,6 +81,8 @@ Use RevenueCat or equivalent entitlement infrastructure before building the fina
 Monthly and yearly plans are subscriptions. Lifetime access should likely be modeled as a non-consumable purchase.
 
 ### 6. Upgrade UI Replacement
+
+- [ ] complete
 
 Replace the current informational upgrade page after entitlement behavior is reliable:
 
