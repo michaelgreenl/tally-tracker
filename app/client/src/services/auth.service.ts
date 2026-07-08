@@ -64,6 +64,10 @@ export const AuthService = {
         return apiFetch<AuthResponse, RefreshRequest>('/users/logout', { method: 'POST', body });
     },
 
+    async deleteAccount() {
+        return apiFetch<AuthResponse>('/users', { method: 'DELETE' });
+    },
+
     async register(data: AuthRequest) {
         return apiFetch<AuthResponse, AuthRequest>('/users', { method: 'POST', body: data });
     },

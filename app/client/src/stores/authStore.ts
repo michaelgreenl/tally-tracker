@@ -110,21 +110,37 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
+    async function clearAuthenticatedSession(): Promise<void> {
+        disconnectSocket();
+        user.value = null;
+        await AuthService.clearLocalAuth();
+        const counterStore = useCounterStore();
+        await counterStore.clearState();
+        router.push('/login');
+    }
+
     async function logout(notifyServer = true): Promise<StoreResponse> {
         try {
             if (notifyServer) await AuthService.logout();
         } catch (error: unknown) {
             console.warn('Server logout failed', error);
         } finally {
-            disconnectSocket();
-            user.value = null;
-            await AuthService.clearLocalAuth();
-            const counterStore = useCounterStore();
-            await counterStore.clearState();
-            router.push('/login');
+            await clearAuthenticatedSession();
         }
 
         return ok();
+    }
+
+    async function deleteAccount(): Promise<StoreResponse> {
+        try {
+            const res = await AuthService.deleteAccount();
+            if (!res.success) return fail(res.message || 'Failed to delete account');
+
+            await clearAuthenticatedSession();
+            return ok();
+        } catch (error: unknown) {
+            return fail(getErrorMessage(error, 'Failed to delete account'));
+        }
     }
 
     async function register(data: AuthRequest): Promise<StoreResponse> {
@@ -171,6 +187,7 @@ export const useAuthStore = defineStore('auth', () => {
         register,
         login,
         logout,
+        deleteAccount,
         updateUser,
     };
 });

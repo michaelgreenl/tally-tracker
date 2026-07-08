@@ -54,3 +54,16 @@ describe('AuthService.logout', () => {
         expect(apiFetchMock).toHaveBeenCalledWith('/users/logout', { method: 'POST' });
     });
 });
+
+describe('AuthService.deleteAccount', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        apiFetchMock.mockResolvedValue({ success: true });
+    });
+
+    it('calls the account deletion endpoint', async () => {
+        await AuthService.deleteAccount();
+
+        expect(apiFetchMock).toHaveBeenCalledWith('/users', { method: 'DELETE' });
+    });
+});

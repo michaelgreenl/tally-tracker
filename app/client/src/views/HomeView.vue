@@ -6,7 +6,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { GUEST_COUNTER_CAP, GUEST_COUNTER_LIMIT_MESSAGE, useCounterStore } from '@/stores/counterStore';
 import { useNetwork } from '@/composables/useNetwork';
 import { useSync } from '@/composables/useSync';
-import { cloudDoneOutline, cloudOfflineOutline, diamond } from 'ionicons/icons';
+import { cloudDoneOutline, cloudOfflineOutline, diamond, settingsOutline } from 'ionicons/icons';
 
 import BaseButton from '@/components/base/BaseButton.vue';
 import BaseModal from '@/components/base/BaseModal.vue';
@@ -85,7 +85,16 @@ const openUpgrade = () => {
                 </ion-title>
 
                 <ion-buttons slot="end">
-                    <ion-button v-if="authStore.isAuthenticated" @click="authStore.logout()">Logout</ion-button>
+                    <template v-if="authStore.isAuthenticated">
+                        <ion-button
+                            aria-label="Open settings"
+                            data-testid="home-settings-link"
+                            @click="router.push('/settings')"
+                        >
+                            <ion-icon slot="icon-only" :icon="settingsOutline" />
+                        </ion-button>
+                        <ion-button @click="authStore.logout()">Logout</ion-button>
+                    </template>
                     <ion-button v-else @click="router.push('/login')">Login</ion-button>
                 </ion-buttons>
             </ion-toolbar>

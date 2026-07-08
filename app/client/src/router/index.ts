@@ -3,8 +3,6 @@ import { useAuthStore } from '@/stores/authStore';
 import HomeView from '@/views/HomeView.vue';
 import LoginView from '@/views/LoginView.vue';
 import RegisterView from '@/views/RegisterView.vue';
-import JoinView from '@/views/JoinView.vue';
-import UpgradeView from '@/views/UpgradeView.vue';
 
 import type { RouteRecordRaw } from 'vue-router';
 
@@ -15,8 +13,24 @@ const routes: Array<RouteRecordRaw> = [
     { path: '/login', name: 'Login', component: LoginView, meta: { title: 'Login' } },
     { path: '/register', name: 'Register', component: RegisterView, meta: { title: 'Register' } },
     { path: '/home', name: 'Home', component: HomeView },
-    { path: '/join', name: 'Join', component: JoinView },
-    { path: '/upgrade', name: 'Upgrade', component: UpgradeView, meta: { title: 'Upgrade' } },
+    {
+        path: '/join',
+        name: 'Join',
+        component: () => import('@/views/JoinView.vue'),
+        meta: { title: 'Join' },
+    },
+    {
+        path: '/upgrade',
+        name: 'Upgrade',
+        component: () => import('@/views/UpgradeView.vue'),
+        meta: { title: 'Upgrade' },
+    },
+    {
+        path: '/settings',
+        name: 'Settings',
+        component: () => import('@/views/SettingsView.vue'),
+        meta: { title: 'Settings' },
+    },
 ];
 
 const router = createRouter({

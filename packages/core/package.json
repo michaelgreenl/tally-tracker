@@ -8,7 +8,7 @@
         ".": "./src/index.ts"
     },
     "prisma": {
-        "seed": "tsx prisma/seed.ts"
+        "seed": "tsx prisma/seeds/index.ts"
     },
     "scripts": {
         "generate": "npx prisma generate",

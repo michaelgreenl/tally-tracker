@@ -14,6 +14,7 @@ const {
         cacheUser: vi.fn(),
         checkAuth: vi.fn(),
         clearLocalAuth: vi.fn(),
+        deleteAccount: vi.fn(),
         getAccessToken: vi.fn(),
         getCachedUser: vi.fn(),
         getRefreshToken: vi.fn(),
@@ -91,6 +92,7 @@ describe('authStore socket lifecycle', () => {
 
         authServiceMock.cacheUser.mockResolvedValue(undefined);
         authServiceMock.clearLocalAuth.mockResolvedValue(undefined);
+        authServiceMock.deleteAccount.mockResolvedValue({ success: true });
         authServiceMock.logout.mockResolvedValue({ success: true });
         authServiceMock.setAccessToken.mockResolvedValue(undefined);
         authServiceMock.setRefreshToken.mockResolvedValue(undefined);
@@ -164,5 +166,32 @@ describe('authStore socket lifecycle', () => {
         expect(authServiceMock.clearLocalAuth).toHaveBeenCalledTimes(1);
         expect(counterStoreMock.clearState).toHaveBeenCalledTimes(1);
         expect(routerPushMock).toHaveBeenCalledWith('/login');
+    });
+
+    it('deletes the account and clears local session state', async () => {
+        const store = useAuthStore();
+
+        const result = await store.deleteAccount();
+
+        expect(result.success).toBe(true);
+        expect(authServiceMock.deleteAccount).toHaveBeenCalledTimes(1);
+        expect(disconnectSocketMock).toHaveBeenCalledTimes(1);
+        expect(authServiceMock.clearLocalAuth).toHaveBeenCalledTimes(1);
+        expect(counterStoreMock.clearState).toHaveBeenCalledTimes(1);
+        expect(routerPushMock).toHaveBeenCalledWith('/login');
+    });
+
+    it('keeps local session state when account deletion fails', async () => {
+        authServiceMock.deleteAccount.mockRejectedValue(new Error('Delete failed'));
+        const store = useAuthStore();
+
+        const result = await store.deleteAccount();
+
+        expect(result.success).toBe(false);
+        expect(result.message).toBe('Delete failed');
+        expect(disconnectSocketMock).not.toHaveBeenCalled();
+        expect(authServiceMock.clearLocalAuth).not.toHaveBeenCalled();
+        expect(counterStoreMock.clearState).not.toHaveBeenCalled();
+        expect(routerPushMock).not.toHaveBeenCalled();
     });
 });

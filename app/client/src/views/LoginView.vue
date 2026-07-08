@@ -8,6 +8,7 @@ import { IonPage, IonContent, IonGrid, IonRow, IonCol, IonItem, IonLabel, IonTog
 import TextInput from '@/components/inputs/TextInput.vue';
 import BaseButton from '@/components/base/BaseButton.vue';
 import BaseNavLink from '@/components/base/BaseNavLink.vue';
+import LegalLinks from '@/components/legal/LegalLinks.vue';
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -80,6 +81,7 @@ const handleLogin = async () => {
                             <BaseButton type="submit" :loading="loading">Login</BaseButton>
                             <div class="footer">
                                 <BaseNavLink to="/register">Create an account</BaseNavLink>
+                                <LegalLinks />
                             </div>
                         </form>
                     </ion-col>
