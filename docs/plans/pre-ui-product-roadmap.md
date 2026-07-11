@@ -27,7 +27,7 @@ This should happen before OAuth and billing because both features depend on clea
 
 ### 2. Sentry Crash and Error Reporting
 
-- [ ] complete
+- [x] complete
 
 Add minimal monitoring early:
 

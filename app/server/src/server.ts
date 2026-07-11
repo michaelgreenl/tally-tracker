@@ -3,11 +3,14 @@ dotenv.config({
     path: `.env.${process.env.NODE_ENV || 'development'}`,
 });
 
-import app from './app.js';
 import { createServer } from 'http';
 import { startCleanupJob } from './db/cron.js';
+import { initSentry } from './monitoring/sentry.js';
 import initializeIO from './socket/index.js';
 
+initSentry();
+
+const { default: app } = await import('./app.js');
 const httpServer = createServer(app);
 const io = initializeIO(httpServer);
 

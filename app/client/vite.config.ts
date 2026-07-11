@@ -1,15 +1,45 @@
+import { sentryVitePlugin } from '@sentry/vite-plugin';
 import legacy from '@vitejs/plugin-legacy';
 import vue from '@vitejs/plugin-vue';
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 
+import type { PluginOption } from 'vite';
+
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, process.cwd(), '');
     const API_URL = env.VITE_API_URL || 'http://localhost:3000';
+    const sentryProjects = env.SENTRY_PROJECT?.split(',')
+        .map((project) => project.trim())
+        .filter(Boolean);
+    const sentrySourceMapsEnabled = Boolean(env.SENTRY_AUTH_TOKEN && env.SENTRY_ORG && sentryProjects?.length);
+    const plugins: PluginOption[] = [vue(), legacy()];
+
+    if (sentrySourceMapsEnabled && sentryProjects) {
+        plugins.push(
+            sentryVitePlugin({
+                org: env.SENTRY_ORG,
+                project: sentryProjects.length === 1 ? sentryProjects[0] : sentryProjects,
+                authToken: env.SENTRY_AUTH_TOKEN,
+                telemetry: false,
+                release: {
+                    name: env.SENTRY_RELEASE || undefined,
+                    dist: env.SENTRY_DIST || undefined,
+                },
+                sourcemaps: {
+                    filesToDeleteAfterUpload: ['./dist/**/*.map'],
+                },
+            }),
+        );
+    }
+
     console.log(`⚡️ Vite Proxy pointing to: ${API_URL}`);
 
     return {
-        plugins: [vue(), legacy()],
+        plugins,
+        build: {
+            sourcemap: sentrySourceMapsEnabled ? 'hidden' : false,
+        },
         css: {
             preprocessorOptions: {
                 scss: {

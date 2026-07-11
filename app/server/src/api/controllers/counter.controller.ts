@@ -1,6 +1,7 @@
 import { OK, CREATED, BAD_REQUEST, FORBIDDEN, NOT_FOUND, CONFLICT, SERVER_ERROR } from '@tally/utils';
 import * as counterRepository from '../../db/repositories/counter.repository.js';
 import * as userRepository from '../../db/repositories/user.repository.js';
+import { captureServerError } from '../../monitoring/sentry.js';
 import { runIdempotentMutation } from '../../services/idempotency.service.js';
 
 import type { Request, Response } from 'express';
@@ -80,6 +81,7 @@ export const post = async (
 
         return sendMutationResponse(res, result);
     } catch (error: unknown) {
+        captureServerError(error, { req, source: 'counter.post' });
         console.error('Counter Controller Error: ', error);
         return res.status(SERVER_ERROR).json({
             success: false,
@@ -115,6 +117,7 @@ export const remove = async (req: Request, res: Response<CounterResponse>) => {
 
         return sendMutationResponse(res, result);
     } catch (error: unknown) {
+        captureServerError(error, { req, source: 'counter.remove' });
         console.error('Counter Controller Error: ', error);
         return res.status(SERVER_ERROR).json({
             success: false,
@@ -139,6 +142,7 @@ export const getAllByUser = async (req: Request, res: Response<CounterResponse>)
 
         res.json({ success: true, data: { counters } });
     } catch (error: unknown) {
+        captureServerError(error, { req, source: 'counter.getAllByUser' });
         console.error('Counter Controller Error: ', error);
         res.status(SERVER_ERROR).json({
             success: false,
@@ -179,6 +183,7 @@ export const put = async (
 
         return sendMutationResponse(res, result);
     } catch (error: unknown) {
+        captureServerError(error, { req, source: 'counter.put' });
         console.error('Counter Controller Error: ', error);
         return res.status(SERVER_ERROR).json({
             success: false,
@@ -219,6 +224,7 @@ export const setCount = async (
 
         return sendMutationResponse(res, result);
     } catch (error: unknown) {
+        captureServerError(error, { req, source: 'counter.setCount' });
         console.error('Counter Controller Error: ', error);
         return res.status(SERVER_ERROR).json({
             success: false,
@@ -279,6 +285,7 @@ export const increment = async (
 
         return sendMutationResponse(res, result);
     } catch (error: unknown) {
+        captureServerError(error, { req, source: 'counter.increment' });
         console.error('Counter Controller Error: ', error);
         return res.status(SERVER_ERROR).json({
             success: false,
@@ -361,6 +368,7 @@ export const join = async (
 
         return sendMutationResponse(res, result);
     } catch (error: unknown) {
+        captureServerError(error, { req, source: 'counter.join' });
         console.error('Join Error:', error);
         return res.status(SERVER_ERROR).json({ success: false, message: 'Server error: ' + getErrorMessage(error) });
     }
@@ -409,6 +417,7 @@ export const removeShare = async (
 
         return sendMutationResponse(res, result);
     } catch (error: unknown) {
+        captureServerError(error, { req, source: 'counter.removeShare' });
         console.error('Remove Shared Counter Error: ', error);
         return res.status(SERVER_ERROR).json({ success: false, message: 'Server error: ' + getErrorMessage(error) });
     }

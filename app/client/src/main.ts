@@ -28,9 +28,11 @@ import socket from './socket/index.ts';
 import { registerCounterListeners } from './socket/counter.socket.ts';
 import App from './App.vue';
 import { IonicVue } from '@ionic/vue';
+import { initSentry } from './monitoring/sentry';
 
 const app = createApp(App).use(IonicVue).use(router);
 
+initSentry(app);
 app.use(createPinia());
 registerCounterListeners(socket);
 

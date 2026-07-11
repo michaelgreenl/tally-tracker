@@ -7,6 +7,7 @@ import {
     refreshCookieConfig,
     clearCookieConfig,
 } from '../../config/cookie.config.js';
+import { captureServerError } from '../../monitoring/sentry.js';
 import jwt from '../../util/jwt.util.js';
 import bcrypt from 'bcrypt';
 import { Prisma } from '@prisma/client';
@@ -45,6 +46,7 @@ export const checkAuth = async (req: Request, res: Response<AuthResponse>) => {
             data: { user },
         });
     } catch (error: unknown) {
+        captureServerError(error, { req, source: 'user.checkAuth' });
         console.error('Authentication Check Error:', error);
         res.status(SERVER_ERROR).json({
             success: false,
@@ -81,6 +83,7 @@ export const post = async (
                 message: `${field} is already in use.`,
             });
         } else {
+            captureServerError(error, { req, source: 'user.post' });
             console.error('User Controller Error: ', error);
             res.status(SERVER_ERROR).json({
                 success: false,
@@ -133,6 +136,7 @@ export const login = async (
 
         res.json({ success: true, data: { user: clientUser, accessToken, refreshToken } });
     } catch (error: unknown) {
+        captureServerError(error, { req, source: 'user.login' });
         console.error('User Controller Error: ', error);
         res.status(SERVER_ERROR).json({
             success: false,
@@ -182,6 +186,7 @@ export const refresh = async (
             data: { accessToken, refreshToken: newTokenRecord.id },
         });
     } catch (error: unknown) {
+        captureServerError(error, { req, source: 'user.refresh' });
         console.error('Refresh Token Error:', error);
         res.status(SERVER_ERROR).json({
             success: false,
@@ -208,6 +213,7 @@ export const logout = async (req: Request, res: Response<AuthResponse>) => {
 
         res.json({ success: true });
     } catch (error: unknown) {
+        captureServerError(error, { req, source: 'user.logout' });
         console.error('User Controller Error: ', error);
         res.status(SERVER_ERROR).json({
             success: false,
@@ -246,6 +252,7 @@ export const put = async (
                 message: `${field} is already in use.`,
             });
         } else {
+            captureServerError(error, { req, source: 'user.put' });
             console.error('User Controller Error: ', error);
             res.status(SERVER_ERROR).json({
                 success: false,
@@ -270,6 +277,7 @@ export const remove = async (req: Request, res: Response<AuthResponse>) => {
 
         res.json({ success: true });
     } catch (error: unknown) {
+        captureServerError(error, { req, source: 'user.remove' });
         console.error('User Controller Error: ', error);
         res.status(SERVER_ERROR).json({
             success: false,
