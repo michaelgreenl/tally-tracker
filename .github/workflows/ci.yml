@@ -111,6 +111,9 @@ jobs:
       - name: Apply committed migrations
         run: bun --filter=@tally/core run migrate:deploy
 
+      - name: Check migration drift
+        run: bun --filter=@tally/core run migrate:check
+
       - name: Run server integration tests
         run: bun --filter=server run test:integration
 

@@ -56,8 +56,7 @@ CREATE TABLE "refresh_tokens" (
 -- CreateTable
 CREATE TABLE "users" (
     "id" UUID NOT NULL,
-    "email" TEXT,
-    "phone" TEXT,
+    "email" TEXT NOT NULL,
     "password" TEXT NOT NULL,
     "tier" "UserTier" NOT NULL DEFAULT 'BASIC',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -74,9 +73,6 @@ CREATE UNIQUE INDEX "counter_shares_counter_id_user_id_key" ON "counter_shares"(
 
 -- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
-
--- CreateIndex
-CREATE UNIQUE INDEX "users_phone_key" ON "users"("phone");
 
 -- AddForeignKey
 ALTER TABLE "counters" ADD CONSTRAINT "counters_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;

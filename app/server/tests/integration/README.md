@@ -8,6 +8,7 @@ From the repository root, run:
 bun run test:db:start
 bun --filter=@tally/core run generate:client
 bun run test:db:migrate
+bun --filter=@tally/core run migrate:check
 bun run test:integration
 bun run test:db:stop
 ```
