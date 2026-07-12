@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SyncQueueService } from '../queue';
-import { buildCommand } from '../../../../tests/e2e/fixtures/counter.fixture';
+import { buildCommand } from '@/test/fixtures/sync.fixture';
 
 vi.mock('@capacitor/preferences', () => ({
     Preferences: {
@@ -14,7 +14,9 @@ import { Preferences } from '@capacitor/preferences';
 
 describe('SyncQueueService', () => {
     beforeEach(() => {
-        vi.clearAllMocks();
+        vi.mocked(Preferences.get).mockReset();
+        vi.mocked(Preferences.set).mockReset();
+        vi.mocked(Preferences.remove).mockReset();
     });
 
     describe('getQueue', () => {

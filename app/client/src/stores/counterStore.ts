@@ -141,11 +141,28 @@ export const useCounterStore = defineStore('counter', () => {
     async function consolidateGuestCounters() {
         if (isGuest.value) return;
 
+        const currentUserId = authStore.user?.id;
+        if (!currentUserId) return;
+
+        if (counters.value.length === 0) {
+            counters.value = await CounterService.getAllLocal();
+        }
+
+        counters.value = counters.value.filter(
+            (counter) =>
+                counter.userId === 'guest' ||
+                counter.userId === currentUserId ||
+                counter.shares?.some((share) => share.userId === currentUserId && share.status === 'ACCEPTED'),
+        );
+
         const guestCounters = counters.value.filter((c) => c.userId === 'guest');
-        if (guestCounters.length === 0) return;
+        if (guestCounters.length === 0) {
+            await saveState();
+            return;
+        }
 
         guestCounters.forEach((c) => {
-            c.userId = authStore.user?.id || 'unknown';
+            c.userId = currentUserId;
         });
 
         let remoteCounters: ClientCounter[] = [];
@@ -158,7 +175,8 @@ export const useCounterStore = defineStore('counter', () => {
 
         const remoteIds = new Set(remoteCounters.map((c) => c.id));
         const newGuestCounters = guestCounters.filter((c) => !remoteIds.has(c.id));
-        counters.value = [...remoteCounters, ...newGuestCounters];
+        const pendingLocalCounters = counters.value.filter((c) => !remoteIds.has(c.id));
+        counters.value = [...remoteCounters, ...pendingLocalCounters];
         await saveState();
 
         if (newGuestCounters.length > 0) {

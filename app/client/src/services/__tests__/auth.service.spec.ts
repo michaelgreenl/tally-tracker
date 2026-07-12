@@ -26,12 +26,16 @@ vi.mock('@capacitor/preferences', () => ({
 
 import { AuthService } from '../auth.service';
 
-describe('AuthService.logout', () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
-        apiFetchMock.mockResolvedValue({ success: true });
-    });
+beforeEach(() => {
+    apiFetchMock.mockReset();
+    isNativePlatformMock.mockReset();
+    vi.mocked(Preferences.get).mockReset();
+    vi.mocked(Preferences.remove).mockReset();
+    vi.mocked(Preferences.set).mockReset();
+    apiFetchMock.mockResolvedValue({ success: true });
+});
 
+describe('AuthService.logout', () => {
     it('sends the stored refresh token when logging out from native platforms', async () => {
         isNativePlatformMock.mockReturnValue(true);
         vi.mocked(Preferences.get).mockResolvedValue({ value: '2faf6705-a661-42e9-9bd8-54155697cc2a' });
@@ -56,14 +60,10 @@ describe('AuthService.logout', () => {
 });
 
 describe('AuthService.deleteAccount', () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
-        apiFetchMock.mockResolvedValue({ success: true });
-    });
-
-    it('calls the account deletion endpoint', async () => {
+    it('sends DELETE to the account endpoint', async () => {
         await AuthService.deleteAccount();
 
+        expect(apiFetchMock).toHaveBeenCalledOnce();
         expect(apiFetchMock).toHaveBeenCalledWith('/users', { method: 'DELETE' });
     });
 });

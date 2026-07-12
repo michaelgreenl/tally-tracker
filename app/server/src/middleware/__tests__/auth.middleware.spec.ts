@@ -71,12 +71,17 @@ describe('Auth Middleware', () => {
         expect(jwtUtil.verify).toHaveBeenCalledWith('cookie-token');
     });
 
-    it('should return 401 when no token is present', () => {
-        const req = mockReq();
+    it.each([
+        { authorization: undefined, case: 'credentials are missing' },
+        { authorization: 'Bearer', case: 'the Bearer header is malformed' },
+        { authorization: 'Bearer ', case: 'the Bearer token is empty' },
+    ])('should return 401 without verification when $case', ({ authorization }) => {
+        const req = mockReq({ headers: { authorization } });
         const res = mockRes();
 
         jwt(req, res, mockNext);
 
+        expect(jwtUtil.verify).not.toHaveBeenCalled();
         expect(res.status).toHaveBeenCalledWith(401);
         expect(res.json).toHaveBeenCalledWith({ success: false, message: 'Not authenticated' });
         expect(mockNext).not.toHaveBeenCalled();

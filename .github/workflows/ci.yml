@@ -41,8 +41,8 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Generate Prisma artifacts
-        run: bun --filter=@tally/core run generate
+      - name: Generate Prisma Client
+        run: bun --filter=@tally/core run generate:client
 
       - name: Lint TypeScript and Vue
         run: bun run lint
@@ -56,8 +56,63 @@ jobs:
       - name: Unit tests
         run: bun run test:unit
 
+      - name: Component tests
+        run: bun run test:component
+
       - name: Build
         run: bun run build
+
+  server-integration:
+    name: Server integration with Postgres
+    runs-on: ubuntu-24.04
+    needs: checks
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: tally_tracker_test
+          POSTGRES_USER: tally_test_user
+          POSTGRES_PASSWORD: tally_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tally_test_user -d tally_tracker_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      HUSKY: 0
+      NODE_ENV: test
+      TALLY_TEST_DB_RESET: 1
+      POSTGRES_URL: postgresql://tally_test_user:tally_test_password@127.0.0.1:5432/tally_tracker_test
+      JWT_SECRET: ci-jwt-secret-for-server-integration
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.x
+          package-manager-cache: false
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: bun --filter=@tally/core run generate:client
+
+      - name: Apply committed migrations
+        run: bun --filter=@tally/core run migrate:deploy
+
+      - name: Run server integration tests
+        run: bun --filter=server run test:integration
 
   e2e:
     name: Cypress with Postgres
@@ -104,11 +159,13 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Generate Prisma artifacts
-        run: bun --filter=@tally/core run generate
+      - name: Generate Prisma Client
+        run: bun --filter=@tally/core run generate:client
 
-      - name: Reset and seed database
-        run: bun --filter=@tally/core run render:start
+      - name: Apply committed migrations and seed database
+        run: |
+          bun --filter=@tally/core run migrate:deploy
+          bun --filter=@tally/core run db:seed
 
       - name: Run Cypress
         uses: cypress-io/github-action@v7

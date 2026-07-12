@@ -2,7 +2,7 @@ import { OK, CREATED, FORBIDDEN, NOT_FOUND, CONFLICT } from '@tally/utils';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Request, Response, NextFunction } from 'express';
 import request from 'supertest';
-import app from '../../../src/app.js';
+import app from '../../src/app.js';
 import {
     buildCounter,
     buildShare,
@@ -11,14 +11,14 @@ import {
     TEST_OTHER_USER_ID,
 } from '../fixtures/counter.fixture.js';
 
-vi.mock('../../../src/middleware/auth.middleware', () => ({
+vi.mock('../../src/middleware/auth.middleware', () => ({
     jwt: (req: Request, res: Response, next: NextFunction) => {
         req.user = { id: TEST_USER_ID, email: 'test@test.com', tier: 'BASIC' };
         next();
     },
 }));
 
-vi.mock('../../../src/db/repositories/counter.repository', () => ({
+vi.mock('../../src/db/repositories/counter.repository', () => ({
     post: vi.fn(),
     getAllByUser: vi.fn(),
     getByIdOrShare: vi.fn(),
@@ -32,12 +32,12 @@ vi.mock('../../../src/db/repositories/counter.repository', () => ({
     updateShare: vi.fn(),
 }));
 
-vi.mock('../../../src/db/repositories/user.repository', () => ({
+vi.mock('../../src/db/repositories/user.repository', () => ({
     getUserTierById: vi.fn(),
 }));
 
-import * as counterRepo from '../../../src/db/repositories/counter.repository.js';
-import * as userRepo from '../../../src/db/repositories/user.repository.js';
+import * as counterRepo from '../../src/db/repositories/counter.repository.js';
+import * as userRepo from '../../src/db/repositories/user.repository.js';
 
 describe('Sharing Routes', () => {
     beforeEach(() => {

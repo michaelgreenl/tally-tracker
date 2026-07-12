@@ -1,0 +1,19 @@
+name: tally-tracker-test
+
+services:
+    postgres-test:
+        image: postgres:16
+        environment:
+            POSTGRES_DB: tally_tracker_test
+            POSTGRES_USER: tally_test_user
+            POSTGRES_PASSWORD: tally_test_password
+        ports:
+            - '127.0.0.1:5433:5432'
+        tmpfs:
+            - /var/lib/postgresql/data
+        healthcheck:
+            test: ['CMD-SHELL', 'pg_isready -U tally_test_user -d tally_tracker_test']
+            interval: 1s
+            timeout: 5s
+            retries: 20
+            start_period: 5s

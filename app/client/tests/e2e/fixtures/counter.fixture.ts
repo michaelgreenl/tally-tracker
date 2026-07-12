@@ -1,18 +1,14 @@
 import type { ClientCounter } from '@tally/core';
 import type { HexColor } from '@tally/core';
-import type { MutationCommand } from '@/services/sync/types';
-
-export const TEST_COUNTER_ID = crypto.randomUUID();
-export const TEST_USER_ID = crypto.randomUUID();
 
 export const buildCounter = (overrides: Partial<ClientCounter> = {}): ClientCounter => ({
-    id: TEST_COUNTER_ID,
+    id: crypto.randomUUID(),
     title: 'Test Counter',
     count: 0,
     color: '#000000' as HexColor,
     type: 'PERSONAL',
     inviteCode: null,
-    userId: TEST_USER_ID,
+    userId: crypto.randomUUID(),
     ...overrides,
 });
 
@@ -22,14 +18,3 @@ export const buildSharedCounter = (overrides: Partial<ClientCounter> = {}): Clie
         inviteCode: 'ABC12345',
         ...overrides,
     });
-
-export const buildCommand = (overrides: Partial<MutationCommand> = {}): MutationCommand => ({
-    id: crypto.randomUUID(),
-    queuedByUserId: TEST_USER_ID,
-    type: 'CREATE',
-    entity: 'counter',
-    entityId: TEST_COUNTER_ID,
-    payload: { title: 'Test Counter' },
-    timestamp: Date.now(),
-    ...overrides,
-});

@@ -12,6 +12,9 @@
     },
     "scripts": {
         "generate": "npx prisma generate",
+        "generate:client": "prisma generate --generator client",
+        "migrate:deploy": "prisma migrate deploy",
+        "db:seed": "prisma db seed",
         "render:start": "npx prisma db push --force-reset && npx prisma db seed",
         "typecheck": "tsc --noEmit",
         "format": "prettier --write src/",
