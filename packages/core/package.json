@@ -14,6 +14,7 @@
         "generate": "npx prisma generate",
         "generate:client": "prisma generate --generator client",
         "migrate:deploy": "prisma migrate deploy",
+        "migrate:check": "prisma migrate diff --from-config-datasource --to-schema prisma/schema --exit-code",
         "db:seed": "prisma db seed",
         "render:start": "npx prisma db push --force-reset && npx prisma db seed",
         "typecheck": "tsc --noEmit",
