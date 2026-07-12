@@ -1,4 +1,5 @@
 import { OK, UNAUTHORIZED } from '../support/status-codes';
+import { buildCounter } from '../fixtures/counter.fixture';
 
 describe('Authentication', () => {
     beforeEach(() => {
@@ -7,10 +8,6 @@ describe('Authentication', () => {
     });
 
     describe('Login', () => {
-        beforeEach(() => {
-            cy.visit('/login');
-        });
-
         it('should login and redirect to home', () => {
             cy.intercept('POST', '/users/login').as('login');
 
@@ -28,6 +25,9 @@ describe('Authentication', () => {
 
             cy.wait('@login').then(({ request, response }) => {
                 expect(request.body.rememberMe).to.eq(true);
+
+                if (!response) throw new Error('Expected the login request to receive a response');
+
                 expect(response.statusCode).to.eq(OK);
             });
 
@@ -81,17 +81,18 @@ describe('Authentication', () => {
 
     describe('Token Refresh', () => {
         it('should refresh token and retry request on 401', () => {
+            let authenticatedUserId = '';
+            let recoveredCounter: ReturnType<typeof buildCounter> | undefined;
+
             cy.intercept('POST', '/users/login').as('login');
 
-            let counterCallCount = 0;
-            cy.intercept('GET', '/counters', (req) => {
-                counterCallCount++;
-                if (counterCallCount === 2) {
-                    req.reply({ statusCode: UNAUTHORIZED, body: { message: 'Token expired' } });
-                } else {
-                    req.reply({ statusCode: OK, body: { success: true, data: { counters: [] } } });
-                }
-            }).as('getCounters');
+            cy.intercept(
+                { method: 'GET', url: '/counters', times: 1 },
+                {
+                    statusCode: OK,
+                    body: { success: true, data: { counters: [] } },
+                },
+            ).as('initialCounters');
 
             cy.intercept('POST', '/users/refresh', {
                 statusCode: OK,
@@ -99,13 +100,59 @@ describe('Authentication', () => {
             }).as('refreshToken');
 
             cy.login('alice@example.com', 'password123', true);
-            cy.wait('@getCounters');
+            cy.wait('@login').then(({ response }) => {
+                const userId = response?.body?.data?.user?.id;
+                if (typeof userId !== 'string' || !userId) {
+                    throw new Error('Expected login response to identify the authenticated user');
+                }
+
+                authenticatedUserId = userId;
+            });
+            cy.wait('@initialCounters').its('response.statusCode').should('eq', OK);
+
+            let refreshCounterCallCount = 0;
+
+            cy.intercept('GET', '/counters', (req) => {
+                refreshCounterCallCount++;
+
+                if (refreshCounterCallCount === 1) {
+                    req.alias = 'expiredCounters';
+                    req.reply({ statusCode: UNAUTHORIZED, body: { message: 'Token expired' } });
+                    return;
+                }
+
+                if (!authenticatedUserId) throw new Error('Expected authenticated user id before retrying counters');
+
+                recoveredCounter = buildCounter({
+                    title: 'Recovered Counter',
+                    count: 7,
+                    userId: authenticatedUserId,
+                });
+                req.alias = 'retriedCounters';
+                req.reply({
+                    statusCode: OK,
+                    body: { success: true, data: { counters: [recoveredCounter] } },
+                });
+            });
 
             cy.reload();
 
+            cy.wait('@expiredCounters').its('response.statusCode').should('eq', UNAUTHORIZED);
             cy.wait('@refreshToken');
-            cy.wait('@getCounters');
+            cy.wait('@retriedCounters').then(({ response }) => {
+                if (!recoveredCounter) throw new Error('Expected the retry response counter fixture');
+
+                expect(response?.statusCode).to.eq(OK);
+                expect(response?.body).to.deep.equal({
+                    success: true,
+                    data: { counters: [recoveredCounter] },
+                });
+            });
+
             cy.url().should('include', '/home');
+            cy.contains('.counter-wrapper', 'Recovered Counter').within(() => {
+                cy.contains('h3', '7').should('be.visible');
+            });
         });
 
         it('should logout when refresh fails', () => {

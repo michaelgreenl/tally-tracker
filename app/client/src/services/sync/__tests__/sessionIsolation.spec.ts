@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-import { buildCommand } from '../../../../tests/e2e/fixtures/counter.fixture';
+import { buildCommand } from '@/test/fixtures/sync.fixture';
 
 const {
     apiFetchMock,
@@ -103,11 +103,26 @@ vi.mock('@/stores/counterStore', () => ({
 import { SyncManager } from '../manager';
 import { SyncQueueService } from '../queue';
 import { useAuthStore } from '@/stores/authStore';
+import { Preferences } from '@capacitor/preferences';
 
 describe('sync queue session isolation', () => {
     beforeEach(() => {
         setActivePinia(createPinia());
-        vi.clearAllMocks();
+        apiFetchMock.mockReset();
+        for (const mock of Object.values(authServiceMock)) mock.mockReset();
+        connectSocketMock.mockReset();
+        disconnectSocketMock.mockReset();
+        counterStoreMock.clearState.mockReset();
+        counterStoreMock.consolidateGuestCounters.mockReset();
+        isNativePlatformMock.mockReset();
+        localStorageMock.getItem.mockReset();
+        localStorageMock.removeItem.mockReset();
+        localStorageMock.setItem.mockReset();
+        networkGetStatusMock.mockReset();
+        routerPushMock.mockReset();
+        vi.mocked(Preferences.get).mockClear();
+        vi.mocked(Preferences.remove).mockClear();
+        vi.mocked(Preferences.set).mockClear();
         preferencesStore.clear();
         SyncManager.isSyncing = false;
         SyncManager.syncRequested = false;

@@ -2,6 +2,29 @@ import { OK, CREATED, NOT_FOUND } from '../support/status-codes';
 import { buildCounter, buildSharedCounter } from '../fixtures/counter.fixture';
 import { buildClientUser } from '../fixtures/user.fixture';
 
+const authRes = (user: ReturnType<typeof buildClientUser>) => ({
+    statusCode: OK,
+    body: {
+        success: true,
+        data: { user, accessToken: 'token' },
+    },
+});
+
+const loginWithStubbedCounters = (
+    user: ReturnType<typeof buildClientUser>,
+    counters: ReturnType<typeof buildCounter>[] = [],
+) => {
+    cy.intercept('POST', '/users/login', authRes(user));
+    cy.intercept('GET', '/users/check-auth', authRes(user));
+    cy.intercept('GET', '/counters', {
+        statusCode: OK,
+        body: { success: true, data: { counters } },
+    }).as('getCounters');
+
+    cy.login(user.email, 'password123');
+    cy.wait('@getCounters').its('response.statusCode').should('eq', OK);
+};
+
 describe('Counter Sharing', () => {
     beforeEach(() => {
         cy.clearCookies();
@@ -9,28 +32,39 @@ describe('Counter Sharing', () => {
     });
 
     describe('Join Shared Counter', () => {
-        it('should join a shared counter via invite link', () => {
-            cy.login('alice@example.com', 'password123');
+        it('joins a shared counter from an invite link', () => {
+            const user = buildClientUser({ email: 'alice@example.com', tier: 'PREMIUM' });
+            const owner = buildClientUser({ email: 'owner@example.com', tier: 'PREMIUM' });
+            loginWithStubbedCounters(user);
 
             cy.intercept('POST', '/counters/join', {
                 statusCode: CREATED,
                 body: {
                     success: true,
                     data: {
-                        counter: buildSharedCounter({ title: 'Shared Counter' }),
+                        counter: buildSharedCounter({ title: 'Shared Counter', userId: owner.id }),
                     },
                 },
             }).as('joinCounter');
 
-            cy.visit('/join?code=ABC123');
+            cy.visit('/join?code=ABC123', {
+                onBeforeLoad(win) {
+                    cy.stub(win, 'alert').as('alert');
+                },
+            });
 
-            cy.wait('@joinCounter');
+            cy.wait('@joinCounter').then(({ request, response }) => {
+                expect(request.body).to.deep.equal({ inviteCode: 'ABC123' });
+                expect(response?.statusCode).to.eq(CREATED);
+            });
+            cy.get('@alert').should('have.been.calledOnceWithExactly', 'Counter accepted!');
             cy.url().should('include', '/home');
             cy.contains('Shared Counter').should('be.visible');
         });
 
-        it('should show error for invalid invite code', () => {
-            cy.login('alice@example.com', 'password123');
+        it('reports an invalid invite code', () => {
+            const user = buildClientUser({ email: 'alice@example.com', tier: 'PREMIUM' });
+            loginWithStubbedCounters(user);
 
             cy.intercept('POST', '/counters/join', {
                 statusCode: NOT_FOUND,
@@ -40,35 +74,31 @@ describe('Counter Sharing', () => {
                 },
             }).as('joinCounter');
 
-            cy.visit('/join?code=INVALID');
-
-            cy.wait('@joinCounter');
-            cy.on('window:alert', (text) => {
-                expect(text).to.contains('Failed to join');
+            cy.visit('/join?code=INVALID', {
+                onBeforeLoad(win) {
+                    cy.stub(win, 'alert').as('alert');
+                },
             });
-        });
 
-        it('should require authentication to join', () => {
-            cy.visit('/join?code=ABC123');
+            cy.wait('@joinCounter').then(({ request, response }) => {
+                expect(request.body).to.deep.equal({ inviteCode: 'INVALID' });
+                expect(response?.statusCode).to.eq(NOT_FOUND);
+            });
+            cy.get('@alert').should(
+                'have.been.calledOnceWithExactly',
+                'Failed to join: Invalid or expired invite link',
+            );
+            cy.url().should('include', '/home');
         });
     });
 
     describe('Share Counter', () => {
         it('should show share button only for shared counters', () => {
-            cy.login('alice@example.com', 'password123');
-
-            cy.intercept('GET', '/counters', {
-                statusCode: OK,
-                body: {
-                    success: true,
-                    data: {
-                        counters: [buildCounter({ title: 'Personal' }), buildSharedCounter({ title: 'Shared' })],
-                    },
-                },
-            }).as('getCounters');
-
-            cy.visit('/home');
-            cy.wait('@getCounters');
+            const user = buildClientUser({ email: 'alice@example.com', tier: 'PREMIUM' });
+            loginWithStubbedCounters(user, [
+                buildCounter({ title: 'Personal', userId: user.id }),
+                buildSharedCounter({ title: 'Shared', userId: user.id }),
+            ]);
 
             cy.contains('Personal')
                 .parents('.counter-wrapper')
@@ -83,93 +113,59 @@ describe('Counter Sharing', () => {
                 });
         });
 
-        it('should copy share link to clipboard', () => {
-            cy.login('alice@example.com', 'password123');
-
-            cy.intercept('GET', '/counters', {
-                statusCode: OK,
-                body: {
-                    success: true,
-                    data: {
-                        counters: [buildSharedCounter({ title: 'Shared Counter' })],
-                    },
-                },
-            }).as('getCounters');
-
-            cy.visit('/home');
-            cy.wait('@getCounters');
+        it('copies the exact share URL and confirms it', () => {
+            const user = buildClientUser({ email: 'alice@example.com', tier: 'PREMIUM' });
+            const inviteCode = 'ABC12345';
+            loginWithStubbedCounters(user, [
+                buildSharedCounter({ title: 'Shared Counter', inviteCode, userId: user.id }),
+            ]);
 
             cy.window().then((win) => {
-                cy.stub(win.navigator.clipboard, 'writeText').resolves();
+                const writeText = cy.stub(win.navigator.clipboard, 'writeText').resolves();
+                cy.wrap(writeText).as('writeText');
+                cy.stub(win, 'alert').as('alert');
             });
 
             cy.contains('ion-button', 'Share').click();
 
-            cy.on('window:alert', (text) => {
-                expect(text).to.contains('copied');
-            });
+            const baseUrl = Cypress.config('baseUrl');
+            if (typeof baseUrl !== 'string') throw new Error('Cypress baseUrl must be configured');
+
+            const expectedUrl = new URL(`/join?code=${inviteCode}`, baseUrl).href;
+            cy.get('@writeText').should('have.been.calledOnceWithExactly', expectedUrl);
+            cy.get('@alert').should('have.been.calledOnceWithExactly', 'Share Link copied to clipboard!');
         });
     });
 
     describe('Premium Features', () => {
         it('should disable sharing toggle for basic users', () => {
-            cy.intercept('POST', '/users/login', {
-                statusCode: OK,
-                body: {
-                    success: true,
-                    data: {
-                        user: buildClientUser(),
-                        accessToken: 'token',
-                    },
-                },
-            }).as('login');
-
-            cy.intercept('GET', '/counters', {
-                statusCode: OK,
-                body: { success: true, data: { counters: [] } },
-            }).as('getCounters');
-
-            cy.login('alice@example.com', 'password123');
-
-            cy.wait('@login');
-            cy.wait('@getCounters');
+            const user = buildClientUser({ email: 'alice@example.com', tier: 'BASIC' });
+            loginWithStubbedCounters(user);
 
             cy.contains('ion-button', 'Add counter').click();
 
-            cy.get('form').should('be.visible');
-            cy.get('ion-toggle').should('have.class', 'toggle-disabled');
-            cy.contains('Premium Feature').should('be.visible');
+            cy.get('[data-testid="home-counter-form"]')
+                .should('be.visible')
+                .within(() => {
+                    cy.get('ion-toggle').should('have.class', 'toggle-disabled');
+                    cy.contains('Premium Feature').should('be.visible');
+                });
         });
 
         it('should enable sharing toggle for premium users', () => {
-            cy.intercept('POST', '/users/login', {
-                statusCode: OK,
-                body: {
-                    success: true,
-                    data: {
-                        user: buildClientUser({ tier: 'PREMIUM' }),
-                        accessToken: 'token',
-                    },
-                },
-            }).as('login');
-
-            cy.intercept('GET', '/counters', {
-                statusCode: OK,
-                body: { success: true, data: { counters: [] } },
-            }).as('getCounters');
-
-            cy.login('alice@example.com', 'password123');
-
-            cy.wait('@login');
-            cy.wait('@getCounters');
+            const user = buildClientUser({ email: 'alice@example.com', tier: 'PREMIUM' });
+            loginWithStubbedCounters(user);
 
             cy.url().should('include', '/home');
             cy.get('.ion-page:not(.ion-page-hidden)').should('be.visible');
 
             cy.get('.ion-page:not(.ion-page-hidden)').contains('ion-button', 'Add counter').click();
 
-            cy.get('form').should('be.visible');
-            cy.get('ion-toggle').should('not.have.class', 'toggle-disabled');
+            cy.get('[data-testid="home-counter-form"]')
+                .should('be.visible')
+                .within(() => {
+                    cy.get('ion-toggle').should('not.have.class', 'toggle-disabled');
+                });
         });
     });
 });

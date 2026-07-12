@@ -132,7 +132,35 @@ bun run typecheck
 bun run lint
 bun run format:check
 bun run test:unit
+bun run test:component
 ```
+
+The test taxonomy is:
+
+- `test:unit`: client and server tests that isolate their direct subject.
+- `test:component`: server HTTP route tests with mocked application collaborators.
+- `test:integration`: real Express routes, repositories, transactions, and PostgreSQL.
+- `test:e2e`: Cypress flows through the running client and server.
+
+### PostgreSQL integration tests
+
+Use the dedicated test database workflow from the repository root:
+
+```bash
+bun run test:db:start
+bun --filter=@tally/core run generate:client
+bun run test:db:migrate
+bun run test:integration
+bun run test:db:stop
+```
+
+Run `test:db:stop` after the tests even when a prior command fails. The test compose file uses the distinct `tally-tracker-test` project and `postgres-test` service, binds only `127.0.0.1:5433`, and stores PostgreSQL data in tmpfs rather than the development database volume.
+
+The migration step applies the repository's committed migrations to `tally_tracker_test`; the integration runner then preserves Prisma's `_prisma_migrations` table while clearing only application tables before each test. Before test collection or application imports, the runner refuses to continue unless all of these guardrails hold:
+
+- `NODE_ENV=test`
+- `TALLY_TEST_DB_RESET=1`
+- `POSTGRES_URL` uses `postgres:` or `postgresql:`, targets `localhost` or `127.0.0.1`, has the exact database path `/tally_tracker_test`, and contains no query parameters or URL fragment. The local scripts use `postgresql://tally_test_user:tally_test_password@127.0.0.1:5433/tally_tracker_test`.
 
 Cypress e2e tests use `http://localhost:8100`:
 

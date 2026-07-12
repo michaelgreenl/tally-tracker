@@ -1,6 +1,6 @@
 import { UNAUTHORIZED, NOT_FOUND, UNPROCESSABLE_ENTITY, SERVER_ERROR } from '@tally/utils';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { buildCommand, TEST_USER_ID } from '../../../../tests/e2e/fixtures/counter.fixture';
+import { buildCommand, TEST_USER_ID } from '@/test/fixtures/sync.fixture';
 import { ApiError } from '@/utils/errors';
 
 vi.mock('@capacitor/network', () => ({
@@ -22,10 +22,7 @@ vi.mock('@/api', () => ({
 }));
 
 vi.mock('@/stores/authStore', () => ({
-    useAuthStore: vi.fn(() => ({
-        user: { id: 'default-user' },
-        logout: vi.fn(),
-    })),
+    useAuthStore: vi.fn(),
 }));
 
 import { Network } from '@capacitor/network';
@@ -34,15 +31,33 @@ import apiFetch from '@/api';
 import { SyncManager } from '../manager';
 import { useAuthStore } from '@/stores/authStore';
 
+type SyncAuthDependencies = Pick<ReturnType<typeof useAuthStore>, 'user' | 'logout'>;
+
+const useAuthStoreMock = vi.mocked(useAuthStore, { partial: true });
+
+const buildAuthStoreDouble = ({
+    userId = TEST_USER_ID,
+    logout = vi.fn(),
+}: {
+    userId?: string | null;
+    logout?: SyncAuthDependencies['logout'];
+} = {}): SyncAuthDependencies =>
+    ({
+        user: userId === null ? null : { id: userId, email: 'test@test.com', tier: 'BASIC' as const },
+        logout,
+    }) satisfies SyncAuthDependencies;
+
 describe('SyncManager', () => {
     beforeEach(() => {
-        vi.clearAllMocks();
+        vi.mocked(Network.getStatus).mockReset();
+        vi.mocked(Network.addListener).mockReset();
+        vi.mocked(SyncQueueService.getQueue).mockReset();
+        vi.mocked(SyncQueueService.removeCommand).mockReset();
+        vi.mocked(apiFetch).mockReset();
+        useAuthStoreMock.mockReset();
         SyncManager.isSyncing = false;
         SyncManager.syncRequested = false;
-        vi.mocked(useAuthStore).mockReturnValue({
-            user: { id: TEST_USER_ID },
-            logout: vi.fn(),
-        } as ReturnType<typeof useAuthStore>);
+        useAuthStoreMock.mockReturnValue(buildAuthStoreDouble());
     });
 
     describe('processQueue', () => {
@@ -127,10 +142,7 @@ describe('SyncManager', () => {
         });
 
         it('should keep queued commands when there is no authenticated user', async () => {
-            vi.mocked(useAuthStore).mockReturnValue({
-                user: null,
-                logout: vi.fn(),
-            } as ReturnType<typeof useAuthStore>);
+            useAuthStoreMock.mockReturnValue(buildAuthStoreDouble({ userId: null }));
 
             vi.mocked(Network.getStatus).mockResolvedValue({ connected: true, connectionType: 'wifi' });
             vi.mocked(SyncQueueService.getQueue).mockResolvedValue([buildCommand()]);
@@ -180,10 +192,7 @@ describe('SyncManager', () => {
 
         it('should stop processing and trigger logout on 401', async () => {
             const mockLogout = vi.fn();
-            vi.mocked(useAuthStore).mockReturnValue({
-                user: { id: TEST_USER_ID },
-                logout: mockLogout,
-            } as ReturnType<typeof useAuthStore>);
+            useAuthStoreMock.mockReturnValue(buildAuthStoreDouble({ logout: mockLogout }));
 
             vi.mocked(Network.getStatus).mockResolvedValue({ connected: true, connectionType: 'wifi' });
             vi.mocked(SyncQueueService.getQueue).mockResolvedValue([
@@ -199,28 +208,22 @@ describe('SyncManager', () => {
             expect(SyncManager.isSyncing).toBe(false);
         });
 
-        it('should stop processing and keep commands on 5xx errors', async () => {
+        it.each([
+            { failure: 'network', error: new ApiError('Network Error', 0) },
+            { failure: '5xx', error: new ApiError('Server error', SERVER_ERROR) },
+        ])('should stop processing and keep commands on $failure errors', async ({ error }) => {
             vi.mocked(Network.getStatus).mockResolvedValue({ connected: true, connectionType: 'wifi' });
             vi.mocked(SyncQueueService.getQueue).mockResolvedValue([
                 buildCommand({ id: 'cmd-1' }),
                 buildCommand({ id: 'cmd-2' }),
             ]);
-            vi.mocked(apiFetch).mockRejectedValue(new ApiError('Server error', SERVER_ERROR));
+            vi.mocked(apiFetch).mockRejectedValue(error);
 
             await SyncManager.processQueue();
 
+            expect(apiFetch).toHaveBeenCalledTimes(1);
             expect(SyncQueueService.removeCommand).not.toHaveBeenCalled();
             expect(SyncManager.isSyncing).toBe(false);
-        });
-
-        it('should stop processing and keep commands on network errors', async () => {
-            vi.mocked(Network.getStatus).mockResolvedValue({ connected: true, connectionType: 'wifi' });
-            vi.mocked(SyncQueueService.getQueue).mockResolvedValue([buildCommand()]);
-            vi.mocked(apiFetch).mockRejectedValue(new ApiError('Network Error', 0));
-
-            await SyncManager.processQueue();
-
-            expect(SyncQueueService.removeCommand).not.toHaveBeenCalled();
         });
 
         it('should include idempotency key header', async () => {
@@ -246,59 +249,54 @@ describe('SyncManager', () => {
             vi.mocked(apiFetch).mockResolvedValue({ success: true });
         });
 
-        it('should POST to /counters for CREATE', async () => {
-            await SyncManager.executeCommand(buildCommand({ type: 'CREATE' }));
-
-            expect(apiFetch).toHaveBeenCalledWith('/counters', expect.objectContaining({ method: 'POST' }));
-        });
-
-        it('should PUT to /counters/update/:id for UPDATE', async () => {
-            await SyncManager.executeCommand(buildCommand({ type: 'UPDATE', entityId: 'counter-123' }));
-
-            expect(apiFetch).toHaveBeenCalledWith(
-                '/counters/update/counter-123',
-                expect.objectContaining({ method: 'PUT' }),
-            );
-        });
-
-        it('should PUT to /counters/:id/count for SET_COUNT', async () => {
+        it.each([
+            {
+                type: 'CREATE' as const,
+                endpoint: '/counters',
+                method: 'POST',
+                payload: { id: 'counter-123', title: 'Created', count: 0, type: 'PERSONAL' },
+            },
+            {
+                type: 'UPDATE' as const,
+                endpoint: '/counters/update/counter-123',
+                method: 'PUT',
+                payload: { title: 'Updated' },
+            },
+            {
+                type: 'SET_COUNT' as const,
+                endpoint: '/counters/counter-123/count',
+                method: 'PUT',
+                payload: { count: -1 },
+            },
+            {
+                type: 'INCREMENT' as const,
+                endpoint: '/counters/increment/counter-123',
+                method: 'PUT',
+                payload: { amount: 2 },
+            },
+            {
+                type: 'DELETE' as const,
+                endpoint: '/counters/counter-123',
+                method: 'DELETE',
+                payload: {},
+            },
+            {
+                type: 'REMOVE' as const,
+                endpoint: '/counters/remove-shared/counter-123',
+                method: 'PUT',
+                payload: {},
+            },
+        ])('maps $type to its exact request contract', async ({ type, endpoint, method, payload }) => {
             await SyncManager.executeCommand(
-                buildCommand({ type: 'SET_COUNT', entityId: 'counter-123', payload: { count: -1 } }),
+                buildCommand({ id: 'idempotency-key', type, entityId: 'counter-123', payload }),
             );
 
-            expect(apiFetch).toHaveBeenCalledWith(
-                '/counters/counter-123/count',
-                expect.objectContaining({ method: 'PUT' }),
-            );
-        });
-
-        it('should PUT to /counters/increment/:id for INCREMENT', async () => {
-            await SyncManager.executeCommand(
-                buildCommand({ type: 'INCREMENT', entityId: 'counter-123', payload: { amount: 1 } }),
-            );
-
-            expect(apiFetch).toHaveBeenCalledWith(
-                '/counters/increment/counter-123',
-                expect.objectContaining({ method: 'PUT' }),
-            );
-        });
-
-        it('should DELETE to /counters/:id for DELETE', async () => {
-            await SyncManager.executeCommand(buildCommand({ type: 'DELETE', entityId: 'counter-123' }));
-
-            expect(apiFetch).toHaveBeenCalledWith(
-                '/counters/counter-123',
-                expect.objectContaining({ method: 'DELETE' }),
-            );
-        });
-
-        it('should PUT to /counters/remove-shared/:id for REMOVE', async () => {
-            await SyncManager.executeCommand(buildCommand({ type: 'REMOVE', entityId: 'counter-123' }));
-
-            expect(apiFetch).toHaveBeenCalledWith(
-                '/counters/remove-shared/counter-123',
-                expect.objectContaining({ method: 'PUT' }),
-            );
+            expect(apiFetch).toHaveBeenCalledTimes(1);
+            expect(apiFetch).toHaveBeenCalledWith(endpoint, {
+                method,
+                ...(type === 'DELETE' || type === 'REMOVE' ? {} : { body: payload }),
+                headers: { 'X-Idempotency-Key': 'idempotency-key' },
+            });
         });
     });
 });

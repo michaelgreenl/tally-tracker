@@ -3,11 +3,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import { randomUUID } from 'crypto';
 import type { Request, Response, NextFunction } from 'express';
-import app from '../../../src/app.js';
+import app from '../../src/app.js';
 import { buildUser, buildClientUser } from '../fixtures/user.fixture.js';
 import { buildRefreshToken, TEST_USER_ID, TEST_REFRESH_TOKEN_ID } from '../fixtures/counter.fixture.js';
 
-vi.mock('../../../src/middleware/auth.middleware', () => ({
+vi.mock('../../src/middleware/auth.middleware', () => ({
     jwt: (req: Request, res: Response, next: NextFunction) => {
         if (req.headers.authorization === 'Bearer invalid-token') {
             return res.status(401).json({ success: false, message: 'Invalid token' });
@@ -18,7 +18,7 @@ vi.mock('../../../src/middleware/auth.middleware', () => ({
     },
 }));
 
-vi.mock('../../../src/db/repositories/user.repository', () => ({
+vi.mock('../../src/db/repositories/user.repository', () => ({
     createUser: vi.fn(),
     getUserByEmail: vi.fn(),
     getUserById: vi.fn(),
@@ -27,15 +27,15 @@ vi.mock('../../../src/db/repositories/user.repository', () => ({
     deleteUser: vi.fn(),
 }));
 
-vi.mock('../../../src/db/repositories/token.repository', () => ({
+vi.mock('../../src/db/repositories/token.repository', () => ({
     create: vi.fn(),
     get: vi.fn(),
     remove: vi.fn(),
     removeAllForUser: vi.fn(),
 }));
 
-import * as userRepository from '../../../src/db/repositories/user.repository.js';
-import * as tokenRepository from '../../../src/db/repositories/token.repository.js';
+import * as userRepository from '../../src/db/repositories/user.repository.js';
+import * as tokenRepository from '../../src/db/repositories/token.repository.js';
 
 describe('Auth Routes', () => {
     beforeEach(() => {

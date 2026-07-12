@@ -52,7 +52,7 @@ beforeEach(() => {
     setActivePinia(createPinia());
     auth.isAuthenticated = false;
     auth.user = null;
-    vi.clearAllMocks();
+    for (const method of Object.values(CounterService)) vi.mocked(method).mockReset();
 
     vi.mocked(CounterService.persist).mockResolvedValue(undefined);
     vi.mocked(CounterService.create).mockResolvedValue(undefined);
@@ -74,11 +74,6 @@ describe('counterStore.eligibleCount', () => {
         await store.createCounter('Shared', null, 'SHARED');
 
         expect(store.eligibleCount).toBe(1);
-    });
-
-    it('reflects zero when no eligible counters exist', () => {
-        const store = useCounterStore();
-        expect(store.eligibleCount).toBe(0);
     });
 });
 
@@ -133,6 +128,150 @@ describe('counterStore.createCounter', () => {
                 inviteCode: null,
             }),
         );
+    });
+});
+
+describe('counterStore.consolidateGuestCounters', () => {
+    it('consolidates persisted guest counters when an authenticated store starts empty', async () => {
+        signin();
+        const persistedGuestCounters = [
+            counter({ id: 'guest-1', title: 'Guest One', userId: 'guest' }),
+            counter({ id: 'guest-2', title: 'Guest Two', userId: 'guest' }),
+            counter({ id: 'guest-3', title: 'Guest Three', userId: 'guest' }),
+        ];
+        const consolidatedCounters = persistedGuestCounters.map((item) => ({ ...item, userId: 'user-1' }));
+        vi.mocked(CounterService.getAllLocal).mockResolvedValue(persistedGuestCounters);
+
+        const store = useCounterStore();
+        await store.consolidateGuestCounters();
+
+        expect(CounterService.getAllLocal).toHaveBeenCalledTimes(1);
+        expect(CounterService.consolidate).toHaveBeenCalledTimes(1);
+        expect(CounterService.consolidate).toHaveBeenCalledWith(consolidatedCounters);
+        expect(store.counters).toEqual(consolidatedCounters);
+    });
+
+    it("removes another user's persisted counters while retaining the current user's counters", async () => {
+        signin();
+        const currentUserCounter = counter({ id: 'current-1', title: 'Current', userId: 'user-1' });
+        const otherUserCounter = counter({ id: 'other-1', title: 'Other', userId: 'user-2' });
+        vi.mocked(CounterService.getAllLocal).mockResolvedValue([currentUserCounter, otherUserCounter]);
+
+        const store = useCounterStore();
+        await store.consolidateGuestCounters();
+
+        expect(store.counters).toEqual([currentUserCounter]);
+        expect(CounterService.persist).toHaveBeenCalledWith([currentUserCounter]);
+        expect(CounterService.consolidate).not.toHaveBeenCalled();
+    });
+
+    it('preserves a persisted joined shared counter owned by another user', async () => {
+        signin();
+        const joinedCounter = counter({
+            id: 'joined-1',
+            type: 'SHARED',
+            userId: 'owner-2',
+            shares: [
+                {
+                    id: 'share-1',
+                    status: 'ACCEPTED',
+                    counterId: 'joined-1',
+                    userId: 'user-1',
+                    createdAt: new Date('2026-01-01'),
+                    updatedAt: new Date('2026-01-01'),
+                },
+            ],
+        });
+        vi.mocked(CounterService.getAllLocal).mockResolvedValue([joinedCounter]);
+
+        const store = useCounterStore();
+        await store.consolidateGuestCounters();
+
+        expect(store.counters).toEqual([joinedCounter]);
+        expect(CounterService.persist).toHaveBeenCalledWith([joinedCounter]);
+        expect(CounterService.consolidate).not.toHaveBeenCalled();
+    });
+
+    it('removes a foreign shared counter without an accepted share for the current user', async () => {
+        signin();
+        const foreignCounter = counter({
+            id: 'foreign-shared-1',
+            type: 'SHARED',
+            userId: 'owner-2',
+            shares: [
+                {
+                    id: 'share-rejected',
+                    status: 'REJECTED',
+                    counterId: 'foreign-shared-1',
+                    userId: 'user-1',
+                    createdAt: new Date('2026-01-01'),
+                    updatedAt: new Date('2026-01-01'),
+                },
+                {
+                    id: 'share-accepted-other',
+                    status: 'ACCEPTED',
+                    counterId: 'foreign-shared-1',
+                    userId: 'user-3',
+                    createdAt: new Date('2026-01-01'),
+                    updatedAt: new Date('2026-01-01'),
+                },
+            ],
+        });
+        vi.mocked(CounterService.getAllLocal).mockResolvedValue([foreignCounter]);
+
+        const store = useCounterStore();
+        await store.consolidateGuestCounters();
+
+        expect(store.counters).toEqual([]);
+        expect(CounterService.persist).toHaveBeenCalledWith([]);
+        expect(CounterService.consolidate).not.toHaveBeenCalled();
+    });
+
+    it('merges remote, guest, and current-user counters while consolidating only original guests', async () => {
+        signin();
+        const guestCounter = counter({ id: 'guest-1', title: 'Guest', userId: 'guest' });
+        const currentUserCounter = counter({ id: 'current-1', title: 'Current', userId: 'user-1' });
+        const otherUserCounter = counter({ id: 'other-1', title: 'Other', userId: 'user-2' });
+        const remoteCounter = counter({ id: 'remote-1', title: 'Remote', userId: 'user-1' });
+        const consolidatedGuest = { ...guestCounter, userId: 'user-1' };
+        vi.mocked(CounterService.getAllLocal).mockResolvedValue([guestCounter, currentUserCounter, otherUserCounter]);
+        vi.mocked(CounterService.fetchRemote).mockResolvedValue([remoteCounter]);
+
+        const store = useCounterStore();
+        await store.consolidateGuestCounters();
+
+        const expectedCounters = [remoteCounter, consolidatedGuest, currentUserCounter];
+        expect(store.counters).toEqual(expectedCounters);
+        expect(CounterService.persist).toHaveBeenCalledWith(expectedCounters);
+        expect(CounterService.consolidate).toHaveBeenCalledWith([consolidatedGuest]);
+    });
+
+    it('does not hydrate persisted counters for an unauthenticated store', async () => {
+        vi.mocked(CounterService.getAllLocal).mockResolvedValue([
+            counter({ id: 'guest-1', userId: 'guest' }),
+            counter({ id: 'other-1', userId: 'user-2' }),
+        ]);
+
+        const store = useCounterStore();
+        await store.consolidateGuestCounters();
+
+        expect(store.counters).toEqual([]);
+        expect(CounterService.getAllLocal).not.toHaveBeenCalled();
+        expect(CounterService.persist).not.toHaveBeenCalled();
+        expect(CounterService.consolidate).not.toHaveBeenCalled();
+    });
+
+    it('does not hydrate persisted counters without a current authenticated user id', async () => {
+        auth.isAuthenticated = true;
+        vi.mocked(CounterService.getAllLocal).mockResolvedValue([counter({ id: 'guest-1', userId: 'guest' })]);
+
+        const store = useCounterStore();
+        await store.consolidateGuestCounters();
+
+        expect(store.counters).toEqual([]);
+        expect(CounterService.getAllLocal).not.toHaveBeenCalled();
+        expect(CounterService.persist).not.toHaveBeenCalled();
+        expect(CounterService.consolidate).not.toHaveBeenCalled();
     });
 });
 

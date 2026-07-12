@@ -1,4 +1,6 @@
 declare global {
+    // Cypress custom commands require augmenting the framework's global namespace.
+    // eslint-disable-next-line @typescript-eslint/no-namespace
     namespace Cypress {
         interface Chainable {
             login(email: string, password: string, rememberMe?: boolean): Chainable<void>;

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { TEST_USER_ID } from '../../integration/fixtures/counter.fixture.js';
+import { TEST_USER_ID } from '../../fixtures/counter.fixture.js';
 
 const prismaMock = vi.hoisted(() => {
     const tx = {

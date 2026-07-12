@@ -30,6 +30,11 @@ import { CounterService } from '../counter.service';
 import { SyncQueueService } from '@/services/sync/queue';
 import { SyncManager } from '@/services/sync/manager';
 import { useAuthStore } from '@/stores/authStore';
+import { randomUUID } from '@/utils/safeUUID';
+
+type CounterAuthDependencies = Pick<ReturnType<typeof useAuthStore>, 'isAuthenticated' | 'user'>;
+
+const useAuthStoreMock = vi.mocked(useAuthStore, { partial: true });
 
 const buildCounter = (overrides: Partial<ClientCounter> = {}): ClientCounter => ({
     id: 'counter-1',
@@ -42,16 +47,23 @@ const buildCounter = (overrides: Partial<ClientCounter> = {}): ClientCounter => 
     ...overrides,
 });
 
-describe('CounterService.increment', () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
-        vi.mocked(SyncQueueService.addCommand).mockResolvedValue(undefined);
-        vi.mocked(useAuthStore).mockReturnValue({
-            isAuthenticated: true,
-            user: { id: 'user-1' },
-        } as ReturnType<typeof useAuthStore>);
-    });
+const authenticatedStore = (userId = 'user-1'): CounterAuthDependencies =>
+    ({
+        isAuthenticated: true,
+        user: { id: userId, email: 'test@test.com', tier: 'BASIC' },
+    }) satisfies CounterAuthDependencies;
 
+beforeEach(() => {
+    vi.mocked(SyncQueueService.addCommand).mockReset();
+    vi.mocked(SyncQueueService.addCommand).mockResolvedValue(undefined);
+    vi.mocked(SyncManager.processQueue).mockReset();
+    useAuthStoreMock.mockReset();
+    useAuthStoreMock.mockReturnValue(authenticatedStore());
+    vi.mocked(randomUUID).mockReset();
+    vi.mocked(randomUUID).mockReturnValue('command-1');
+});
+
+describe('CounterService.increment', () => {
     it.each([0, -1])('queues SET_COUNT with absolute personal count %i', async (count) => {
         await CounterService.increment(buildCounter({ count }), -1);
 
@@ -81,4 +93,27 @@ describe('CounterService.increment', () => {
         });
         expect(SyncManager.processQueue).toHaveBeenCalledTimes(1);
     });
+});
+
+describe('CounterService.delete', () => {
+    it.each([
+        { relationship: 'owner', ownerId: 'user-1', commandType: 'DELETE' },
+        { relationship: 'participant', ownerId: 'owner-2', commandType: 'REMOVE' },
+    ] as const)(
+        'queues $commandType when the current user is the counter $relationship',
+        async ({ ownerId, commandType }) => {
+            await CounterService.delete(buildCounter({ type: 'SHARED', userId: ownerId }));
+
+            expect(SyncQueueService.addCommand).toHaveBeenCalledWith({
+                id: 'command-1',
+                queuedByUserId: 'user-1',
+                type: commandType,
+                entity: 'counter',
+                entityId: 'counter-1',
+                payload: {},
+                timestamp: expect.any(Number),
+            });
+            expect(SyncManager.processQueue).toHaveBeenCalledTimes(1);
+        },
+    );
 });

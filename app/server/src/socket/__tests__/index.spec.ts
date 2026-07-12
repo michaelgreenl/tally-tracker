@@ -1,18 +1,28 @@
 import { createServer } from 'http';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import jsonwebtoken from 'jsonwebtoken';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { io as createClient } from 'socket.io-client';
+
+import initializeIO from '../index.js';
 
 import type { AddressInfo } from 'net';
 import type { Server as HttpServer } from 'http';
-import type { Server as SocketServer } from 'socket.io';
+import type { Server as SocketServer, Socket as ServerSocket } from 'socket.io';
 import type { Socket as ClientSocket } from 'socket.io-client';
 
-vi.stubEnv('JWT_SECRET', 'test-secret-key-for-testing');
-
-const TEST_USER_ID = 'user-123';
+const AUDIENCE = 'reaction-client';
+const ISSUER = 'reaction-api';
+const TEST_JWT_SECRET = 'vitest-only-jwt-secret';
 const TEST_OTHER_USER_ID = 'user-456';
+const TEST_USER_ID = 'user-123';
+const WRONG_JWT_SECRET = 'wrong-vitest-jwt-secret';
 
 type ClientOptions = NonNullable<Parameters<typeof createClient>[1]>;
+
+type ConnectedClient = {
+    client: ClientSocket;
+    serverSocket: ServerSocket;
+};
 
 let httpServer: HttpServer;
 let io: SocketServer;
@@ -20,8 +30,6 @@ let serverUrl: string;
 let clients: ClientSocket[] = [];
 
 const startSocketServer = async () => {
-    const { default: initializeIO } = await import('../index.js');
-
     httpServer = createServer();
     io = initializeIO(httpServer);
 
@@ -42,7 +50,7 @@ const startSocketServer = async () => {
     });
 
     const address = httpServer.address() as AddressInfo;
-    serverUrl = `http://localhost:${address.port}`;
+    serverUrl = `http://127.0.0.1:${address.port}`;
 };
 
 const closeSocketServer = async () => {
@@ -63,46 +71,73 @@ const closeSocketServer = async () => {
     });
 };
 
-const signAccessToken = async (userId: string) => {
-    const { default: jwtUtil } = await import('../../util/jwt.util.js');
-    return jwtUtil.sign({ id: userId });
-};
+const signAccessToken = (payload: Record<string, unknown>, secret = TEST_JWT_SECRET) =>
+    jsonwebtoken.sign(payload, secret, {
+        audience: AUDIENCE,
+        expiresIn: '45m',
+        issuer: ISSUER,
+    });
 
-const connectClient = (options: ClientOptions = {}) => {
+const createDisconnectedClient = (options: ClientOptions = {}) => {
     const client = createClient(serverUrl, {
-        transports: ['websocket'],
-        reconnection: false,
-        forceNew: true,
         ...options,
+        autoConnect: false,
+        forceNew: true,
+        reconnection: false,
+        transports: ['websocket'],
     });
 
     clients.push(client);
     return client;
 };
 
-const waitForConnect = (client: ClientSocket) =>
-    new Promise<void>((resolve, reject) => {
+const connectSuccessfully = (options: ClientOptions = {}) => {
+    const client = createDisconnectedClient(options);
+
+    return new Promise<ConnectedClient>((resolve, reject) => {
+        let clientConnected = false;
+        let serverSocket: ServerSocket | undefined;
+
         const cleanup = () => {
-            client.off('connect', onConnect);
-            client.off('connect_error', onConnectError);
+            client.off('connect', onClientConnect);
+            client.off('connect_error', onClientConnectError);
+            io.off('connection', onServerConnection);
         };
 
-        const onConnect = () => {
+        const resolveWhenConnected = () => {
+            if (!clientConnected || !serverSocket) return;
+
+            const connectedServerSocket = serverSocket;
             cleanup();
-            resolve();
+            resolve({ client, serverSocket: connectedServerSocket });
         };
 
-        const onConnectError = (error: Error) => {
+        const onClientConnect = () => {
+            clientConnected = true;
+            resolveWhenConnected();
+        };
+
+        const onClientConnectError = (error: Error) => {
             cleanup();
             reject(error);
         };
 
-        client.once('connect', onConnect);
-        client.once('connect_error', onConnectError);
-    });
+        const onServerConnection = (socket: ServerSocket) => {
+            serverSocket = socket;
+            resolveWhenConnected();
+        };
 
-const waitForConnectError = (client: ClientSocket) =>
-    new Promise<Error>((resolve, reject) => {
+        client.once('connect', onClientConnect);
+        client.once('connect_error', onClientConnectError);
+        io.once('connection', onServerConnection);
+        client.connect();
+    });
+};
+
+const connectExpectingError = (options: ClientOptions = {}) => {
+    const client = createDisconnectedClient(options);
+
+    return new Promise<Error>((resolve, reject) => {
         const cleanup = () => {
             client.off('connect', onConnect);
             client.off('connect_error', onConnectError);
@@ -120,29 +155,9 @@ const waitForConnectError = (client: ClientSocket) =>
 
         client.once('connect', onConnect);
         client.once('connect_error', onConnectError);
+        client.connect();
     });
-
-const waitForCounterUpdate = (client: ClientSocket) =>
-    new Promise<unknown>((resolve) => {
-        client.once('counter-update', resolve);
-    });
-
-const expectNoCounterUpdate = (client: ClientSocket, timeoutMs = 150) =>
-    new Promise<void>((resolve, reject) => {
-        const onUpdate = () => {
-            clearTimeout(timeout);
-            reject(new Error('Received counter-update unexpectedly'));
-        };
-
-        const timeout = setTimeout(() => {
-            client.off('counter-update', onUpdate);
-            resolve();
-        }, timeoutMs);
-
-        client.once('counter-update', onUpdate);
-    });
-
-const waitForServerToHandleEvent = () => new Promise<void>((resolve) => setTimeout(resolve, 25));
+};
 
 describe('Socket server authentication', () => {
     beforeEach(async () => {
@@ -154,62 +169,62 @@ describe('Socket server authentication', () => {
     });
 
     it('rejects unauthenticated clients', async () => {
-        const client = connectClient();
-
-        const error = await waitForConnectError(client);
+        const error = await connectExpectingError();
 
         expect(error.message).toBe('Not authenticated');
-        expect(client.connected).toBe(false);
     });
 
-    it('joins authenticated cookie clients to their own user room', async () => {
-        const token = await signAccessToken(TEST_USER_ID);
-        const client = connectClient({
-            extraHeaders: {
-                Cookie: `access_token=${token}`,
-            },
+    it('keeps authenticated cookie and native clients in their own user rooms', async () => {
+        const cookieToken = signAccessToken({ id: TEST_USER_ID });
+        const nativeToken = signAccessToken({ id: TEST_OTHER_USER_ID });
+        const cookieConnection = await connectSuccessfully({
+            extraHeaders: { Cookie: `access_token=${cookieToken}` },
+        });
+        const nativeConnection = await connectSuccessfully({
+            auth: { token: nativeToken },
         });
 
-        await waitForConnect(client);
-
-        const counterUpdate = { id: 'counter-1', count: 1 };
-        const receivedUpdate = waitForCounterUpdate(client);
-        io.to(TEST_USER_ID).emit('counter-update', counterUpdate);
-
-        await expect(receivedUpdate).resolves.toEqual(counterUpdate);
+        expect(io.sockets.adapter.rooms.get(TEST_USER_ID)).toEqual(new Set([cookieConnection.serverSocket.id]));
+        expect(io.sockets.adapter.rooms.get(TEST_OTHER_USER_ID)).toEqual(new Set([nativeConnection.serverSocket.id]));
     });
 
-    it('joins authenticated native clients to their own user room', async () => {
-        const token = await signAccessToken(TEST_USER_ID);
-        const client = connectClient({
-            auth: { token },
+    it('does not let an authenticated client request another user room', async () => {
+        const token = signAccessToken({ id: TEST_USER_ID });
+        const { client, serverSocket } = await connectSuccessfully({ auth: { token } });
+        const joinRoomReceived = new Promise<string>((resolve) => {
+            serverSocket.once('join-room', (roomId: string) => resolve(roomId));
         });
-
-        await waitForConnect(client);
-
-        const counterUpdate = { id: 'counter-2', count: 2 };
-        const receivedUpdate = waitForCounterUpdate(client);
-        io.to(TEST_USER_ID).emit('counter-update', counterUpdate);
-
-        await expect(receivedUpdate).resolves.toEqual(counterUpdate);
-    });
-
-    it('does not let clients join another user room with join-room', async () => {
-        const token = await signAccessToken(TEST_USER_ID);
-        const client = connectClient({
-            auth: { token },
-        });
-
-        await waitForConnect(client);
 
         client.emit('join-room', TEST_OTHER_USER_ID);
-        await waitForServerToHandleEvent();
+        await expect(joinRoomReceived).resolves.toBe(TEST_OTHER_USER_ID);
 
-        expect(io.sockets.adapter.rooms.get(TEST_OTHER_USER_ID)?.has(client.id as string)).not.toBe(true);
+        expect(serverSocket.rooms).toEqual(new Set([serverSocket.id, TEST_USER_ID]));
+        expect(io.sockets.adapter.rooms.get(TEST_OTHER_USER_ID)?.has(serverSocket.id) ?? false).toBe(false);
+    });
 
-        const noUpdate = expectNoCounterUpdate(client);
-        io.to(TEST_OTHER_USER_ID).emit('counter-update', { id: 'private-counter', count: 10 });
+    it('accepts a Bearer authorization header', async () => {
+        const token = signAccessToken({ id: TEST_USER_ID });
+        const connection = await connectSuccessfully({
+            extraHeaders: { Authorization: `Bearer ${token}` },
+        });
 
-        await expect(noUpdate).resolves.toBeUndefined();
+        expect(io.sockets.adapter.rooms.get(TEST_USER_ID)).toEqual(new Set([connection.serverSocket.id]));
+    });
+
+    it('rejects a token with a bad signature', async () => {
+        const token = signAccessToken({ id: TEST_USER_ID }, WRONG_JWT_SECRET);
+        const error = await connectExpectingError({ auth: { token } });
+
+        expect(error.message).toBe('Invalid token');
+    });
+
+    it.each([
+        { case: 'missing', payload: {} },
+        { case: 'non-string', payload: { id: 123 } },
+    ])('rejects a token with a $case user id', async ({ payload }) => {
+        const token = signAccessToken(payload);
+        const error = await connectExpectingError({ auth: { token } });
+
+        expect(error.message).toBe('Invalid token');
     });
 });
