@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - 'app/client/public/legal-pages/**'
+      - 'packages/app/client/public/legal-pages/**'
       - '.github/workflows/deploy-pages.yml'
   workflow_dispatch:
 
@@ -34,7 +34,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
         with:
-          path: app/client/public/legal-pages
+          path: packages/app/client/public/legal-pages
 
       - name: Deploy to GitHub Pages
         id: deployment
