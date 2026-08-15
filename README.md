@@ -9,8 +9,15 @@
 [![Socket.io](https://img.shields.io/badge/Socket.io-black?style=for-the-badge&logo=socket.io&badgeColor=010101)](https://socket.io/) 
 [![Prisma](https://img.shields.io/badge/Prisma-3982CE?style=for-the-badge&logo=Prisma&logoColor=white)](https://www.prisma.io/) 
 ## Links
-- **🎥 [Demo Video](https://michaelgreenl.net/#projects?slug=tally&autoplay=true)**
 - **💼 [Portfolio Link](https://michaelgreenl.net/#projects?slug=tally&autoplay=false)** 
+
+## Demo Video
+
+<p align="center">
+  <a href="https://vimeo.com/1166819858">
+    <img src="https://i.vimeocdn.com/filter/overlay?src0=https%3A%2F%2Fi.vimeocdn.com%2Fvideo%2F2124585927-7b5b40fd7d9f22f7ed97590d79423be7de9957b83a2bd436cf2065a9e1d13072-d_1280%3Fregion%3Dus&amp;src1=http%3A%2F%2Ff.vimeocdn.com%2Fp%2Fimages%2Fcrawler_play.png" alt="Watch the Tally Tracker demo video" width="800">
+  </a>
+</p>
 
 ## Overview
 
