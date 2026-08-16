@@ -9,8 +9,11 @@
 [![Socket.io](https://img.shields.io/badge/Socket.io-black?style=for-the-badge&logo=socket.io&badgeColor=010101)](https://socket.io/) 
 [![Prisma](https://img.shields.io/badge/Prisma-3982CE?style=for-the-badge&logo=Prisma&logoColor=white)](https://www.prisma.io/) 
 ## Links
-- **🎥 [Demo Video](https://michaelgreenl.net/#projects?slug=tally&autoplay=true)**
 - **💼 [Portfolio Link](https://michaelgreenl.net/#projects?slug=tally&autoplay=false)** 
+
+## Demo Video
+
+https://github.com/user-attachments/assets/2fdf4333-387a-4497-a79e-e6051281fab3
 
 ## Overview
 
