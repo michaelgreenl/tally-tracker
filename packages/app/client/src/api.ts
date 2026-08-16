@@ -20,7 +20,7 @@
  * - 204 responses return an empty object for successful endpoints with no response body.
  */
 
-import { OK_NO_CONTENT, REQUEST_TIMEOUT, UNAUTHORIZED } from '@tally/utils';
+import { OK_NO_CONTENT, REQUEST_TIMEOUT, UNAUTHORIZED } from '@tally/core';
 import { Preferences } from '@capacitor/preferences';
 import { Capacitor } from '@capacitor/core';
 import { ApiError, getErrorMessage } from '@/utils/errors';

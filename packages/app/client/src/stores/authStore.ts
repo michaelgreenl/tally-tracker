@@ -1,4 +1,4 @@
-import { UNAUTHORIZED } from '@tally/utils';
+import { UNAUTHORIZED } from '@tally/core';
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { Capacitor } from '@capacitor/core';

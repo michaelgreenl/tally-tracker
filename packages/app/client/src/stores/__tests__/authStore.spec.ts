@@ -1,4 +1,4 @@
-import { UNAUTHORIZED } from '@tally/utils';
+import { UNAUTHORIZED } from '@tally/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { ApiError } from '@/utils/errors';

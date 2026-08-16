@@ -94,7 +94,7 @@ The API supports email/password registration, login, logout, auth checks, refres
 **Workspace:**
 
 - **Package Manager:** Bun workspaces
-- **Shared Packages:** `@tally/core`, `@tally/utils`
+- **Shared Package:** `@tally/core`
 
 ## Running Locally
 

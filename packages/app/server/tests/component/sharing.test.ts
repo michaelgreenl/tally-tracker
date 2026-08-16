@@ -1,4 +1,4 @@
-import { OK, CREATED, FORBIDDEN, NOT_FOUND, CONFLICT } from '@tally/utils';
+import { OK, CREATED, FORBIDDEN, NOT_FOUND, CONFLICT } from '@tally/core';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Request, Response, NextFunction } from 'express';
 import request from 'supertest';

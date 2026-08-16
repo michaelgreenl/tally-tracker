@@ -39,7 +39,6 @@
         "@sentry/capacitor": "4.2.0",
         "@sentry/vue": "10.60.0",
         "@tally/core": "^0.1.0",
-        "@tally/utils": "^0.1.0",
         "gsap": "^3.14.2",
         "ionicons": "^7.0.0",
         "pinia": "^3.0.4",
@@ -94,7 +93,6 @@
         "@prisma/config": "^7.8.0",
         "@sentry/node": "^10.64.0",
         "@tally/core": "^0.1.0",
-        "@tally/utils": "^0.1.0",
         "bcrypt": "^6.0.0",
         "body-parser": "^2.3.0",
         "cookie": "^0.7.2",
@@ -165,20 +163,6 @@
         "prisma-erd-generator": "^2.4.3",
         "typescript": "^6.0.3",
         "zod-prisma-types": "^3.3.11",
-      },
-    },
-    "packages/utils": {
-      "name": "@tally/utils",
-      "version": "0.1.0",
-      "devDependencies": {
-        "@eslint/js": "^10.0.1",
-        "@typescript-eslint/eslint-plugin": "^8.52.0",
-        "@typescript-eslint/parser": "^8.52.0",
-        "eslint": "^9.39.2",
-        "eslint-config-prettier": "^10.1.8",
-        "eslint-plugin-prettier": "^5.5.4",
-        "globals": "^17.0.0",
-        "typescript": "^6.0.3",
       },
     },
   },
@@ -961,8 +945,6 @@
     "@swc/helpers": ["@swc/helpers@0.5.19", "", { "dependencies": { "tslib": "^2.8.0" } }, "sha512-QamiFeIK3txNjgUTNppE6MiG3p7TdninpZu0E0PbqVh1a9FNLT2FRhisaa4NcaX52XVhA5l7Pk58Ft7Sqi/2sA=="],
 
     "@tally/core": ["@tally/core@workspace:packages/core"],
-
-    "@tally/utils": ["@tally/utils@workspace:packages/utils"],
 
     "@tanstack/react-virtual": ["@tanstack/react-virtual@3.13.19", "", { "dependencies": { "@tanstack/virtual-core": "3.13.19" }, "peerDependencies": { "react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0", "react-dom": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-KzwmU1IbE0IvCZSm6OXkS+kRdrgW2c2P3Ho3NC+zZXWK6oObv/L+lcV/2VuJ+snVESRlMJ+w/fg4WXI/JzoNGQ=="],
 

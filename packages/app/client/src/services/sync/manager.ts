@@ -15,7 +15,7 @@
  * - 5xx / Network: Retryable. Stop processing, retry on next trigger.
  */
 
-import { UNAUTHORIZED } from '@tally/utils';
+import { UNAUTHORIZED } from '@tally/core';
 import { Network } from '@capacitor/network';
 import { SyncQueueService } from '@/services/sync/queue';
 import { useAuthStore } from '@/stores/authStore';

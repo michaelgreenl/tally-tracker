@@ -1,4 +1,4 @@
-import { FORBIDDEN, OK, OK_NO_CONTENT, REQUEST_TIMEOUT, UNAUTHORIZED } from '@tally/utils';
+import { FORBIDDEN, OK, OK_NO_CONTENT, REQUEST_TIMEOUT, UNAUTHORIZED } from '@tally/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { auth, mockFetch, platform, preferenceValues, preferences } = vi.hoisted(() => ({

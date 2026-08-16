@@ -1,4 +1,4 @@
-import { OK, CREATED, BAD_REQUEST, FORBIDDEN, NOT_FOUND, CONFLICT, SERVER_ERROR } from '@tally/utils';
+import { OK, CREATED, BAD_REQUEST, FORBIDDEN, NOT_FOUND, CONFLICT, SERVER_ERROR } from '@tally/core';
 import * as counterRepository from '../../db/repositories/counter.repository.js';
 import * as userRepository from '../../db/repositories/user.repository.js';
 import { captureServerError } from '../../monitoring/sentry.js';

@@ -1,5 +1,5 @@
 import { createHash } from 'crypto';
-import { CONFLICT, OK_NO_CONTENT } from '@tally/utils';
+import { CONFLICT, OK_NO_CONTENT } from '@tally/core';
 import { Prisma } from '@prisma/client';
 import prisma from '../db/prisma.js';
 

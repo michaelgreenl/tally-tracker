@@ -3,7 +3,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import jwtUtil from '../util/jwt.util.js';
-import { UNAUTHORIZED } from '@tally/utils';
+import { UNAUTHORIZED } from '@tally/core';
 
 export const jwt = (req: Request, res: Response, next: NextFunction) => {
     let token;

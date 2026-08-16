@@ -1,4 +1,4 @@
-import { UNAUTHORIZED, NOT_FOUND, UNPROCESSABLE_ENTITY, SERVER_ERROR } from '@tally/utils';
+import { UNAUTHORIZED, NOT_FOUND, UNPROCESSABLE_ENTITY, SERVER_ERROR } from '@tally/core';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { buildCommand, TEST_USER_ID } from '@/test/fixtures/sync.fixture';
 import { ApiError } from '@/utils/errors';
