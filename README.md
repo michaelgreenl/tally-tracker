@@ -13,11 +13,7 @@
 
 ## Demo Video
 
-<p align="center">
-  <a href="https://vimeo.com/1166819858">
-    <img src="https://i.vimeocdn.com/filter/overlay?src0=https%3A%2F%2Fi.vimeocdn.com%2Fvideo%2F2124585927-7b5b40fd7d9f22f7ed97590d79423be7de9957b83a2bd436cf2065a9e1d13072-d_1280%3Fregion%3Dus&amp;src1=http%3A%2F%2Ff.vimeocdn.com%2Fp%2Fimages%2Fcrawler_play.png" alt="Watch the Tally Tracker demo video" width="800">
-  </a>
-</p>
+https://github.com/user-attachments/assets/2fdf4333-387a-4497-a79e-e6051281fab3
 
 ## Overview
 
