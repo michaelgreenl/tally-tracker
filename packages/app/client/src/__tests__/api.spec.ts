@@ -1,10 +1,7 @@
 import { FORBIDDEN, OK, OK_NO_CONTENT, REQUEST_TIMEOUT, UNAUTHORIZED } from '@tally/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { auth, mockFetch, platform, preferenceValues, preferences } = vi.hoisted(() => ({
-    auth: {
-        logout: vi.fn(),
-    },
+const { mockFetch, platform, preferenceValues, preferences, unauthorizedHandler } = vi.hoisted(() => ({
     mockFetch: vi.fn(),
     platform: {
         native: false,
@@ -15,6 +12,7 @@ const { auth, mockFetch, platform, preferenceValues, preferences } = vi.hoisted(
         get: vi.fn(),
         set: vi.fn(),
     },
+    unauthorizedHandler: vi.fn(),
 }));
 
 vi.mock('@capacitor/core', () => ({
@@ -26,10 +24,6 @@ vi.mock('@capacitor/core', () => ({
 
 vi.mock('@capacitor/preferences', () => ({
     Preferences: preferences,
-}));
-
-vi.mock('@/stores/authStore', () => ({
-    useAuthStore: vi.fn(() => auth),
 }));
 
 const jsonResponse = (body: unknown, status = OK): Response =>
@@ -49,15 +43,17 @@ const loadApi = async (options: LoadApiOptions = {}) => {
     platform.native = native;
     platform.name = name;
     vi.resetModules();
-    return (await import('@/api')).default;
+    const api = await import('@/api');
+    api.setUnauthorizedHandler(unauthorizedHandler);
+    return api.default;
 };
 
 describe('apiFetch', () => {
     beforeEach(() => {
         vi.stubGlobal('fetch', mockFetch);
         mockFetch.mockReset();
-        auth.logout.mockReset();
-        auth.logout.mockResolvedValue({ success: true });
+        unauthorizedHandler.mockReset();
+        unauthorizedHandler.mockResolvedValue(undefined);
         preferences.get.mockReset();
         preferences.get.mockImplementation(async ({ key }: { key: string }) => ({
             value: preferenceValues.get(key) ?? null,
@@ -124,7 +120,7 @@ describe('apiFetch', () => {
             expect(result).toEqual({ success: true, data: { id: '123' } });
             expect(mockFetch).toHaveBeenCalledTimes(3);
             expect(mockFetch.mock.calls.map(([url]) => String(url))).toEqual(['/test', '/users/refresh', '/test']);
-            expect(auth.logout).not.toHaveBeenCalled();
+            expect(unauthorizedHandler).not.toHaveBeenCalled();
         });
 
         it('deduplicates refresh while concurrent 401 responses retry independently', async () => {
@@ -172,7 +168,7 @@ describe('apiFetch', () => {
                     ['/second', 2],
                 ]),
             );
-            expect(auth.logout).not.toHaveBeenCalled();
+            expect(unauthorizedHandler).not.toHaveBeenCalled();
         });
 
         it('injects the stored access token for native requests', async () => {
@@ -231,10 +227,10 @@ describe('apiFetch', () => {
                 name: 'ApiError',
                 status: FORBIDDEN,
             });
-            expect(auth.logout).not.toHaveBeenCalled();
+            expect(unauthorizedHandler).not.toHaveBeenCalled();
         });
 
-        it('logs out after a 401 when refresh fails', async () => {
+        it('calls the unauthorized handler after refresh fails', async () => {
             const apiFetch = await loadApi();
             mockFetch
                 .mockResolvedValueOnce(jsonResponse({ message: 'Unauthorized' }, UNAUTHORIZED))
@@ -244,8 +240,7 @@ describe('apiFetch', () => {
                 name: 'ApiError',
                 status: UNAUTHORIZED,
             });
-            expect(auth.logout).toHaveBeenCalledTimes(1);
-            expect(auth.logout).toHaveBeenCalledWith(false);
+            expect(unauthorizedHandler).toHaveBeenCalledTimes(1);
         });
 
         it('throws ApiError with status 0 on network failure', async () => {

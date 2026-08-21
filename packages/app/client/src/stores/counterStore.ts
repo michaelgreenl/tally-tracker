@@ -34,6 +34,14 @@ export const useCounterStore = defineStore('counter', () => {
         await CounterService.clearLocalCounters();
     }
 
+    async function applyRemoteUpdate(updatedCounter: ClientCounter) {
+        const index = counters.value.findIndex((counter) => counter.id === updatedCounter.id);
+        if (index === -1) return;
+
+        counters.value[index] = { ...counters.value[index], ...updatedCounter };
+        await saveState();
+    }
+
     /**
      * Load counters from local storage (instant), then sync with the server in the background.
      * Called on every HomeView enter via onIonViewWillEnter.
@@ -224,6 +232,7 @@ export const useCounterStore = defineStore('counter', () => {
         counters,
         loading,
         eligibleCount,
+        applyRemoteUpdate,
         saveState,
         clearState,
         init,

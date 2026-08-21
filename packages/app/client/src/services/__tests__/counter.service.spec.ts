@@ -18,8 +18,10 @@ vi.mock('@/services/sync/manager', () => ({
     },
 }));
 
-vi.mock('@/stores/authStore', () => ({
-    useAuthStore: vi.fn(),
+vi.mock('@/services/auth.service', () => ({
+    AuthService: {
+        getCachedUser: vi.fn(),
+    },
 }));
 
 vi.mock('@/utils/safeUUID', () => ({
@@ -27,14 +29,10 @@ vi.mock('@/utils/safeUUID', () => ({
 }));
 
 import { CounterService } from '../counter.service';
+import { AuthService } from '@/services/auth.service';
 import { SyncQueueService } from '@/services/sync/queue';
 import { SyncManager } from '@/services/sync/manager';
-import { useAuthStore } from '@/stores/authStore';
 import { randomUUID } from '@/utils/safeUUID';
-
-type CounterAuthDependencies = Pick<ReturnType<typeof useAuthStore>, 'isAuthenticated' | 'user'>;
-
-const useAuthStoreMock = vi.mocked(useAuthStore, { partial: true });
 
 const buildCounter = (overrides: Partial<ClientCounter> = {}): ClientCounter => ({
     id: 'counter-1',
@@ -47,18 +45,12 @@ const buildCounter = (overrides: Partial<ClientCounter> = {}): ClientCounter => 
     ...overrides,
 });
 
-const authenticatedStore = (userId = 'user-1'): CounterAuthDependencies =>
-    ({
-        isAuthenticated: true,
-        user: { id: userId, email: 'test@test.com', tier: 'BASIC' },
-    }) satisfies CounterAuthDependencies;
-
 beforeEach(() => {
     vi.mocked(SyncQueueService.addCommand).mockReset();
     vi.mocked(SyncQueueService.addCommand).mockResolvedValue(undefined);
     vi.mocked(SyncManager.processQueue).mockReset();
-    useAuthStoreMock.mockReset();
-    useAuthStoreMock.mockReturnValue(authenticatedStore());
+    vi.mocked(AuthService.getCachedUser).mockReset();
+    vi.mocked(AuthService.getCachedUser).mockResolvedValue({ id: 'user-1', email: 'test@test.com', tier: 'BASIC' });
     vi.mocked(randomUUID).mockReset();
     vi.mocked(randomUUID).mockReturnValue('command-1');
 });

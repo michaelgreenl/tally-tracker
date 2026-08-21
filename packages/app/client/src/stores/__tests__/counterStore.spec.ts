@@ -77,6 +77,18 @@ describe('counterStore.eligibleCount', () => {
     });
 });
 
+describe('counterStore.applyRemoteUpdate', () => {
+    it('merges a socket update into the matching counter and persists it', async () => {
+        const store = useCounterStore();
+        store.counters = [counter({ count: 1, title: 'Local' })];
+
+        await store.applyRemoteUpdate(counter({ count: 2, title: 'Remote' }));
+
+        expect(store.counters).toEqual([counter({ count: 2, title: 'Remote' })]);
+        expect(CounterService.persist).toHaveBeenCalledWith(store.counters);
+    });
+});
+
 describe('counterStore.createCounter', () => {
     it('allows three guest personal counters and blocks the fourth before persistence', async () => {
         const store = useCounterStore();

@@ -21,31 +21,17 @@ vi.mock('@/api', () => ({
     default: vi.fn(),
 }));
 
-vi.mock('@/stores/authStore', () => ({
-    useAuthStore: vi.fn(),
+vi.mock('@/services/auth.service', () => ({
+    AuthService: {
+        getCachedUser: vi.fn(),
+    },
 }));
 
 import { Network } from '@capacitor/network';
+import { AuthService } from '@/services/auth.service';
 import { SyncQueueService } from '../queue';
 import apiFetch from '@/api';
 import { SyncManager } from '../manager';
-import { useAuthStore } from '@/stores/authStore';
-
-type SyncAuthDependencies = Pick<ReturnType<typeof useAuthStore>, 'user' | 'logout'>;
-
-const useAuthStoreMock = vi.mocked(useAuthStore, { partial: true });
-
-const buildAuthStoreDouble = ({
-    userId = TEST_USER_ID,
-    logout = vi.fn(),
-}: {
-    userId?: string | null;
-    logout?: SyncAuthDependencies['logout'];
-} = {}): SyncAuthDependencies =>
-    ({
-        user: userId === null ? null : { id: userId, email: 'test@test.com', tier: 'BASIC' as const },
-        logout,
-    }) satisfies SyncAuthDependencies;
 
 describe('SyncManager', () => {
     beforeEach(() => {
@@ -54,10 +40,14 @@ describe('SyncManager', () => {
         vi.mocked(SyncQueueService.getQueue).mockReset();
         vi.mocked(SyncQueueService.removeCommand).mockReset();
         vi.mocked(apiFetch).mockReset();
-        useAuthStoreMock.mockReset();
+        vi.mocked(AuthService.getCachedUser).mockReset();
         SyncManager.isSyncing = false;
         SyncManager.syncRequested = false;
-        useAuthStoreMock.mockReturnValue(buildAuthStoreDouble());
+        vi.mocked(AuthService.getCachedUser).mockResolvedValue({
+            id: TEST_USER_ID,
+            email: 'test@test.com',
+            tier: 'BASIC',
+        });
     });
 
     describe('processQueue', () => {
@@ -142,7 +132,7 @@ describe('SyncManager', () => {
         });
 
         it('should keep queued commands when there is no authenticated user', async () => {
-            useAuthStoreMock.mockReturnValue(buildAuthStoreDouble({ userId: null }));
+            vi.mocked(AuthService.getCachedUser).mockResolvedValue(null);
 
             vi.mocked(Network.getStatus).mockResolvedValue({ connected: true, connectionType: 'wifi' });
             vi.mocked(SyncQueueService.getQueue).mockResolvedValue([buildCommand()]);
@@ -190,10 +180,7 @@ describe('SyncManager', () => {
             expect(SyncQueueService.removeCommand).toHaveBeenCalledWith('next-command');
         });
 
-        it('should stop processing and trigger logout on 401', async () => {
-            const mockLogout = vi.fn();
-            useAuthStoreMock.mockReturnValue(buildAuthStoreDouble({ logout: mockLogout }));
-
+        it('should stop processing and keep commands on 401', async () => {
             vi.mocked(Network.getStatus).mockResolvedValue({ connected: true, connectionType: 'wifi' });
             vi.mocked(SyncQueueService.getQueue).mockResolvedValue([
                 buildCommand({ id: 'cmd-1' }),
@@ -204,7 +191,6 @@ describe('SyncManager', () => {
             await SyncManager.processQueue();
 
             expect(SyncQueueService.removeCommand).not.toHaveBeenCalled();
-            expect(mockLogout).toHaveBeenCalledWith(false);
             expect(SyncManager.isSyncing).toBe(false);
         });
 

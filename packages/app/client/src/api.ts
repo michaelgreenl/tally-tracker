@@ -24,7 +24,6 @@ import { OK_NO_CONTENT, REQUEST_TIMEOUT, UNAUTHORIZED } from '@tally/core';
 import { Preferences } from '@capacitor/preferences';
 import { Capacitor } from '@capacitor/core';
 import { ApiError, getErrorMessage } from '@/utils/errors';
-import { useAuthStore } from './stores/authStore';
 
 import type { AuthResponse } from '@tally/core';
 
@@ -44,6 +43,11 @@ const API_URL = isDev && !isNative ? '' : import.meta.env.VITE_API_URL || defaul
 // Prevents multiple concurrent refresh attempts. If a refresh is in flight,
 // subsequent 401s wait on the same promise instead of firing duplicates.
 let refreshPromise: Promise<boolean> | null = null;
+let unauthorizedHandler: (() => void | Promise<void>) | undefined;
+
+export const setUnauthorizedHandler = (handler: () => void | Promise<void>) => {
+    unauthorizedHandler = handler;
+};
 
 async function attemptRefresh(): Promise<boolean> {
     if (refreshPromise) return refreshPromise;
@@ -140,8 +144,7 @@ async function apiFetch<ResT = unknown, ReqT = unknown>(
             }
 
             if (res.status === UNAUTHORIZED) {
-                const authStore = useAuthStore();
-                await authStore.logout(false);
+                await unauthorizedHandler?.();
             }
 
             const errorData = (await res.json().catch(() => ({}))) as { message?: string } & Record<string, unknown>;

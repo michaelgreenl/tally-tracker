@@ -9,16 +9,16 @@
  *
  * Error strategy:
  * - 2xx: Success. Remove command from queue.
- * - 401: Session expired (refresh already failed in apiFetch). Stop processing,
- *         keep commands for after re-auth, trigger logout.
+ * - 401: Session expired (refresh already failed in apiFetch). Stop processing
+ *         and keep commands for after re-auth. The API handler clears the session.
  * - Other 4xx: Fatal (validation/logic error). Remove to unblock the queue.
  * - 5xx / Network: Retryable. Stop processing, retry on next trigger.
  */
 
 import { UNAUTHORIZED } from '@tally/core';
 import { Network } from '@capacitor/network';
+import { AuthService } from '@/services/auth.service';
 import { SyncQueueService } from '@/services/sync/queue';
-import { useAuthStore } from '@/stores/authStore';
 import apiFetch from '@/api';
 import { ApiError } from '@/utils/errors';
 
@@ -78,8 +78,7 @@ export const SyncManager = {
             return true;
         }
 
-        const authStore = useAuthStore();
-        const currentUserId = authStore.user?.id;
+        const currentUserId = (await AuthService.getCachedUser())?.id;
         if (!currentUserId) {
             console.log('[Sync] No authenticated user. Keeping commands in queue.');
             return false;
@@ -109,8 +108,6 @@ export const SyncManager = {
                 // Keep commands for after re-auth.
                 if (status === UNAUTHORIZED) {
                     console.warn('[Sync] Session expired. Keeping commands for after re-auth.');
-
-                    await authStore.logout(false);
                     return false;
                 }
 

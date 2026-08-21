@@ -23,18 +23,26 @@ import '@ionic/vue/css/palettes/dark.system.css';
 
 import { createApp } from 'vue';
 import { createPinia } from 'pinia';
+import { setUnauthorizedHandler } from './api.ts';
 import router from './router';
 import socket from './socket/index.ts';
 import { registerCounterListeners } from './socket/counter.socket.ts';
+import { useAuthStore } from './stores/authStore.ts';
+import { useCounterStore } from './stores/counterStore.ts';
 import App from './App.vue';
 import { IonicVue } from '@ionic/vue';
 import { initSentry } from './monitoring/sentry';
 
-const app = createApp(App).use(IonicVue).use(router);
+const pinia = createPinia();
+const app = createApp(App).use(IonicVue).use(pinia).use(router);
+const authStore = useAuthStore(pinia);
+const counterStore = useCounterStore(pinia);
 
 initSentry(app);
-app.use(createPinia());
-registerCounterListeners(socket);
+setUnauthorizedHandler(async () => {
+    await authStore.logout(false);
+});
+registerCounterListeners(socket, counterStore.applyRemoteUpdate);
 
 router.isReady().then(() => {
     app.mount('#app');

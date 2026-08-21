@@ -2,13 +2,13 @@ import apiFetch from '@/api';
 import { LocalStorageService } from '@/services/storage.service';
 import { SyncQueueService } from '@/services/sync/queue';
 import { SyncManager } from '@/services/sync/manager';
-import { useAuthStore } from '@/stores/authStore';
+import { AuthService } from '@/services/auth.service';
 import { randomUUID } from '@/utils/safeUUID';
 
 import type { ClientCounter, CounterResponse, UpdateCounterRequest, JoinCounterRequest } from '@tally/core';
 
-const getQueuedByUserId = (): string => {
-    const userId = useAuthStore().user?.id;
+const getQueuedByUserId = async (): Promise<string> => {
+    const userId = (await AuthService.getCachedUser())?.id;
     if (!userId) throw new Error('Cannot queue a mutation without an authenticated user');
     return userId;
 };
@@ -34,7 +34,7 @@ export const CounterService = {
     async create(counter: ClientCounter) {
         await SyncQueueService.addCommand({
             id: randomUUID(),
-            queuedByUserId: getQueuedByUserId(),
+            queuedByUserId: await getQueuedByUserId(),
             type: 'CREATE',
             entity: 'counter',
             entityId: counter.id,
@@ -54,7 +54,7 @@ export const CounterService = {
     async update(counterId: string, updates: UpdateCounterRequest) {
         await SyncQueueService.addCommand({
             id: randomUUID(),
-            queuedByUserId: getQueuedByUserId(),
+            queuedByUserId: await getQueuedByUserId(),
             type: 'UPDATE',
             entity: 'counter',
             entityId: counterId,
@@ -70,7 +70,7 @@ export const CounterService = {
         if (counter.type === 'SHARED') {
             await SyncQueueService.addCommand({
                 id: randomUUID(),
-                queuedByUserId: getQueuedByUserId(),
+                queuedByUserId: await getQueuedByUserId(),
                 type: 'INCREMENT',
                 entity: 'counter',
                 entityId: counter.id,
@@ -80,7 +80,7 @@ export const CounterService = {
         } else {
             await SyncQueueService.addCommand({
                 id: randomUUID(),
-                queuedByUserId: getQueuedByUserId(),
+                queuedByUserId: await getQueuedByUserId(),
                 type: 'SET_COUNT',
                 entity: 'counter',
                 entityId: counter.id,
@@ -92,13 +92,13 @@ export const CounterService = {
     },
 
     async delete(counter: ClientCounter) {
-        const authStore = useAuthStore();
+        const queuedByUserId = await getQueuedByUserId();
 
         // Counter owner -> DELETE | Counter participant -> REMOVE (sets share status to REJECTED).
-        if (!authStore.isAuthenticated || counter.userId === authStore.user?.id) {
+        if (counter.userId === queuedByUserId) {
             await SyncQueueService.addCommand({
                 id: randomUUID(),
-                queuedByUserId: getQueuedByUserId(),
+                queuedByUserId,
                 type: 'DELETE',
                 entity: 'counter',
                 entityId: counter.id,
@@ -108,7 +108,7 @@ export const CounterService = {
         } else {
             await SyncQueueService.addCommand({
                 id: randomUUID(),
-                queuedByUserId: getQueuedByUserId(),
+                queuedByUserId,
                 type: 'REMOVE',
                 entity: 'counter',
                 entityId: counter.id,
@@ -133,11 +133,12 @@ export const CounterService = {
     // FIXME: should the userId be sent with the payload here? if not why is it here?
     async consolidate(countersToSync: ClientCounter[]) {
         console.log(`[Consolidation] Syncing ${countersToSync.length} counters...`);
+        const queuedByUserId = await getQueuedByUserId();
 
         for (const counter of countersToSync) {
             await SyncQueueService.addCommand({
                 id: randomUUID(),
-                queuedByUserId: getQueuedByUserId(),
+                queuedByUserId,
                 type: 'CREATE',
                 entity: 'counter',
                 entityId: counter.id,

@@ -5,6 +5,7 @@ import { buildCommand } from '@/test/fixtures/sync.fixture';
 const {
     apiFetchMock,
     authServiceMock,
+    cachedUser,
     connectSocketMock,
     counterStoreMock,
     disconnectSocketMock,
@@ -28,6 +29,9 @@ const {
         setAccessToken: vi.fn(),
         setRefreshToken: vi.fn(),
         updateUser: vi.fn(),
+    },
+    cachedUser: {
+        value: null as { id: string; email: string; tier: 'BASIC' } | null,
     },
     connectSocketMock: vi.fn(),
     counterStoreMock: {
@@ -124,11 +128,17 @@ describe('sync queue session isolation', () => {
         vi.mocked(Preferences.remove).mockClear();
         vi.mocked(Preferences.set).mockClear();
         preferencesStore.clear();
+        cachedUser.value = null;
         SyncManager.isSyncing = false;
         SyncManager.syncRequested = false;
 
-        authServiceMock.cacheUser.mockResolvedValue(undefined);
-        authServiceMock.clearLocalAuth.mockResolvedValue(undefined);
+        authServiceMock.cacheUser.mockImplementation(async (user: typeof cachedUser.value) => {
+            cachedUser.value = user;
+        });
+        authServiceMock.clearLocalAuth.mockImplementation(async () => {
+            cachedUser.value = null;
+        });
+        authServiceMock.getCachedUser.mockImplementation(async () => cachedUser.value);
         authServiceMock.login.mockImplementation(async ({ email }: { email?: string }) => ({
             success: true,
             data: {
