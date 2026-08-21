@@ -21,6 +21,8 @@ Tally Tracker is a Vue/Ionic counter app with guest counters, authenticated coun
 
 The client writes counter changes to Pinia state first, persists local state, and queues authenticated mutations for replay when the network returns. Shared counter increments use Socket.io to push `counter-update` events to the owner and accepted sharers.
 
+The React Native migration client lives in `packages/app/expo-client`. It runs beside the Vue client until behavior parity is complete.
+
 The API supports email/password registration, login, logout, auth checks, refresh token rotation, personal counters, shared counters, invite-code joins, and share removal. `BASIC` users cannot create shared counters and can join one shared counter; `PREMIUM` users can create and join shared counters. The upgrade screen is informational only; billing is not implemented.
 
 ## Architecture & Key Features
@@ -111,6 +113,8 @@ bun run dev:db
 bun run dev:server
 bun run dev:client
 ```
+
+Start the React Native migration client with `bun run dev:expo`.
 
 The API defaults to port `3000`. The Vite client runs on port `8100` and proxies `/users`, `/counters`, and `/health` to `VITE_API_URL` or `http://localhost:3000`.
 

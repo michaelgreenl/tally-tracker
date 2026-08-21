@@ -9,6 +9,7 @@
     ],
     "scripts": {
         "dev:client": "bun --filter=client run dev",
+        "dev:expo": "bun --filter=@tally/expo-client run start",
         "dev:server": "bun --filter=server run dev",
         "dev:db": "docker compose -f packages/app/server/docker-compose.yml up -d --wait postgres",
         "dev:db:status": "docker compose -f packages/app/server/docker-compose.yml ps",
@@ -26,7 +27,7 @@
         "test:component": "bun --filter=server run test:component",
         "test:integration": "NODE_ENV=test TALLY_TEST_DB_RESET=1 POSTGRES_URL=postgresql://tally_test_user:tally_test_password@127.0.0.1:5433/tally_tracker_test bun --filter=server run test:integration",
         "test:coverage": "bun --filter=client run test:coverage && bun --filter=server run test:coverage",
-        "build": "bun --filter=client run build && bun --filter=server run build",
+        "build": "bun --filter=client run build && bun --filter=@tally/expo-client run build && bun --filter=server run build",
         "render:build": "bun install && bun --filter=@tally/core run generate && bun --filter=server run render:build",
         "render:start": "bun --filter=@tally/core run render:start && bun --filter=server run render:start",
         "commit:skip": "SKIP_E2E=1 git commit",

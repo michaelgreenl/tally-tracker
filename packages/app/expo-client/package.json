@@ -1,0 +1,39 @@
+{
+    "name": "@tally/expo-client",
+    "main": "expo-router/entry",
+    "version": "0.1.0",
+    "dependencies": {
+        "@tally/core": "workspace:*",
+        "expo": "~57.0.15",
+        "expo-constants": "~57.0.13",
+        "expo-linking": "~57.0.7",
+        "expo-router": "~57.0.15",
+        "expo-splash-screen": "~57.0.7",
+        "expo-status-bar": "~57.0.1",
+        "react": "19.2.3",
+        "react-dom": "19.2.3",
+        "react-native": "0.86.2",
+        "react-native-safe-area-context": "~5.7.0",
+        "react-native-screens": "~4.26.0",
+        "react-native-web": "~0.21.0"
+    },
+    "devDependencies": {
+        "@types/react": "~19.2.2",
+        "eslint": "^9.0.0",
+        "eslint-config-expo": "~57.0.1",
+        "typescript": "~6.0.3"
+    },
+    "scripts": {
+        "start": "expo start",
+        "android": "expo start --android",
+        "ios": "expo start --ios",
+        "web": "expo start --web",
+        "build": "expo export --platform web",
+        "typecheck": "tsc --noEmit",
+        "format": "prettier --write src/ app.json eslint.config.js package.json tsconfig.json",
+        "format:check": "prettier --check src/ app.json eslint.config.js package.json tsconfig.json",
+        "lint": "expo lint",
+        "lint:all": "bun typecheck && bun format:check && bun lint"
+    },
+    "private": true
+}
