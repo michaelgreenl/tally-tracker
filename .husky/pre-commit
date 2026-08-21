@@ -12,6 +12,9 @@ bun lint:all
 echo "🧪 Running unit tests..."
 bun test:unit
 
+echo "🧩 Running component tests..."
+bun test:component
+
 if [ "$SKIP_E2E" = "1" ]; then
     echo "⏭️  Skipping E2E tests"
 else

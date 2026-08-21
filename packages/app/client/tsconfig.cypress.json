@@ -1,0 +1,9 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "allowImportingTsExtensions": true,
+        "types": ["node", "cypress"]
+    },
+    "include": ["cypress.config.ts", "tests/e2e/**/*.ts"],
+    "exclude": []
+}

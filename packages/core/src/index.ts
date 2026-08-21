@@ -5,3 +5,4 @@ export { PrismaClient };
 export * as PrismaTypes from '@prisma/client';
 
 export * from './types/index.ts';
+export * from './utils/index.ts';
