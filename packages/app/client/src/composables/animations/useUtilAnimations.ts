@@ -1,6 +1,6 @@
 import { gsap } from 'gsap';
 import { useGsap } from '@/composables/useGsap';
-import Flip from 'gsap/Flip';
+import Flip from 'gsap/dist/Flip';
 
 gsap.registerPlugin(Flip);
 
