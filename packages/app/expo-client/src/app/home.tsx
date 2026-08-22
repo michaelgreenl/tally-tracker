@@ -50,13 +50,20 @@ export default function HomeScreen() {
                         {session.isPremium && <Text style={styles.premiumBadge}>Premium</Text>}
                     </View>
                     {session.isAuthenticated ? (
-                        <Pressable
-                            accessibilityRole='button'
-                            onPress={() => void session.logout()}
-                            style={styles.headerAction}
-                        >
-                            <Text style={styles.headerActionText}>Logout</Text>
-                        </Pressable>
+                        <View style={styles.headerActions}>
+                            <Link href='/settings' asChild>
+                                <Pressable accessibilityRole='link' style={styles.headerAction}>
+                                    <Text style={styles.headerActionText}>Settings</Text>
+                                </Pressable>
+                            </Link>
+                            <Pressable
+                                accessibilityRole='button'
+                                onPress={() => void session.logout()}
+                                style={styles.headerAction}
+                            >
+                                <Text style={styles.headerActionText}>Logout</Text>
+                            </Pressable>
+                        </View>
                     ) : (
                         <Link href='/login' asChild>
                             <Pressable accessibilityRole='link' style={styles.headerAction}>
@@ -212,14 +219,17 @@ const styles = StyleSheet.create({
         borderRadius: 999,
     },
     headerAction: {
-        minWidth: 60,
+        minWidth: 56,
         minHeight: 44,
         alignItems: 'center',
         justifyContent: 'center',
     },
+    headerActions: {
+        flexDirection: 'row',
+    },
     headerActionText: {
         color: '#ffffff',
-        fontSize: 15,
+        fontSize: 14,
         fontWeight: '700',
     },
     scrollContent: {

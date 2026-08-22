@@ -21,6 +21,7 @@ function Navigator() {
             <Stack.Screen name='index' options={{ title: 'Tally Tracker' }} />
             <Stack.Screen name='home' options={{ title: 'Tally Tracker' }} />
             <Stack.Screen name='join' options={{ title: 'Tally Tracker | Join' }} />
+            <Stack.Screen name='settings' options={{ title: 'Tally Tracker | Settings' }} />
             <Stack.Screen name='upgrade' options={{ title: 'Tally Tracker | Upgrade' }} />
             <Stack.Screen name='legal/[document]' />
             <Stack.Protected guard={!session.isAuthenticated}>
