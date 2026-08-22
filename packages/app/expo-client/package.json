@@ -25,6 +25,7 @@
     },
     "devDependencies": {
         "@types/react": "~19.2.2",
+        "cypress": "^13.17.0",
         "eslint": "^9.0.0",
         "eslint-config-expo": "~57.0.1",
         "typescript": "~6.0.3",
@@ -36,10 +37,11 @@
         "ios": "expo start --ios",
         "web": "expo start --web",
         "build": "expo export --platform web",
+        "test:e2e": "TS_NODE_PROJECT=tsconfig.cypress.json cypress run",
         "test:unit": "vitest run",
         "typecheck": "tsc --noEmit",
-        "format": "prettier --write src/ app.json eslint.config.js package.json tsconfig.json",
-        "format:check": "prettier --check src/ app.json eslint.config.js package.json tsconfig.json",
+        "format": "prettier --write src/ tests/e2e/ app.json cypress.config.mjs eslint.config.js package.json tsconfig.json tsconfig.cypress.json",
+        "format:check": "prettier --check src/ tests/e2e/ app.json cypress.config.mjs eslint.config.js package.json tsconfig.json tsconfig.cypress.json",
         "lint": "expo lint",
         "lint:all": "bun typecheck && bun format:check && bun lint"
     },

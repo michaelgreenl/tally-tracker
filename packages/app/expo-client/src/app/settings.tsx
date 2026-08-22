@@ -204,6 +204,7 @@ export default function SettingsScreen() {
                                     disabled={deleteLoading}
                                     onPress={() => void deleteAccount()}
                                     style={[styles.deleteButton, deleteLoading && styles.disabled]}
+                                    testID='delete-account-confirm-submit'
                                 >
                                     <Text style={styles.deleteButtonText}>
                                         {deleteLoading ? 'Deleting…' : 'Delete account'}

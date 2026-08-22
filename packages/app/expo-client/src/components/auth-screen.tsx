@@ -133,6 +133,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                 onChangeText={setEmail}
                                 placeholder='name@example.com'
                                 returnKeyType='next'
+                                testID='auth-email'
                                 textContentType='emailAddress'
                                 value={email}
                             />
@@ -161,6 +162,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                         returnKeyType={isLogin ? 'done' : 'next'}
                                         secureTextEntry={!showPassword}
                                         style={styles.passwordTextInput}
+                                        testID='auth-password'
                                         textContentType={isLogin ? 'password' : 'newPassword'}
                                         value={password}
                                     />
@@ -185,6 +187,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                     onSubmitEditing={() => void submit()}
                                     returnKeyType='done'
                                     secureTextEntry
+                                    testID='auth-confirm-password'
                                     textContentType='newPassword'
                                     value={confirmPassword}
                                 />
@@ -223,6 +226,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                     pressed && styles.primaryButtonPressed,
                                     loading && styles.primaryButtonDisabled,
                                 ]}
+                                testID='auth-submit'
                             >
                                 {loading ? (
                                     <ActivityIndicator color='#ffffff' />

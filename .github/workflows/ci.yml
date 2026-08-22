@@ -141,6 +141,7 @@ jobs:
       NODE_ENV: development
       PORT: 3000
       FRONTEND_URL: http://localhost:8100
+      EXPO_PUBLIC_API_URL: http://localhost:3000
       VITE_API_URL: http://localhost:3000
       POSTGRES_URL: postgresql://template_user:template_pass@localhost:5432/template_db
       JWT_SECRET: ci-jwt-secret-for-e2e
@@ -174,9 +175,10 @@ jobs:
         uses: cypress-io/github-action@v7
         with:
           install: false
-          command: bun run test:e2e
+          command: bun run test:e2e && bun run test:e2e:expo
           start: |
             bun run dev:server
             bun run dev:client
-          wait-on: 'http://localhost:3000/health, http://localhost:8100'
+            bun run dev:expo
+          wait-on: 'http://localhost:3000/health, http://localhost:8100, http://localhost:8081'
           wait-on-timeout: 120

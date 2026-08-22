@@ -52,7 +52,11 @@ export default function HomeScreen() {
                     {session.isAuthenticated ? (
                         <View style={styles.headerActions}>
                             <Link href='/settings' asChild>
-                                <Pressable accessibilityRole='link' style={styles.headerAction}>
+                                <Pressable
+                                    accessibilityRole='link'
+                                    style={styles.headerAction}
+                                    testID='home-settings-link'
+                                >
                                     <Text style={styles.headerActionText}>Settings</Text>
                                 </Pressable>
                             </Link>
@@ -60,6 +64,7 @@ export default function HomeScreen() {
                                 accessibilityRole='button'
                                 onPress={() => void session.logout()}
                                 style={styles.headerAction}
+                                testID='home-logout'
                             >
                                 <Text style={styles.headerActionText}>Logout</Text>
                             </Pressable>

@@ -33,10 +33,15 @@ export function CounterCard({ counter, onDelete, onEdit, onIncrement }: CounterC
                     accessibilityRole='button'
                     onPress={() => onIncrement(counter.id, -1)}
                     style={({ pressed }) => [styles.countButton, pressed && styles.buttonPressed]}
+                    testID={`counter-${counter.id}-decrease`}
                 >
                     <Text style={styles.countButtonText}>−</Text>
                 </Pressable>
-                <Text accessibilityLabel={`${counter.title} count ${counter.count}`} style={styles.count}>
+                <Text
+                    accessibilityLabel={`${counter.title} count ${counter.count}`}
+                    style={styles.count}
+                    testID={`counter-${counter.id}-count`}
+                >
                     {counter.count}
                 </Text>
                 <Pressable
@@ -44,6 +49,7 @@ export function CounterCard({ counter, onDelete, onEdit, onIncrement }: CounterC
                     accessibilityRole='button'
                     onPress={() => onIncrement(counter.id, 1)}
                     style={({ pressed }) => [styles.countButton, pressed && styles.buttonPressed]}
+                    testID={`counter-${counter.id}-increase`}
                 >
                     <Text style={styles.countButtonText}>+</Text>
                 </Pressable>
