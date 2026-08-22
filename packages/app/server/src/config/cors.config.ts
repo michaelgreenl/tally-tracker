@@ -5,6 +5,7 @@ const getAllowedOrigins = () => {
     return [
         'http://localhost:5173',
         'http://localhost:8100',
+        'http://localhost:8081',
         'capacitor://localhost', // iOS WebView
         'http://localhost', // Android WebView
         FRONTEND_URL,

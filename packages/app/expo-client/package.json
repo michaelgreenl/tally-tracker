@@ -3,11 +3,13 @@
     "main": "expo-router/entry",
     "version": "0.1.0",
     "dependencies": {
+        "@react-native-async-storage/async-storage": "2.2.0",
         "@tally/core": "workspace:*",
         "expo": "~57.0.15",
         "expo-constants": "~57.0.13",
         "expo-linking": "~57.0.7",
         "expo-router": "~57.0.15",
+        "expo-secure-store": "~57.0.1",
         "expo-splash-screen": "~57.0.7",
         "expo-status-bar": "~57.0.1",
         "react": "19.2.3",
@@ -21,7 +23,8 @@
         "@types/react": "~19.2.2",
         "eslint": "^9.0.0",
         "eslint-config-expo": "~57.0.1",
-        "typescript": "~6.0.3"
+        "typescript": "~6.0.3",
+        "vitest": "4.1.9"
     },
     "scripts": {
         "start": "expo start",
@@ -29,6 +32,7 @@
         "ios": "expo start --ios",
         "web": "expo start --web",
         "build": "expo export --platform web",
+        "test:unit": "vitest run",
         "typecheck": "tsc --noEmit",
         "format": "prettier --write src/ app.json eslint.config.js package.json tsconfig.json",
         "format:check": "prettier --check src/ app.json eslint.config.js package.json tsconfig.json",
