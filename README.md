@@ -2,8 +2,8 @@
 > A cross-platform offline-first application utilizing a custom synchronization queue for network resilience, featuring real-time shared counters and native deep linking integration.
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=fff)](https://www.typescriptlang.org/docs/)
-[![Ionic](https://img.shields.io/badge/Ionic-3880FF?style=for-the-badge&logo=ionic&logoColor=fff)](https://ionicframework.com/docs)
-[![Vue.js](https://img.shields.io/badge/Vue.js-35495E?style=for-the-badge&logo=vuedotjs&logoColor=4FC08D)](https://vuejs.org/) 
+[![React Native](https://img.shields.io/badge/React_Native-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactnative.dev/)
+[![Expo](https://img.shields.io/badge/Expo-000020?style=for-the-badge&logo=expo&logoColor=fff)](https://docs.expo.dev/)
 [![Node](https://img.shields.io/badge/Node-43853D?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
 [![Express](https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com/) 
 [![Socket.io](https://img.shields.io/badge/Socket.io-black?style=for-the-badge&logo=socket.io&badgeColor=010101)](https://socket.io/) 
@@ -17,11 +17,11 @@ https://github.com/user-attachments/assets/2fdf4333-387a-4497-a79e-e6051281fab3
 
 ## Overview
 
-Tally Tracker is a Vue/Ionic counter app with guest counters, authenticated counters, shared counters, and an Express API. Guest counters are stored on-device with Capacitor Preferences; authenticated counters sync to PostgreSQL through Prisma.
+Tally Tracker is a React Native counter app for Android, iOS, and web. It supports guest, authenticated, and shared counters.
 
-The client writes counter changes to Pinia state first, persists local state, and queues authenticated mutations for replay when the network returns. Shared counter increments use Socket.io to push `counter-update` events to the owner and accepted sharers.
+The client writes counter changes to React state first. It saves local state and queues authenticated mutations for later replay.
 
-The React Native migration client lives in `packages/app/expo-client`. It runs beside the Vue client until behavior parity is complete.
+Shared counter increments use Socket.io. The server sends `counter-update` events to the owner and accepted sharers.
 
 The API supports email/password registration, login, logout, auth checks, refresh token rotation, personal counters, shared counters, invite-code joins, and share removal. `BASIC` users cannot create shared counters and can join one shared counter; `PREMIUM` users can create and join shared counters. The upgrade screen is informational only; billing is not implemented.
 
@@ -31,18 +31,18 @@ The API supports email/password registration, login, logout, auth checks, refres
 
 #### Offline Counter State
 
-- **Local persistence:** Guest and authenticated counter lists are saved with Capacitor Preferences.
-- **Optimistic updates:** Create, edit, increment/decrement, and delete operations update Pinia state before network confirmation.
+- **Local persistence:** AsyncStorage saves guest and authenticated counter lists.
+- **Optimistic updates:** Counter actions update React context state before network confirmation.
 - **Persistent sync queue:** Authenticated mutations are stored in `app_sync_queue` as `CREATE`, `UPDATE`, `SET_COUNT`, `INCREMENT`, `DELETE`, and `REMOVE` commands.
-- **Network replay:** `SyncManager` processes queued commands in FIFO order when Capacitor Network reports connectivity.
+- **Network replay:** `SyncManager` processes queued commands when Expo Network reports connectivity.
 - **Retry handling:** Network failures, 5xx responses, and expired sessions keep commands queued; non-401 4xx responses are removed to unblock later commands.
 
 #### Cross-Platform Auth
 
 - **Web auth:** Browser requests use HttpOnly `access_token` and `refresh_token` cookies.
-- **Native auth:** iOS and Android requests read tokens from Capacitor Preferences and attach Bearer headers.
+- **Native auth:** iOS and Android requests read tokens from Expo SecureStore and attach Bearer headers.
 - **Refresh flow:** `apiFetch` deduplicates concurrent refresh attempts and retries the original request after a successful refresh.
-- **Deep links:** Capacitor `appUrlOpen` events route join links to `/join?code=...`.
+- **Deep links:** Expo Router maps `tally://join?code=...` to the join screen.
 
 #### Sharing UI
 
@@ -77,12 +77,12 @@ The API supports email/password registration, login, logout, auth checks, refres
 
 **Client:**
 
-- **Framework:** Vue 3, Ionic 8, Vite
-- **State Management:** Pinia
+- **Framework:** React Native, Expo, Expo Router
+- **State Management:** React context
 - **Language:** TypeScript
-- **Native Bridge:** Capacitor for iOS and Android
+- **Storage:** AsyncStorage and Expo SecureStore
 - **Realtime:** Socket.io client
-- **Testing:** Vitest, Vue Test Utils, Cypress
+- **Testing:** Vitest and Cypress
 
 **Server:**
 
@@ -106,7 +106,7 @@ Install dependencies:
 bun install
 ```
 
-Start the API and client in separate terminals:
+Start the database, API, and client in separate terminals:
 
 ```bash
 bun run dev:db
@@ -114,9 +114,7 @@ bun run dev:server
 bun run dev:client
 ```
 
-Start the React Native migration client with `bun run dev:expo`.
-
-The API defaults to port `3000`. The Vite client runs on port `8100` and proxies `/users`, `/counters`, and `/health` to `VITE_API_URL` or `http://localhost:3000`.
+The API uses port `3000`. Expo uses port `8081` and connects to `EXPO_PUBLIC_API_URL`.
 
 Reset and seed the local database:
 
@@ -126,7 +124,7 @@ bun run dev:db:reset
 
 This command force-resets the local PostgreSQL database. Stop the database with `bun run dev:db:stop`, or delete its local volume with `bun run dev:db:clean`.
 
-Build both workspaces:
+Build the client and server:
 
 ```bash
 bun run build
@@ -144,7 +142,7 @@ bun run test:component
 
 The test taxonomy is:
 
-- `test:unit`: client and server tests that isolate their direct subject.
+- `test:unit`: client and server tests that isolate their subject.
 - `test:component`: server HTTP route tests with mocked application collaborators.
 - `test:integration`: real Express routes, repositories, transactions, and PostgreSQL.
 - `test:e2e`: Cypress flows through the running client and server.
@@ -169,7 +167,7 @@ The migration step applies the repository's committed migrations to `tally_track
 - `TALLY_TEST_DB_RESET=1`
 - `POSTGRES_URL` uses `postgres:` or `postgresql:`, targets `localhost` or `127.0.0.1`, has the exact database path `/tally_tracker_test`, and contains no query parameters or URL fragment. The local scripts use `postgresql://tally_test_user:tally_test_password@127.0.0.1:5433/tally_tracker_test`.
 
-Cypress e2e tests use `http://localhost:8100`:
+Cypress tests use `http://localhost:8081`:
 
 ```bash
 bun run test:e2e

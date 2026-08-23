@@ -38,7 +38,7 @@ stateDiagram-v2
     note right of Issued
         Stored in DB on the server.
         Stored in HttpOnly cookie (web)
-        or Capacitor Preferences (native).
+        or Expo SecureStore (native).
     end note
 
     note right of Rotated

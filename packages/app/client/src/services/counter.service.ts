@@ -1,40 +1,41 @@
-import apiFetch from '@/api';
-import { LocalStorageService } from '@/services/storage.service';
-import { SyncQueueService } from '@/services/sync/queue';
-import { SyncManager } from '@/services/sync/manager';
-import { AuthService } from '@/services/auth.service';
-import { randomUUID } from '@/utils/safeUUID';
+import * as Crypto from 'expo-crypto';
 
-import type { ClientCounter, CounterResponse, UpdateCounterRequest, JoinCounterRequest } from '@tally/core';
+import apiFetch from '../api';
+import { AuthService } from './auth.service';
+import { CounterStorage } from './counter-storage';
+import { SyncManager } from './sync-manager';
+import { SyncQueue } from './sync-queue';
 
-const getQueuedByUserId = async (): Promise<string> => {
+import type { ClientCounter, CounterResponse, JoinCounterRequest, UpdateCounterRequest } from '@tally/core/client';
+
+const queuedUserId = async () => {
     const userId = (await AuthService.getCachedUser())?.id;
     if (!userId) throw new Error('Cannot queue a mutation without an authenticated user');
     return userId;
 };
 
+const command = async (input: Omit<Parameters<typeof SyncQueue.add>[0], 'id' | 'queuedByUserId' | 'timestamp'>) => {
+    await SyncQueue.add({
+        ...input,
+        id: Crypto.randomUUID(),
+        queuedByUserId: await queuedUserId(),
+        timestamp: Date.now(),
+    });
+    void SyncManager.processQueue();
+};
+
 export const CounterService = {
-    async getAllLocal() {
-        return LocalStorageService.getAllCounters();
-    },
+    getAllLocal: CounterStorage.getAll,
+    persist: CounterStorage.save,
+    clearLocal: CounterStorage.clear,
 
     async fetchRemote() {
-        const res = await apiFetch<CounterResponse>('/counters', { method: 'GET' });
-        return res.success ? res.data?.counters || [] : null;
+        const response = await apiFetch<CounterResponse>('/counters', { method: 'GET' });
+        return response.success ? response.data?.counters || [] : null;
     },
 
-    async persist(counters: ClientCounter[]) {
-        await LocalStorageService.saveCounters(counters);
-    },
-
-    async clearLocalCounters() {
-        await LocalStorageService.clearCounters();
-    },
-
-    async create(counter: ClientCounter) {
-        await SyncQueueService.addCommand({
-            id: randomUUID(),
-            queuedByUserId: await getQueuedByUserId(),
+    create(counter: ClientCounter) {
+        return command({
             type: 'CREATE',
             entity: 'counter',
             entityId: counter.id,
@@ -46,112 +47,44 @@ export const CounterService = {
                 type: counter.type,
                 inviteCode: counter.inviteCode,
             },
-            timestamp: Date.now(),
         });
-        SyncManager.processQueue();
     },
 
-    async update(counterId: string, updates: UpdateCounterRequest) {
-        await SyncQueueService.addCommand({
-            id: randomUUID(),
-            queuedByUserId: await getQueuedByUserId(),
-            type: 'UPDATE',
+    update(counterId: string, payload: UpdateCounterRequest) {
+        return command({ type: 'UPDATE', entity: 'counter', entityId: counterId, payload });
+    },
+
+    increment(counter: ClientCounter, amount: number) {
+        return command({
+            type: counter.type === 'SHARED' ? 'INCREMENT' : 'SET_COUNT',
             entity: 'counter',
-            entityId: counterId,
-            payload: updates,
-            timestamp: Date.now(),
+            entityId: counter.id,
+            payload: counter.type === 'SHARED' ? { amount } : { count: counter.count },
         });
-        SyncManager.processQueue();
-    },
-
-    async increment(counter: ClientCounter, amount: number) {
-        // Shared counters use the atomic increment endpoint to avoid race conditions
-        // with concurrent users. Personal counters send the absolute count instead.
-        if (counter.type === 'SHARED') {
-            await SyncQueueService.addCommand({
-                id: randomUUID(),
-                queuedByUserId: await getQueuedByUserId(),
-                type: 'INCREMENT',
-                entity: 'counter',
-                entityId: counter.id,
-                payload: { amount },
-                timestamp: Date.now(),
-            });
-        } else {
-            await SyncQueueService.addCommand({
-                id: randomUUID(),
-                queuedByUserId: await getQueuedByUserId(),
-                type: 'SET_COUNT',
-                entity: 'counter',
-                entityId: counter.id,
-                payload: { count: counter.count },
-                timestamp: Date.now(),
-            });
-        }
-        SyncManager.processQueue();
     },
 
     async delete(counter: ClientCounter) {
-        const queuedByUserId = await getQueuedByUserId();
-
-        // Counter owner -> DELETE | Counter participant -> REMOVE (sets share status to REJECTED).
-        if (counter.userId === queuedByUserId) {
-            await SyncQueueService.addCommand({
-                id: randomUUID(),
-                queuedByUserId,
-                type: 'DELETE',
-                entity: 'counter',
-                entityId: counter.id,
-                payload: {},
-                timestamp: Date.now(),
-            });
-        } else {
-            await SyncQueueService.addCommand({
-                id: randomUUID(),
-                queuedByUserId,
-                type: 'REMOVE',
-                entity: 'counter',
-                entityId: counter.id,
-                payload: {},
-                timestamp: Date.now(),
-            });
-        }
-        SyncManager.processQueue();
+        const userId = await queuedUserId();
+        await SyncQueue.add({
+            id: Crypto.randomUUID(),
+            queuedByUserId: userId,
+            type: counter.userId === userId ? 'DELETE' : 'REMOVE',
+            entity: 'counter',
+            entityId: counter.id,
+            payload: {},
+            timestamp: Date.now(),
+        });
+        void SyncManager.processQueue();
     },
 
-    // Join is synchronous since it requires real-time server validation.
-    async join(inviteCode: string) {
-        const res = await apiFetch<CounterResponse, JoinCounterRequest>('/counters/join', {
+    join(inviteCode: string) {
+        return apiFetch<CounterResponse, JoinCounterRequest>('/counters/join', {
             method: 'POST',
             body: { inviteCode },
         });
-
-        return res;
     },
 
-    // Migrates guest counters to the authenticated user's account after login.
-    // FIXME: should the userId be sent with the payload here? if not why is it here?
-    async consolidate(countersToSync: ClientCounter[]) {
-        console.log(`[Consolidation] Syncing ${countersToSync.length} counters...`);
-        const queuedByUserId = await getQueuedByUserId();
-
-        for (const counter of countersToSync) {
-            await SyncQueueService.addCommand({
-                id: randomUUID(),
-                queuedByUserId,
-                type: 'CREATE',
-                entity: 'counter',
-                entityId: counter.id,
-                payload: {
-                    id: counter.id,
-                    title: counter.title,
-                    color: counter.color,
-                    count: counter.count,
-                    type: counter.type,
-                },
-                timestamp: Date.now(),
-            });
-        }
-        SyncManager.processQueue();
+    async consolidate(counters: ClientCounter[]) {
+        for (const counter of counters) await this.create(counter);
     },
 };

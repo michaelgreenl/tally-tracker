@@ -20,23 +20,23 @@
 
 sequenceDiagram
     autonumber
-    participant App as Vue App
+    participant App as Expo App
     participant Client as API Client (api.ts)
-    participant Storage as Capacitor Prefs
+    participant Storage as Expo SecureStore
     participant API as Backend
 
     App->>Client: apiFetch('/resource')
 
-    Client->>Client: Check Capacitor.isNativePlatform()
+    Client->>Client: Check Platform.OS
 
     alt isNative is TRUE (iOS/Android)
         Client->>Storage: Get 'access_token'
         Storage-->>Client: Returns "ey..."
         Client->>Client: Add Header: "Authorization: Bearer ey..."
-        Note right of Client: Native apps bypass Cookie issues<br/>by using explicit Headers
+        Note right of Client: Native apps use explicit headers.
     else isNative is FALSE (Web)
         Client->>Client: Do NOT add Header
-        Note right of Client: Browser automatically attaches<br/>HttpOnly Cookies
+        Note right of Client: The browser attaches HttpOnly cookies.
     end
 
     Client->>API: Send Request

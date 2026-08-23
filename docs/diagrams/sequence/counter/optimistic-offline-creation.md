@@ -21,9 +21,9 @@
 sequenceDiagram
     autonumber
     actor User
-    participant View as HomeView
-    participant Store as CounterStore
-    participant Queue as SyncQueue (Capacitor Preferences)
+    participant View as Home Screen
+    participant Store as Counter Context
+    participant Queue as SyncQueue (AsyncStorage)
     participant Svc as CounterService
     participant Manager as SyncManager
     participant API as Backend

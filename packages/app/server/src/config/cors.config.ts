@@ -2,14 +2,7 @@ import 'dotenv/config';
 
 const getAllowedOrigins = () => {
     const { FRONTEND_URL } = process.env;
-    return [
-        'http://localhost:5173',
-        'http://localhost:8100',
-        'http://localhost:8081',
-        'capacitor://localhost', // iOS WebView
-        'http://localhost', // Android WebView
-        FRONTEND_URL,
-    ].filter(Boolean) as string[];
+    return ['http://localhost:8081', 'https://michaelgreenl.github.io', FRONTEND_URL].filter(Boolean) as string[];
 };
 
 const corsOrigin = (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {

@@ -20,15 +20,15 @@
 
 sequenceDiagram
     autonumber
-    participant App as Vue App
+    participant App as Expo App
     participant Client as API Client (api.ts)
-    participant Storage as Capacitor Prefs
+    participant Storage as Expo SecureStore
     participant API as Backend
     participant DB as Database
 
     Note over App, DB: Original request returned 401 (access token expired)
 
-    Client->>Client: Check Capacitor.isNativePlatform()
+    Client->>Client: Check Platform.OS
 
     alt isNative is TRUE (iOS/Android)
         Client->>Storage: Get 'refresh_token'

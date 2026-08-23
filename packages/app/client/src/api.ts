@@ -1,47 +1,34 @@
-/**
- * Cross-platform HTTP client. Handles auth injection, timeouts, error normalization,
- * and automatic token refresh on 401.
- *
- * Auth strategy:
- * - Native (iOS/Android): Reads JWT from Capacitor Preferences, attaches as Bearer header.
- * - Web: Does nothing — the browser attaches the HttpOnly cookie automatically.
- *
- * Refresh strategy:
- * - On 401, attempts to refresh the access token using the refresh token.
- * - Concurrent 401s share a single refresh attempt (deduplication).
- * - If refresh succeeds, the original request is retried transparently.
- * - If refresh fails, the 401 bubbles up to the caller (store, sync manager, etc).
- *
- * Error handling:
- * - Non-OK responses are thrown as `ApiError` with the server's status and message.
- * - Timeouts (10s) throw `ApiError` with status 408.
- * - Network failures throw `ApiError` with status 0 (used by SyncManager to distinguish retryable errors).
- * - Successful JSON responses are parsed and returned, including replayed idempotent mutation responses.
- * - 204 responses return an empty object for successful endpoints with no response body.
- */
+import { OK_NO_CONTENT, REQUEST_TIMEOUT, UNAUTHORIZED } from '@tally/core/client';
+import { Platform } from 'react-native';
 
-import { OK_NO_CONTENT, REQUEST_TIMEOUT, UNAUTHORIZED } from '@tally/core';
-import { Preferences } from '@capacitor/preferences';
-import { Capacitor } from '@capacitor/core';
-import { ApiError, getErrorMessage } from '@/utils/errors';
+import { tokenStorage } from './services/token-storage';
 
-import type { AuthResponse } from '@tally/core';
+import type { AuthResponse } from '@tally/core/client';
 
 export interface ApiRequestOptions<T = unknown> extends Omit<RequestInit, 'body'> {
     body?: T;
 }
 
-const isDev = import.meta.env.DEV;
-const isNative = Capacitor.isNativePlatform();
-const isAndroid = Capacitor.getPlatform() === 'android';
+export class ApiError extends Error {
+    success = false;
 
-// Web dev: empty string so requests hit localhost, caught by Vite proxy (vite.config.ts)
-// Android emulator: 10.0.2.2 is the emulator's alias for the host machine's localhost
-const defaultLocal = isAndroid ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
-const API_URL = isDev && !isNative ? '' : import.meta.env.VITE_API_URL || defaultLocal;
+    constructor(
+        message: string,
+        public status?: number,
+        public data?: unknown,
+    ) {
+        super(message);
+        this.name = 'ApiError';
+    }
+}
 
-// Prevents multiple concurrent refresh attempts. If a refresh is in flight,
-// subsequent 401s wait on the same promise instead of firing duplicates.
+export const getErrorMessage = (error: unknown, fallback = 'Unknown error') =>
+    error instanceof Error && error.message ? error.message : fallback;
+
+const isNative = Platform.OS !== 'web';
+const defaultLocal = Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
+export const API_URL = process.env.EXPO_PUBLIC_API_URL || defaultLocal;
+
 let refreshPromise: Promise<boolean> | null = null;
 let unauthorizedHandler: (() => void | Promise<void>) | undefined;
 
@@ -49,45 +36,32 @@ export const setUnauthorizedHandler = (handler: () => void | Promise<void>) => {
     unauthorizedHandler = handler;
 };
 
-async function attemptRefresh(): Promise<boolean> {
-    if (refreshPromise) return refreshPromise;
-    refreshPromise = executeRefresh().finally(() => {
-        refreshPromise = null;
-    });
-    return refreshPromise;
-}
-
-// Uses raw fetch to avoid recursion through apiFetch.
 async function executeRefresh(): Promise<boolean> {
     try {
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        const headers = { 'Content-Type': 'application/json' };
         let body: string | undefined;
 
         if (isNative) {
-            const { value: refreshToken } = await Preferences.get({ key: 'refresh_token' });
+            const refreshToken = await tokenStorage.getRefreshToken();
             if (!refreshToken) return false;
             body = JSON.stringify({ refreshToken });
         }
 
-        const res = await fetch(`${API_URL}/users/refresh`, {
+        const response = await fetch(`${API_URL}/users/refresh`, {
             method: 'POST',
             credentials: 'include',
             headers,
             body,
         });
 
-        if (!res.ok) return false;
+        if (!response.ok) return false;
 
-        const data = (await res.json()) as AuthResponse;
-
-        // Native needs to store the new tokens explicitly; web gets them via Set-Cookie
-        if (isNative && data.data) {
-            if (data.data.accessToken) {
-                await Preferences.set({ key: 'access_token', value: data.data.accessToken });
-            }
-            if (data.data.refreshToken) {
-                await Preferences.set({ key: 'refresh_token', value: data.data.refreshToken });
-            }
+        const result = (await response.json()) as AuthResponse;
+        if (isNative && result.data) {
+            const writes = [];
+            if (result.data.accessToken) writes.push(tokenStorage.setAccessToken(result.data.accessToken));
+            if (result.data.refreshToken) writes.push(tokenStorage.setRefreshToken(result.data.refreshToken));
+            await Promise.all(writes);
         }
 
         return true;
@@ -96,78 +70,68 @@ async function executeRefresh(): Promise<boolean> {
     }
 }
 
+async function attemptRefresh(): Promise<boolean> {
+    if (!refreshPromise) {
+        refreshPromise = executeRefresh().finally(() => {
+            refreshPromise = null;
+        });
+    }
+
+    return refreshPromise;
+}
+
 async function apiFetch<ResT = unknown, ReqT = unknown>(
     endpoint: string,
     options: ApiRequestOptions<ReqT> = {},
-    _isRetry = false,
+    isRetry = false,
 ): Promise<ResT> {
     const { body, headers = {}, ...restOptions } = options;
-
     const isFormData = body instanceof FormData;
-    const reqHeaders: Record<string, string> = {
-        ...(headers as Record<string, string>),
-    };
+    const requestHeaders: Record<string, string> = { ...(headers as Record<string, string>) };
 
-    if (!isFormData && !reqHeaders['Content-Type']) {
-        reqHeaders['Content-Type'] = 'application/json';
-    }
+    if (!isFormData && !requestHeaders['Content-Type']) requestHeaders['Content-Type'] = 'application/json';
 
     if (isNative) {
-        const { value: token } = await Preferences.get({ key: 'access_token' });
-        if (token) {
-            reqHeaders['Authorization'] = `Bearer ${token}`;
-        }
+        const accessToken = await tokenStorage.getAccessToken();
+        if (accessToken) requestHeaders.Authorization = `Bearer ${accessToken}`;
     }
 
     const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), 10000);
+    const timeout = setTimeout(() => controller.abort(), 10_000);
 
     try {
-        const res = await fetch(`${API_URL}${endpoint}`, {
+        const response = await fetch(`${API_URL}${endpoint}`, {
             credentials: 'include',
             ...restOptions,
-            headers: reqHeaders,
+            headers: requestHeaders,
             body: isFormData ? body : body ? JSON.stringify(body) : undefined,
             signal: controller.signal,
         });
 
-        clearTimeout(id);
-
-        if (!res.ok) {
-            // Attempt refresh on 401 before throwing. Only on the first attempt
-            // to prevent infinite loops if the retried request also returns 401.
-            if (res.status === UNAUTHORIZED && !_isRetry) {
-                const refreshed = await attemptRefresh();
-                if (refreshed) {
-                    return apiFetch<ResT, ReqT>(endpoint, options, true);
-                }
+        if (!response.ok) {
+            if (response.status === UNAUTHORIZED && !isRetry && (await attemptRefresh())) {
+                return apiFetch<ResT, ReqT>(endpoint, options, true);
             }
 
-            if (res.status === UNAUTHORIZED) {
-                await unauthorizedHandler?.();
-            }
+            if (response.status === UNAUTHORIZED) await unauthorizedHandler?.();
 
-            const errorData = (await res.json().catch(() => ({}))) as { message?: string } & Record<string, unknown>;
-            throw new ApiError(errorData.message || 'An API error occurred', res.status, errorData);
+            const errorData = (await response.json().catch(() => ({}))) as Record<string, unknown> & {
+                message?: string;
+            };
+            throw new ApiError(errorData.message || 'An API error occurred', response.status, errorData);
         }
 
-        if (res.status === OK_NO_CONTENT) {
-            return {} as ResT;
-        }
-
-        const data = await res.json();
-        console.log(`[API] ${endpoint} Response:`, data);
-        return data;
+        if (response.status === OK_NO_CONTENT) return {} as ResT;
+        return (await response.json()) as ResT;
     } catch (error: unknown) {
-        clearTimeout(id);
-
         if (typeof error === 'object' && error !== null && 'name' in error && error.name === 'AbortError') {
             throw new ApiError('Network timeout', REQUEST_TIMEOUT);
         }
 
         if (error instanceof ApiError) throw error;
-
         throw new ApiError(getErrorMessage(error, 'Network Error'), 0);
+    } finally {
+        clearTimeout(timeout);
     }
 }
 

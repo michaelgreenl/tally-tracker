@@ -42,19 +42,17 @@ describe('Auth Routes', () => {
         vi.clearAllMocks();
     });
 
-    describe('OPTIONS /users/check-auth', () => {
-        it('should allow native Authorization preflight requests', async () => {
+    describe('OPTIONS /users/login', () => {
+        it('allows the deployed web client', async () => {
             const res = await request(app)
-                .options('/users/check-auth')
-                .set('Origin', 'capacitor://localhost')
-                .set('Access-Control-Request-Method', 'GET')
-                .set('Access-Control-Request-Headers', 'Authorization');
-
-            const allowedHeaders = res.headers['access-control-allow-headers'];
+                .options('/users/login')
+                .set('Origin', 'https://michaelgreenl.github.io')
+                .set('Access-Control-Request-Method', 'POST')
+                .set('Access-Control-Request-Headers', 'Content-Type');
 
             expect(res.status).toBe(OK_NO_CONTENT);
-            expect(res.headers['access-control-allow-origin']).toBe('capacitor://localhost');
-            expect(allowedHeaders?.toLowerCase().split(/\s*,\s*/)).toContain('authorization');
+            expect(res.headers['access-control-allow-origin']).toBe('https://michaelgreenl.github.io');
+            expect(res.headers['access-control-allow-credentials']).toBe('true');
         });
     });
 
