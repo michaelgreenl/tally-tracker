@@ -58,6 +58,20 @@ describe('Auth Routes', () => {
         });
     });
 
+    describe('OPTIONS /users', () => {
+        it.each(['http://localhost:8081', 'https://michaelgreenl.github.io'])(
+            'should allow Expo browser requests from %s',
+            async (origin) => {
+                const res = await request(app)
+                    .options('/users')
+                    .set('Origin', origin)
+                    .set('Access-Control-Request-Method', 'POST');
+
+                expect(res.headers['access-control-allow-origin']).toBe(origin);
+            },
+        );
+    });
+
     describe('POST /users (register)', () => {
         it('should create a user and return 201', async () => {
             vi.mocked(userRepository.createUser).mockResolvedValue(buildUser());

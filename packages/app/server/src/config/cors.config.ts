@@ -4,7 +4,9 @@ const getAllowedOrigins = () => {
     const { FRONTEND_URL } = process.env;
     return [
         'http://localhost:5173',
+        'http://localhost:8081',
         'http://localhost:8100',
+        'https://michaelgreenl.github.io',
         'capacitor://localhost', // iOS WebView
         'http://localhost', // Android WebView
         FRONTEND_URL,
