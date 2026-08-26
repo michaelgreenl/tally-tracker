@@ -2,18 +2,14 @@
 > A cross-platform offline-first application utilizing a custom synchronization queue for network resilience, featuring real-time shared counters and native deep linking integration.
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=fff)](https://www.typescriptlang.org/docs/)
-[![Ionic](https://img.shields.io/badge/Ionic-3880FF?style=for-the-badge&logo=ionic&logoColor=fff)](https://ionicframework.com/docs)
-[![Vue.js](https://img.shields.io/badge/Vue.js-35495E?style=for-the-badge&logo=vuedotjs&logoColor=4FC08D)](https://vuejs.org/) 
+[![React-Native](https://img.shields.io/badge/React-61dafb?style=for-the-badge&logo=react&logoColor=fff)](https://react.dev)
 [![Node](https://img.shields.io/badge/Node-43853D?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
 [![Express](https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com/) 
 [![Socket.io](https://img.shields.io/badge/Socket.io-black?style=for-the-badge&logo=socket.io&badgeColor=010101)](https://socket.io/) 
 [![Prisma](https://img.shields.io/badge/Prisma-3982CE?style=for-the-badge&logo=Prisma&logoColor=white)](https://www.prisma.io/) 
 ## Links
-- **💼 [Portfolio Link](https://michaelgreenl.net/#projects?slug=tally&autoplay=false)** 
-
-## Demo Video
-
-https://github.com/user-attachments/assets/2fdf4333-387a-4497-a79e-e6051281fab3
+- **💼 [Portfolio Link](https://michaelgreenl.net/#projects?slug=tally&autoplay=false)**
+- **🎥 [Demo Video](https://michaelgreenl.net/#projects?slug=tally&autoplay=true)**
 
 ## Overview
 
