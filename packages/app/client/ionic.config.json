@@ -1,7 +1,0 @@
-{
-    "name": "tally-tracker-client",
-    "integrations": {
-        "capacitor": {}
-    },
-    "type": "custom"
-}

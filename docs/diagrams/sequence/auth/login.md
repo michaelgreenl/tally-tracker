@@ -20,9 +20,9 @@
 
 sequenceDiagram
     autonumber
-    participant Store as Auth Store
+    participant Store as Session Context
     participant Client as API Client (api.ts)
-    participant Storage as Capacitor Prefs
+    participant Storage as AsyncStorage / SecureStore
     participant API as Backend
     participant DB as Database
     participant Socket as Socket.io
@@ -53,7 +53,6 @@ sequenceDiagram
             Store->>Storage: Cache user profile
         end
 
-        Store->>Store: localStorage.AUTHORIZED = true
         Store->>Socket: connectSocket()
         Store->>Sync: processQueue()
     end

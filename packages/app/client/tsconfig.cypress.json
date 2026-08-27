@@ -1,9 +1,16 @@
 {
-    "extends": "./tsconfig.json",
     "compilerOptions": {
         "allowImportingTsExtensions": true,
-        "types": ["node", "cypress"]
+        "ignoreDeprecations": "6.0",
+        "lib": ["DOM", "ES2022"],
+        "module": "Node16",
+        "moduleResolution": "Node16",
+        "noEmit": true,
+        "rootDir": ".",
+        "skipLibCheck": true,
+        "strict": true,
+        "target": "ES2022",
+        "types": ["cypress"]
     },
-    "include": ["cypress.config.ts", "tests/e2e/**/*.ts"],
-    "exclude": []
+    "include": ["tests/e2e/**/*.ts"]
 }

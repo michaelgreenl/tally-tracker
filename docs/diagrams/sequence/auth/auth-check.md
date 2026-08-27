@@ -20,20 +20,20 @@
 
 sequenceDiagram
     autonumber
-    participant App as Vue App (Router Guard)
-    participant Store as Auth Store
-    participant Storage as Capacitor Prefs
+    participant App as Expo App
+    participant Session as Session Context
+    participant Storage as AsyncStorage
     participant Client as API Client (api.ts)
     participant API as Backend
 
-    Note over App, API: App opened / page refreshed. AUTHORIZED flag exists in localStorage.
+    Note over App, API: App opened or page refreshed.
 
-    App->>Store: initializeAuth()
+    App->>Session: restoreSession()
 
-    Store->>Storage: Get cached user profile
-    Storage-->>Store: Cached user (instant UI hydration)
+    Session->>Storage: Get cached user profile
+    Storage-->>Session: Cached user
 
-    Store->>Client: GET /users/check-auth
+    Session->>Client: GET /users/check-auth
 
     activate API
     Client->>API: Request (access token via cookie or header)
@@ -41,8 +41,8 @@ sequenceDiagram
 
     alt Access Token Valid
         API-->>Client: 200 { user }
-        Client-->>Store: User data
-        Store->>Storage: Update cached profile
+        Client-->>Session: User data
+        Session->>Storage: Update cached profile
 
     else Access Token Expired
         API-->>Client: 401
@@ -54,19 +54,19 @@ sequenceDiagram
             API-->>Client: 200 (new tokens)
             Client->>API: Retry GET /users/check-auth
             API-->>Client: 200 { user }
-            Client-->>Store: User data
-            Store->>Storage: Update cached profile
+            Client-->>Session: User data
+            Session->>Storage: Update cached profile
 
         else Refresh Fails (expired / invalid)
             API-->>Client: 401
-            Client-->>Store: Auth failed
-            Store->>Store: logout(false)
-            Store->>App: Redirect to /login
+            Client-->>Session: Auth failed
+            Session->>Storage: Clear local auth
+            Session->>App: Redirect to /login
         end
 
     else Network Error
-        Client-->>Store: Error
-        Note right of Store: Trust cached profile<br/>so app works offline
+        Client-->>Session: Error
+        Note right of Session: Use cached profile<br/>so the app works offline.
     end
     deactivate API
 ```

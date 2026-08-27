@@ -21,24 +21,24 @@
 classDiagram
     direction TB
 
-    namespace Views {
-        class HomeView
-        class JoinView
-        class LoginView
-        class RegisterView
-        class UpgradeView
+    namespace Screens {
+        class HomeScreen
+        class JoinScreen
+        class LoginScreen
+        class RegisterScreen
+        class SettingsScreen
     }
 
-    namespace Stores {
-        class CounterStore {
+    namespace Contexts {
+        class CounterContext {
             +state: counters[]
-            +create()
-            +increment()
+            +createCounter()
+            +incrementCounter()
             +joinCounter()
         }
-        class AuthStore {
+        class SessionContext {
             +state: user
-            +initializeAuth()
+            +restoreSession()
             +login()
             +register()
         }
@@ -46,10 +46,12 @@ classDiagram
 
     namespace Services {
         class CounterService {
-            +getAllLocal()
+            +fetchRemote()
             +create()
+            +increment()
         }
         class AuthService {
+            +checkAuth()
             +login()
             +register()
         }
@@ -58,39 +60,45 @@ classDiagram
             +processQueue()
             +executeCommand()
         }
-        class SyncQueueService {
-            +addCommand()
-            +getQueue()
-            +removeCommand()
+        class SyncQueue {
+            +add()
+            +get()
+            +remove()
         }
     }
 
     namespace Infrastructure {
         class apiFetch
         class Socket
-        class LocalStorageService
-        class CapacitorPlugins
+        class AsyncStorage
+        class SecureStore
+        class ExpoNetwork
+        class ExpoRouter
     }
 
     %% Relationships
-    HomeView ..> CounterStore : Calls Actions
-    HomeView ..> AuthStore : Checks State
-    JoinView ..> CounterStore : Calls joinCounter()
+    HomeScreen ..> CounterContext : Calls actions
+    HomeScreen ..> SessionContext : Checks session
+    JoinScreen ..> CounterContext : Calls joinCounter()
 
-    LoginView ..> AuthStore : Calls login()
-    RegisterView ..> AuthStore : Calls register()
+    LoginScreen ..> SessionContext : Calls login()
+    RegisterScreen ..> SessionContext : Calls register()
+    SettingsScreen ..> SessionContext : Updates account
 
-    CounterStore ..> CounterService : Business Logic
-    AuthStore ..> AuthService : Business Logic
+    CounterContext ..> CounterService : Counter operations
+    SessionContext ..> AuthService : Session operations
 
-    CounterService ..> SyncQueueService : Queues Mutations
+    CounterService ..> SyncQueue : Queues mutations
     CounterService ..> SyncManager : Triggers Sync
-    CounterService ..> LocalStorageService : Persists Data
+    CounterContext ..> AsyncStorage : Persists counters
 
-    SyncManager ..> SyncQueueService : Reads/Removes Commands
-    SyncManager ..> apiFetch : Network Req
-    AuthService ..> apiFetch : Network Req
+    SyncManager ..> SyncQueue : Reads and removes commands
+    SyncManager ..> ExpoNetwork : Watches connectivity
+    SyncManager ..> apiFetch : Sends requests
+    AuthService ..> apiFetch : Sends requests
 
-    Socket ..> CounterStore : Pushes Updates
-    CapacitorPlugins ..> LocalStorageService : Preferences API
+    Socket ..> CounterContext : Pushes updates
+    AuthService ..> AsyncStorage : Caches user
+    AuthService ..> SecureStore : Stores native tokens
+    ExpoRouter ..> Screens : Routes URLs
 ```

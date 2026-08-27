@@ -5,7 +5,10 @@ on:
     branches:
       - main
     paths:
-      - 'packages/app/client/public/legal-pages/**'
+      - 'packages/app/client/**'
+      - 'packages/core/**'
+      - 'bun.lock'
+      - 'package.json'
       - '.github/workflows/deploy-pages.yml'
   workflow_dispatch:
 
@@ -24,9 +27,28 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    env:
+      HUSKY: 0
+      EXPO_BASE_URL: /tally-tracker
+      EXPO_PUBLIC_API_URL: https://tally-tracker-server.onrender.com
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.x
+          package-manager-cache: false
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build client
+        run: bun --filter=@tally/client run build
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
@@ -34,7 +56,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
         with:
-          path: packages/app/client/public/legal-pages
+          path: packages/app/client/dist
 
       - name: Deploy to GitHub Pages
         id: deployment

@@ -1,78 +1,55 @@
-import apiFetch from '@/api';
-import { Capacitor } from '@capacitor/core';
-import { Preferences } from '@capacitor/preferences';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import type { ClientUser, AuthRequest, AuthResponse, RefreshRequest, UpdateUserRequest } from '@tally/core';
+import apiFetch from '../api';
+import { tokenStorage } from './token-storage';
+
+import type { AuthRequest, AuthResponse, ClientUser, RefreshRequest, UpdateUserRequest } from '@tally/core/client';
 
 const USER_KEY = 'auth_user_profile';
-const ACCESS_TOKEN_KEY = 'access_token';
-const REFRESH_TOKEN_KEY = 'refresh_token';
 
 export const AuthService = {
     async getCachedUser(): Promise<ClientUser | null> {
-        const { value } = await Preferences.get({ key: USER_KEY });
-        return value ? JSON.parse(value) : null;
+        const value = await AsyncStorage.getItem(USER_KEY);
+        return value ? (JSON.parse(value) as ClientUser) : null;
     },
 
-    async cacheUser(userData: ClientUser | null) {
-        if (userData) {
-            await Preferences.set({ key: USER_KEY, value: JSON.stringify(userData) });
-        } else {
-            await Preferences.remove({ key: USER_KEY });
-        }
+    async cacheUser(user: ClientUser | null) {
+        if (user) return AsyncStorage.setItem(USER_KEY, JSON.stringify(user));
+        return AsyncStorage.removeItem(USER_KEY);
     },
 
-    async getAccessToken() {
-        const { value } = await Preferences.get({ key: ACCESS_TOKEN_KEY });
-        return value;
-    },
-
-    async setAccessToken(token: string) {
-        await Preferences.set({ key: ACCESS_TOKEN_KEY, value: token });
-    },
-
-    async getRefreshToken() {
-        const { value } = await Preferences.get({ key: REFRESH_TOKEN_KEY });
-        return value;
-    },
-
-    async setRefreshToken(token: string) {
-        await Preferences.set({ key: REFRESH_TOKEN_KEY, value: token });
-    },
+    getAccessToken: tokenStorage.getAccessToken,
+    setAccessToken: tokenStorage.setAccessToken,
+    getRefreshToken: tokenStorage.getRefreshToken,
+    setRefreshToken: tokenStorage.setRefreshToken,
 
     async clearLocalAuth() {
-        await Preferences.remove({ key: ACCESS_TOKEN_KEY });
-        await Preferences.remove({ key: REFRESH_TOKEN_KEY });
-        await Preferences.remove({ key: USER_KEY });
-        localStorage.removeItem('AUTHORIZED');
+        await Promise.all([AsyncStorage.removeItem(USER_KEY), tokenStorage.clear()]);
     },
 
-    async checkAuth() {
+    checkAuth() {
         return apiFetch<AuthResponse>('/users/check-auth', { method: 'GET' });
     },
 
-    async login(data: AuthRequest) {
+    login(data: AuthRequest) {
         return apiFetch<AuthResponse, AuthRequest>('/users/login', { method: 'POST', body: data });
     },
 
     async logout() {
-        const { value: refreshToken } = Capacitor.isNativePlatform()
-            ? await Preferences.get({ key: REFRESH_TOKEN_KEY })
-            : { value: null };
+        const refreshToken = await tokenStorage.getRefreshToken();
         const body: RefreshRequest | undefined = refreshToken ? { refreshToken } : undefined;
-
         return apiFetch<AuthResponse, RefreshRequest>('/users/logout', { method: 'POST', body });
     },
 
-    async deleteAccount() {
+    deleteAccount() {
         return apiFetch<AuthResponse>('/users', { method: 'DELETE' });
     },
 
-    async register(data: AuthRequest) {
+    register(data: AuthRequest) {
         return apiFetch<AuthResponse, AuthRequest>('/users', { method: 'POST', body: data });
     },
 
-    async updateUser(data: UpdateUserRequest) {
+    updateUser(data: UpdateUserRequest) {
         return apiFetch<AuthResponse, UpdateUserRequest>('/users', { method: 'PUT', body: data });
     },
 };

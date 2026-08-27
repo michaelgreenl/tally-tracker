@@ -1,18 +1,4 @@
-import * as Sentry from '@sentry/capacitor';
-import { init as initSentryVue, vueIntegration } from '@sentry/vue';
-
-import type { App } from 'vue';
-
-type SentryRequest = {
-    cookies?: unknown;
-    headers?: Record<string, string>;
-    query_string?: unknown;
-    url?: string;
-};
-
-type EventWithRequest = {
-    request?: SentryRequest;
-};
+import * as Sentry from '@sentry/react-native';
 
 const DISABLED_VALUE = 'false';
 const SENSITIVE_HEADERS = new Set(['authorization', 'cookie', 'set-cookie', 'x-api-key']);
@@ -21,7 +7,7 @@ const sanitizeUrl = (url: string | undefined): string | undefined => {
     if (!url) return url;
 
     try {
-        const parsed = new URL(url);
+        const parsed = new URL(url, 'http://localhost');
         return `${parsed.origin}${parsed.pathname}`;
     } catch {
         return url.split('?')[0];
@@ -34,7 +20,7 @@ const sanitizeHeaders = (headers: Record<string, string> | undefined): Record<st
     return Object.fromEntries(Object.entries(headers).filter(([key]) => !SENSITIVE_HEADERS.has(key.toLowerCase())));
 };
 
-const sanitizeEvent = <T extends EventWithRequest>(event: T): T => {
+export const sanitizeEvent = <T extends Sentry.Event>(event: T): T => {
     if (!event.request) return event;
 
     event.request = {
@@ -43,35 +29,27 @@ const sanitizeEvent = <T extends EventWithRequest>(event: T): T => {
         headers: sanitizeHeaders(event.request.headers),
         query_string: undefined,
         url: sanitizeUrl(event.request.url),
-    } as T['request'];
+    };
 
     return event;
 };
 
-export const initSentry = (app: App<Element>) => {
-    const dsn = import.meta.env.VITE_SENTRY_DSN;
-    const enabled = import.meta.env.VITE_SENTRY_ENABLED !== DISABLED_VALUE && Boolean(dsn);
+export const isSentryEnabled = () =>
+    process.env.EXPO_PUBLIC_SENTRY_ENABLED !== DISABLED_VALUE && Boolean(process.env.EXPO_PUBLIC_SENTRY_DSN);
 
-    if (!enabled) return;
+export const initSentry = () => {
+    if (!isSentryEnabled() || Sentry.getClient()) return;
 
-    Sentry.init(
-        {
-            dsn,
-            environment: import.meta.env.VITE_SENTRY_ENVIRONMENT || import.meta.env.MODE,
-            release: import.meta.env.VITE_SENTRY_RELEASE || undefined,
-            dist: import.meta.env.VITE_SENTRY_DIST || undefined,
-            sendDefaultPii: false,
-            attachStacktrace: true,
-            enableCaptureFailedRequests: false,
-            integrations: [
-                vueIntegration({
-                    app,
-                    attachErrorHandler: true,
-                    attachProps: false,
-                }),
-            ],
-            beforeSend: sanitizeEvent,
-        },
-        initSentryVue,
-    );
+    Sentry.init({
+        dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+        environment: process.env.EXPO_PUBLIC_SENTRY_ENVIRONMENT || 'development',
+        release: process.env.EXPO_PUBLIC_SENTRY_RELEASE || undefined,
+        dist: process.env.EXPO_PUBLIC_SENTRY_DIST || undefined,
+        sendDefaultPii: false,
+        attachStacktrace: true,
+        enableCaptureFailedRequests: false,
+        beforeSend: sanitizeEvent,
+    });
 };
+
+export const withSentry = Sentry.wrap;

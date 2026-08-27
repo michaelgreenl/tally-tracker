@@ -22,14 +22,13 @@ sequenceDiagram
     autonumber
     actor User
     participant OS as Android/iOS
-    participant App as Vue App
+    participant App as Expo App
     participant API as Backend API
     participant DB as Database
 
     alt Entry Point A: Deep Link
         User->>OS: Click "tally://join?code=XYZ"
-        OS->>App: Event: appUrlOpen
-        App->>App: Parse Code "XYZ"
+        OS->>App: Expo Router opens /join?code=XYZ
     else Entry Point B: Web / Manual
         User->>App: Visit "/join?code=XYZ"
     end

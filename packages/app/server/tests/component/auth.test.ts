@@ -1,5 +1,5 @@
 import { OK, CREATED, OK_NO_CONTENT, UNAUTHORIZED, NOT_FOUND, UNPROCESSABLE_ENTITY } from '@tally/core';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
 import { randomUUID } from 'crypto';
 import type { Request, Response, NextFunction } from 'express';
@@ -42,34 +42,37 @@ describe('Auth Routes', () => {
         vi.clearAllMocks();
     });
 
-    describe('OPTIONS /users/check-auth', () => {
-        it('should allow native Authorization preflight requests', async () => {
-            const res = await request(app)
-                .options('/users/check-auth')
-                .set('Origin', 'capacitor://localhost')
-                .set('Access-Control-Request-Method', 'GET')
-                .set('Access-Control-Request-Headers', 'Authorization');
-
-            const allowedHeaders = res.headers['access-control-allow-headers'];
-
-            expect(res.status).toBe(OK_NO_CONTENT);
-            expect(res.headers['access-control-allow-origin']).toBe('capacitor://localhost');
-            expect(allowedHeaders?.toLowerCase().split(/\s*,\s*/)).toContain('authorization');
-        });
+    afterEach(() => {
+        vi.unstubAllEnvs();
     });
 
-    describe('OPTIONS /users', () => {
-        it.each(['http://localhost:8081', 'https://michaelgreenl.github.io'])(
-            'should allow Expo browser requests from %s',
-            async (origin) => {
-                const res = await request(app)
-                    .options('/users')
-                    .set('Origin', origin)
-                    .set('Access-Control-Request-Method', 'POST');
+    describe('OPTIONS /users/login', () => {
+        it.each([
+            ['local Expo web', 'http://localhost:8081', ''],
+            ['deployed web', 'https://michaelgreenl.github.io', 'https://michaelgreenl.github.io/tally-tracker'],
+        ])('allows the %s origin', async (_name, origin, frontendUrl) => {
+            vi.stubEnv('FRONTEND_URL', frontendUrl);
+            const res = await request(app)
+                .options('/users/login')
+                .set('Origin', origin)
+                .set('Access-Control-Request-Method', 'POST')
+                .set('Access-Control-Request-Headers', 'Content-Type, Authorization');
 
-                expect(res.headers['access-control-allow-origin']).toBe(origin);
-            },
-        );
+            expect(res.status).toBe(OK_NO_CONTENT);
+            expect(res.headers['access-control-allow-origin']).toBe(origin);
+            expect(res.headers['access-control-allow-credentials']).toBe('true');
+        });
+
+        it('rejects private-network browser origins in production', async () => {
+            vi.stubEnv('NODE_ENV', 'production');
+
+            const res = await request(app)
+                .options('/users/login')
+                .set('Origin', 'http://192.168.1.20:8081')
+                .set('Access-Control-Request-Method', 'POST');
+
+            expect(res.headers['access-control-allow-origin']).toBeUndefined();
+        });
     });
 
     describe('POST /users (register)', () => {

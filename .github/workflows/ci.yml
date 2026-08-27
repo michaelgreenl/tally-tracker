@@ -44,11 +44,8 @@ jobs:
       - name: Generate Prisma Client
         run: bun --filter=@tally/core run generate:client
 
-      - name: Lint TypeScript and Vue
+      - name: Lint TypeScript
         run: bun run lint
-
-      - name: Lint client styles
-        run: bun --filter=client run lint:style:check
 
       - name: Typecheck
         run: bun run typecheck
@@ -140,8 +137,8 @@ jobs:
       HUSKY: 0
       NODE_ENV: development
       PORT: 3000
-      FRONTEND_URL: http://localhost:8100
-      VITE_API_URL: http://localhost:3000
+      FRONTEND_URL: http://localhost:8081
+      EXPO_PUBLIC_API_URL: http://localhost:3000
       POSTGRES_URL: postgresql://template_user:template_pass@localhost:5432/template_db
       JWT_SECRET: ci-jwt-secret-for-e2e
     steps:
@@ -170,6 +167,9 @@ jobs:
           bun --filter=@tally/core run migrate:deploy
           bun --filter=@tally/core run db:seed
 
+      - name: Install Cypress binary
+        run: bun x cypress install
+
       - name: Run Cypress
         uses: cypress-io/github-action@v7
         with:
@@ -178,5 +178,5 @@ jobs:
           start: |
             bun run dev:server
             bun run dev:client
-          wait-on: 'http://localhost:3000/health, http://localhost:8100'
+          wait-on: 'http://localhost:3000/health, http://localhost:8081'
           wait-on-timeout: 120

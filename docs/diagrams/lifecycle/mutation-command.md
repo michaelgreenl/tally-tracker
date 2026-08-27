@@ -39,7 +39,7 @@ stateDiagram-v2
     Dropped --> [*]: Removed from Queue
 
     note right of Pending
-        Persisted in Capacitor Preferences
+        Persisted in AsyncStorage
         under app_sync_queue.
         401 commands stay queued
         and resume after re-auth.

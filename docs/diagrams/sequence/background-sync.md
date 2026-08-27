@@ -22,14 +22,14 @@ sequenceDiagram
     autonumber
     participant Net as Network Monitor
     participant Manager as SyncManager
-    participant Queue as SyncQueue (Capacitor Preferences)
+    participant Queue as SyncQueue (AsyncStorage)
     participant Client as API Client (api.ts)
     participant API as Backend API
 
     Note over Net, API: Scenario: User comes online with pending actions
-    Note right of Queue: Backed by Capacitor Preferences<br/>key: app_sync_queue.<br/>Web falls back to localStorage.
+    Note right of Queue: Backed by AsyncStorage<br/>under app_sync_queue.
 
-    Net->>Manager: Event: 'networkStatusChange' (Connected)
+    Net->>Manager: Expo Network reports connected
     Manager->>Manager: processQueue()
 
     Manager->>Queue: getQueue()
