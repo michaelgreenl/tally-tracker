@@ -26,7 +26,12 @@
             "favicon": "./assets/images/favicon.png"
         },
         "plugins": [
-            "expo-router",
+            [
+                "expo-router",
+                {
+                    "origin": "https://michaelgreenl.github.io/tally-tracker"
+                }
+            ],
             [
                 "expo-splash-screen",
                 {
