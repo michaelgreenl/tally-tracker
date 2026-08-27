@@ -167,6 +167,9 @@ jobs:
           bun --filter=@tally/core run migrate:deploy
           bun --filter=@tally/core run db:seed
 
+      - name: Install Cypress binary
+        run: bun x cypress install
+
       - name: Run Cypress
         uses: cypress-io/github-action@v7
         with:
