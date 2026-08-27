@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ApiError } from './api';
 import { restoreSession } from './session';
 
 const { authService } = vi.hoisted(() => ({
@@ -44,5 +45,38 @@ describe('restoreSession', () => {
 
         await expect(restoreSession()).resolves.toBeNull();
         expect(authService.checkAuth).not.toHaveBeenCalled();
+    });
+
+    it('returns no session when no cached user exists', async () => {
+        authService.getCachedUser.mockResolvedValue(null);
+
+        await expect(restoreSession()).resolves.toBeNull();
+        expect(authService.checkAuth).not.toHaveBeenCalled();
+    });
+
+    it('refreshes the cached user after server verification', async () => {
+        const verifiedUser = { id: 'user-1', email: 'updated@example.com', tier: 'PREMIUM' };
+        authService.getAccessToken.mockResolvedValue('access-token');
+        authService.checkAuth.mockResolvedValue({ success: true, data: { user: verifiedUser } });
+
+        await expect(restoreSession()).resolves.toEqual(verifiedUser);
+        expect(authService.cacheUser).toHaveBeenCalledWith(verifiedUser);
+    });
+
+    it('clears a cached session rejected by the server', async () => {
+        authService.getAccessToken.mockResolvedValue('expired-token');
+        authService.checkAuth.mockRejectedValue(new ApiError('Unauthorized', 401));
+
+        await expect(restoreSession()).resolves.toBeNull();
+        expect(authService.clearLocalAuth).toHaveBeenCalledOnce();
+    });
+
+    it('keeps the cached session when server verification is unavailable', async () => {
+        const cachedUser = { id: 'user-1', email: 'user@example.com', tier: 'BASIC' };
+        authService.getAccessToken.mockResolvedValue('access-token');
+        authService.checkAuth.mockRejectedValue(new ApiError('Network Error', 0));
+
+        await expect(restoreSession()).resolves.toEqual(cachedUser);
+        expect(authService.clearLocalAuth).not.toHaveBeenCalled();
     });
 });

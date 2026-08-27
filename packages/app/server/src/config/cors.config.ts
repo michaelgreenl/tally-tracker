@@ -2,7 +2,17 @@ import 'dotenv/config';
 
 const getAllowedOrigins = () => {
     const { FRONTEND_URL } = process.env;
-    return ['http://localhost:8081', 'https://michaelgreenl.github.io', FRONTEND_URL].filter(Boolean) as string[];
+    let frontendOrigin: string | undefined;
+
+    if (FRONTEND_URL) {
+        try {
+            frontendOrigin = new URL(FRONTEND_URL).origin;
+        } catch {
+            frontendOrigin = FRONTEND_URL;
+        }
+    }
+
+    return ['http://localhost:8081', frontendOrigin].filter(Boolean) as string[];
 };
 
 const corsOrigin = (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
@@ -11,9 +21,9 @@ const corsOrigin = (origin: string | undefined, callback: (err: Error | null, al
 
     if (getAllowedOrigins().includes(origin)) return callback(null, true);
 
-    // Allow local network IPs for testing on physical devices during development
+    // Allow local network IPs for browser testing on physical devices during development.
     const localNetwork = /^http:\/\/(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3})(:\d+)?$/;
-    if (localNetwork.test(origin)) return callback(null, true);
+    if (process.env.NODE_ENV !== 'production' && localNetwork.test(origin)) return callback(null, true);
 
     console.log('Blocked by CORS:', origin);
     callback(new Error('Not allowed by CORS'));

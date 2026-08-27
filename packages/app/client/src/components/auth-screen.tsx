@@ -115,7 +115,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                 </Text>
                                 {isLogin ? (
                                     <Link href='/home' asChild>
-                                        <Pressable accessibilityRole='link' hitSlop={8}>
+                                        <Pressable accessibilityRole='link' hitSlop={8} testID='continue-as-guest'>
                                             <Text style={styles.link}>Continue as guest</Text>
                                         </Pressable>
                                     </Link>

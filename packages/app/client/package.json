@@ -4,6 +4,7 @@
     "version": "0.1.0",
     "dependencies": {
         "@react-native-async-storage/async-storage": "2.2.0",
+        "@sentry/react-native": "~7.11.0",
         "@tally/core": "workspace:*",
         "expo": "~57.0.17",
         "expo-clipboard": "~57.0.1",
@@ -36,16 +37,16 @@
     },
     "scripts": {
         "start": "expo start",
-        "android": "expo run:android",
-        "ios": "expo run:ios",
+        "android": "SENTRY_DISABLE_AUTO_UPLOAD=true expo run:android",
+        "ios": "SENTRY_DISABLE_AUTO_UPLOAD=true expo run:ios",
         "web": "expo start --web",
         "build": "expo export --platform web",
         "test:e2e": "TS_NODE_PROJECT=tsconfig.cypress.json cypress run",
         "test:unit": "vitest run",
         "test:coverage": "vitest run --coverage",
         "typecheck": "tsc --noEmit",
-        "format": "prettier --write src/ tests/e2e/ app.config.js app.json cypress.config.mjs eslint.config.js package.json tsconfig.json tsconfig.cypress.json",
-        "format:check": "prettier --check src/ tests/e2e/ app.config.js app.json cypress.config.mjs eslint.config.js package.json tsconfig.json tsconfig.cypress.json",
+        "format": "prettier --write src/ tests/e2e/ app.config.js app.json cypress.config.mjs eslint.config.js metro.config.js package.json tsconfig.json tsconfig.cypress.json",
+        "format:check": "prettier --check src/ tests/e2e/ app.config.js app.json cypress.config.mjs eslint.config.js metro.config.js package.json tsconfig.json tsconfig.cypress.json",
         "lint": "expo lint",
         "lint:all": "bun typecheck && bun format:check && bun lint"
     },

@@ -18,13 +18,13 @@
         "dev:db:clean": "docker compose -f packages/app/server/docker-compose.yml down -v",
         "test:db:start": "docker compose --project-name tally-tracker-test -f packages/app/server/docker-compose.test.yml up -d --wait postgres-test",
         "test:db:stop": "docker compose --project-name tally-tracker-test -f packages/app/server/docker-compose.test.yml down",
-        "test:db:migrate": "NODE_ENV=test TALLY_TEST_DB_RESET=1 POSTGRES_URL=postgresql://tally_test_user:tally_test_password@127.0.0.1:5433/tally_tracker_test bun --filter=@tally/core run migrate:deploy",
+        "test:db:migrate": "NODE_ENV=test TALLY_TEST_DB_RESET=1 POSTGRES_URL=postgresql://tally_test_user:tally_test_password@127.0.0.1:${TALLY_TEST_DB_PORT:-5433}/tally_tracker_test bun --filter=@tally/core run migrate:deploy",
         "test": "bun run test:full",
         "test:full": "bun run test:unit && bun run test:component && bun run test:integration && bun run test:e2e",
         "test:e2e": "bun --filter=@tally/client run test:e2e",
         "test:unit": "bun --filter=@tally/client run test:unit && bun --filter=server run test:unit",
         "test:component": "bun --filter=server run test:component",
-        "test:integration": "NODE_ENV=test TALLY_TEST_DB_RESET=1 POSTGRES_URL=postgresql://tally_test_user:tally_test_password@127.0.0.1:5433/tally_tracker_test bun --filter=server run test:integration",
+        "test:integration": "NODE_ENV=test TALLY_TEST_DB_RESET=1 POSTGRES_URL=postgresql://tally_test_user:tally_test_password@127.0.0.1:${TALLY_TEST_DB_PORT:-5433}/tally_tracker_test bun --filter=server run test:integration",
         "test:coverage": "bun --filter=@tally/client run test:coverage && bun --filter=server run test:coverage",
         "build": "bun --filter=@tally/client run build && bun --filter=server run build",
         "render:build": "bun install && bun --filter=@tally/core run generate && bun --filter=server run render:build",
@@ -94,5 +94,8 @@
         "uuid": "^13.0.2",
         "vite": "^8.1.3",
         "ws": "^8.21.0"
-    }
+    },
+    "trustedDependencies": [
+        "@sentry/cli"
+    ]
 }

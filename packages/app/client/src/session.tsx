@@ -87,7 +87,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
     }, []);
 
     useEffect(() => {
-        setUnauthorizedHandler(async () => {
+        return setUnauthorizedHandler(async () => {
             await clearSession();
             router.replace('/login');
         });

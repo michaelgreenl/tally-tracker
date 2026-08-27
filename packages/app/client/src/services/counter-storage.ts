@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { ClientCounter } from '@tally/core/client';
 
-const COUNTERS_KEY = 'guest_counters';
+const COUNTERS_KEY = 'app_counters';
 
 export const CounterStorage = {
     async getAll(): Promise<ClientCounter[]> {

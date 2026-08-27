@@ -35,8 +35,33 @@ const isGuestEligible = (counter: ClientCounter) => counter.type !== 'SHARED';
 export const isGuestCounterLimitReached = (counters: readonly ClientCounter[]) =>
     counters.filter(isGuestEligible).length >= GUEST_COUNTER_CAP;
 
-const hasJoinedSharedCounter = (counters: readonly ClientCounter[], userId: string) =>
+export const hasJoinedSharedCounter = (counters: readonly ClientCounter[], userId: string) =>
     counters.some((counter) => counter.type === 'SHARED' && counter.userId !== userId);
+
+export const reconcileAuthenticatedCounters = (
+    localCounters: readonly ClientCounter[],
+    remoteCounters: readonly ClientCounter[],
+    userId: string,
+) => {
+    const eligibleLocal = localCounters.filter(
+        (counter) =>
+            counter.userId === 'guest' ||
+            counter.userId === userId ||
+            counter.shares?.some((share) => share.userId === userId && share.status === 'ACCEPTED'),
+    );
+    const migratedLocal = eligibleLocal.map((counter) =>
+        counter.userId === 'guest' ? { ...counter, userId } : counter,
+    );
+    const guestCounters = eligibleLocal
+        .filter((counter) => counter.userId === 'guest')
+        .map((counter) => ({ ...counter, userId }));
+    const remoteIds = new Set(remoteCounters.map((counter) => counter.id));
+
+    return {
+        counters: [...remoteCounters, ...migratedLocal.filter((counter) => !remoteIds.has(counter.id))],
+        guestCounters,
+    };
+};
 
 const inviteCode = () => {
     const alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -102,18 +127,7 @@ export function CounterProvider({ children }: PropsWithChildren) {
                     return;
                 }
 
-                const localCounters = (await CounterService.getAllLocal()).filter(
-                    (counter) =>
-                        counter.userId === 'guest' ||
-                        counter.userId === userId ||
-                        counter.shares?.some((share) => share.userId === userId && share.status === 'ACCEPTED'),
-                );
-                const guestCounters = localCounters
-                    .filter((counter) => counter.userId === 'guest')
-                    .map((counter) => ({ ...counter, userId }));
-                const migratedLocal = localCounters.map((counter) =>
-                    counter.userId === 'guest' ? { ...counter, userId } : counter,
-                );
+                const localCounters = await CounterService.getAllLocal();
 
                 let remoteCounters: ClientCounter[] = [];
                 try {
@@ -122,12 +136,11 @@ export function CounterProvider({ children }: PropsWithChildren) {
                     // Keep the local snapshot available while offline.
                 }
 
-                const remoteIds = new Set(remoteCounters.map((counter) => counter.id));
-                const next = [...remoteCounters, ...migratedLocal.filter((counter) => !remoteIds.has(counter.id))];
+                const reconciled = reconcileAuthenticatedCounters(localCounters, remoteCounters, userId);
 
                 if (!active) return;
-                await replaceCounters(next);
-                if (guestCounters.length) await CounterService.consolidate(guestCounters);
+                await replaceCounters(reconciled.counters);
+                if (reconciled.guestCounters.length) await CounterService.consolidate(reconciled.guestCounters);
                 connectSocket();
                 await SyncManager.processQueue();
             } catch (error: unknown) {

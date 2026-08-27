@@ -8,7 +8,7 @@ services:
             POSTGRES_USER: tally_test_user
             POSTGRES_PASSWORD: tally_test_password
         ports:
-            - '127.0.0.1:5433:5432'
+            - '127.0.0.1:${TALLY_TEST_DB_PORT:-5433}:5432'
         tmpfs:
             - /var/lib/postgresql/data
         healthcheck:

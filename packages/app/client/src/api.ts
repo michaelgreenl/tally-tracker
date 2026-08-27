@@ -34,6 +34,9 @@ let unauthorizedHandler: (() => void | Promise<void>) | undefined;
 
 export const setUnauthorizedHandler = (handler: () => void | Promise<void>) => {
     unauthorizedHandler = handler;
+    return () => {
+        if (unauthorizedHandler === handler) unauthorizedHandler = undefined;
+    };
 };
 
 async function executeRefresh(): Promise<boolean> {

@@ -3,7 +3,10 @@ import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { CounterProvider } from '../counters';
+import { initSentry, withSentry } from '../monitoring/sentry';
 import { SessionProvider, useSession } from '../session';
+
+initSentry();
 
 function Navigator() {
     const session = useSession();
@@ -32,7 +35,7 @@ function Navigator() {
     );
 }
 
-export default function RootLayout() {
+function RootLayout() {
     return (
         <SessionProvider>
             <CounterProvider>
@@ -42,6 +45,8 @@ export default function RootLayout() {
         </SessionProvider>
     );
 }
+
+export default withSentry(RootLayout);
 
 const styles = StyleSheet.create({
     loading: {

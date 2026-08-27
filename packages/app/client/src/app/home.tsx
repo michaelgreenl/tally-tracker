@@ -124,7 +124,7 @@ export default function HomeScreen() {
                         {counterState.loading && counterState.counters.length === 0 ? (
                             <ActivityIndicator color='#0f7899' size='large' style={styles.loader} />
                         ) : counterState.counters.length ? (
-                            <View style={styles.counterList}>
+                            <View style={styles.counterList} testID='counter-list'>
                                 {counterState.counters.map((counter) => (
                                     <CounterCard
                                         key={counter.id}

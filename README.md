@@ -112,6 +112,34 @@ bun run dev:client
 
 The API uses port `3000`. Expo uses port `8081` and connects to `EXPO_PUBLIC_API_URL`.
 
+Create the client environment file before you start Expo:
+
+```bash
+cp packages/app/client/.env.example packages/app/client/.env
+```
+
+The example uses the deployed API. This lets a physical device connect without a local network address.
+
+Install and start the iOS development build:
+
+```bash
+bun --filter=@tally/client run ios -- --device
+bun run dev:client -- --dev-client
+```
+
+Install and start the Android development build:
+
+```bash
+bun --filter=@tally/client run android -- --device
+bun run dev:client -- --dev-client
+```
+
+Open the installed Tally Tracker development build. Scan the Expo QR code if the app does not connect automatically.
+
+Rebuild the native app after a native dependency or Expo config change. JavaScript and environment changes only need an Expo restart.
+
+Sentry stays off when `EXPO_PUBLIC_SENTRY_ENABLED=false` or `EXPO_PUBLIC_SENTRY_DSN` is empty. The local native scripts skip source map uploads. Native release builds use `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT` for uploads.
+
 Reset and seed the local database:
 
 ```bash
@@ -155,13 +183,13 @@ bun run test:integration
 bun run test:db:stop
 ```
 
-Run `test:db:stop` after the tests even when a prior command fails. The test compose file uses the distinct `tally-tracker-test` project and `postgres-test` service, binds only `127.0.0.1:5433`, and stores PostgreSQL data in tmpfs rather than the development database volume.
+Run `test:db:stop` after the tests even when a prior command fails. The test compose file uses the distinct `tally-tracker-test` project and `postgres-test` service. It binds only `127.0.0.1:5433` and stores PostgreSQL data in tmpfs. Set `TALLY_TEST_DB_PORT` on each command if port 5433 is unavailable.
 
 The migration step applies the repository's committed migrations to `tally_tracker_test`; the integration runner then preserves Prisma's `_prisma_migrations` table while clearing only application tables before each test. Before test collection or application imports, the runner refuses to continue unless all of these guardrails hold:
 
 - `NODE_ENV=test`
 - `TALLY_TEST_DB_RESET=1`
-- `POSTGRES_URL` uses `postgres:` or `postgresql:`, targets `localhost` or `127.0.0.1`, has the exact database path `/tally_tracker_test`, and contains no query parameters or URL fragment. The local scripts use `postgresql://tally_test_user:tally_test_password@127.0.0.1:5433/tally_tracker_test`.
+- `POSTGRES_URL` uses `postgres:` or `postgresql:`, targets `localhost` or `127.0.0.1`, has the exact database path `/tally_tracker_test`, and contains no query parameters or URL fragment. The local scripts use port 5433 by default.
 
 Cypress tests use `http://localhost:8081`:
 
