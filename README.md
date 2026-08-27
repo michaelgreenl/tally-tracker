@@ -2,7 +2,8 @@
 > A cross-platform offline-first application utilizing a custom synchronization queue for network resilience, featuring real-time shared counters and native deep linking integration.
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=fff)](https://www.typescriptlang.org/docs/)
-[![React-Native](https://img.shields.io/badge/React%20Native-61dafb?style=for-the-badge&&logo=react&logoColor=black)](https://reactnative.dev)
+[![React Native](https://img.shields.io/badge/React%20Native-61dafb?style=for-the-badge&&logo=react&logoColor=black)](https://reactnative.dev)
+[![Expo](https://img.shields.io/badge/Expo-111?style=for-the-badge&logo=expo)](https://expo.dev)
 [![Node](https://img.shields.io/badge/Node-43853D?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
 [![Express](https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com/) 
 [![Socket.io](https://img.shields.io/badge/Socket.io-black?style=for-the-badge&logo=socket.io&badgeColor=010101)](https://socket.io/) 
