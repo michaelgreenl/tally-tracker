@@ -3,7 +3,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiFetch from '../api';
 import { tokenStorage } from './token-storage';
 
-import type { AuthRequest, AuthResponse, ClientUser, RefreshRequest, UpdateUserRequest } from '@tally/core/client';
+import type {
+    AuthRequest,
+    AuthResponse,
+    ClientUser,
+    EmailAddressRequest,
+    EmailOtpRequest,
+    PasswordResetRequest,
+    RefreshRequest,
+    UpdateUserRequest,
+} from '@tally/core/client';
 
 const USER_KEY = 'auth_user_profile';
 
@@ -47,6 +56,28 @@ export const AuthService = {
 
     register(data: AuthRequest) {
         return apiFetch<AuthResponse, AuthRequest>('/users', { method: 'POST', body: data });
+    },
+
+    requestEmailVerification(data: EmailAddressRequest) {
+        return apiFetch<AuthResponse, EmailAddressRequest>('/users/verify-email/request', {
+            method: 'POST',
+            body: data,
+        });
+    },
+
+    verifyEmail(data: EmailOtpRequest) {
+        return apiFetch<AuthResponse, EmailOtpRequest>('/users/verify-email', { method: 'POST', body: data });
+    },
+
+    requestPasswordReset(data: EmailAddressRequest) {
+        return apiFetch<AuthResponse, EmailAddressRequest>('/users/reset-password/request', {
+            method: 'POST',
+            body: data,
+        });
+    },
+
+    resetPassword(data: PasswordResetRequest) {
+        return apiFetch<AuthResponse, PasswordResetRequest>('/users/reset-password', { method: 'POST', body: data });
     },
 
     updateUser(data: UpdateUserRequest) {

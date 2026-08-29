@@ -1,12 +1,17 @@
-import { ClientUser } from './models';
 import { HexColor } from './index';
 import { UserTier, CounterTypeType as CounterType, ShareStatusType } from './generated/index.ts';
+
+export interface AccessTokenPayload {
+    id: string;
+    email: string;
+    sessionVersion: number;
+}
 
 // ***** Express *****
 declare global {
     namespace Express {
         interface Request {
-            user?: ClientUser;
+            user?: AccessTokenPayload;
         }
     }
 }
@@ -20,6 +25,18 @@ export interface AuthRequest {
 
 export interface RefreshRequest {
     refreshToken?: string;
+}
+
+export interface EmailAddressRequest {
+    email: string;
+}
+
+export interface EmailOtpRequest extends EmailAddressRequest {
+    code: string;
+}
+
+export interface PasswordResetRequest extends EmailOtpRequest {
+    password: string;
 }
 
 export interface UpdateUserRequest {

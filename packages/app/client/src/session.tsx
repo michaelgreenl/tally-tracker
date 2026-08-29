@@ -178,7 +178,11 @@ export function SessionProvider({ children }: PropsWithChildren) {
             if (!response.success) return fail(response.message || 'Failed to update user');
 
             const { password: _, ...updates } = request;
-            const updatedUser = { ...user, ...updates };
+            const updatedUser = {
+                ...user,
+                ...updates,
+                emailVerified: request.email === user.email ? user.emailVerified : false,
+            };
             await AuthService.cacheUser(updatedUser);
             setUser(updatedUser);
             return ok();

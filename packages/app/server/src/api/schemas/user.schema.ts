@@ -43,3 +43,22 @@ export const updateUserSchema = z.object({
         password: z.string().min(6).optional(),
     }),
 });
+
+const emailSchema = z.string().trim().email('Invalid email format');
+const codeSchema = z.string().regex(/^\d{6}$/, 'Code must contain six digits');
+
+export const emailAddressSchema = z.object({
+    body: z.object({ email: emailSchema }),
+});
+
+export const emailOtpSchema = z.object({
+    body: z.object({ email: emailSchema, code: codeSchema }),
+});
+
+export const passwordResetSchema = z.object({
+    body: z.object({
+        email: emailSchema,
+        code: codeSchema,
+        password: z.string().min(6, 'Password must be at least 6 characters'),
+    }),
+});

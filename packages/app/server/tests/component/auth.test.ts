@@ -13,7 +13,7 @@ vi.mock('../../src/middleware/auth.middleware', () => ({
             return res.status(401).json({ success: false, message: 'Invalid token' });
         }
 
-        req.user = { id: TEST_USER_ID, email: 'test@test.com', tier: 'BASIC' };
+        req.user = { id: TEST_USER_ID, email: 'test@test.com', sessionVersion: 0 };
         next();
     },
 }));
@@ -22,9 +22,21 @@ vi.mock('../../src/db/repositories/user.repository', () => ({
     createUser: vi.fn(),
     getUserByEmail: vi.fn(),
     getUserById: vi.fn(),
+    getUserAuthById: vi.fn(),
     updateUserInfo: vi.fn(),
     deleteAccount: vi.fn(),
     deleteUser: vi.fn(),
+}));
+
+vi.mock('../../src/db/repositories/email-otp.repository', () => ({
+    issue: vi.fn(),
+    verifyEmail: vi.fn(),
+    resetPassword: vi.fn(),
+}));
+
+vi.mock('../../src/services/email-otp.service', () => ({
+    digestEmailOtp: vi.fn(() => 'otp-digest'),
+    issueEmailOtp: vi.fn(),
 }));
 
 vi.mock('../../src/db/repositories/token.repository', () => ({
@@ -35,11 +47,14 @@ vi.mock('../../src/db/repositories/token.repository', () => ({
 }));
 
 import * as userRepository from '../../src/db/repositories/user.repository.js';
+import * as emailOtpRepository from '../../src/db/repositories/email-otp.repository.js';
 import * as tokenRepository from '../../src/db/repositories/token.repository.js';
+import { issueEmailOtp } from '../../src/services/email-otp.service.js';
 
 describe('Auth Routes', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        vi.mocked(issueEmailOtp).mockResolvedValue();
     });
 
     afterEach(() => {
@@ -87,6 +102,10 @@ describe('Auth Routes', () => {
             expect(res.status).toBe(CREATED);
             expect(res.body.success).toBe(true);
             expect(userRepository.createUser).toHaveBeenCalledWith(expect.objectContaining({ email: 'new@test.com' }));
+            expect(issueEmailOtp).toHaveBeenCalledWith(
+                expect.objectContaining({ email: 'test@test.com' }),
+                'EMAIL_VERIFICATION',
+            );
         });
 
         it('should reject registration without email', async () => {
@@ -187,20 +206,16 @@ describe('Auth Routes', () => {
         it('should rotate tokens with valid refresh token', async () => {
             const oldToken = buildRefreshToken();
             const newToken = buildRefreshToken({ id: NEW_REFRESH_TOKEN_ID });
-            const clientUser = buildClientUser();
             const refreshedUser = {
-                id: clientUser.id,
-                email: clientUser.email,
-                tier: clientUser.tier,
-                createdAt: new Date('2026-01-01'),
-                updatedAt: new Date('2026-01-01'),
-                sharedCounters: [],
-            } satisfies NonNullable<Awaited<ReturnType<typeof userRepository.getUserById>>>;
+                id: buildClientUser().id,
+                email: buildClientUser().email,
+                sessionVersion: 0,
+            } satisfies NonNullable<Awaited<ReturnType<typeof userRepository.getUserAuthById>>>;
 
             vi.mocked(tokenRepository.get).mockResolvedValue(oldToken);
             vi.mocked(tokenRepository.remove).mockResolvedValue(oldToken);
             vi.mocked(tokenRepository.create).mockResolvedValue(newToken);
-            vi.mocked(userRepository.getUserById).mockResolvedValue(refreshedUser);
+            vi.mocked(userRepository.getUserAuthById).mockResolvedValue(refreshedUser);
 
             const res = await request(app).post('/users/refresh').send({ refreshToken: TEST_REFRESH_TOKEN_ID });
 
@@ -236,6 +251,33 @@ describe('Auth Routes', () => {
             const res = await request(app).post('/users/refresh').send({});
 
             expect(res.status).toBe(UNAUTHORIZED);
+        });
+    });
+
+    describe('email codes', () => {
+        it('does not reveal whether a password-reset account exists', async () => {
+            vi.mocked(userRepository.getUserByEmail).mockResolvedValueOnce(buildUser()).mockResolvedValueOnce(null);
+
+            const known = await request(app).post('/users/reset-password/request').send({ email: 'test@test.com' });
+            const missing = await request(app)
+                .post('/users/reset-password/request')
+                .send({ email: 'missing@test.com' });
+
+            expect({ status: missing.status, body: missing.body }).toEqual({ status: known.status, body: known.body });
+            expect(issueEmailOtp).toHaveBeenCalledOnce();
+            expect(issueEmailOtp).toHaveBeenCalledWith(expect.objectContaining({ id: TEST_USER_ID }), 'PASSWORD_RESET');
+        });
+
+        it('rejects an invalid email verification code', async () => {
+            vi.mocked(userRepository.getUserByEmail).mockResolvedValue(buildUser());
+            vi.mocked(emailOtpRepository.verifyEmail).mockResolvedValue(false);
+
+            const res = await request(app).post('/users/verify-email').send({
+                email: 'test@test.com',
+                code: '123456',
+            });
+
+            expect(res.status).toBe(UNPROCESSABLE_ENTITY);
         });
     });
 

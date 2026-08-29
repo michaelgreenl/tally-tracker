@@ -23,7 +23,7 @@ type AuthScreenProps = {
     mode: 'login' | 'register';
 };
 
-function FormField({ label, ...inputProps }: TextInputProps & { label: string }) {
+export function FormField({ label, ...inputProps }: TextInputProps & { label: string }) {
     const [focused, setFocused] = useState(false);
 
     return (
@@ -90,7 +90,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
             return;
         }
 
-        router.replace(isLogin ? '/home' : '/login');
+        router.replace(isLogin ? '/home' : { pathname: '/verify-email', params: { email } });
     }
 
     return (
@@ -205,6 +205,14 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                         value={rememberMe}
                                     />
                                 </View>
+                            )}
+
+                            {isLogin && (
+                                <Link href='/forgot-password' asChild>
+                                    <Pressable accessibilityRole='link' hitSlop={8} style={styles.forgotPassword}>
+                                        <Text style={styles.link}>Forgot password?</Text>
+                                    </Pressable>
+                                </Link>
                             )}
 
                             {Boolean(errorMessage) && (
@@ -370,6 +378,10 @@ const styles = StyleSheet.create({
         color: '#343a40',
         fontSize: 15,
     },
+    forgotPassword: {
+        alignSelf: 'flex-end',
+        marginBottom: 18,
+    },
     errorBox: {
         padding: 12,
         marginBottom: 18,
@@ -422,3 +434,5 @@ const styles = StyleSheet.create({
         textDecorationLine: 'underline',
     },
 });
+
+export { styles as authScreenStyles };

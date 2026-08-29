@@ -30,6 +30,8 @@ function Navigator() {
             <Stack.Protected guard={!session.isAuthenticated}>
                 <Stack.Screen name='login' options={{ title: 'Tally Tracker | Login' }} />
                 <Stack.Screen name='register' options={{ title: 'Tally Tracker | Register' }} />
+                <Stack.Screen name='verify-email' options={{ title: 'Tally Tracker | Verify Email' }} />
+                <Stack.Screen name='forgot-password' options={{ title: 'Tally Tracker | Reset Password' }} />
             </Stack.Protected>
         </Stack>
     );

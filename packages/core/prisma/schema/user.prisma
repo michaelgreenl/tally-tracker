@@ -4,14 +4,17 @@ enum UserTier {
 }
 
 model User {
-    id       String   @id @default(uuid()) @db.Uuid
-    email    String   @unique
-    password String
-    tier     UserTier @default(BASIC)
+    id              String    @id @default(uuid()) @db.Uuid
+    email           String    @unique
+    password        String
+    tier            UserTier  @default(BASIC)
+    emailVerifiedAt DateTime? @map("email_verified_at")
+    sessionVersion  Int       @default(0) @map("session_version")
 
     counters       Counter[]      @relation("OwnedCounters")
     sharedCounters CounterShare[] @relation("ReceivedShares")
     refreshTokens  RefreshToken[] @relation("RefreshTokens")
+    emailOtps      EmailOtp[]     @relation("EmailOtps")
 
     createdAt DateTime @default(now()) @map("created_at")
     updatedAt DateTime @updatedAt @map("updated_at")

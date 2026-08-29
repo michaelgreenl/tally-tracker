@@ -23,6 +23,12 @@ COMPLETED COMPLETED
     
 
 
+        EmailOtpPurpose {
+            EMAIL_VERIFICATION EMAIL_VERIFICATION
+PASSWORD_RESET PASSWORD_RESET
+        }
+
+
         UserTier {
             PREMIUM PREMIUM
 BASIC BASIC
@@ -71,11 +77,24 @@ BASIC BASIC
     }
   
 
+  "email_otps" {
+    String id "PK"
+    String user_id
+    EmailOtpPurpose purpose
+    String digest
+    Int attempts
+    DateTime expires_at
+    DateTime consumed_at "nullable"
+    DateTime created_at
+    }
+
   "users" {
     String id "PK"
     String email 
     String password 
     UserTier tier 
+    DateTime email_verified_at "nullable"
+    Int session_version
     DateTime created_at 
     DateTime updated_at 
     }
@@ -87,5 +106,7 @@ BASIC BASIC
     "counter_shares" }o--|| users : "user"
     "idempotency_logs" |o--|| "IdempotencyStatus" : "enum:status"
     "refresh_tokens" }o--|| users : "user"
+    "email_otps" }o--|| users : "user"
+    "email_otps" |o--|| "EmailOtpPurpose" : "enum:purpose"
     "users" |o--|| "UserTier" : "enum:tier"
 ```

@@ -4,8 +4,9 @@
 import { Request, Response, NextFunction } from 'express';
 import jwtUtil from '../util/jwt.util.js';
 import { UNAUTHORIZED } from '@tally/core';
+import * as userRepository from '../db/repositories/user.repository.js';
 
-export const jwt = (req: Request, res: Response, next: NextFunction) => {
+export const jwt = async (req: Request, res: Response, next: NextFunction) => {
     let token;
 
     if (req.cookies?.access_token) {
@@ -20,7 +21,20 @@ export const jwt = (req: Request, res: Response, next: NextFunction) => {
 
     try {
         const decoded = jwtUtil.verify(token);
-        req.user = decoded;
+        if (
+            typeof decoded === 'string' ||
+            typeof decoded.id !== 'string' ||
+            typeof decoded.sessionVersion !== 'number'
+        ) {
+            throw new Error('Invalid token payload');
+        }
+
+        const user = await userRepository.getUserAuthById(decoded.id);
+        if (!user || user.sessionVersion !== decoded.sessionVersion) {
+            throw new Error('Expired session');
+        }
+
+        req.user = user;
         next();
     } catch {
         return res.status(UNAUTHORIZED).json({ success: false, message: 'Invalid token' });

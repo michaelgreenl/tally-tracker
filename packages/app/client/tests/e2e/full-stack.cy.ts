@@ -27,6 +27,8 @@ describe('Expo full-stack counter journey', () => {
             expect(request.body).to.deep.equal({ email, password: PASSWORD });
             expect(response?.statusCode).to.eq(CREATED);
         });
+        cy.location('pathname').should('eq', '/verify-email');
+        cy.get('[data-testid="email-auth-login"]').click();
         cy.location('pathname').should('eq', '/login');
 
         cy.intercept('POST', '**/users/login').as('loginUser');
@@ -97,5 +99,22 @@ describe('Expo full-stack counter journey', () => {
         cy.wait('@deleteAccount').its('response.statusCode').should('eq', OK);
         cy.location('pathname').should('eq', '/login');
         cy.getCookie('access_token').should('not.exist');
+    });
+
+    it('requires Submit after the sixth verification digit', () => {
+        const email = 'submit-required@example.com';
+
+        cy.intercept('POST', /\/users\/verify-email$/, {
+            statusCode: OK,
+            body: { success: true },
+        }).as('verifyEmail');
+        cy.visit(`/verify-email?email=${encodeURIComponent(email)}`);
+
+        cy.get('[data-testid="email-auth-code"]').type('123456');
+        cy.get('@verifyEmail.all').should('have.length', 0);
+
+        cy.get('[data-testid="email-auth-submit"]').click();
+        cy.wait('@verifyEmail').its('request.body').should('deep.equal', { email, code: '123456' });
+        cy.location('pathname').should('eq', '/login');
     });
 });

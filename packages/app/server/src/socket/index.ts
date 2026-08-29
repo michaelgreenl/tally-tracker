@@ -7,6 +7,7 @@
 import { Server } from 'socket.io';
 import { parse as parseCookie } from 'cookie';
 import { socketCorsOpts } from '../config/cors.config.js';
+import * as userRepository from '../db/repositories/user.repository.js';
 import jwtUtil from '../util/jwt.util.js';
 
 import { Server as HttpServer } from 'http';
@@ -22,6 +23,7 @@ type SocketAuthPayload = {
 
 type VerifiedToken = {
     id?: unknown;
+    sessionVersion?: unknown;
 };
 
 const getHeaderValue = (value: string | string[] | undefined) => {
@@ -55,17 +57,20 @@ const getAuthToken = (socket: Socket) => {
     return typeof auth?.token === 'string' && auth.token ? auth.token : undefined;
 };
 
-const getVerifiedUserId = (token: string) => {
+const getVerifiedUserId = async (token: string) => {
     const decoded = jwtUtil.verify(token) as VerifiedToken;
 
-    if (typeof decoded.id !== 'string' || !decoded.id) {
+    if (typeof decoded.id !== 'string' || !decoded.id || typeof decoded.sessionVersion !== 'number') {
         throw new Error(INVALID_TOKEN_ERROR);
     }
+
+    const user = await userRepository.getUserAuthById(decoded.id);
+    if (!user || user.sessionVersion !== decoded.sessionVersion) throw new Error(INVALID_TOKEN_ERROR);
 
     return decoded.id;
 };
 
-const authenticateSocket = (socket: Socket, next: (error?: Error) => void) => {
+const authenticateSocket = async (socket: Socket, next: (error?: Error) => void) => {
     const token = getAuthToken(socket);
 
     if (!token) {
@@ -73,7 +78,7 @@ const authenticateSocket = (socket: Socket, next: (error?: Error) => void) => {
     }
 
     try {
-        socket.data.userId = getVerifiedUserId(token);
+        socket.data.userId = await getVerifiedUserId(token);
         return next();
     } catch {
         return next(new Error(INVALID_TOKEN_ERROR));
