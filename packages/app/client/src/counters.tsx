@@ -15,6 +15,7 @@ type ActionResult = { success: true } | { success: false; message: string };
 type CounterContextValue = {
     counters: ClientCounter[];
     loading: boolean;
+    syncError: boolean;
     eligibleCount: number;
     createCounter: (title: string, color: HexColor, type: CounterType) => Promise<ActionResult>;
     incrementCounter: (counterId: string, amount: number) => Promise<ActionResult>;
@@ -40,9 +41,10 @@ export const hasJoinedSharedCounter = (counters: readonly ClientCounter[], userI
 
 export const reconcileAuthenticatedCounters = (
     localCounters: readonly ClientCounter[],
-    remoteCounters: readonly ClientCounter[],
+    remoteCounters: readonly ClientCounter[] | null,
     userId: string,
 ) => {
+    const availableRemoteCounters = remoteCounters ?? [];
     const eligibleLocal = localCounters.filter(
         (counter) =>
             counter.userId === 'guest' ||
@@ -55,11 +57,12 @@ export const reconcileAuthenticatedCounters = (
     const guestCounters = eligibleLocal
         .filter((counter) => counter.userId === 'guest')
         .map((counter) => ({ ...counter, userId }));
-    const remoteIds = new Set(remoteCounters.map((counter) => counter.id));
+    const remoteIds = new Set(availableRemoteCounters.map((counter) => counter.id));
 
     return {
-        counters: [...remoteCounters, ...migratedLocal.filter((counter) => !remoteIds.has(counter.id))],
+        counters: [...availableRemoteCounters, ...migratedLocal.filter((counter) => !remoteIds.has(counter.id))],
         guestCounters,
+        syncError: remoteCounters === null,
     };
 };
 
@@ -72,6 +75,7 @@ export function CounterProvider({ children }: PropsWithChildren) {
     const session = useSession();
     const [counters, setCounters] = useState<ClientCounter[]>([]);
     const [loading, setLoading] = useState(false);
+    const [syncError, setSyncError] = useState(false);
     const countersRef = useRef<ClientCounter[]>([]);
     const previousUserId = useRef<string | null>(null);
 
@@ -114,6 +118,7 @@ export function CounterProvider({ children }: PropsWithChildren) {
 
         void (async () => {
             setLoading(true);
+            setSyncError(false);
 
             try {
                 if (!userId) {
@@ -129,7 +134,7 @@ export function CounterProvider({ children }: PropsWithChildren) {
 
                 const localCounters = await CounterService.getAllLocal();
 
-                let remoteCounters: ClientCounter[] = [];
+                let remoteCounters: ClientCounter[] | null = null;
                 try {
                     remoteCounters = (await CounterService.fetchRemote()) || [];
                 } catch {
@@ -139,11 +144,13 @@ export function CounterProvider({ children }: PropsWithChildren) {
                 const reconciled = reconcileAuthenticatedCounters(localCounters, remoteCounters, userId);
 
                 if (!active) return;
+                setSyncError(reconciled.syncError);
                 await replaceCounters(reconciled.counters);
                 if (reconciled.guestCounters.length) await CounterService.consolidate(reconciled.guestCounters);
                 connectSocket();
                 await SyncManager.processQueue();
             } catch (error: unknown) {
+                if (active) setSyncError(true);
                 console.warn('Counter initialization failed', error);
             } finally {
                 if (active) setLoading(false);
@@ -261,6 +268,7 @@ export function CounterProvider({ children }: PropsWithChildren) {
             value={{
                 counters,
                 loading,
+                syncError,
                 eligibleCount: counters.filter(isGuestEligible).length,
                 createCounter,
                 incrementCounter,

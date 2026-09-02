@@ -95,6 +95,9 @@ export default function HomeScreen() {
                                         style={[
                                             styles.statusDot,
                                             network.isConnected === false && styles.statusDotOffline,
+                                            network.isConnected !== false &&
+                                                counterState.syncError &&
+                                                styles.statusDotError,
                                         ]}
                                     />
                                     <Text style={styles.statusText}>
@@ -102,7 +105,9 @@ export default function HomeScreen() {
                                             ? 'Syncing'
                                             : network.isConnected === false
                                               ? 'Offline'
-                                              : 'Synced'}
+                                              : counterState.syncError
+                                                ? 'Sync failed'
+                                                : 'Synced'}
                                     </Text>
                                 </View>
                             )}
@@ -285,6 +290,9 @@ const styles = StyleSheet.create({
     },
     statusDotOffline: {
         backgroundColor: '#b45309',
+    },
+    statusDotError: {
+        backgroundColor: '#b42318',
     },
     statusText: {
         color: '#343a40',
