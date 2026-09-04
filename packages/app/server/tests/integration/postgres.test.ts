@@ -117,6 +117,39 @@ describe('PostgreSQL integration', () => {
         expect(newLogin.status).toBe(200);
     });
 
+    it('rejects the current password without consuming a valid reset code', async () => {
+        const email = `password-reuse.${randomUUID()}@example.com`;
+        const password = 'integration-password';
+        const newPassword = 'new-integration-password';
+        const resetCode = '654321';
+
+        const registration = await request(app).post('/users').send({ email, password });
+        expect(registration.status).toBe(201);
+
+        const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+        await prisma.emailOtp.create({
+            data: {
+                userId: user.id,
+                purpose: 'PASSWORD_RESET',
+                digest: digestEmailOtp(user.id, 'PASSWORD_RESET', resetCode),
+                expiresAt: new Date(Date.now() + 60_000),
+            },
+        });
+
+        const reused = await request(app).post('/users/reset-password').send({ email, code: resetCode, password });
+        expect(reused.status).toBe(422);
+
+        const reset = await request(app)
+            .post('/users/reset-password')
+            .send({ email, code: resetCode, password: newPassword });
+        expect(reset.status).toBe(200);
+
+        const oldLogin = await request(app).post('/users/login').send({ email, password });
+        const newLogin = await request(app).post('/users/login').send({ email, password: newPassword });
+        expect(oldLogin.status).toBe(401);
+        expect(newLogin.status).toBe(200);
+    });
+
     it('locks an email code after five incorrect attempts', async () => {
         const email = `email-attempts.${randomUUID()}@example.com`;
         const password = 'integration-password';

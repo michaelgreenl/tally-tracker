@@ -115,6 +115,7 @@ describe('Expo full-stack counter journey', () => {
 
         cy.get('[data-testid="email-auth-submit"]').click();
         cy.wait('@verifyEmail').its('request.body').should('deep.equal', { email, code: '123456' });
+        cy.get('[data-testid="email-auth-login"]').click();
         cy.location('pathname').should('eq', '/login');
     });
 });

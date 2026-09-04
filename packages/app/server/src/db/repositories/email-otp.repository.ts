@@ -4,6 +4,10 @@ import type { EmailOtpPurpose, Prisma } from '@prisma/client';
 
 const MAX_ATTEMPTS = 5;
 
+export type PasswordResetResult = 'RESET' | 'INVALID_CODE' | 'REUSED_PASSWORD';
+
+class ReusedPasswordError extends Error {}
+
 export const issue = (userId: string, purpose: EmailOtpPurpose, digest: string, expiresAt: Date) => {
     const createdAt = new Date();
 
@@ -54,11 +58,26 @@ export const verifyEmail = (userId: string, digest: string) =>
         }),
     );
 
-export const resetPassword = (userId: string, digest: string, password: string) =>
-    consume(userId, 'PASSWORD_RESET', digest, async (tx) => {
-        await tx.user.update({
-            where: { id: userId },
-            data: { password, sessionVersion: { increment: 1 } },
+export const resetPassword = async (
+    userId: string,
+    digest: string,
+    password: string,
+    reusesPassword: boolean,
+): Promise<PasswordResetResult> => {
+    try {
+        const reset = await consume(userId, 'PASSWORD_RESET', digest, async (tx) => {
+            if (reusesPassword) throw new ReusedPasswordError();
+
+            await tx.user.update({
+                where: { id: userId },
+                data: { password, sessionVersion: { increment: 1 } },
+            });
+            await tx.refreshToken.deleteMany({ where: { userId } });
         });
-        await tx.refreshToken.deleteMany({ where: { userId } });
-    });
+
+        return reset ? 'RESET' : 'INVALID_CODE';
+    } catch (error: unknown) {
+        if (error instanceof ReusedPasswordError) return 'REUSED_PASSWORD';
+        throw error;
+    }
+};

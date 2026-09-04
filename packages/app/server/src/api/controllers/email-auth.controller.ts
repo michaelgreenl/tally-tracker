@@ -11,6 +11,7 @@ import type { Request, Response } from 'express';
 
 const REQUEST_MESSAGE = 'If an account exists, a code will be sent.';
 const INVALID_CODE_MESSAGE = 'The code is invalid or expired.';
+const REUSED_PASSWORD_MESSAGE = 'New password must be different from your current password.';
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
 const requestCode = async (
@@ -79,10 +80,16 @@ export const resetPassword = async (
         }
 
         const digest = digestEmailOtp(user.id, 'PASSWORD_RESET', req.body.code);
-        const password = await bcrypt.hash(req.body.password, 10);
-        const reset = await emailOtpRepository.resetPassword(user.id, digest, password);
-        if (!reset) {
+        const [reusesPassword, password] = await Promise.all([
+            bcrypt.compare(req.body.password, user.password),
+            bcrypt.hash(req.body.password, 10),
+        ]);
+        const reset = await emailOtpRepository.resetPassword(user.id, digest, password, reusesPassword);
+        if (reset === 'INVALID_CODE') {
             return res.status(UNPROCESSABLE_ENTITY).json({ success: false, message: INVALID_CODE_MESSAGE });
+        }
+        if (reset === 'REUSED_PASSWORD') {
+            return res.status(UNPROCESSABLE_ENTITY).json({ success: false, message: REUSED_PASSWORD_MESSAGE });
         }
 
         const io = req.app.get('io');
