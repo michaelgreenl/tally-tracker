@@ -1,7 +1,17 @@
 import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
-import { useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { useRef, useState } from 'react';
+import {
+    ActivityIndicator,
+    Keyboard,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    ScrollView,
+    Text,
+    TextInput,
+    View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getErrorMessage } from '../api';
@@ -19,8 +29,12 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
     const router = useRouter();
     const params = useLocalSearchParams<{ email?: string | string[] }>();
     const isVerification = mode === 'verify';
+    const codeInputRef = useRef<TextInput>(null);
+    const passwordInputRef = useRef<TextInput>(null);
+    const confirmPasswordInputRef = useRef<TextInput>(null);
     const [email, setEmail] = useState(() => getEmailParameter(params.email));
     const [codeRequested, setCodeRequested] = useState(isVerification);
+    const [complete, setComplete] = useState(false);
     const [code, setCode] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -44,6 +58,7 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
                 : await AuthService.requestPasswordReset({ email });
             setCodeRequested(true);
             setStatusMessage(response.message || 'Check your email for a code.');
+            requestAnimationFrame(() => codeInputRef.current?.focus());
         } catch (error: unknown) {
             setErrorMessage(getErrorMessage(error, 'Could not request a code.'));
         } finally {
@@ -52,8 +67,16 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
     }
 
     async function submitCode() {
+        setErrorMessage('');
+        setStatusMessage('');
+
         if (!/^\d{6}$/.test(code)) {
             setErrorMessage('Enter the six-digit code.');
+            return;
+        }
+
+        if (!isVerification && password.length < 6) {
+            setErrorMessage('Password must be at least 6 characters.');
             return;
         }
 
@@ -63,8 +86,6 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
         }
 
         setLoading(true);
-        setErrorMessage('');
-        setStatusMessage('');
 
         try {
             if (isVerification) {
@@ -72,7 +93,8 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
             } else {
                 await AuthService.resetPassword({ email, code, password });
             }
-            router.replace('/login');
+            Keyboard.dismiss();
+            setComplete(true);
         } catch (error: unknown) {
             setErrorMessage(getErrorMessage(error, 'Could not submit the code.'));
         } finally {
@@ -80,7 +102,26 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
         }
     }
 
+    function changeEmail() {
+        setCodeRequested(false);
+        setCode('');
+        setPassword('');
+        setConfirmPassword('');
+        setErrorMessage('');
+        setStatusMessage('');
+    }
+
+    function primaryAction() {
+        if (complete) {
+            router.replace('/login');
+            return;
+        }
+
+        void (codeRequested ? submitCode() : requestCode());
+    }
+
     const title = isVerification ? 'Verify Email' : 'Reset Password';
+    const completionTitle = isVerification ? 'Email Verified' : 'Password Reset';
 
     return (
         <>
@@ -94,34 +135,43 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
                 >
                     <ScrollView
                         contentContainerStyle={styles.scrollContent}
+                        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
                         keyboardShouldPersistTaps='handled'
                         showsVerticalScrollIndicator={false}
                     >
                         <View style={styles.card}>
                             <View style={styles.header}>
                                 <Text accessibilityRole='header' aria-level={1} style={styles.title}>
-                                    {title}
+                                    {complete ? completionTitle : title}
                                 </Text>
                                 <Text style={styles.subtitle}>
-                                    {codeRequested
-                                        ? 'Enter the code from your email, then press Submit.'
-                                        : 'Enter your account email to request a code.'}
+                                    {complete
+                                        ? isVerification
+                                            ? 'Your email is verified. You can now log in.'
+                                            : 'Your password is updated. You can now log in.'
+                                        : codeRequested
+                                          ? 'Enter the code from your email, then press Submit.'
+                                          : 'Enter your account email to request a code.'}
                                 </Text>
                             </View>
 
-                            <FormField
-                                autoCapitalize='none'
-                                autoComplete='email'
-                                editable={!loading && !codeRequested}
-                                keyboardType='email-address'
-                                label='Email Address'
-                                onChangeText={setEmail}
-                                testID='email-auth-email'
-                                textContentType='emailAddress'
-                                value={email}
-                            />
+                            {!complete && (
+                                <FormField
+                                    autoCapitalize='none'
+                                    autoComplete='email'
+                                    editable={!loading && !codeRequested}
+                                    keyboardType='email-address'
+                                    label='Email Address'
+                                    onChangeText={setEmail}
+                                    onSubmitEditing={() => void requestCode()}
+                                    returnKeyType='done'
+                                    testID='email-auth-email'
+                                    textContentType='emailAddress'
+                                    value={email}
+                                />
+                            )}
 
-                            {codeRequested && (
+                            {!complete && codeRequested && (
                                 <>
                                     <FormField
                                         autoComplete='one-time-code'
@@ -130,6 +180,12 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
                                         label='Verification Code'
                                         maxLength={6}
                                         onChangeText={setCode}
+                                        onSubmitEditing={() => {
+                                            if (isVerification) Keyboard.dismiss();
+                                            else passwordInputRef.current?.focus();
+                                        }}
+                                        ref={codeInputRef}
+                                        returnKeyType={isVerification ? 'done' : 'next'}
                                         testID='email-auth-code'
                                         textContentType='oneTimeCode'
                                         value={code}
@@ -141,8 +197,12 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
                                                 autoCapitalize='none'
                                                 autoComplete='new-password'
                                                 editable={!loading}
+                                                help='Use at least 6 characters. Choose a password that differs from your current password.'
                                                 label='New Password'
                                                 onChangeText={setPassword}
+                                                onSubmitEditing={() => confirmPasswordInputRef.current?.focus()}
+                                                ref={passwordInputRef}
+                                                returnKeyType='next'
                                                 secureTextEntry
                                                 testID='email-auth-password'
                                                 textContentType='newPassword'
@@ -154,6 +214,9 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
                                                 editable={!loading}
                                                 label='Confirm New Password'
                                                 onChangeText={setConfirmPassword}
+                                                onSubmitEditing={() => void submitCode()}
+                                                ref={confirmPasswordInputRef}
+                                                returnKeyType='done'
                                                 secureTextEntry
                                                 testID='email-auth-confirm-password'
                                                 textContentType='newPassword'
@@ -164,13 +227,13 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
                                 </>
                             )}
 
-                            {Boolean(statusMessage) && (
-                                <Text accessibilityLiveRegion='polite' style={styles.subtitle}>
-                                    {statusMessage}
-                                </Text>
+                            {!complete && Boolean(statusMessage) && (
+                                <View accessibilityLiveRegion='polite' style={styles.statusBox}>
+                                    <Text style={styles.statusText}>{statusMessage}</Text>
+                                </View>
                             )}
 
-                            {Boolean(errorMessage) && (
+                            {!complete && Boolean(errorMessage) && (
                                 <View
                                     accessibilityLiveRegion='polite'
                                     accessibilityRole='alert'
@@ -183,42 +246,68 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
                             <Pressable
                                 accessibilityRole='button'
                                 disabled={loading}
-                                onPress={() => void (codeRequested ? submitCode() : requestCode())}
+                                onPress={primaryAction}
                                 style={({ pressed }) => [
                                     styles.primaryButton,
                                     pressed && styles.primaryButtonPressed,
                                     loading && styles.primaryButtonDisabled,
                                 ]}
-                                testID={codeRequested ? 'email-auth-submit' : 'email-auth-request'}
+                                testID={
+                                    complete
+                                        ? 'email-auth-login'
+                                        : codeRequested
+                                          ? 'email-auth-submit'
+                                          : 'email-auth-request'
+                                }
                             >
                                 {loading ? (
                                     <ActivityIndicator color='#ffffff' />
                                 ) : (
                                     <Text style={styles.primaryButtonText}>
-                                        {codeRequested ? 'Submit' : 'Send Code'}
+                                        {complete ? 'Continue to Login' : codeRequested ? 'Submit' : 'Send Code'}
                                     </Text>
                                 )}
                             </Pressable>
 
-                            {codeRequested && (
-                                <Pressable
-                                    accessibilityRole='button'
-                                    disabled={loading}
-                                    onPress={() => void requestCode()}
-                                    style={styles.footer}
-                                    testID='email-auth-resend'
-                                >
-                                    <Text style={styles.link}>Resend code</Text>
-                                </Pressable>
+                            {!complete && codeRequested && (
+                                <View style={styles.secondaryActions}>
+                                    <Pressable
+                                        accessibilityRole='button'
+                                        disabled={loading}
+                                        hitSlop={8}
+                                        onPress={() => void requestCode()}
+                                        style={({ pressed }) => pressed && styles.linkPressed}
+                                        testID='email-auth-resend'
+                                    >
+                                        <Text style={styles.link}>Resend code</Text>
+                                    </Pressable>
+                                    <Pressable
+                                        accessibilityRole='button'
+                                        disabled={loading}
+                                        hitSlop={8}
+                                        onPress={changeEmail}
+                                        style={({ pressed }) => pressed && styles.linkPressed}
+                                        testID='email-auth-change-email'
+                                    >
+                                        <Text style={styles.link}>Use a different email</Text>
+                                    </Pressable>
+                                </View>
                             )}
 
-                            <View style={styles.footer}>
-                                <Link href='/login' asChild>
-                                    <Pressable accessibilityRole='link' hitSlop={8} testID='email-auth-login'>
-                                        <Text style={styles.link}>Back to login</Text>
-                                    </Pressable>
-                                </Link>
-                            </View>
+                            {!complete && (
+                                <View style={styles.footer}>
+                                    <Link href='/login' asChild>
+                                        <Pressable
+                                            accessibilityRole='link'
+                                            hitSlop={8}
+                                            style={({ pressed }) => pressed && styles.linkPressed}
+                                            testID='email-auth-login'
+                                        >
+                                            <Text style={styles.link}>Back to login</Text>
+                                        </Pressable>
+                                    </Link>
+                                </View>
+                            )}
                         </View>
                     </ScrollView>
                 </KeyboardAvoidingView>

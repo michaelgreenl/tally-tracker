@@ -1,6 +1,6 @@
 import { Link, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
-import { useState } from 'react';
+import { forwardRef, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     KeyboardAvoidingView,
@@ -23,7 +23,10 @@ type AuthScreenProps = {
     mode: 'login' | 'register';
 };
 
-export function FormField({ label, ...inputProps }: TextInputProps & { label: string }) {
+export const FormField = forwardRef<TextInput, TextInputProps & { help?: string; label: string }>(function FormField(
+    { help, label, ...inputProps },
+    ref,
+) {
     const [focused, setFocused] = useState(false);
 
     return (
@@ -41,11 +44,13 @@ export function FormField({ label, ...inputProps }: TextInputProps & { label: st
                     inputProps.onFocus?.(event);
                 }}
                 placeholderTextColor='#8d969e'
+                ref={ref}
                 style={[styles.input, focused && styles.inputFocused, inputProps.style]}
             />
+            {help && <Text style={styles.helpText}>{help}</Text>}
         </View>
     );
-}
+});
 
 const legalLinks = [
     { label: 'Privacy', document: 'privacy' },
@@ -57,6 +62,8 @@ export function AuthScreen({ mode }: AuthScreenProps) {
     const router = useRouter();
     const session = useSession();
     const isLogin = mode === 'login';
+    const passwordInputRef = useRef<TextInput>(null);
+    const confirmPasswordInputRef = useRef<TextInput>(null);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -67,13 +74,18 @@ export function AuthScreen({ mode }: AuthScreenProps) {
     const [errorMessage, setErrorMessage] = useState('');
 
     async function submit() {
-        if (!isLogin && password !== confirmPassword) {
-            setErrorMessage("Passwords don't match");
+        if (!email.includes('@')) {
+            setErrorMessage('Please enter a valid email address.');
             return;
         }
 
-        if (!isLogin && !email.includes('@')) {
-            setErrorMessage('Please enter a valid email address');
+        if (!isLogin && password.length < 6) {
+            setErrorMessage('Password must be at least 6 characters.');
+            return;
+        }
+
+        if (!isLogin && password !== confirmPassword) {
+            setErrorMessage("Passwords don't match.");
             return;
         }
 
@@ -105,6 +117,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                 >
                     <ScrollView
                         contentContainerStyle={styles.scrollContent}
+                        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
                         keyboardShouldPersistTaps='handled'
                         showsVerticalScrollIndicator={false}
                     >
@@ -115,7 +128,12 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                 </Text>
                                 {isLogin ? (
                                     <Link href='/home' asChild>
-                                        <Pressable accessibilityRole='link' hitSlop={8} testID='continue-as-guest'>
+                                        <Pressable
+                                            accessibilityRole='link'
+                                            hitSlop={8}
+                                            style={({ pressed }) => pressed && styles.linkPressed}
+                                            testID='continue-as-guest'
+                                        >
                                             <Text style={styles.link}>Continue as guest</Text>
                                         </Pressable>
                                     </Link>
@@ -131,6 +149,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                 keyboardType='email-address'
                                 label='Email Address'
                                 onChangeText={setEmail}
+                                onSubmitEditing={() => passwordInputRef.current?.focus()}
                                 placeholder='name@example.com'
                                 returnKeyType='next'
                                 testID='auth-email'
@@ -157,8 +176,10 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                         onFocus={() => setPasswordFocused(true)}
                                         onSubmitEditing={() => {
                                             if (isLogin) void submit();
+                                            else confirmPasswordInputRef.current?.focus();
                                         }}
                                         placeholderTextColor='#8d969e'
+                                        ref={passwordInputRef}
                                         returnKeyType={isLogin ? 'done' : 'next'}
                                         secureTextEntry={!showPassword}
                                         style={styles.passwordTextInput}
@@ -171,10 +192,12 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                         accessibilityRole='button'
                                         hitSlop={8}
                                         onPress={() => setShowPassword((visible) => !visible)}
+                                        style={({ pressed }) => pressed && styles.linkPressed}
                                     >
                                         <Text style={styles.passwordToggle}>{showPassword ? 'Hide' : 'Show'}</Text>
                                     </Pressable>
                                 </View>
+                                {!isLogin && <Text style={styles.helpText}>Use at least 6 characters.</Text>}
                             </View>
 
                             {!isLogin && (
@@ -185,6 +208,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                     label='Confirm Password'
                                     onChangeText={setConfirmPassword}
                                     onSubmitEditing={() => void submit()}
+                                    ref={confirmPasswordInputRef}
                                     returnKeyType='done'
                                     secureTextEntry
                                     testID='auth-confirm-password'
@@ -209,7 +233,11 @@ export function AuthScreen({ mode }: AuthScreenProps) {
 
                             {isLogin && (
                                 <Link href='/forgot-password' asChild>
-                                    <Pressable accessibilityRole='link' hitSlop={8} style={styles.forgotPassword}>
+                                    <Pressable
+                                        accessibilityRole='link'
+                                        hitSlop={8}
+                                        style={({ pressed }) => [styles.forgotPassword, pressed && styles.linkPressed]}
+                                    >
                                         <Text style={styles.link}>Forgot password?</Text>
                                     </Pressable>
                                 </Link>
@@ -245,7 +273,11 @@ export function AuthScreen({ mode }: AuthScreenProps) {
 
                             <View style={styles.footer}>
                                 <Link href={isLogin ? '/register' : '/login'} asChild>
-                                    <Pressable accessibilityRole='link' hitSlop={8}>
+                                    <Pressable
+                                        accessibilityRole='link'
+                                        hitSlop={8}
+                                        style={({ pressed }) => pressed && styles.linkPressed}
+                                    >
                                         <Text style={styles.link}>
                                             {isLogin ? 'Create an account' : 'Already have an account?'}
                                         </Text>
@@ -265,7 +297,11 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                             }}
                                             asChild
                                         >
-                                            <Pressable accessibilityRole='link' hitSlop={8}>
+                                            <Pressable
+                                                accessibilityRole='link'
+                                                hitSlop={8}
+                                                style={({ pressed }) => pressed && styles.linkPressed}
+                                            >
                                                 <Text style={styles.legalLink}>{link.label}</Text>
                                             </Pressable>
                                         </Link>
@@ -291,8 +327,8 @@ const styles = StyleSheet.create({
     scrollContent: {
         flexGrow: 1,
         alignItems: 'center',
-        justifyContent: 'center',
-        padding: 20,
+        paddingHorizontal: 20,
+        paddingVertical: 32,
     },
     card: {
         width: '100%',
@@ -333,13 +369,12 @@ const styles = StyleSheet.create({
         color: '#212529',
         fontSize: 16,
         backgroundColor: '#ffffff',
-        borderWidth: 1,
+        borderWidth: 2,
         borderColor: '#ced4da',
         borderRadius: 10,
     },
     inputFocused: {
         borderColor: '#23a6d5',
-        borderWidth: 2,
     },
     inputDisabled: {
         opacity: 0.65,
@@ -350,7 +385,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 14,
         backgroundColor: '#ffffff',
-        borderWidth: 1,
+        borderWidth: 2,
         borderColor: '#ced4da',
         borderRadius: 10,
     },
@@ -366,6 +401,11 @@ const styles = StyleSheet.create({
         color: '#167ca3',
         fontSize: 14,
         fontWeight: '700',
+    },
+    helpText: {
+        marginTop: 7,
+        color: '#575e64',
+        fontSize: 13,
     },
     rememberRow: {
         minHeight: 48,
@@ -393,6 +433,17 @@ const styles = StyleSheet.create({
         fontSize: 14,
         textAlign: 'center',
     },
+    statusBox: {
+        padding: 12,
+        marginBottom: 18,
+        backgroundColor: '#e5f6fb',
+        borderRadius: 8,
+    },
+    statusText: {
+        color: '#14566b',
+        fontSize: 14,
+        textAlign: 'center',
+    },
     primaryButton: {
         minHeight: 50,
         alignItems: 'center',
@@ -402,6 +453,7 @@ const styles = StyleSheet.create({
     },
     primaryButtonPressed: {
         backgroundColor: '#0d6f8f',
+        opacity: 0.8,
     },
     primaryButtonDisabled: {
         opacity: 0.7,
@@ -416,11 +468,19 @@ const styles = StyleSheet.create({
         gap: 16,
         marginTop: 22,
     },
+    secondaryActions: {
+        alignItems: 'center',
+        gap: 18,
+        marginTop: 22,
+    },
     link: {
         color: '#167ca3',
         fontSize: 15,
         fontWeight: '700',
         textDecorationLine: 'underline',
+    },
+    linkPressed: {
+        opacity: 0.55,
     },
     legalLinks: {
         flexDirection: 'row',

@@ -41,7 +41,11 @@ export const AuthService = {
     },
 
     login(data: AuthRequest) {
-        return apiFetch<AuthResponse, AuthRequest>('/users/login', { method: 'POST', body: data });
+        return apiFetch<AuthResponse, AuthRequest>('/users/login', {
+            method: 'POST',
+            body: data,
+            requiresAuth: false,
+        });
     },
 
     async logout() {
@@ -55,29 +59,39 @@ export const AuthService = {
     },
 
     register(data: AuthRequest) {
-        return apiFetch<AuthResponse, AuthRequest>('/users', { method: 'POST', body: data });
+        return apiFetch<AuthResponse, AuthRequest>('/users', { method: 'POST', body: data, requiresAuth: false });
     },
 
     requestEmailVerification(data: EmailAddressRequest) {
         return apiFetch<AuthResponse, EmailAddressRequest>('/users/verify-email/request', {
             method: 'POST',
             body: data,
+            requiresAuth: false,
         });
     },
 
     verifyEmail(data: EmailOtpRequest) {
-        return apiFetch<AuthResponse, EmailOtpRequest>('/users/verify-email', { method: 'POST', body: data });
+        return apiFetch<AuthResponse, EmailOtpRequest>('/users/verify-email', {
+            method: 'POST',
+            body: data,
+            requiresAuth: false,
+        });
     },
 
     requestPasswordReset(data: EmailAddressRequest) {
         return apiFetch<AuthResponse, EmailAddressRequest>('/users/reset-password/request', {
             method: 'POST',
             body: data,
+            requiresAuth: false,
         });
     },
 
     resetPassword(data: PasswordResetRequest) {
-        return apiFetch<AuthResponse, PasswordResetRequest>('/users/reset-password', { method: 'POST', body: data });
+        return apiFetch<AuthResponse, PasswordResetRequest>('/users/reset-password', {
+            method: 'POST',
+            body: data,
+            requiresAuth: false,
+        });
     },
 
     updateUser(data: UpdateUserRequest) {
