@@ -8,13 +8,15 @@ import {
     clearCookieConfig,
 } from '../../config/cookie.config.js';
 import { captureServerError } from '../../monitoring/sentry.js';
+import { issueEmailOtp } from '../../services/email-otp.service.js';
 import jwt from '../../util/jwt.util.js';
 import bcrypt from 'bcrypt';
 import { Prisma } from '@prisma/client';
 
 import type { Request, Response } from 'express';
-import type { AuthResponse } from '@tally/core';
+import type { AuthResponse, ClientUser } from '@tally/core';
 import type { AuthRequest, RefreshRequest } from '@tally/core';
+import type { User } from '@prisma/client';
 
 const REFRESH_TOKEN_TTL = 30 * 24 * 60 * 60 * 1000; // 30d
 
@@ -25,6 +27,13 @@ const getErrorMessage = (error: unknown): string => {
 
     return 'Unknown error';
 };
+
+const toClientUser = (user: Pick<User, 'id' | 'email' | 'tier' | 'emailVerifiedAt'>): ClientUser => ({
+    id: user.id,
+    email: user.email,
+    tier: user.tier,
+    emailVerified: Boolean(user.emailVerifiedAt),
+});
 
 // Access token is validated by the jwt middleware before reaching here.
 // Just look up the user and return their data.
@@ -43,7 +52,7 @@ export const checkAuth = async (req: Request, res: Response<AuthResponse>) => {
 
         res.json({
             success: true,
-            data: { user },
+            data: { user: toClientUser(user) },
         });
     } catch (error: unknown) {
         captureServerError(error, { req, source: 'user.checkAuth' });
@@ -69,7 +78,10 @@ export const post = async (
         const sanitizedEmail = sanitizeEmail(email);
 
         const hash = await bcrypt.hash(password, 10);
-        await userRepository.createUser({ email: sanitizedEmail, password: hash });
+        const user = await userRepository.createUser({ email: sanitizedEmail, password: hash });
+        void issueEmailOtp(user, 'EMAIL_VERIFICATION').catch((error: unknown) => {
+            captureServerError(error, { req, source: 'user.post.emailVerification' });
+        });
 
         res.status(CREATED).json({ success: true });
     } catch (error: unknown) {
@@ -117,9 +129,12 @@ export const login = async (
             return res.status(UNAUTHORIZED).json({ success: false, message: 'Incorrect password.' });
         }
 
-        const { password: _, ...clientUser } = user;
+        const clientUser = toClientUser(user);
 
-        const accessToken = jwt.sign({ id: user.id, email: user.email }, rememberMe ? '60m' : '1d');
+        const accessToken = jwt.sign(
+            { id: user.id, email: user.email, sessionVersion: user.sessionVersion },
+            rememberMe ? '60m' : '1d',
+        );
 
         let refreshToken: string | undefined;
 
@@ -165,7 +180,7 @@ export const refresh = async (
             return res.status(UNAUTHORIZED).json({ success: false, message: 'Invalid or expired refresh token' });
         }
 
-        const user = await userRepository.getUserById(tokenRecord.userId);
+        const user = await userRepository.getUserAuthById(tokenRecord.userId);
         if (!user) {
             await tokenRepository.remove(tokenRecord.id);
             return res.status(NOT_FOUND).json({ success: false, message: 'User not found' });
@@ -176,7 +191,7 @@ export const refresh = async (
         const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL);
         const newTokenRecord = await tokenRepository.create({ userId: tokenRecord.userId, expiresAt });
 
-        const accessToken = jwt.sign({ id: user.id, email: user.email });
+        const accessToken = jwt.sign({ id: user.id, email: user.email, sessionVersion: user.sessionVersion });
 
         res.cookie('access_token', accessToken, shortAccessCookieConfig);
         res.cookie('refresh_token', newTokenRecord.id, refreshCookieConfig);
@@ -231,7 +246,10 @@ export const put = async (
         const { email, password } = req.body;
 
         const updateData: Prisma.UserUpdateInput = {};
-        if (email) updateData.email = sanitizeEmail(email);
+        if (email) {
+            updateData.email = sanitizeEmail(email);
+            updateData.emailVerifiedAt = null;
+        }
 
         if (password) {
             updateData.password = await bcrypt.hash(password, 10);

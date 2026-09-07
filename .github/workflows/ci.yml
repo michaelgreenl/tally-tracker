@@ -111,6 +111,18 @@ jobs:
       - name: Check migration drift
         run: bun --filter=@tally/core run migrate:check
 
+      - name: Verify Render startup preserves database records
+        env:
+          PORT: 3010
+        run: |
+          bun --filter=server run build
+          psql "$POSTGRES_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO users (id, email, password, updated_at) VALUES (gen_random_uuid(), 'startup-preservation@example.invalid', 'test-only', NOW())"
+          setsid bun run render:start > "$RUNNER_TEMP/render-start.log" 2>&1 &
+          render_pid=$!
+          trap 'kill -- -"$render_pid" 2>/dev/null || true; cat "$RUNNER_TEMP/render-start.log"' EXIT
+          curl --fail --silent --show-error --retry 30 --retry-connrefused --retry-delay 1 --max-time 2 --retry-max-time 60 http://localhost:3010/health
+          test "$(psql "$POSTGRES_URL" -At -v ON_ERROR_STOP=1 -c 'SELECT email FROM users ORDER BY email')" = 'startup-preservation@example.invalid'
+
       - name: Run server integration tests
         run: bun --filter=server run test:integration
 

@@ -7,6 +7,7 @@ const userSelectSchema = {
     id: true,
     email: true,
     tier: true,
+    emailVerifiedAt: true,
     createdAt: true,
     updatedAt: true,
 };
@@ -73,6 +74,12 @@ export const getUserByEmail = (email: string) =>
         where: {
             email,
         },
+    });
+
+export const getUserAuthById = (userId: string) =>
+    prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, email: true, sessionVersion: true },
     });
 
 export const updateUserInfo = (userId: string, data: Prisma.UserUpdateInput) =>

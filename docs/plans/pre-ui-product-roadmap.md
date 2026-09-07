@@ -50,16 +50,19 @@ The first public release is complete when:
 
 ### 3. Email Verification and Forgot Password
 
-- [ ] complete
+- [x] implementation complete
+- [x] phone verification complete
+- [ ] Verify email delivery from an owned sender domain before public release.
 
-Implement this shared token and email foundation:
+The shared code and email foundation includes:
 
-- Hash one-time tokens.
-- Add expiration and consumed timestamps.
-- Rate-limit requests.
-- Return generic responses that do not reveal account existence.
-- Invalidate active sessions after a password reset.
-- Verify email delivery outside local development.
+- Hashed one-time codes with expiration, attempt limits, and consumption tracking.
+- Rate limits and generic responses for email requests.
+- Session invalidation after a password reset.
+- Rejection of the current password without consuming a valid recovery code.
+- Explicit code submission, visible errors, and completion actions.
+
+Phone tests used Render and Resend's restricted test sender. Public delivery still needs an owned sender domain.
 
 ### 4. Apple and Google OAuth
 
@@ -143,6 +146,8 @@ Do not change the bundle identifier or Android package after publication.
 
 ### 9. Production Build Configuration
 
+- [x] Apply committed database migrations during server startup, without reset or seeding.
+- [x] Baseline the existing Render database without deleting account data.
 - [ ] Add the minimum `eas.json` production build and submit profiles.
 - [ ] Link the project to the correct Expo account.
 - [ ] Configure production API and Sentry environment values.
@@ -215,10 +220,9 @@ Do not add broad test coverage here. Add tests only for real contracts and disco
 
 1. Start Apple and Google account enrollment.
 2. Confirm whether the Google 12-tester rule applies.
-3. Implement email verification and password recovery.
-4. Add Apple and Google OAuth.
-5. Add premium entitlements, purchases, restoration, and the upgrade UI.
-6. Replace starter assets and prepare the EAS production configuration.
+3. Add Apple and Google OAuth.
+4. Add premium entitlements, purchases, restoration, and the upgrade UI.
+5. Replace starter assets and prepare the EAS production configuration.
 
 ## Suggested Branch Slices
 

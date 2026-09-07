@@ -7,6 +7,7 @@ import type { AuthResponse } from '@tally/core/client';
 
 export interface ApiRequestOptions<T = unknown> extends Omit<RequestInit, 'body'> {
     body?: T;
+    requiresAuth?: boolean;
 }
 
 export class ApiError extends Error {
@@ -88,13 +89,13 @@ async function apiFetch<ResT = unknown, ReqT = unknown>(
     options: ApiRequestOptions<ReqT> = {},
     isRetry = false,
 ): Promise<ResT> {
-    const { body, headers = {}, ...restOptions } = options;
+    const { body, headers = {}, requiresAuth = true, ...restOptions } = options;
     const isFormData = body instanceof FormData;
     const requestHeaders: Record<string, string> = { ...(headers as Record<string, string>) };
 
     if (!isFormData && !requestHeaders['Content-Type']) requestHeaders['Content-Type'] = 'application/json';
 
-    if (isNative) {
+    if (isNative && requiresAuth) {
         const accessToken = await tokenStorage.getAccessToken();
         if (accessToken) requestHeaders.Authorization = `Bearer ${accessToken}`;
     }
@@ -112,11 +113,11 @@ async function apiFetch<ResT = unknown, ReqT = unknown>(
         });
 
         if (!response.ok) {
-            if (response.status === UNAUTHORIZED && !isRetry && (await attemptRefresh())) {
+            if (requiresAuth && response.status === UNAUTHORIZED && !isRetry && (await attemptRefresh())) {
                 return apiFetch<ResT, ReqT>(endpoint, options, true);
             }
 
-            if (response.status === UNAUTHORIZED) await unauthorizedHandler?.();
+            if (requiresAuth && response.status === UNAUTHORIZED) await unauthorizedHandler?.();
 
             const errorData = (await response.json().catch(() => ({}))) as Record<string, unknown> & {
                 message?: string;

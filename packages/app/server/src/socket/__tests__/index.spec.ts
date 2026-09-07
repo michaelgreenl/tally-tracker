@@ -1,6 +1,6 @@
 import { createServer } from 'http';
 import jsonwebtoken from 'jsonwebtoken';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { io as createClient } from 'socket.io-client';
 
 import initializeIO from '../index.js';
@@ -9,6 +9,10 @@ import type { AddressInfo } from 'net';
 import type { Server as HttpServer } from 'http';
 import type { Server as SocketServer, Socket as ServerSocket } from 'socket.io';
 import type { Socket as ClientSocket } from 'socket.io-client';
+
+vi.mock('../../db/repositories/user.repository', () => ({
+    getUserAuthById: vi.fn(async (id: string) => ({ id, email: `${id}@example.com`, sessionVersion: 0 })),
+}));
 
 const AUDIENCE = 'reaction-client';
 const ISSUER = 'reaction-api';
@@ -175,8 +179,8 @@ describe('Socket server authentication', () => {
     });
 
     it('keeps authenticated cookie and native clients in their own user rooms', async () => {
-        const cookieToken = signAccessToken({ id: TEST_USER_ID });
-        const nativeToken = signAccessToken({ id: TEST_OTHER_USER_ID });
+        const cookieToken = signAccessToken({ id: TEST_USER_ID, sessionVersion: 0 });
+        const nativeToken = signAccessToken({ id: TEST_OTHER_USER_ID, sessionVersion: 0 });
         const cookieConnection = await connectSuccessfully({
             extraHeaders: { Cookie: `access_token=${cookieToken}` },
         });
@@ -189,7 +193,7 @@ describe('Socket server authentication', () => {
     });
 
     it('does not let an authenticated client request another user room', async () => {
-        const token = signAccessToken({ id: TEST_USER_ID });
+        const token = signAccessToken({ id: TEST_USER_ID, sessionVersion: 0 });
         const { client, serverSocket } = await connectSuccessfully({ auth: { token } });
         const joinRoomReceived = new Promise<string>((resolve) => {
             serverSocket.once('join-room', (roomId: string) => resolve(roomId));
@@ -203,7 +207,7 @@ describe('Socket server authentication', () => {
     });
 
     it('accepts a Bearer authorization header', async () => {
-        const token = signAccessToken({ id: TEST_USER_ID });
+        const token = signAccessToken({ id: TEST_USER_ID, sessionVersion: 0 });
         const connection = await connectSuccessfully({
             extraHeaders: { Authorization: `Bearer ${token}` },
         });
@@ -212,15 +216,15 @@ describe('Socket server authentication', () => {
     });
 
     it('rejects a token with a bad signature', async () => {
-        const token = signAccessToken({ id: TEST_USER_ID }, WRONG_JWT_SECRET);
+        const token = signAccessToken({ id: TEST_USER_ID, sessionVersion: 0 }, WRONG_JWT_SECRET);
         const error = await connectExpectingError({ auth: { token } });
 
         expect(error.message).toBe('Invalid token');
     });
 
     it.each([
-        { case: 'missing', payload: {} },
-        { case: 'non-string', payload: { id: 123 } },
+        { case: 'missing', payload: { sessionVersion: 0 } },
+        { case: 'non-string', payload: { id: 123, sessionVersion: 0 } },
     ])('rejects a token with a $case user id', async ({ payload }) => {
         const token = signAccessToken(payload);
         const error = await connectExpectingError({ auth: { token } });

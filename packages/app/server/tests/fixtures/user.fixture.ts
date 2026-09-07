@@ -11,6 +11,8 @@ export const buildUser = (overrides: Partial<User> = {}): User => ({
     email: 'test@test.com',
     password: hashedPassword,
     tier: 'BASIC',
+    emailVerifiedAt: null,
+    sessionVersion: 0,
     createdAt: new Date('2026-01-01'),
     updatedAt: new Date('2026-01-01'),
     ...overrides,
@@ -20,5 +22,6 @@ export const buildClientUser = (overrides: Partial<ClientUser> = {}): ClientUser
     id: TEST_USER_ID,
     email: 'test@test.com',
     tier: 'BASIC',
+    emailVerified: false,
     ...overrides,
 });

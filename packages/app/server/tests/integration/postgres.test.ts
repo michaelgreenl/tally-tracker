@@ -4,6 +4,8 @@ import type { Express } from 'express';
 import request from 'supertest';
 import { beforeAll, describe, expect, it } from 'vitest';
 
+import { digestEmailOtp } from '../../src/services/email-otp.service.js';
+
 let app: Express;
 let prisma: PrismaClient;
 
@@ -34,6 +36,158 @@ describe('PostgreSQL integration', () => {
         expect(duplicate.status).toBe(422);
         expect(duplicate.body).toEqual({ success: false, message: 'Account is already in use.' });
         expect(await prisma.user.count({ where: { email: email.toLowerCase() } })).toBe(1);
+    });
+
+    it('consumes email codes and invalidates sessions after a password reset', async () => {
+        const email = `email-auth.${randomUUID()}@example.com`;
+        const password = 'integration-password';
+        const newPassword = 'new-integration-password';
+        const verificationCode = '123456';
+        const resetCode = '654321';
+
+        const registration = await request(app).post('/users').send({ email, password });
+        expect(registration.status).toBe(201);
+
+        const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+        await expect
+            .poll(() => prisma.emailOtp.count({ where: { userId: user.id, purpose: 'EMAIL_VERIFICATION' } }))
+            .toBe(1);
+        await prisma.emailOtp.upsert({
+            where: { userId_purpose: { userId: user.id, purpose: 'EMAIL_VERIFICATION' } },
+            create: {
+                userId: user.id,
+                purpose: 'EMAIL_VERIFICATION',
+                digest: digestEmailOtp(user.id, 'EMAIL_VERIFICATION', verificationCode),
+                expiresAt: new Date(Date.now() + 60_000),
+            },
+            update: {
+                digest: digestEmailOtp(user.id, 'EMAIL_VERIFICATION', verificationCode),
+                expiresAt: new Date(Date.now() + 60_000),
+                consumedAt: null,
+                attempts: 0,
+            },
+        });
+
+        const verification = await request(app).post('/users/verify-email').send({
+            email,
+            code: verificationCode,
+        });
+        expect(verification.status).toBe(200);
+
+        const verifiedUser = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+        const verificationToken = await prisma.emailOtp.findUniqueOrThrow({
+            where: { userId_purpose: { userId: user.id, purpose: 'EMAIL_VERIFICATION' } },
+        });
+        expect(verifiedUser.emailVerifiedAt).toBeInstanceOf(Date);
+        expect(verificationToken.consumedAt).toBeInstanceOf(Date);
+
+        const replay = await request(app).post('/users/verify-email').send({ email, code: verificationCode });
+        expect(replay.status).toBe(422);
+
+        const login = await request(app).post('/users/login').send({ email, password, rememberMe: true });
+        expect(login.status).toBe(200);
+        const { accessToken, refreshToken } = login.body.data;
+
+        await prisma.emailOtp.create({
+            data: {
+                userId: user.id,
+                purpose: 'PASSWORD_RESET',
+                digest: digestEmailOtp(user.id, 'PASSWORD_RESET', resetCode),
+                expiresAt: new Date(Date.now() + 60_000),
+            },
+        });
+
+        const reset = await request(app).post('/users/reset-password').send({
+            email,
+            code: resetCode,
+            password: newPassword,
+        });
+        expect(reset.status).toBe(200);
+
+        const oldAccess = await request(app).get('/counters').set('Authorization', `Bearer ${accessToken}`);
+        const oldRefresh = await request(app).post('/users/refresh').send({ refreshToken });
+        expect(oldAccess.status).toBe(401);
+        expect(oldRefresh.status).toBe(401);
+
+        const updatedUser = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+        expect(updatedUser.sessionVersion).toBe(1);
+        expect(await prisma.refreshToken.count({ where: { userId: user.id } })).toBe(0);
+
+        const newLogin = await request(app).post('/users/login').send({ email, password: newPassword });
+        expect(newLogin.status).toBe(200);
+    });
+
+    it('rejects the current password without consuming a valid reset code', async () => {
+        const email = `password-reuse.${randomUUID()}@example.com`;
+        const password = 'integration-password';
+        const newPassword = 'new-integration-password';
+        const resetCode = '654321';
+
+        const registration = await request(app).post('/users').send({ email, password });
+        expect(registration.status).toBe(201);
+
+        const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+        await prisma.emailOtp.create({
+            data: {
+                userId: user.id,
+                purpose: 'PASSWORD_RESET',
+                digest: digestEmailOtp(user.id, 'PASSWORD_RESET', resetCode),
+                expiresAt: new Date(Date.now() + 60_000),
+            },
+        });
+
+        const reused = await request(app).post('/users/reset-password').send({ email, code: resetCode, password });
+        expect(reused.status).toBe(422);
+
+        const reset = await request(app)
+            .post('/users/reset-password')
+            .send({ email, code: resetCode, password: newPassword });
+        expect(reset.status).toBe(200);
+
+        const oldLogin = await request(app).post('/users/login').send({ email, password });
+        const newLogin = await request(app).post('/users/login').send({ email, password: newPassword });
+        expect(oldLogin.status).toBe(401);
+        expect(newLogin.status).toBe(200);
+    });
+
+    it('locks an email code after five incorrect attempts', async () => {
+        const email = `email-attempts.${randomUUID()}@example.com`;
+        const password = 'integration-password';
+        const code = '123456';
+
+        const registration = await request(app).post('/users').send({ email, password });
+        expect(registration.status).toBe(201);
+
+        const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+        await expect
+            .poll(() => prisma.emailOtp.count({ where: { userId: user.id, purpose: 'EMAIL_VERIFICATION' } }))
+            .toBe(1);
+        await prisma.emailOtp.update({
+            where: { userId_purpose: { userId: user.id, purpose: 'EMAIL_VERIFICATION' } },
+            data: {
+                digest: digestEmailOtp(user.id, 'EMAIL_VERIFICATION', code),
+                expiresAt: new Date(Date.now() + 60_000),
+                consumedAt: null,
+                attempts: 0,
+            },
+        });
+
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+            const invalid = await request(app).post('/users/verify-email').send({ email, code: '000000' });
+            expect(invalid.status).toBe(422);
+        }
+
+        const locked = await request(app).post('/users/verify-email').send({ email, code });
+        expect(locked.status).toBe(422);
+
+        const [updatedUser, otp] = await Promise.all([
+            prisma.user.findUniqueOrThrow({ where: { id: user.id } }),
+            prisma.emailOtp.findUniqueOrThrow({
+                where: { userId_purpose: { userId: user.id, purpose: 'EMAIL_VERIFICATION' } },
+            }),
+        ]);
+        expect(updatedUser.emailVerifiedAt).toBeNull();
+        expect(otp.attempts).toBe(5);
     });
 
     it('replays an idempotent personal-counter create and cascades account cleanup', async () => {

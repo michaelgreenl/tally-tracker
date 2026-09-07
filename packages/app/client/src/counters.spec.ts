@@ -49,6 +49,10 @@ describe('authenticated counter reconciliation', () => {
         expect(result.counters).toEqual([remote, counter('guest', 'PERSONAL', 'user-1'), accepted]);
         expect(result.guestCounters).toEqual([counter('guest', 'PERSONAL', 'user-1')]);
     });
+
+    it('reports a failed sync when no remote snapshot is available', () => {
+        expect(reconcileAuthenticatedCounters([], null, 'user-1').syncError).toBe(true);
+    });
 });
 
 describe('hasJoinedSharedCounter', () => {

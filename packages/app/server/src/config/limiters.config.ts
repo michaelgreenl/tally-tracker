@@ -15,6 +15,15 @@ export const limiter = rateLimit({
     skip,
 });
 
+export const emailAuthLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    message: { success: false, message: 'Too many email requests. Try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: (_req: Request) => process.env.NODE_ENV !== 'production',
+});
+
 export const speedLimiter = slowDown({
     windowMs: 15 * 60 * 1000,
     delayAfter: 1500,
