@@ -9,7 +9,7 @@ export default function UpgradeScreen() {
     return (
         <>
             <Head>
-                <title>Tally Tracker | Upgrade</title>
+                <title>Tally | Upgrade</title>
             </Head>
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.content} testID='upgrade-placeholder-page'>

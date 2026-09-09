@@ -21,7 +21,7 @@ export default function LegalDocumentScreen() {
     return (
         <>
             <Head>
-                <title>{`${document.title} | Tally Tracker`}</title>
+                <title>{`${document.title} | Tally`}</title>
             </Head>
             <SafeAreaView style={styles.safeArea}>
                 <ScrollView contentContainerStyle={styles.content}>

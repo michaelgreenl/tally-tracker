@@ -40,7 +40,7 @@ export default function JoinScreen() {
     return (
         <>
             <Head>
-                <title>Tally Tracker | Join</title>
+                <title>Tally | Join</title>
             </Head>
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.content}>

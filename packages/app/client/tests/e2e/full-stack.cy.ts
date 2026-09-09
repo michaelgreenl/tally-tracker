@@ -1,6 +1,6 @@
 /// <reference types="cypress" />
 
-const PASSWORD = 'password123';
+const PASSWORD = 'Password123';
 const OK = 200;
 const CREATED = 201;
 

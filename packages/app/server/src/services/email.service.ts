@@ -2,11 +2,11 @@ import type { EmailOtpPurpose } from '@prisma/client';
 
 const emailCopy: Record<EmailOtpPurpose, { subject: string; action: string }> = {
     EMAIL_VERIFICATION: {
-        subject: 'Verify your Tally Tracker email',
+        subject: 'Verify your Tally email',
         action: 'verify your email',
     },
     PASSWORD_RESET: {
-        subject: 'Reset your Tally Tracker password',
+        subject: 'Reset your Tally password',
         action: 'reset your password',
     },
 };

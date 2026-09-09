@@ -22,7 +22,7 @@ beforeAll(async () => {
 describe('PostgreSQL integration', () => {
     it('normalizes mixed-case email registration and login while rejecting a case-insensitive duplicate', async () => {
         const email = `Mixed.${randomUUID()}@Example.COM`;
-        const password = 'integration-password';
+        const password = 'Integration-password1';
 
         const registration = await request(app).post('/users').send({ email, password });
         expect(registration.status).toBe(201);
@@ -40,8 +40,8 @@ describe('PostgreSQL integration', () => {
 
     it('consumes email codes and invalidates sessions after a password reset', async () => {
         const email = `email-auth.${randomUUID()}@example.com`;
-        const password = 'integration-password';
-        const newPassword = 'new-integration-password';
+        const password = 'Integration-password1';
+        const newPassword = 'New-integration-password1';
         const verificationCode = '123456';
         const resetCode = '654321';
 
@@ -119,8 +119,8 @@ describe('PostgreSQL integration', () => {
 
     it('rejects the current password without consuming a valid reset code', async () => {
         const email = `password-reuse.${randomUUID()}@example.com`;
-        const password = 'integration-password';
-        const newPassword = 'new-integration-password';
+        const password = 'Integration-password1';
+        const newPassword = 'New-integration-password1';
         const resetCode = '654321';
 
         const registration = await request(app).post('/users').send({ email, password });
@@ -152,7 +152,7 @@ describe('PostgreSQL integration', () => {
 
     it('locks an email code after five incorrect attempts', async () => {
         const email = `email-attempts.${randomUUID()}@example.com`;
-        const password = 'integration-password';
+        const password = 'Integration-password1';
         const code = '123456';
 
         const registration = await request(app).post('/users').send({ email, password });
@@ -193,7 +193,7 @@ describe('PostgreSQL integration', () => {
     it('replays an idempotent personal-counter create and cascades account cleanup', async () => {
         const suffix = randomUUID();
         const email = `remember.${suffix}@example.com`;
-        const password = 'integration-password';
+        const password = 'Integration-password1';
         const counterId = randomUUID();
         const idempotencyKey = `create-personal-${suffix}`;
         const agent = request.agent(app);
@@ -262,7 +262,7 @@ describe('PostgreSQL integration', () => {
 
     it('persists shared-counter membership and excludes a removed share from subsequent reads', async () => {
         const suffix = randomUUID();
-        const password = 'integration-password';
+        const password = 'Integration-password1';
         const ownerEmail = `owner.${suffix}@example.com`;
         const memberEmail = `member.${suffix}@example.com`;
         const counterId = randomUUID();

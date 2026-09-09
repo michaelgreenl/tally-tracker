@@ -53,7 +53,7 @@ export default function SettingsScreen() {
     return (
         <>
             <Head>
-                <title>Tally Tracker | Settings</title>
+                <title>Tally | Settings</title>
             </Head>
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.header}>

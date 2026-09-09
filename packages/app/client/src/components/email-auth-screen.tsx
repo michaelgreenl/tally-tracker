@@ -1,3 +1,4 @@
+import { PASSWORD_REQUIREMENTS, passwordSchema } from '@tally/core/client';
 import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { useRef, useState } from 'react';
@@ -75,9 +76,12 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
             return;
         }
 
-        if (!isVerification && password.length < 6) {
-            setErrorMessage('Password must be at least 6 characters.');
-            return;
+        if (!isVerification) {
+            const result = passwordSchema.safeParse(password);
+            if (!result.success) {
+                setErrorMessage(result.error.issues[0].message);
+                return;
+            }
         }
 
         if (!isVerification && password !== confirmPassword) {
@@ -126,7 +130,7 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
     return (
         <>
             <Head>
-                <title>{`Tally Tracker | ${title}`}</title>
+                <title>{`Tally | ${title}`}</title>
             </Head>
             <SafeAreaView style={styles.safeArea}>
                 <KeyboardAvoidingView
@@ -197,7 +201,7 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
                                                 autoCapitalize='none'
                                                 autoComplete='new-password'
                                                 editable={!loading}
-                                                help='Use at least 6 characters. Choose a password that differs from your current password.'
+                                                help={`${PASSWORD_REQUIREMENTS} Choose a password that differs from your current password.`}
                                                 label='New Password'
                                                 onChangeText={setPassword}
                                                 onSubmitEditing={() => confirmPasswordInputRef.current?.focus()}
@@ -238,6 +242,7 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
                                     accessibilityLiveRegion='polite'
                                     accessibilityRole='alert'
                                     style={styles.errorBox}
+                                    testID='email-auth-error'
                                 >
                                     <Text style={styles.errorText}>{errorMessage}</Text>
                                 </View>

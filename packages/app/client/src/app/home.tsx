@@ -39,13 +39,13 @@ export default function HomeScreen() {
     return (
         <>
             <Head>
-                <title>Tally Tracker</title>
+                <title>Tally</title>
             </Head>
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.header}>
                     <View style={styles.brandRow}>
                         <Text accessibilityRole='header' aria-level={1} style={styles.headerTitle}>
-                            Tally Counter
+                            Tally
                         </Text>
                         {session.isPremium && <Text style={styles.premiumBadge}>Premium</Text>}
                     </View>
