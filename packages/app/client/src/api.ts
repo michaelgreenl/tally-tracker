@@ -28,7 +28,7 @@ export const getErrorMessage = (error: unknown, fallback = 'Unknown error') =>
 
 const isNative = Platform.OS !== 'web';
 const defaultLocal = Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
-export const API_URL = process.env.EXPO_PUBLIC_API_URL || defaultLocal;
+export const API_URL = !isNative && __DEV__ ? '' : process.env.EXPO_PUBLIC_API_URL || defaultLocal;
 
 let refreshPromise: Promise<boolean> | null = null;
 let unauthorizedHandler: (() => void | Promise<void>) | undefined;

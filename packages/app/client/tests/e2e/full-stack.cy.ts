@@ -41,7 +41,11 @@ describe('Expo full-stack counter journey', () => {
             expect(request.body).to.deep.equal({ email, password: PASSWORD, rememberMe: false });
             expect(response?.statusCode).to.eq(OK);
         });
-        cy.wait('@getCounters').its('response.statusCode').should('eq', OK);
+        cy.wait('@getCounters').then(({ request, response }) => {
+            expect(new URL(request.url).origin).to.eq(new URL(Cypress.config('baseUrl')!).origin);
+            expect(request.headers.cookie).to.include('access_token=');
+            expect(response?.statusCode).to.eq(OK);
+        });
         cy.location('pathname').should('eq', '/home');
 
         cy.intercept('POST', '**/counters').as('createCounter');
@@ -76,6 +80,12 @@ describe('Expo full-stack counter journey', () => {
             cy.get(`[data-testid="counter-${counterId}-count"]`).should('have.text', '1');
         });
 
+        // A change outside the UI must arrive through the authenticated socket.
+        cy.then(() => {
+            cy.request('PUT', `/counters/increment/${counterId}`, { amount: 1 });
+            cy.get(`[data-testid="counter-${counterId}-count"]`).should('have.text', '2');
+        });
+
         cy.intercept('POST', '**/users/logout').as('logoutUser');
         cy.get('[data-testid="home-logout"]').click();
         cy.wait('@logoutUser').its('response.statusCode').should('eq', OK);
@@ -83,11 +93,20 @@ describe('Expo full-stack counter journey', () => {
 
         cy.get('[data-testid="auth-email"]').type(email);
         cy.get('[data-testid="auth-password"]').type(PASSWORD);
+        cy.get('[data-testid="auth-remember-me"]').check();
         cy.get('[data-testid="auth-submit"]').click();
         cy.wait('@loginUser').its('response.statusCode').should('eq', OK);
         cy.wait('@getCounters').its('response.statusCode').should('eq', OK);
+
+        cy.intercept('POST', '**/users/refresh').as('refreshSession');
+        cy.clearCookie('access_token');
+        cy.reload();
+        cy.wait('@refreshSession').then(({ request, response }) => {
+            expect(request.headers.cookie).to.include('refresh_token=');
+            expect(response?.statusCode).to.eq(OK);
+        });
         cy.then(() => {
-            cy.get(`[data-testid="counter-${counterId}-count"]`).should('have.text', '1');
+            cy.get(`[data-testid="counter-${counterId}-count"]`).should('have.text', '2');
         });
 
         cy.intercept('DELETE', '**/users').as('deleteAccount');
