@@ -18,7 +18,7 @@ import Svg, { Path } from 'react-native-svg';
 
 import { useSession } from '../session';
 import checkboxStyles, { unstable_styles as webStyles } from './auth-screen.module.css';
-import { TallyLogo } from './tally-logo';
+import { TallyBrand } from './tally-brand';
 
 import type { TextInputProps } from 'react-native';
 
@@ -125,12 +125,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
             </Head>
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.pageHeader} testID='auth-page-header'>
-                    <View style={styles.brand} testID='auth-brand'>
-                        <TallyLogo color='#f8f9fa' size={40} />
-                        <Text accessibilityRole='header' aria-level={1} style={styles.brandTitle} testID='auth-title'>
-                            Tally
-                        </Text>
-                    </View>
+                    <TallyBrand />
                     {isLogin && (
                         <Link href='/home' asChild>
                             <Pressable
@@ -419,16 +414,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 32,
         paddingTop: 24,
         paddingBottom: 12,
-    },
-    brand: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    brandTitle: {
-        color: '#f8f9fa',
-        fontSize: 34,
-        fontWeight: '700',
     },
     keyboardAvoider: {
         flex: 1,

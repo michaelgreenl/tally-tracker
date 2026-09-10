@@ -1,12 +1,14 @@
 import { Link, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { useNetworkState } from 'expo-network';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Path } from 'react-native-svg';
 
 import { CounterCard } from '../components/counter-card';
 import { CounterForm } from '../components/counter-form';
+import { TallyBrand } from '../components/tally-brand';
 import { GUEST_COUNTER_CAP, GUEST_COUNTER_LIMIT_MESSAGE, useCounters } from '../counters';
 import { useSession } from '../session';
 
@@ -17,6 +19,7 @@ export default function HomeScreen() {
     const network = useNetworkState();
     const session = useSession();
     const counterState = useCounters();
+    const scrollRef = useRef<ScrollView>(null);
     const [formOpen, setFormOpen] = useState(false);
     const [counterToEdit, setCounterToEdit] = useState<ClientCounter | null>(null);
     const [guestLimitOpen, setGuestLimitOpen] = useState(false);
@@ -29,6 +32,7 @@ export default function HomeScreen() {
 
         setCounterToEdit(null);
         setFormOpen(true);
+        scrollRef.current?.scrollTo({ y: 0, animated: true });
     }
 
     function closeForm() {
@@ -44,9 +48,7 @@ export default function HomeScreen() {
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.header}>
                     <View style={styles.brandRow}>
-                        <Text accessibilityRole='header' aria-level={1} style={styles.headerTitle}>
-                            Tally
-                        </Text>
+                        <TallyBrand style={styles.brand} />
                         {session.isPremium && <Text style={styles.premiumBadge}>Premium</Text>}
                     </View>
                     {session.isAuthenticated ? (
@@ -78,52 +80,37 @@ export default function HomeScreen() {
                     )}
                 </View>
 
-                <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps='handled'>
+                <ScrollView
+                    ref={scrollRef}
+                    contentContainerStyle={styles.scrollContent}
+                    keyboardShouldPersistTaps='handled'
+                >
                     <View style={styles.content}>
-                        <View style={styles.welcomeRow}>
-                            <View style={styles.welcomeCopy}>
-                                <Text style={styles.welcome}>Welcome {session.user?.email || 'Guest'}!</Text>
-                                {!session.isAuthenticated && (
-                                    <Text style={styles.guestCopy}>
-                                        Your counters stay on this device until you sign in.
-                                    </Text>
-                                )}
+                        {session.isAuthenticated && (
+                            <View accessibilityLiveRegion='polite' style={styles.status}>
+                                <View
+                                    style={[
+                                        styles.statusDot,
+                                        network.isConnected === false && styles.statusDotOffline,
+                                        network.isConnected !== false &&
+                                            counterState.syncError &&
+                                            styles.statusDotError,
+                                    ]}
+                                />
+                                <Text style={styles.statusText}>
+                                    {counterState.loading
+                                        ? 'Syncing'
+                                        : network.isConnected === false
+                                          ? 'Offline'
+                                          : counterState.syncError
+                                            ? 'Sync failed'
+                                            : 'Synced'}
+                                </Text>
                             </View>
-                            {session.isAuthenticated && (
-                                <View accessibilityLiveRegion='polite' style={styles.status}>
-                                    <View
-                                        style={[
-                                            styles.statusDot,
-                                            network.isConnected === false && styles.statusDotOffline,
-                                            network.isConnected !== false &&
-                                                counterState.syncError &&
-                                                styles.statusDotError,
-                                        ]}
-                                    />
-                                    <Text style={styles.statusText}>
-                                        {counterState.loading
-                                            ? 'Syncing'
-                                            : network.isConnected === false
-                                              ? 'Offline'
-                                              : counterState.syncError
-                                                ? 'Sync failed'
-                                                : 'Synced'}
-                                    </Text>
-                                </View>
-                            )}
-                        </View>
+                        )}
 
-                        {formOpen ? (
+                        {formOpen && (
                             <CounterForm counter={counterToEdit || undefined} onCancel={closeForm} onDone={closeForm} />
-                        ) : (
-                            <Pressable
-                                accessibilityRole='button'
-                                onPress={openCreateForm}
-                                style={({ pressed }) => [styles.addButton, pressed && styles.addButtonPressed]}
-                                testID='add-counter-button'
-                            >
-                                <Text style={styles.addButtonText}>Add counter</Text>
-                            </Pressable>
                         )}
 
                         {counterState.loading && counterState.counters.length === 0 ? (
@@ -146,11 +133,26 @@ export default function HomeScreen() {
                         ) : (
                             <View style={styles.emptyState}>
                                 <Text style={styles.emptyTitle}>No counters yet</Text>
-                                <Text style={styles.emptyCopy}>Add one to start tracking.</Text>
                             </View>
                         )}
                     </View>
                 </ScrollView>
+
+                {!formOpen && (
+                    <View style={styles.bottomActions}>
+                        <Pressable
+                            accessibilityLabel='Add counter'
+                            accessibilityRole='button'
+                            onPress={openCreateForm}
+                            style={({ pressed }) => [styles.addButton, pressed && styles.addButtonPressed]}
+                            testID='add-counter-button'
+                        >
+                            <Svg aria-hidden width={24} height={24} viewBox='0 0 24 24' fill='none'>
+                                <Path d='M12 5v14M5 12h14' stroke='#ffffff' strokeWidth={2} strokeLinecap='round' />
+                            </Svg>
+                        </Pressable>
+                    </View>
+                )}
 
                 <Modal
                     animationType='fade'
@@ -201,23 +203,23 @@ const styles = StyleSheet.create({
         backgroundColor: '#f1f3f5',
     },
     header: {
-        minHeight: 62,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 18,
+        gap: 16,
+        paddingHorizontal: 32,
+        paddingVertical: 16,
         backgroundColor: '#0f7899',
     },
     brandRow: {
         flex: 1,
         flexDirection: 'row',
+        flexWrap: 'wrap',
         alignItems: 'center',
         gap: 10,
     },
-    headerTitle: {
-        color: '#ffffff',
-        fontSize: 20,
-        fontWeight: '800',
+    brand: {
+        fontSize: 24,
     },
     premiumBadge: {
         paddingHorizontal: 8,
@@ -245,7 +247,6 @@ const styles = StyleSheet.create({
     scrollContent: {
         flexGrow: 1,
         padding: 20,
-        paddingBottom: 42,
     },
     content: {
         width: '100%',
@@ -253,27 +254,8 @@ const styles = StyleSheet.create({
         alignSelf: 'center',
         gap: 22,
     },
-    welcomeRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 16,
-    },
-    welcomeCopy: {
-        flex: 1,
-        gap: 5,
-    },
-    welcome: {
-        color: '#212529',
-        fontSize: 24,
-        fontWeight: '800',
-    },
-    guestCopy: {
-        color: '#575e64',
-        fontSize: 14,
-        lineHeight: 20,
-    },
     status: {
+        alignSelf: 'flex-end',
         flexDirection: 'row',
         alignItems: 'center',
         gap: 7,
@@ -299,20 +281,23 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: '700',
     },
+    bottomActions: {
+        width: '100%',
+        maxWidth: 720,
+        alignSelf: 'center',
+        alignItems: 'flex-end',
+        padding: 20,
+    },
     addButton: {
-        minHeight: 50,
+        width: 52,
+        height: 52,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: '#0f7899',
-        borderRadius: 10,
+        borderRadius: 26,
     },
     addButtonPressed: {
         backgroundColor: '#0d6f8f',
-    },
-    addButtonText: {
-        color: '#ffffff',
-        fontSize: 16,
-        fontWeight: '800',
     },
     loader: {
         marginTop: 40,
@@ -322,7 +307,6 @@ const styles = StyleSheet.create({
     },
     emptyState: {
         alignItems: 'center',
-        gap: 6,
         padding: 36,
         backgroundColor: '#ffffff',
         borderWidth: 1,
@@ -332,11 +316,7 @@ const styles = StyleSheet.create({
     emptyTitle: {
         color: '#343a40',
         fontSize: 18,
-        fontWeight: '700',
-    },
-    emptyCopy: {
-        color: '#575e64',
-        fontSize: 14,
+        fontWeight: '500',
     },
     modalOverlay: {
         flex: 1,
