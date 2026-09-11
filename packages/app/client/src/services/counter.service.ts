@@ -14,12 +14,11 @@ const queuedUserId = async () => {
     return userId;
 };
 
-const command = async (input: Omit<Parameters<typeof SyncQueue.add>[0], 'id' | 'queuedByUserId' | 'timestamp'>) => {
+const command = async (input: Omit<Parameters<typeof SyncQueue.add>[0], 'id' | 'queuedByUserId'>) => {
     await SyncQueue.add({
         ...input,
         id: Crypto.randomUUID(),
         queuedByUserId: await queuedUserId(),
-        timestamp: Date.now(),
     });
     void SyncManager.processQueue();
 };
@@ -37,7 +36,6 @@ export const CounterService = {
     create(counter: ClientCounter) {
         return command({
             type: 'CREATE',
-            entity: 'counter',
             entityId: counter.id,
             payload: {
                 id: counter.id,
@@ -51,13 +49,12 @@ export const CounterService = {
     },
 
     update(counterId: string, payload: UpdateCounterRequest) {
-        return command({ type: 'UPDATE', entity: 'counter', entityId: counterId, payload });
+        return command({ type: 'UPDATE', entityId: counterId, payload });
     },
 
     increment(counter: ClientCounter, amount: number) {
         return command({
             type: counter.type === 'SHARED' ? 'INCREMENT' : 'SET_COUNT',
-            entity: 'counter',
             entityId: counter.id,
             payload: counter.type === 'SHARED' ? { amount } : { count: counter.count },
         });
@@ -69,10 +66,8 @@ export const CounterService = {
             id: Crypto.randomUUID(),
             queuedByUserId: userId,
             type: counter.userId === userId ? 'DELETE' : 'REMOVE',
-            entity: 'counter',
             entityId: counter.id,
             payload: {},
-            timestamp: Date.now(),
         });
         void SyncManager.processQueue();
     },

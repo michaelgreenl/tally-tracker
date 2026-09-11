@@ -21,6 +21,13 @@ describe('Guest counters', () => {
         cy.get('[data-testid="counter-list"]').children().should('have.length', 3);
 
         cy.get('[data-testid="add-counter-button"]').click();
-        cy.get('[data-testid="guest-limit-modal"]').should('be.visible');
+        cy.get('[data-testid="guest-limit-modal"]').closest('[role="dialog"]').should('be.visible');
+        cy.get('body').type('{esc}');
+        cy.get('[data-testid="guest-limit-modal"]').should('not.exist');
+
+        cy.get('[data-testid="add-counter-button"]').click();
+        cy.get('[data-testid="guest-limit-modal-upgrade"]').click();
+        cy.location('pathname').should('eq', '/upgrade');
+        cy.get('[data-testid="guest-limit-modal"]').should('not.exist');
     });
 });

@@ -1,9 +1,10 @@
 import { Link, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Dialog } from '../components/dialog';
 import { useSession } from '../session';
 
 import type { PropsWithChildren } from 'react';
@@ -164,56 +165,42 @@ export default function SettingsScreen() {
                     </View>
                 </ScrollView>
 
-                <Modal
-                    animationType='fade'
+                <Dialog
                     onRequestClose={() => {
                         if (!deleteLoading) setDeleteOpen(false);
                     }}
-                    transparent
                     visible={deleteOpen}
+                    testID='delete-account-confirm'
+                    title='Delete account?'
+                    description='This permanently deletes your account and server-side account data. This action cannot be undone.'
                 >
-                    <View accessibilityViewIsModal style={styles.modalOverlay} testID='delete-account-confirm'>
-                        <View style={styles.modalCard}>
-                            <Text accessibilityRole='header' aria-level={2} style={styles.modalTitle}>
-                                Delete account?
+                    {Boolean(deleteError) && (
+                        <Text accessibilityLiveRegion='polite' accessibilityRole='alert' style={styles.deleteError}>
+                            {deleteError}
+                        </Text>
+                    )}
+                    <View style={styles.modalActions}>
+                        <Pressable
+                            accessibilityRole='button'
+                            disabled={deleteLoading}
+                            onPress={() => setDeleteOpen(false)}
+                            style={styles.secondaryButton}
+                        >
+                            <Text style={styles.secondaryButtonText}>Cancel</Text>
+                        </Pressable>
+                        <Pressable
+                            accessibilityRole='button'
+                            disabled={deleteLoading}
+                            onPress={() => void deleteAccount()}
+                            style={[styles.deleteButton, deleteLoading && styles.disabled]}
+                            testID='delete-account-confirm-submit'
+                        >
+                            <Text style={styles.deleteButtonText}>
+                                {deleteLoading ? 'Deleting…' : 'Delete account'}
                             </Text>
-                            <Text style={styles.modalCopy}>
-                                This permanently deletes your account and server-side account data. This action cannot
-                                be undone.
-                            </Text>
-                            {Boolean(deleteError) && (
-                                <Text
-                                    accessibilityLiveRegion='polite'
-                                    accessibilityRole='alert'
-                                    style={styles.deleteError}
-                                >
-                                    {deleteError}
-                                </Text>
-                            )}
-                            <View style={styles.modalActions}>
-                                <Pressable
-                                    accessibilityRole='button'
-                                    disabled={deleteLoading}
-                                    onPress={() => setDeleteOpen(false)}
-                                    style={styles.secondaryButton}
-                                >
-                                    <Text style={styles.secondaryButtonText}>Cancel</Text>
-                                </Pressable>
-                                <Pressable
-                                    accessibilityRole='button'
-                                    disabled={deleteLoading}
-                                    onPress={() => void deleteAccount()}
-                                    style={[styles.deleteButton, deleteLoading && styles.disabled]}
-                                    testID='delete-account-confirm-submit'
-                                >
-                                    <Text style={styles.deleteButtonText}>
-                                        {deleteLoading ? 'Deleting…' : 'Delete account'}
-                                    </Text>
-                                </Pressable>
-                            </View>
-                        </View>
+                        </Pressable>
                     </View>
-                </Modal>
+                </Dialog>
             </SafeAreaView>
         </>
     );
@@ -375,31 +362,6 @@ const styles = StyleSheet.create({
         color: '#b42318',
         fontSize: 15,
         fontWeight: '700',
-    },
-    modalOverlay: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 20,
-        backgroundColor: 'rgba(0, 0, 0, 0.55)',
-    },
-    modalCard: {
-        width: '100%',
-        maxWidth: 460,
-        gap: 16,
-        padding: 24,
-        backgroundColor: '#ffffff',
-        borderRadius: 16,
-    },
-    modalTitle: {
-        color: '#212529',
-        fontSize: 22,
-        fontWeight: '800',
-    },
-    modalCopy: {
-        color: '#343a40',
-        fontSize: 16,
-        lineHeight: 24,
     },
     deleteError: {
         color: '#b42318',

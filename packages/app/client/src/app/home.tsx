@@ -2,12 +2,13 @@ import { Link, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { useNetworkState } from 'expo-network';
 import { useRef, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import { CounterCard } from '../components/counter-card';
 import { CounterForm } from '../components/counter-form';
+import { Dialog } from '../components/dialog';
 import { TallyBrand } from '../components/tally-brand';
 import { GUEST_COUNTER_CAP, GUEST_COUNTER_LIMIT_MESSAGE, useCounters } from '../counters';
 import { useSession } from '../session';
@@ -154,44 +155,34 @@ export default function HomeScreen() {
                     </View>
                 )}
 
-                <Modal
-                    animationType='fade'
+                <Dialog
                     onRequestClose={() => setGuestLimitOpen(false)}
-                    transparent
                     visible={guestLimitOpen}
+                    testID='guest-limit-modal'
+                    title={GUEST_COUNTER_LIMIT_MESSAGE}
+                    description={`Guest sessions can create up to ${GUEST_COUNTER_CAP} counters. Your existing counters remain usable.`}
                 >
-                    <View accessibilityViewIsModal style={styles.modalOverlay} testID='guest-limit-modal'>
-                        <View style={styles.modalCard}>
-                            <Text accessibilityRole='header' aria-level={2} style={styles.modalTitle}>
-                                {GUEST_COUNTER_LIMIT_MESSAGE}
-                            </Text>
-                            <Text style={styles.modalCopy}>
-                                Guest sessions can create up to {GUEST_COUNTER_CAP} counters. Your existing counters
-                                remain usable.
-                            </Text>
-                            <View style={styles.modalActions}>
-                                <Pressable
-                                    accessibilityRole='button'
-                                    onPress={() => setGuestLimitOpen(false)}
-                                    style={styles.modalSecondary}
-                                >
-                                    <Text style={styles.modalSecondaryText}>Close</Text>
-                                </Pressable>
-                                <Pressable
-                                    accessibilityRole='button'
-                                    onPress={() => {
-                                        setGuestLimitOpen(false);
-                                        router.push('/upgrade');
-                                    }}
-                                    style={styles.modalPrimary}
-                                    testID='guest-limit-modal-upgrade'
-                                >
-                                    <Text style={styles.modalPrimaryText}>View upgrade info</Text>
-                                </Pressable>
-                            </View>
-                        </View>
+                    <View style={styles.modalActions}>
+                        <Pressable
+                            accessibilityRole='button'
+                            onPress={() => setGuestLimitOpen(false)}
+                            style={styles.modalSecondary}
+                        >
+                            <Text style={styles.modalSecondaryText}>Close</Text>
+                        </Pressable>
+                        <Pressable
+                            accessibilityRole='button'
+                            onPress={() => {
+                                setGuestLimitOpen(false);
+                                router.push('/upgrade');
+                            }}
+                            style={styles.modalPrimary}
+                            testID='guest-limit-modal-upgrade'
+                        >
+                            <Text style={styles.modalPrimaryText}>View upgrade info</Text>
+                        </Pressable>
                     </View>
-                </Modal>
+                </Dialog>
             </SafeAreaView>
         </>
     );
@@ -317,31 +308,6 @@ const styles = StyleSheet.create({
         color: '#343a40',
         fontSize: 18,
         fontWeight: '500',
-    },
-    modalOverlay: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 20,
-        backgroundColor: 'rgba(0, 0, 0, 0.55)',
-    },
-    modalCard: {
-        width: '100%',
-        maxWidth: 460,
-        gap: 16,
-        padding: 24,
-        backgroundColor: '#ffffff',
-        borderRadius: 16,
-    },
-    modalTitle: {
-        color: '#212529',
-        fontSize: 22,
-        fontWeight: '800',
-    },
-    modalCopy: {
-        color: '#343a40',
-        fontSize: 16,
-        lineHeight: 24,
     },
     modalActions: {
         flexDirection: 'row',

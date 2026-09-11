@@ -4,10 +4,8 @@ export type MutationCommand = {
     id: string;
     queuedByUserId: string;
     type: 'CREATE' | 'UPDATE' | 'SET_COUNT' | 'DELETE' | 'INCREMENT' | 'REMOVE';
-    entity: 'counter';
     entityId: string;
     payload: unknown;
-    timestamp: number;
 };
 
 const QUEUE_KEY = 'app_sync_queue';

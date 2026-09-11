@@ -33,10 +33,8 @@ const command = (id: string, type: MutationCommand['type'] = 'CREATE'): Mutation
     id,
     queuedByUserId: 'user-1',
     type,
-    entity: 'counter',
     entityId: `counter-${id}`,
     payload: { title: id },
-    timestamp: 1,
 });
 
 describe('SyncManager', () => {

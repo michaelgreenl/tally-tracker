@@ -1,6 +1,21 @@
 /// <reference types="cypress" />
 
 describe('Login controls', () => {
+    it('shows focus underlines on account links and follows their routes', () => {
+        cy.visit('/login');
+        cy.get('[data-testid="auth-switch-mode"]').focus();
+        cy.focused().children().should('have.css', 'text-decoration-line', 'underline');
+
+        for (const [testID, pathname] of [
+            ['auth-switch-mode', '/register'],
+            ['auth-switch-mode', '/login'],
+            ['auth-forgot-password', '/forgot-password'],
+        ]) {
+            cy.get(`[data-testid="${testID}"]`).filter(':visible').should('have.length', 1).click();
+            cy.location('pathname').should('eq', pathname);
+        }
+    });
+
     it('toggles Remember me only from the checkbox, including keyboard input', () => {
         cy.visit('/login');
         cy.get('[data-testid="auth-remember-me-label"]').click();

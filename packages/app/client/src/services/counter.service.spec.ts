@@ -45,10 +45,8 @@ describe('CounterService.increment', () => {
             id: 'command-1',
             queuedByUserId: 'user-1',
             type: command,
-            entity: 'counter',
             entityId: 'counter-1',
             payload,
-            timestamp: expect.any(Number),
         });
         expect(processQueue).toHaveBeenCalledOnce();
     });

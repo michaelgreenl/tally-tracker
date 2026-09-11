@@ -17,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getErrorMessage } from '../api';
 import { AuthService } from '../services/auth.service';
-import { authScreenStyles as styles, FormField } from './auth-screen';
+import { FormField, styles } from './auth-form';
 
 type EmailAuthScreenProps = {
     mode: 'verify' | 'reset';
