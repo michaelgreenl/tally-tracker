@@ -13,7 +13,7 @@ import {
     TextInput,
     View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import { colors } from '../colors';
@@ -37,6 +37,8 @@ const legalLinks = [
 export function AuthScreen({ mode }: AuthScreenProps) {
     const router = useRouter();
     const session = useSession();
+    const insets = useSafeAreaInsets();
+    const [headerHeight, setHeaderHeight] = useState(0);
     const isLogin = mode === 'login';
     const passwordInputRef = useRef<TextInput>(null);
     const confirmPasswordInputRef = useRef<TextInput>(null);
@@ -90,7 +92,11 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                 <title>{`Tally | ${isLogin ? 'Login' : 'Register'}`}</title>
             </Head>
             <SafeAreaView style={styles.safeArea}>
-                <View style={styles.pageHeader} testID='auth-page-header'>
+                <View
+                    onLayout={(event) => setHeaderHeight(event.nativeEvent.layout.height)}
+                    style={styles.pageHeader}
+                    testID='auth-page-header'
+                >
                     <TallyBrand />
                     {isLogin && (
                         <AuthLink
@@ -121,10 +127,21 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                     style={styles.keyboardAvoider}
                 >
                     <ScrollView
-                        contentContainerStyle={[styles.scrollContent, isLogin && styles.loginScrollContent]}
+                        contentContainerStyle={[
+                            styles.scrollContent,
+                            // Balance the header and safe areas to center in the viewport, not below the header.
+                            {
+                                paddingBottom:
+                                    formStyles.scrollContent.paddingVertical +
+                                    headerHeight +
+                                    insets.top -
+                                    insets.bottom,
+                            },
+                        ]}
                         keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
                         keyboardShouldPersistTaps='handled'
                         showsVerticalScrollIndicator={false}
+                        testID='auth-scroll'
                     >
                         <View style={[styles.card, isLogin && styles.loginCard]} testID='auth-card'>
                             {!isLogin && (
@@ -336,7 +353,8 @@ const styles = StyleSheet.create({
         paddingTop: 24,
         paddingBottom: 12,
     },
-    loginScrollContent: {
+    scrollContent: {
+        ...formStyles.scrollContent,
         justifyContent: 'center',
     },
     loginCard: {
