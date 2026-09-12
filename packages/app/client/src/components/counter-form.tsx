@@ -1,13 +1,20 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { GestureHandlerRootView, LegacyScrollView as ScrollView } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Path } from 'react-native-svg';
+import ColorPicker, { HueSlider, Panel1 } from 'reanimated-color-picker';
 
 import { colors } from '../colors';
 import { useCounters } from '../counters';
 import { useSession } from '../session';
+import { FormField } from './auth-form';
+import { Checkbox } from './checkbox';
 
 import type { ClientCounter, CounterTypeType as CounterType, HexColor } from '@tally/core/client';
 
 type CounterFormProps = {
+    visible: boolean;
     counter?: ClientCounter;
     onCancel: () => void;
     onDone: () => void;
@@ -16,18 +23,40 @@ type CounterFormProps = {
 const colorChoices = ['#000000', '#0f7899', '#2563eb', '#7c3aed', '#be123c', '#15803d'] as const;
 const isHexColor = (value: string): value is HexColor => /^#(?:[0-9a-fA-F]{3}){1,2}$/.test(value);
 
-export function CounterForm({ counter, onCancel, onDone }: CounterFormProps) {
+export function CounterForm({ visible, counter, onCancel, onDone }: CounterFormProps) {
     const session = useSession();
     const counterState = useCounters();
+    const insets = useSafeAreaInsets();
     const [title, setTitle] = useState(counter?.title || '');
     const [color, setColor] = useState(counter?.color || '#000000');
     const [type, setType] = useState<CounterType>(counter?.type || 'PERSONAL');
     const [errorMessage, setErrorMessage] = useState('');
     const [loading, setLoading] = useState(false);
 
+    const [wasVisible, setWasVisible] = useState(visible);
+
+    if (visible !== wasVisible) {
+        setWasVisible(visible);
+        if (visible) {
+            setTitle(counter?.title || '');
+            setColor(counter?.color || '#000000');
+            setType(counter?.type || 'PERSONAL');
+            setErrorMessage('');
+        }
+    }
+
+    function dismiss() {
+        if (!loading) onCancel();
+    }
+
     async function submit() {
+        if (loading) return;
+        if (!title.trim()) {
+            setErrorMessage('Name is required.');
+            return;
+        }
         if (!isHexColor(color)) {
-            setErrorMessage('Enter a valid hex color, such as #0f7899');
+            setErrorMessage('Choose a valid color.');
             return;
         }
 
@@ -47,174 +76,269 @@ export function CounterForm({ counter, onCancel, onDone }: CounterFormProps) {
     }
 
     return (
-        <View style={styles.form} testID='home-counter-form'>
-            <Text accessibilityRole='header' aria-level={2} style={styles.heading}>
-                {counter ? 'Update Counter' : 'Create Counter'}
-            </Text>
+        <Modal animationType='slide' onRequestClose={dismiss} transparent visible={visible}>
+            <GestureHandlerRootView style={styles.overlay}>
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                    pointerEvents='box-none'
+                    style={[styles.keyboardAvoider, { paddingTop: insets.top + 16 }]}
+                >
+                    <View
+                        accessibilityViewIsModal
+                        style={[styles.sheet, { paddingBottom: Math.max(16, insets.bottom) }]}
+                        testID='home-counter-form'
+                    >
+                        <Text accessibilityRole='header' aria-level={2} style={styles.heading}>
+                            {counter ? 'Update Counter' : 'Add Counter'}
+                        </Text>
 
-            <View style={styles.field}>
-                <Text style={styles.label}>Title</Text>
-                <TextInput
-                    accessibilityLabel='Counter title'
-                    autoFocus
-                    editable={!loading}
-                    onChangeText={setTitle}
-                    onSubmitEditing={() => void submit()}
-                    placeholder='What are you counting?'
-                    placeholderTextColor={colors.muted}
-                    returnKeyType='done'
-                    style={styles.input}
-                    testID='counter-title'
-                    value={title}
-                />
-            </View>
+                        <ScrollView
+                            contentContainerStyle={styles.form}
+                            keyboardShouldPersistTaps='handled'
+                            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+                            testID='counter-form-scroll'
+                        >
+                            <FormField
+                                editable={!loading}
+                                label='Name'
+                                onChangeText={setTitle}
+                                onSubmitEditing={() => void submit()}
+                                placeholder='What are you counting?'
+                                returnKeyType='done'
+                                testID='counter-title'
+                                value={title}
+                            />
 
-            <View style={styles.field}>
-                <Text style={styles.label}>Color</Text>
-                <View accessibilityLabel='Counter color choices' accessibilityRole='radiogroup' style={styles.colors}>
-                    {colorChoices.map((choice) => (
-                        <Pressable
-                            key={choice}
-                            accessibilityLabel={`Color ${choice}`}
-                            accessibilityRole='radio'
-                            accessibilityState={{ selected: color.toLowerCase() === choice }}
-                            onPress={() => setColor(choice)}
-                            style={[
-                                styles.color,
-                                { backgroundColor: choice },
-                                color.toLowerCase() === choice && styles.colorSelected,
-                            ]}
-                        />
-                    ))}
-                </View>
-                <TextInput
-                    accessibilityLabel='Custom hex color'
-                    autoCapitalize='none'
-                    editable={!loading}
-                    maxLength={7}
-                    onChangeText={setColor}
-                    placeholder='#0f7899'
-                    placeholderTextColor={colors.muted}
-                    style={styles.input}
-                    value={color}
-                />
-            </View>
+                            <View style={styles.field}>
+                                <View style={styles.colorLabel}>
+                                    <Text style={styles.label}>Color</Text>
+                                    <View
+                                        accessibilityLabel={`Selected color ${color}`}
+                                        style={[styles.colorPreview, { backgroundColor: color }]}
+                                        testID='counter-color-preview'
+                                    />
+                                </View>
+                                <View pointerEvents={loading ? 'none' : 'auto'}>
+                                    <ColorPicker
+                                        value={color}
+                                        onCompleteJS={({ hex }) => {
+                                            if (!loading) setColor(hex);
+                                        }}
+                                        boundedThumb
+                                        thumbSize={24}
+                                        sliderThickness={28}
+                                        style={styles.picker}
+                                    >
+                                        <Panel1
+                                            accessibilityLabel='Color saturation and brightness'
+                                            style={styles.spectrum}
+                                        />
+                                        <HueSlider accessibilityLabel='Color hue' style={styles.hue} />
+                                    </ColorPicker>
+                                </View>
+                                <View
+                                    accessibilityLabel='Counter color choices'
+                                    accessibilityRole='radiogroup'
+                                    style={styles.colors}
+                                >
+                                    {colorChoices.map((choice) => (
+                                        <Pressable
+                                            key={choice}
+                                            accessibilityLabel={`Color ${choice}`}
+                                            accessibilityRole='radio'
+                                            accessibilityState={{ checked: color.toLowerCase() === choice }}
+                                            disabled={loading}
+                                            onPress={() => setColor(choice)}
+                                            style={styles.swatchButton}
+                                            testID={`counter-color-${choice.slice(1)}`}
+                                        >
+                                            <View
+                                                style={[
+                                                    styles.color,
+                                                    { backgroundColor: choice },
+                                                    color.toLowerCase() === choice && styles.colorSelected,
+                                                ]}
+                                            />
+                                        </Pressable>
+                                    ))}
+                                </View>
+                            </View>
 
-            {!counter && (
-                <View style={styles.shareRow}>
-                    <View style={styles.shareCopy}>
-                        <Text style={styles.label}>Enable Sharing</Text>
-                        {!session.isPremium && <Text style={styles.premiumNote}>Premium feature</Text>}
+                            {!counter && (
+                                <View style={styles.shareRow}>
+                                    <Checkbox
+                                        label='Enable sharing'
+                                        disabled={!session.isPremium || loading}
+                                        onValueChange={(enabled) => setType(enabled ? 'SHARED' : 'PERSONAL')}
+                                        value={type === 'SHARED'}
+                                        testID='counter-sharing'
+                                    />
+                                    <Text style={styles.label}>Enable sharing</Text>
+                                    <Svg
+                                        accessibilityLabel='Premium feature'
+                                        accessibilityRole='image'
+                                        width={18}
+                                        height={18}
+                                        viewBox='0 0 24 24'
+                                    >
+                                        <Path
+                                            d='m3 6 4 4 5-7 5 7 4-4-2 12H5L3 6Zm3 15h12'
+                                            fill='none'
+                                            stroke={colors.warning}
+                                            strokeWidth={1.8}
+                                            strokeLinecap='round'
+                                            strokeLinejoin='round'
+                                        />
+                                    </Svg>
+                                </View>
+                            )}
+
+                            {Boolean(errorMessage) && (
+                                <View
+                                    accessibilityLiveRegion='polite'
+                                    accessibilityRole='alert'
+                                    style={styles.errorBox}
+                                    testID='counter-form-error'
+                                >
+                                    <Text style={styles.errorText}>{errorMessage}</Text>
+                                </View>
+                            )}
+                        </ScrollView>
+
+                        <View style={styles.actions}>
+                            <Pressable
+                                accessibilityRole='button'
+                                disabled={loading}
+                                onPress={dismiss}
+                                style={({ pressed }) => [styles.secondaryButton, pressed && styles.secondaryPressed]}
+                                testID='counter-form-cancel'
+                            >
+                                <Text style={styles.secondaryText}>Cancel</Text>
+                            </Pressable>
+                            <Pressable
+                                accessibilityRole='button'
+                                disabled={loading}
+                                onPress={() => void submit()}
+                                style={({ pressed }) => [
+                                    styles.primaryButton,
+                                    pressed && styles.primaryPressed,
+                                    loading && styles.disabled,
+                                ]}
+                                testID='counter-form-submit'
+                            >
+                                <Text style={styles.primaryText}>
+                                    {loading ? 'Saving…' : counter ? 'Update' : 'Add'}
+                                </Text>
+                            </Pressable>
+                        </View>
                     </View>
-                    <Switch
-                        accessibilityLabel='Enable sharing'
-                        disabled={!session.isPremium || loading}
-                        onValueChange={(enabled) => setType(enabled ? 'SHARED' : 'PERSONAL')}
-                        trackColor={{ false: colors.border, true: colors.primary }}
-                        value={type === 'SHARED'}
-                    />
-                </View>
-            )}
-
-            {Boolean(errorMessage) && (
-                <View accessibilityLiveRegion='polite' accessibilityRole='alert' style={styles.errorBox}>
-                    <Text style={styles.errorText}>{errorMessage}</Text>
-                </View>
-            )}
-
-            <View style={styles.actions}>
+                </KeyboardAvoidingView>
                 <Pressable
-                    accessibilityRole='button'
+                    accessible={false}
+                    tabIndex={-1}
                     disabled={loading}
-                    onPress={onCancel}
-                    style={({ pressed }) => [styles.secondaryButton, pressed && styles.secondaryPressed]}
-                >
-                    <Text style={styles.secondaryText}>Cancel</Text>
-                </Pressable>
-                <Pressable
-                    accessibilityRole='button'
-                    disabled={loading}
-                    onPress={() => void submit()}
-                    style={({ pressed }) => [
-                        styles.primaryButton,
-                        pressed && styles.primaryPressed,
-                        loading && styles.disabled,
-                    ]}
-                    testID='counter-form-submit'
-                >
-                    <Text style={styles.primaryText}>{loading ? 'Saving…' : counter ? 'Update' : 'Create'}</Text>
-                </Pressable>
-            </View>
-        </View>
+                    onPress={dismiss}
+                    style={StyleSheet.absoluteFill}
+                    testID='counter-form-backdrop'
+                />
+            </GestureHandlerRootView>
+        </Modal>
     );
 }
 
 const styles = StyleSheet.create({
-    form: {
-        gap: 20,
-        padding: 22,
+    overlay: {
+        flex: 1,
+        backgroundColor: colors.overlay,
+    },
+    keyboardAvoider: {
+        flex: 1,
+        zIndex: 1,
+        justifyContent: 'flex-end',
+        alignItems: 'center',
+    },
+    sheet: {
+        width: '100%',
+        maxWidth: 560,
+        maxHeight: '100%',
         backgroundColor: colors.surface,
-        borderRadius: 14,
-        boxShadow: '0 3px 10px rgba(0, 0, 0, 0.12)',
-        elevation: 3,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        overflow: 'hidden',
     },
     heading: {
+        padding: 22,
         color: colors.text,
         fontSize: 24,
         fontWeight: '800',
+        textAlign: 'center',
+    },
+    form: {
+        paddingHorizontal: 22,
+        paddingBottom: 8,
     },
     field: {
-        gap: 8,
+        gap: 12,
     },
     label: {
         color: colors.text,
         fontSize: 14,
-        fontWeight: '700',
+        fontWeight: '600',
     },
-    input: {
-        minHeight: 50,
-        paddingHorizontal: 14,
-        color: colors.text,
-        fontSize: 16,
-        backgroundColor: colors.input,
+    colorLabel: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    colorPreview: {
+        width: 28,
+        height: 20,
+        borderRadius: 5,
         borderWidth: 1,
         borderColor: colors.border,
+    },
+    picker: {
+        gap: 18,
+    },
+    spectrum: {
+        height: 160,
         borderRadius: 10,
+    },
+    hue: {
+        borderRadius: 14,
     },
     colors: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 12,
-        marginBottom: 4,
+        justifyContent: 'space-between',
+    },
+    swatchButton: {
+        width: 44,
+        height: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 22,
     },
     color: {
-        width: 38,
-        height: 38,
+        width: 30,
+        height: 30,
         borderWidth: 2,
         borderColor: colors.surface,
-        borderRadius: 19,
+        borderRadius: 15,
         boxShadow: `0 0 0 1px ${colors.border}`,
     },
     colorSelected: {
         boxShadow: `0 0 0 3px ${colors.link}`,
     },
     shareRow: {
-        minHeight: 54,
+        minHeight: 44,
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 16,
-    },
-    shareCopy: {
-        flex: 1,
-        gap: 4,
-    },
-    premiumNote: {
-        color: colors.muted,
-        fontSize: 13,
+        gap: 10,
     },
     errorBox: {
         padding: 12,
+        marginTop: 8,
         backgroundColor: colors.dangerSurface,
         borderRadius: 8,
     },
@@ -226,6 +350,8 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'flex-end',
         gap: 12,
+        paddingHorizontal: 22,
+        paddingTop: 12,
     },
     primaryButton: {
         minWidth: 108,

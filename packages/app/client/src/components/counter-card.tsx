@@ -58,7 +58,12 @@ export function CounterCard({ counter, onDelete, onEdit, onIncrement }: CounterC
             </View>
 
             <View style={styles.actions}>
-                <Pressable accessibilityRole='button' hitSlop={6} onPress={() => onEdit(counter)}>
+                <Pressable
+                    accessibilityRole='button'
+                    hitSlop={6}
+                    onPress={() => onEdit(counter)}
+                    testID={`counter-${counter.id}-edit`}
+                >
                     <Text style={styles.actionText}>Edit</Text>
                 </Pressable>
                 {counter.type === 'SHARED' && counter.inviteCode && (

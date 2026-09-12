@@ -1,7 +1,7 @@
 import { Link, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { useNetworkState } from 'expo-network';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
@@ -21,7 +21,6 @@ export default function HomeScreen() {
     const network = useNetworkState();
     const session = useSession();
     const counterState = useCounters();
-    const scrollRef = useRef<ScrollView>(null);
     const [formOpen, setFormOpen] = useState(false);
     const [counterToEdit, setCounterToEdit] = useState<ClientCounter | null>(null);
     const [guestLimitOpen, setGuestLimitOpen] = useState(false);
@@ -34,11 +33,9 @@ export default function HomeScreen() {
 
         setCounterToEdit(null);
         setFormOpen(true);
-        scrollRef.current?.scrollTo({ y: 0, animated: true });
     }
 
     function closeForm() {
-        setCounterToEdit(null);
         setFormOpen(false);
     }
 
@@ -82,11 +79,7 @@ export default function HomeScreen() {
                     )}
                 </View>
 
-                <ScrollView
-                    ref={scrollRef}
-                    contentContainerStyle={styles.scrollContent}
-                    keyboardShouldPersistTaps='handled'
-                >
+                <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps='handled'>
                     <View style={styles.content}>
                         {session.isAuthenticated && (
                             <View accessibilityLiveRegion='polite' style={styles.status}>
@@ -109,10 +102,6 @@ export default function HomeScreen() {
                                             : 'Synced'}
                                 </Text>
                             </View>
-                        )}
-
-                        {formOpen && (
-                            <CounterForm counter={counterToEdit || undefined} onCancel={closeForm} onDone={closeForm} />
                         )}
 
                         {counterState.loading && counterState.counters.length === 0 ? (
@@ -140,26 +129,31 @@ export default function HomeScreen() {
                     </View>
                 </ScrollView>
 
-                {!formOpen && (
-                    <View style={styles.bottomActions}>
-                        <Pressable
-                            accessibilityLabel='Add counter'
-                            accessibilityRole='button'
-                            onPress={openCreateForm}
-                            style={({ pressed }) => [styles.addButton, pressed && styles.addButtonPressed]}
-                            testID='add-counter-button'
-                        >
-                            <Svg aria-hidden width={24} height={24} viewBox='0 0 24 24' fill='none'>
-                                <Path
-                                    d='M12 5v14M5 12h14'
-                                    stroke={colors.onPrimary}
-                                    strokeWidth={2}
-                                    strokeLinecap='round'
-                                />
-                            </Svg>
-                        </Pressable>
-                    </View>
-                )}
+                <View style={styles.bottomActions}>
+                    <Pressable
+                        accessibilityLabel='Add counter'
+                        accessibilityRole='button'
+                        onPress={openCreateForm}
+                        style={({ pressed }) => [styles.addButton, pressed && styles.addButtonPressed]}
+                        testID='add-counter-button'
+                    >
+                        <Svg aria-hidden width={24} height={24} viewBox='0 0 24 24' fill='none'>
+                            <Path
+                                d='M12 5v14M5 12h14'
+                                stroke={colors.onPrimary}
+                                strokeWidth={2}
+                                strokeLinecap='round'
+                            />
+                        </Svg>
+                    </Pressable>
+                </View>
+
+                <CounterForm
+                    visible={formOpen}
+                    counter={counterToEdit || undefined}
+                    onCancel={closeForm}
+                    onDone={closeForm}
+                />
 
                 <Dialog
                     onRequestClose={() => setGuestLimitOpen(false)}

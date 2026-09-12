@@ -18,11 +18,10 @@ import Svg, { Path } from 'react-native-svg';
 
 import { colors } from '../colors';
 import { useSession } from '../session';
-import checkboxStyles, { unstable_styles as webStyles } from './auth-form.module.css';
+import { unstable_styles as webStyles } from './auth-form.module.css';
 import { AuthLink, FormField, styles as formStyles } from './auth-form';
+import { Checkbox } from './checkbox';
 import { TallyBrand } from './tally-brand';
-
-import type { CSSProperties } from 'react';
 
 type AuthScreenProps = {
     mode: 'login' | 'register';
@@ -259,22 +258,12 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                 <View style={styles.loginOptions}>
                                     {Platform.OS === 'web' && (
                                         <View style={styles.rememberControl}>
-                                            <input
-                                                aria-label='Remember me'
-                                                checked={rememberMe}
-                                                className={checkboxStyles.rememberCheckbox}
-                                                data-testid='auth-remember-me'
+                                            <Checkbox
+                                                label='Remember me'
+                                                value={rememberMe}
+                                                testID='auth-remember-me'
                                                 disabled={loading}
-                                                onChange={(event) => setRememberMe(event.target.checked)}
-                                                style={
-                                                    {
-                                                        color: colors.primary,
-                                                        '--field-background': colors.input,
-                                                        '--field-border': colors.border,
-                                                        '--field-focus': colors.link,
-                                                    } as CSSProperties
-                                                }
-                                                type='checkbox'
+                                                onValueChange={setRememberMe}
                                             />
                                             <Text style={styles.rememberLabel} testID='auth-remember-me-label'>
                                                 Remember me
@@ -399,7 +388,8 @@ const styles = StyleSheet.create({
     },
     guestLink: {
         alignSelf: 'flex-end',
-        minHeight: 44,
+        minHeight: 20,
+        marginBottom: 12,
         flexDirection: 'row',
         alignItems: 'center',
         flexShrink: 1,
