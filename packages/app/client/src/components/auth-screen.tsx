@@ -97,30 +97,27 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                     style={styles.pageHeader}
                     testID='auth-page-header'
                 >
-                    <TallyBrand />
-                    {isLogin && (
-                        <AuthLink
-                            href='/home'
-                            hitSlop={8}
-                            style={styles.guestLink}
-                            textStyle={styles.guestLinkText}
-                            testID='continue-as-guest'
-                            icon={
-                                <Svg aria-hidden width={5} height={8} viewBox='0 0 5 8' style={styles.guestChevron}>
-                                    <Path
-                                        d='m0.75 0.75 3.5 3.25-3.5 3.25'
-                                        fill='none'
-                                        stroke={colors.text}
-                                        strokeWidth={1.5}
-                                        strokeLinecap='round'
-                                        strokeLinejoin='round'
-                                    />
-                                </Svg>
-                            }
-                        >
-                            Continue as guest
-                        </AuthLink>
-                    )}
+                    <Pressable
+                        accessibilityLabel='Back'
+                        accessibilityRole='button'
+                        onPress={() =>
+                            router.canGoBack() ? router.back() : router.replace(isLogin ? '/home' : '/login')
+                        }
+                        style={({ pressed }) => [styles.backButton, pressed && styles.linkPressed]}
+                        testID={`auth-${mode}-back`}
+                    >
+                        <Svg aria-hidden width={24} height={24} viewBox='0 0 24 24'>
+                            <Path
+                                d='M19 12H5m7-7-7 7 7 7'
+                                fill='none'
+                                stroke={colors.text}
+                                strokeWidth={2}
+                                strokeLinecap='round'
+                                strokeLinejoin='round'
+                            />
+                        </Svg>
+                    </Pressable>
+                    <TallyBrand style={styles.brand} />
                 </View>
                 <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -144,6 +141,35 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                         testID='auth-scroll'
                     >
                         <View style={[styles.card, isLogin && styles.loginCard]} testID='auth-card'>
+                            {isLogin && (
+                                <AuthLink
+                                    href='/home'
+                                    hitSlop={8}
+                                    style={styles.guestLink}
+                                    textStyle={styles.guestLinkText}
+                                    testID='continue-as-guest'
+                                    icon={
+                                        <Svg
+                                            aria-hidden
+                                            width={5}
+                                            height={8}
+                                            viewBox='0 0 5 8'
+                                            style={styles.guestChevron}
+                                        >
+                                            <Path
+                                                d='m0.75 0.75 3.5 3.25-3.5 3.25'
+                                                fill='none'
+                                                stroke={colors.text}
+                                                strokeWidth={1.5}
+                                                strokeLinecap='round'
+                                                strokeLinejoin='round'
+                                            />
+                                        </Svg>
+                                    }
+                                >
+                                    Continue as guest
+                                </AuthLink>
+                            )}
                             {!isLogin && (
                                 <View style={styles.header}>
                                     <Text accessibilityRole='header' aria-level={2} style={styles.title}>
@@ -357,10 +383,22 @@ const styles = StyleSheet.create({
         ...formStyles.scrollContent,
         justifyContent: 'center',
     },
+    backButton: {
+        width: 44,
+        height: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 22,
+    },
+    brand: {
+        fontSize: 28,
+        lineHeight: 34,
+    },
     loginCard: {
         padding: 24,
     },
     guestLink: {
+        alignSelf: 'flex-end',
         minHeight: 44,
         flexDirection: 'row',
         alignItems: 'center',

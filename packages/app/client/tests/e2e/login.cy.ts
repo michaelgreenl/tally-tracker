@@ -1,6 +1,22 @@
 /// <reference types="cypress" />
 
 describe('Login controls', () => {
+    it('goes back through auth history and provides a destination for direct links', () => {
+        cy.visit('/login');
+        cy.get('[data-testid="auth-switch-mode"]').click();
+        cy.get('[data-testid="auth-register-back"]').click();
+        cy.location('pathname').should('eq', '/login');
+        cy.get('[data-testid="auth-login-back"]').click();
+        cy.location('pathname').should('eq', '/home');
+
+        cy.visit('/register');
+        cy.get('[data-testid="auth-switch-mode"]').click();
+        cy.get('[data-testid="auth-login-back"]').click();
+        cy.location('pathname').should('eq', '/register');
+        cy.get('[data-testid="auth-register-back"]').click();
+        cy.location('pathname').should('eq', '/login');
+    });
+
     for (const route of ['/login', '/register']) {
         it(`centers ${route} in the viewport and keeps the form reachable on short screens`, () => {
             cy.visit(route);

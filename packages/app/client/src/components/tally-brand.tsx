@@ -6,11 +6,11 @@ import { TallyLogo } from './tally-logo';
 import type { TextProps } from 'react-native';
 
 export function TallyBrand({ style }: Pick<TextProps, 'style'>) {
-    const fontSize = StyleSheet.flatten(style)?.fontSize ?? 34;
+    const { fontSize = 34, lineHeight = (fontSize * 40) / 34 } = StyleSheet.flatten(style) ?? {};
 
     return (
         <View style={[styles.brand, { gap: (fontSize * 8) / 34 }]} testID='tally-brand'>
-            <TallyLogo color={colors.text} size={(fontSize * 40) / 34} />
+            <TallyLogo color={colors.text} size={lineHeight} />
             <Text
                 accessibilityRole='header'
                 aria-level={1}
