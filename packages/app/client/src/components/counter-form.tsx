@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
+import { colors } from '../colors';
 import { useCounters } from '../counters';
 import { useSession } from '../session';
 
@@ -12,7 +13,7 @@ type CounterFormProps = {
     onDone: () => void;
 };
 
-const colors = ['#000000', '#0f7899', '#2563eb', '#7c3aed', '#be123c', '#15803d'] as const;
+const colorChoices = ['#000000', '#0f7899', '#2563eb', '#7c3aed', '#be123c', '#15803d'] as const;
 const isHexColor = (value: string): value is HexColor => /^#(?:[0-9a-fA-F]{3}){1,2}$/.test(value);
 
 export function CounterForm({ counter, onCancel, onDone }: CounterFormProps) {
@@ -60,7 +61,7 @@ export function CounterForm({ counter, onCancel, onDone }: CounterFormProps) {
                     onChangeText={setTitle}
                     onSubmitEditing={() => void submit()}
                     placeholder='What are you counting?'
-                    placeholderTextColor='#6c757d'
+                    placeholderTextColor={colors.muted}
                     returnKeyType='done'
                     style={styles.input}
                     testID='counter-title'
@@ -71,7 +72,7 @@ export function CounterForm({ counter, onCancel, onDone }: CounterFormProps) {
             <View style={styles.field}>
                 <Text style={styles.label}>Color</Text>
                 <View accessibilityLabel='Counter color choices' accessibilityRole='radiogroup' style={styles.colors}>
-                    {colors.map((choice) => (
+                    {colorChoices.map((choice) => (
                         <Pressable
                             key={choice}
                             accessibilityLabel={`Color ${choice}`}
@@ -93,7 +94,7 @@ export function CounterForm({ counter, onCancel, onDone }: CounterFormProps) {
                     maxLength={7}
                     onChangeText={setColor}
                     placeholder='#0f7899'
-                    placeholderTextColor='#6c757d'
+                    placeholderTextColor={colors.muted}
                     style={styles.input}
                     value={color}
                 />
@@ -109,7 +110,7 @@ export function CounterForm({ counter, onCancel, onDone }: CounterFormProps) {
                         accessibilityLabel='Enable sharing'
                         disabled={!session.isPremium || loading}
                         onValueChange={(enabled) => setType(enabled ? 'SHARED' : 'PERSONAL')}
-                        trackColor={{ false: '#adb5bd', true: '#23a6d5' }}
+                        trackColor={{ false: colors.border, true: colors.primary }}
                         value={type === 'SHARED'}
                     />
                 </View>
@@ -152,13 +153,13 @@ const styles = StyleSheet.create({
     form: {
         gap: 20,
         padding: 22,
-        backgroundColor: '#ffffff',
+        backgroundColor: colors.surface,
         borderRadius: 14,
         boxShadow: '0 3px 10px rgba(0, 0, 0, 0.12)',
         elevation: 3,
     },
     heading: {
-        color: '#212529',
+        color: colors.text,
         fontSize: 24,
         fontWeight: '800',
     },
@@ -166,18 +167,18 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     label: {
-        color: '#343a40',
+        color: colors.text,
         fontSize: 14,
         fontWeight: '700',
     },
     input: {
         minHeight: 50,
         paddingHorizontal: 14,
-        color: '#212529',
+        color: colors.text,
         fontSize: 16,
-        backgroundColor: '#ffffff',
+        backgroundColor: colors.input,
         borderWidth: 1,
-        borderColor: '#adb5bd',
+        borderColor: colors.border,
         borderRadius: 10,
     },
     colors: {
@@ -190,12 +191,12 @@ const styles = StyleSheet.create({
         width: 38,
         height: 38,
         borderWidth: 2,
-        borderColor: '#ffffff',
+        borderColor: colors.surface,
         borderRadius: 19,
-        boxShadow: '0 0 0 1px #adb5bd',
+        boxShadow: `0 0 0 1px ${colors.border}`,
     },
     colorSelected: {
-        boxShadow: '0 0 0 3px #23a6d5',
+        boxShadow: `0 0 0 3px ${colors.link}`,
     },
     shareRow: {
         minHeight: 54,
@@ -209,16 +210,16 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     premiumNote: {
-        color: '#7c4a03',
+        color: colors.muted,
         fontSize: 13,
     },
     errorBox: {
         padding: 12,
-        backgroundColor: '#fde8e7',
+        backgroundColor: colors.dangerSurface,
         borderRadius: 8,
     },
     errorText: {
-        color: '#b42318',
+        color: colors.danger,
         fontSize: 14,
     },
     actions: {
@@ -232,14 +233,14 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 18,
-        backgroundColor: '#0f7899',
+        backgroundColor: colors.primary,
         borderRadius: 10,
     },
     primaryPressed: {
-        backgroundColor: '#0d6f8f',
+        backgroundColor: colors.primaryPressed,
     },
     primaryText: {
-        color: '#ffffff',
+        color: colors.onPrimary,
         fontSize: 15,
         fontWeight: '700',
     },
@@ -249,14 +250,14 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         paddingHorizontal: 18,
         borderWidth: 1,
-        borderColor: '#6c757d',
+        borderColor: colors.border,
         borderRadius: 10,
     },
     secondaryPressed: {
-        backgroundColor: '#e9ecef',
+        backgroundColor: colors.input,
     },
     secondaryText: {
-        color: '#343a40',
+        color: colors.text,
         fontSize: 15,
         fontWeight: '700',
     },

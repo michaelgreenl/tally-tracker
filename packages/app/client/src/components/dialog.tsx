@@ -1,5 +1,7 @@
 import { Modal, StyleSheet, Text, View } from 'react-native';
 
+import { colors } from '../colors';
+
 import type { PropsWithChildren } from 'react';
 import type { ModalProps } from 'react-native';
 
@@ -32,23 +34,23 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         padding: 20,
-        backgroundColor: 'rgba(0, 0, 0, 0.55)',
+        backgroundColor: colors.overlay,
     },
     card: {
         width: '100%',
         maxWidth: 460,
         gap: 16,
         padding: 24,
-        backgroundColor: '#ffffff',
+        backgroundColor: colors.surface,
         borderRadius: 16,
     },
     title: {
-        color: '#212529',
+        color: colors.text,
         fontSize: 22,
         fontWeight: '800',
     },
     description: {
-        color: '#343a40',
+        color: colors.muted,
         fontSize: 16,
         lineHeight: 24,
     },

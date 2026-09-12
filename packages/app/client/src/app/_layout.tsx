@@ -1,12 +1,27 @@
-import { Stack } from 'expo-router';
+import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
+import Head from 'expo-router/head';
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Appearance, Platform, StyleSheet, View } from 'react-native';
 
+import { colors } from '../colors';
 import { CounterProvider } from '../counters';
 import { initSentry, withSentry } from '../monitoring/sentry';
 import { SessionProvider, useSession } from '../session';
 
 initSentry();
+if (Platform.OS !== 'web') Appearance.setColorScheme('dark');
+
+const navigationTheme = {
+    ...DarkTheme,
+    colors: {
+        primary: colors.link,
+        background: colors.background,
+        card: colors.surface,
+        text: colors.text,
+        border: colors.divider,
+        notification: colors.danger,
+    },
+};
 
 function Navigator() {
     const session = useSession();
@@ -14,7 +29,7 @@ function Navigator() {
     if (!session.ready) {
         return (
             <View style={styles.loading}>
-                <ActivityIndicator color='#23a6d5' size='large' />
+                <ActivityIndicator color={colors.link} size='large' />
             </View>
         );
     }
@@ -39,12 +54,19 @@ function Navigator() {
 
 function RootLayout() {
     return (
-        <SessionProvider>
-            <CounterProvider>
-                <Navigator />
-                <StatusBar style='light' />
-            </CounterProvider>
-        </SessionProvider>
+        <ThemeProvider value={navigationTheme}>
+            {Platform.OS === 'web' && (
+                <Head>
+                    <meta name='color-scheme' content='dark' />
+                </Head>
+            )}
+            <SessionProvider>
+                <CounterProvider>
+                    <Navigator />
+                    <StatusBar style='light' />
+                </CounterProvider>
+            </SessionProvider>
+        </ThemeProvider>
     );
 }
 
@@ -55,6 +77,6 @@ const styles = StyleSheet.create({
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#495057',
+        backgroundColor: colors.background,
     },
 });

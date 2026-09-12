@@ -2,13 +2,12 @@ import { Link } from 'expo-router';
 import { forwardRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { colors } from '../colors';
 import { unstable_styles as webStyles } from './auth-form.module.css';
 
 import type { LinkProps } from 'expo-router';
 import type { ReactNode } from 'react';
 import type { PressableProps, StyleProp, TextInputProps, TextStyle } from 'react-native';
-
-export const primaryColor = '#0f7899';
 
 export const FormField = forwardRef<TextInput, TextInputProps & { help?: string; label: string }>(function FormField(
     { help, label, ...inputProps },
@@ -30,7 +29,7 @@ export const FormField = forwardRef<TextInput, TextInputProps & { help?: string;
                     setFocused(true);
                     inputProps.onFocus?.(event);
                 }}
-                placeholderTextColor='#8d969e'
+                placeholderTextColor={colors.muted}
                 ref={ref}
                 style={[
                     styles.input,
@@ -78,7 +77,7 @@ export function AuthLink({ href, children, textStyle, icon, ...props }: AuthLink
 export const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: '#495057',
+        backgroundColor: colors.background,
     },
     keyboardAvoider: {
         flex: 1,
@@ -93,7 +92,7 @@ export const styles = StyleSheet.create({
         width: '100%',
         maxWidth: 430,
         padding: 28,
-        backgroundColor: '#f8f9fa',
+        backgroundColor: colors.surface,
         borderRadius: 16,
         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.18)',
         elevation: 5,
@@ -104,13 +103,13 @@ export const styles = StyleSheet.create({
     },
     title: {
         marginBottom: 8,
-        color: '#343a40',
+        color: colors.text,
         fontSize: 28,
         fontWeight: '700',
         textAlign: 'center',
     },
     subtitle: {
-        color: '#575e64',
+        color: colors.muted,
         fontSize: 15,
     },
     field: {
@@ -118,47 +117,47 @@ export const styles = StyleSheet.create({
     },
     label: {
         marginBottom: 7,
-        color: '#343a40',
+        color: colors.text,
         fontSize: 14,
         fontWeight: '600',
     },
     input: {
         minHeight: 50,
         paddingHorizontal: 14,
-        color: '#212529',
+        color: colors.text,
         fontSize: 16,
-        backgroundColor: '#ffffff',
+        backgroundColor: colors.input,
         borderWidth: 2,
-        borderColor: '#ced4da',
+        borderColor: colors.border,
         borderRadius: 10,
     },
     inputFocused: {
-        borderColor: primaryColor,
+        borderColor: colors.link,
     },
     helpText: {
         marginTop: 7,
-        color: '#575e64',
+        color: colors.muted,
         fontSize: 13,
     },
     errorBox: {
         padding: 12,
         marginBottom: 18,
-        backgroundColor: '#fde8e7',
+        backgroundColor: colors.dangerSurface,
         borderRadius: 8,
     },
     errorText: {
-        color: '#b42318',
+        color: colors.danger,
         fontSize: 14,
         textAlign: 'center',
     },
     statusBox: {
         padding: 12,
         marginBottom: 18,
-        backgroundColor: '#e5f6fb',
+        backgroundColor: colors.infoSurface,
         borderRadius: 8,
     },
     statusText: {
-        color: '#14566b',
+        color: colors.link,
         fontSize: 14,
         textAlign: 'center',
     },
@@ -166,7 +165,7 @@ export const styles = StyleSheet.create({
         minHeight: 50,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: primaryColor,
+        backgroundColor: colors.primary,
         borderRadius: 10,
     },
     primaryButtonPressed: {
@@ -176,7 +175,7 @@ export const styles = StyleSheet.create({
         opacity: 0.7,
     },
     primaryButtonText: {
-        color: '#ffffff',
+        color: colors.onPrimary,
         fontSize: 16,
         fontWeight: '700',
     },
@@ -191,7 +190,7 @@ export const styles = StyleSheet.create({
         marginTop: 22,
     },
     link: {
-        color: primaryColor,
+        color: colors.link,
         fontSize: 15,
         fontWeight: '700',
     },

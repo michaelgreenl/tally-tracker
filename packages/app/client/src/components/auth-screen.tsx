@@ -16,10 +16,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
+import { colors } from '../colors';
 import { useSession } from '../session';
 import checkboxStyles, { unstable_styles as webStyles } from './auth-form.module.css';
-import { AuthLink, FormField, primaryColor, styles as formStyles } from './auth-form';
+import { AuthLink, FormField, styles as formStyles } from './auth-form';
 import { TallyBrand } from './tally-brand';
+
+import type { CSSProperties } from 'react';
 
 type AuthScreenProps = {
     mode: 'login' | 'register';
@@ -101,7 +104,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                     <Path
                                         d='m0.75 0.75 3.5 3.25-3.5 3.25'
                                         fill='none'
-                                        stroke='#f8f9fa'
+                                        stroke={colors.text}
                                         strokeWidth={1.5}
                                         strokeLinecap='round'
                                         strokeLinejoin='round'
@@ -170,7 +173,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                             if (isLogin) void submit();
                                             else confirmPasswordInputRef.current?.focus();
                                         }}
-                                        placeholderTextColor='#8d969e'
+                                        placeholderTextColor={colors.muted}
                                         ref={passwordInputRef}
                                         returnKeyType={isLogin ? 'done' : 'next'}
                                         secureTextEntry={!showPassword}
@@ -220,7 +223,14 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                                 data-testid='auth-remember-me'
                                                 disabled={loading}
                                                 onChange={(event) => setRememberMe(event.target.checked)}
-                                                style={{ color: primaryColor }}
+                                                style={
+                                                    {
+                                                        color: colors.primary,
+                                                        '--field-background': colors.input,
+                                                        '--field-border': colors.border,
+                                                        '--field-focus': colors.link,
+                                                    } as CSSProperties
+                                                }
                                                 type='checkbox'
                                             />
                                             <Text style={styles.rememberLabel} testID='auth-remember-me-label'>
@@ -262,7 +272,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                 testID='auth-submit'
                             >
                                 {loading ? (
-                                    <ActivityIndicator color='#ffffff' />
+                                    <ActivityIndicator color={colors.onPrimary} />
                                 ) : (
                                     <Text style={styles.primaryButtonText}>{isLogin ? 'Login' : 'Register'}</Text>
                                 )}
@@ -340,7 +350,7 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     guestLinkText: {
-        color: '#f8f9fa',
+        color: colors.text,
         flexShrink: 1,
         fontSize: 14,
         textAlign: 'right',
@@ -360,21 +370,21 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 14,
-        backgroundColor: '#ffffff',
+        backgroundColor: colors.input,
         borderWidth: 2,
-        borderColor: '#ced4da',
+        borderColor: colors.border,
         borderRadius: 10,
     },
     passwordTextInput: {
         minWidth: 0,
         flex: 1,
         paddingVertical: 12,
-        color: '#212529',
+        color: colors.text,
         fontSize: 16,
     },
     passwordToggle: {
         paddingLeft: 12,
-        color: primaryColor,
+        color: colors.link,
         fontSize: 14,
         fontWeight: '700',
     },
@@ -393,7 +403,7 @@ const styles = StyleSheet.create({
         minHeight: 44,
     },
     rememberLabel: {
-        color: '#343a40',
+        color: colors.text,
         fontSize: 14,
     },
     forgotPassword: {
@@ -419,7 +429,7 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     legalSeparator: {
-        color: primaryColor,
+        color: colors.link,
         fontSize: 10,
     },
     legalLink: {

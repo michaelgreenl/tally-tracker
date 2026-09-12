@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { colors } from '../colors';
 import { getErrorMessage } from '../api';
 import { AuthService } from '../services/auth.service';
 import { FormField, styles } from './auth-form';
@@ -266,7 +267,7 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
                                 }
                             >
                                 {loading ? (
-                                    <ActivityIndicator color='#ffffff' />
+                                    <ActivityIndicator color={colors.onPrimary} />
                                 ) : (
                                     <Text style={styles.primaryButtonText}>
                                         {complete ? 'Continue to Login' : codeRequested ? 'Submit' : 'Send Code'}

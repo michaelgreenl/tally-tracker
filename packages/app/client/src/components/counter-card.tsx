@@ -2,6 +2,8 @@ import * as Clipboard from 'expo-clipboard';
 import { createURL } from 'expo-linking';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { colors } from '../colors';
+
 import type { ClientCounter } from '@tally/core/client';
 
 type CounterCardProps = {
@@ -76,7 +78,7 @@ const styles = StyleSheet.create({
     card: {
         gap: 18,
         padding: 20,
-        backgroundColor: '#ffffff',
+        backgroundColor: colors.surface,
         borderLeftWidth: 6,
         borderRadius: 14,
         boxShadow: '0 3px 10px rgba(0, 0, 0, 0.12)',
@@ -90,17 +92,17 @@ const styles = StyleSheet.create({
     },
     title: {
         flex: 1,
-        color: '#212529',
+        color: colors.text,
         fontSize: 20,
         fontWeight: '700',
     },
     sharedBadge: {
         paddingHorizontal: 9,
         paddingVertical: 4,
-        color: '#075985',
+        color: colors.link,
         fontSize: 12,
         fontWeight: '700',
-        backgroundColor: '#e0f2fe',
+        backgroundColor: colors.infoSurface,
         borderRadius: 999,
     },
     counterRow: {
@@ -114,22 +116,22 @@ const styles = StyleSheet.create({
         height: 52,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#0f7899',
+        backgroundColor: colors.primary,
         borderRadius: 26,
     },
     buttonPressed: {
-        backgroundColor: '#0d6f8f',
+        backgroundColor: colors.primaryPressed,
         transform: [{ scale: 0.97 }],
     },
     countButtonText: {
-        color: '#ffffff',
+        color: colors.onPrimary,
         fontSize: 30,
         fontWeight: '500',
         lineHeight: 34,
     },
     count: {
         minWidth: 80,
-        color: '#212529',
+        color: colors.text,
         fontSize: 38,
         fontVariant: ['tabular-nums'],
         fontWeight: '800',
@@ -141,15 +143,15 @@ const styles = StyleSheet.create({
         gap: 22,
         paddingTop: 14,
         borderTopWidth: 1,
-        borderTopColor: '#e9ecef',
+        borderTopColor: colors.divider,
     },
     actionText: {
-        color: '#167ca3',
+        color: colors.link,
         fontSize: 14,
         fontWeight: '700',
     },
     deleteText: {
-        color: '#b42318',
+        color: colors.danger,
         fontSize: 14,
         fontWeight: '700',
     },

@@ -3,6 +3,7 @@ import Head from 'expo-router/head';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { colors } from '../../colors';
 import { isLegalDocumentKey, legalDocumentKeys, legalDocuments } from '../../legal-documents';
 
 export function generateStaticParams() {
@@ -70,7 +71,7 @@ export default function LegalDocumentScreen() {
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: '#f8f9fa',
+        backgroundColor: colors.background,
     },
     content: {
         width: '100%',
@@ -82,13 +83,13 @@ const styles = StyleSheet.create({
     backLink: {
         alignSelf: 'flex-start',
         marginBottom: 28,
-        color: '#167ca3',
+        color: colors.link,
         fontSize: 16,
         fontWeight: '700',
         textDecorationLine: 'underline',
     },
     title: {
-        color: '#212529',
+        color: colors.text,
         fontSize: 36,
         fontWeight: '800',
         lineHeight: 42,
@@ -96,7 +97,7 @@ const styles = StyleSheet.create({
     updated: {
         marginTop: 8,
         marginBottom: 24,
-        color: '#575e64',
+        color: colors.muted,
         fontSize: 14,
     },
     section: {
@@ -104,13 +105,13 @@ const styles = StyleSheet.create({
     },
     sectionTitle: {
         marginBottom: 8,
-        color: '#343a40',
+        color: colors.text,
         fontSize: 21,
         fontWeight: '700',
     },
     paragraph: {
         marginBottom: 12,
-        color: '#343a40',
+        color: colors.muted,
         fontSize: 16,
         lineHeight: 25,
     },
@@ -121,10 +122,10 @@ const styles = StyleSheet.create({
         marginTop: 34,
         paddingTop: 22,
         borderTopWidth: 1,
-        borderTopColor: '#ced4da',
+        borderTopColor: colors.border,
     },
     navigationLink: {
-        color: '#167ca3',
+        color: colors.link,
         fontSize: 14,
         fontWeight: '600',
         textDecorationLine: 'underline',

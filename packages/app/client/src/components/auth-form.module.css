@@ -19,9 +19,9 @@
     height: 18px;
     flex-shrink: 0;
     margin: 0;
-    border: 2px solid #ced4da;
+    border: 2px solid var(--field-border);
     border-radius: 4px;
-    background: #ffffff;
+    background: var(--field-background);
     accent-color: currentColor;
     cursor: pointer;
 }
@@ -34,11 +34,11 @@
 }
 
 .rememberCheckbox:focus {
-    border-color: currentColor;
+    border-color: var(--field-focus);
 }
 
 .rememberCheckbox:focus-visible {
-    outline: 2px solid currentColor;
+    outline: 2px solid var(--field-focus);
     outline-offset: 2px;
 }
 

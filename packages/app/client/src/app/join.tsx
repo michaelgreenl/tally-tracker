@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { colors } from '../colors';
 import { useCounters } from '../counters';
 import { useSession } from '../session';
 
@@ -44,7 +45,7 @@ export default function JoinScreen() {
             </Head>
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.content}>
-                    <ActivityIndicator color='#0f7899' size='large' />
+                    <ActivityIndicator color={colors.link} size='large' />
                     <Text accessibilityRole='header' aria-level={1} style={styles.title}>
                         Joining counter…
                     </Text>
@@ -57,7 +58,7 @@ export default function JoinScreen() {
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: '#f1f3f5',
+        backgroundColor: colors.background,
     },
     content: {
         flex: 1,
@@ -67,7 +68,7 @@ const styles = StyleSheet.create({
         padding: 24,
     },
     title: {
-        color: '#343a40',
+        color: colors.text,
         fontSize: 22,
         fontWeight: '700',
     },

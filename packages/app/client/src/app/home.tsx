@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
+import { colors } from '../colors';
 import { CounterCard } from '../components/counter-card';
 import { CounterForm } from '../components/counter-form';
 import { Dialog } from '../components/dialog';
@@ -115,7 +116,7 @@ export default function HomeScreen() {
                         )}
 
                         {counterState.loading && counterState.counters.length === 0 ? (
-                            <ActivityIndicator color='#0f7899' size='large' style={styles.loader} />
+                            <ActivityIndicator color={colors.link} size='large' style={styles.loader} />
                         ) : counterState.counters.length ? (
                             <View style={styles.counterList} testID='counter-list'>
                                 {counterState.counters.map((counter) => (
@@ -149,7 +150,12 @@ export default function HomeScreen() {
                             testID='add-counter-button'
                         >
                             <Svg aria-hidden width={24} height={24} viewBox='0 0 24 24' fill='none'>
-                                <Path d='M12 5v14M5 12h14' stroke='#ffffff' strokeWidth={2} strokeLinecap='round' />
+                                <Path
+                                    d='M12 5v14M5 12h14'
+                                    stroke={colors.onPrimary}
+                                    strokeWidth={2}
+                                    strokeLinecap='round'
+                                />
                             </Svg>
                         </Pressable>
                     </View>
@@ -191,7 +197,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: '#f1f3f5',
+        backgroundColor: colors.background,
     },
     header: {
         flexDirection: 'row',
@@ -200,7 +206,7 @@ const styles = StyleSheet.create({
         gap: 16,
         paddingHorizontal: 32,
         paddingVertical: 16,
-        backgroundColor: '#0f7899',
+        backgroundColor: colors.background,
     },
     brandRow: {
         flex: 1,
@@ -215,10 +221,10 @@ const styles = StyleSheet.create({
     premiumBadge: {
         paddingHorizontal: 8,
         paddingVertical: 3,
-        color: '#5f3b00',
+        color: colors.warning,
         fontSize: 11,
         fontWeight: '800',
-        backgroundColor: '#ffe08a',
+        backgroundColor: colors.warningSurface,
         borderRadius: 999,
     },
     headerAction: {
@@ -231,7 +237,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
     },
     headerActionText: {
-        color: '#ffffff',
+        color: colors.onPrimary,
         fontSize: 14,
         fontWeight: '700',
     },
@@ -252,23 +258,23 @@ const styles = StyleSheet.create({
         gap: 7,
         paddingHorizontal: 11,
         paddingVertical: 7,
-        backgroundColor: '#ffffff',
+        backgroundColor: colors.surface,
         borderRadius: 999,
     },
     statusDot: {
         width: 8,
         height: 8,
-        backgroundColor: '#15803d',
+        backgroundColor: colors.success,
         borderRadius: 4,
     },
     statusDotOffline: {
-        backgroundColor: '#b45309',
+        backgroundColor: colors.warning,
     },
     statusDotError: {
-        backgroundColor: '#b42318',
+        backgroundColor: colors.danger,
     },
     statusText: {
-        color: '#343a40',
+        color: colors.text,
         fontSize: 13,
         fontWeight: '700',
     },
@@ -284,11 +290,11 @@ const styles = StyleSheet.create({
         height: 52,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#0f7899',
+        backgroundColor: colors.primary,
         borderRadius: 26,
     },
     addButtonPressed: {
-        backgroundColor: '#0d6f8f',
+        backgroundColor: colors.primaryPressed,
     },
     loader: {
         marginTop: 40,
@@ -299,13 +305,13 @@ const styles = StyleSheet.create({
     emptyState: {
         alignItems: 'center',
         padding: 36,
-        backgroundColor: '#ffffff',
+        backgroundColor: colors.surface,
         borderWidth: 1,
-        borderColor: '#dee2e6',
+        borderColor: colors.divider,
         borderRadius: 14,
     },
     emptyTitle: {
-        color: '#343a40',
+        color: colors.muted,
         fontSize: 18,
         fontWeight: '500',
     },
@@ -322,11 +328,11 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         paddingHorizontal: 16,
         borderWidth: 1,
-        borderColor: '#6c757d',
+        borderColor: colors.border,
         borderRadius: 9,
     },
     modalSecondaryText: {
-        color: '#343a40',
+        color: colors.text,
         fontWeight: '700',
     },
     modalPrimary: {
@@ -334,11 +340,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 16,
-        backgroundColor: '#0f7899',
+        backgroundColor: colors.primary,
         borderRadius: 9,
     },
     modalPrimaryText: {
-        color: '#ffffff',
+        color: colors.onPrimary,
         fontWeight: '700',
     },
 });

@@ -22,7 +22,8 @@ describe('Guest counters', () => {
 
         cy.get('[data-testid="add-counter-button"]').click();
         cy.get('[data-testid="guest-limit-modal"]').closest('[role="dialog"]').should('be.visible');
-        cy.get('body').type('{esc}');
+        cy.focused().closest('[data-testid="guest-limit-modal"]').should('exist');
+        cy.focused().type('{esc}');
         cy.get('[data-testid="guest-limit-modal"]').should('not.exist');
 
         cy.get('[data-testid="add-counter-button"]').click();

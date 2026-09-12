@@ -3,7 +3,9 @@ import Head from 'expo-router/head';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Path } from 'react-native-svg';
 
+import { colors } from '../colors';
 import { Dialog } from '../components/dialog';
 import { useSession } from '../session';
 
@@ -63,6 +65,16 @@ export default function SettingsScreen() {
                         onPress={() => (router.canGoBack() ? router.back() : router.replace('/home'))}
                         style={styles.backButton}
                     >
+                        <Svg aria-hidden width={5} height={8} viewBox='0 0 5 8' style={styles.backChevron}>
+                            <Path
+                                d='m4.25 0.75-3.5 3.25 3.5 3.25'
+                                fill='none'
+                                stroke={colors.onPrimary}
+                                strokeWidth={1.5}
+                                strokeLinecap='round'
+                                strokeLinejoin='round'
+                            />
+                        </Svg>
                         <Text style={styles.headerActionText}>Back</Text>
                     </Pressable>
                     <Text accessibilityRole='header' aria-level={1} style={styles.headerTitle}>
@@ -109,9 +121,6 @@ export default function SettingsScreen() {
                                     </View>
                                 </>
                             )}
-                        </Section>
-
-                        <Section title='Subscription'>
                             <View style={styles.detailRow}>
                                 <View style={styles.detailCopy}>
                                     <Text style={styles.rowLabel}>Manage subscription</Text>
@@ -127,6 +136,19 @@ export default function SettingsScreen() {
                                     {session.isAuthenticated ? 'Coming later' : 'Unavailable'}
                                 </Text>
                             </View>
+                            {session.isAuthenticated && (
+                                <Pressable
+                                    accessibilityRole='button'
+                                    onPress={() => {
+                                        setDeleteError('');
+                                        setDeleteOpen(true);
+                                    }}
+                                    style={({ pressed }) => [styles.actionRow, pressed && styles.rowPressed]}
+                                    testID='settings-delete-account'
+                                >
+                                    <Text style={styles.deleteText}>Delete account</Text>
+                                </Pressable>
+                            )}
                         </Section>
 
                         <Section title='Legal'>
@@ -146,22 +168,6 @@ export default function SettingsScreen() {
                                 </Pressable>
                             </Link>
                         </Section>
-
-                        {session.isAuthenticated && (
-                            <Section title='Danger zone'>
-                                <Pressable
-                                    accessibilityRole='button'
-                                    onPress={() => {
-                                        setDeleteError('');
-                                        setDeleteOpen(true);
-                                    }}
-                                    style={({ pressed }) => [styles.actionRow, pressed && styles.rowPressed]}
-                                    testID='settings-delete-account'
-                                >
-                                    <Text style={styles.deleteText}>Delete account</Text>
-                                </Pressable>
-                            </Section>
-                        )}
                     </View>
                 </ScrollView>
 
@@ -209,7 +215,7 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: '#f1f3f5',
+        backgroundColor: colors.background,
     },
     header: {
         minHeight: 62,
@@ -217,24 +223,28 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 12,
-        backgroundColor: '#0f7899',
+        backgroundColor: colors.background,
     },
     backButton: {
         width: 64,
         minHeight: 44,
-        alignItems: 'flex-start',
-        justifyContent: 'center',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    backChevron: {
+        transform: [{ translateY: 1 }],
     },
     headerSpacer: {
         width: 64,
     },
     headerActionText: {
-        color: '#ffffff',
+        color: colors.onPrimary,
         fontSize: 15,
         fontWeight: '700',
     },
     headerTitle: {
-        color: '#ffffff',
+        color: colors.onPrimary,
         fontSize: 20,
         fontWeight: '800',
     },
@@ -252,15 +262,15 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     sectionTitle: {
-        color: '#343a40',
+        color: colors.text,
         fontSize: 15,
         fontWeight: '800',
     },
     card: {
         overflow: 'hidden',
-        backgroundColor: '#ffffff',
+        backgroundColor: colors.surface,
         borderWidth: 1,
-        borderColor: '#dee2e6',
+        borderColor: colors.divider,
         borderRadius: 12,
     },
     row: {
@@ -271,16 +281,16 @@ const styles = StyleSheet.create({
         gap: 16,
         paddingHorizontal: 16,
         borderBottomWidth: 1,
-        borderBottomColor: '#e9ecef',
+        borderBottomColor: colors.divider,
     },
     rowLabel: {
-        color: '#212529',
+        color: colors.text,
         fontSize: 15,
         fontWeight: '700',
     },
     rowValue: {
         flexShrink: 1,
-        color: '#575e64',
+        color: colors.muted,
         fontSize: 14,
         textAlign: 'right',
     },
@@ -289,13 +299,13 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         paddingHorizontal: 16,
         borderBottomWidth: 1,
-        borderBottomColor: '#e9ecef',
+        borderBottomColor: colors.divider,
     },
     rowPressed: {
-        backgroundColor: '#f1f3f5',
+        backgroundColor: colors.input,
     },
     actionText: {
-        color: '#167ca3',
+        color: colors.link,
         fontSize: 15,
         fontWeight: '700',
     },
@@ -303,15 +313,15 @@ const styles = StyleSheet.create({
         gap: 5,
         padding: 16,
         borderBottomWidth: 1,
-        borderBottomColor: '#e9ecef',
+        borderBottomColor: colors.divider,
     },
     guestTitle: {
-        color: '#212529',
+        color: colors.text,
         fontSize: 16,
         fontWeight: '700',
     },
     guestCopy: {
-        color: '#575e64',
+        color: colors.muted,
         fontSize: 14,
         lineHeight: 20,
     },
@@ -326,11 +336,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 20,
-        backgroundColor: '#0f7899',
+        backgroundColor: colors.primary,
         borderRadius: 9,
     },
     primaryButtonText: {
-        color: '#ffffff',
+        color: colors.onPrimary,
         fontWeight: '700',
     },
     secondaryButton: {
@@ -339,11 +349,11 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         paddingHorizontal: 20,
         borderWidth: 1,
-        borderColor: '#6c757d',
+        borderColor: colors.border,
         borderRadius: 9,
     },
     secondaryButtonText: {
-        color: '#343a40',
+        color: colors.text,
         fontWeight: '700',
     },
     detailRow: {
@@ -353,18 +363,20 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         gap: 16,
         padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.divider,
     },
     detailCopy: {
         flex: 1,
         gap: 4,
     },
     deleteText: {
-        color: '#b42318',
+        color: colors.danger,
         fontSize: 15,
         fontWeight: '700',
     },
     deleteError: {
-        color: '#b42318',
+        color: colors.danger,
         fontSize: 14,
     },
     modalActions: {
@@ -378,11 +390,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 18,
-        backgroundColor: '#b42318',
+        backgroundColor: colors.dangerButton,
         borderRadius: 9,
     },
     deleteButtonText: {
-        color: '#ffffff',
+        color: colors.onPrimary,
         fontWeight: '700',
     },
     disabled: {
