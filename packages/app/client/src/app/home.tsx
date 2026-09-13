@@ -4,7 +4,7 @@ import { useNetworkState } from 'expo-network';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Circle, Path } from 'react-native-svg';
 
 import { colors } from '../colors';
 import { CounterCard } from '../components/counter-card';
@@ -51,23 +51,7 @@ export default function HomeScreen() {
                         {session.isPremium && <Text style={styles.premiumBadge}>Premium</Text>}
                     </View>
                     {session.isAuthenticated ? (
-                        <Link href='/settings' asChild>
-                            <Pressable accessibilityRole='link' style={styles.headerAction} testID='home-settings-link'>
-                                <Text style={styles.headerActionText}>Settings</Text>
-                            </Pressable>
-                        </Link>
-                    ) : (
-                        <Link href='/login' asChild>
-                            <Pressable accessibilityRole='link' style={styles.headerAction}>
-                                <Text style={styles.headerActionText}>Login</Text>
-                            </Pressable>
-                        </Link>
-                    )}
-                </View>
-
-                <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps='handled'>
-                    <View style={styles.content}>
-                        {session.isAuthenticated && (
+                        <View style={styles.headerActions}>
                             <View accessibilityLiveRegion='polite' style={styles.status}>
                                 <View
                                     style={[
@@ -88,8 +72,41 @@ export default function HomeScreen() {
                                             : 'Synced'}
                                 </Text>
                             </View>
-                        )}
+                            <Link href='/settings' asChild>
+                                <Pressable
+                                    accessibilityLabel='Settings'
+                                    accessibilityRole='link'
+                                    style={styles.settingsButton}
+                                    testID='home-settings-link'
+                                >
+                                    <Svg
+                                        aria-hidden
+                                        width={24}
+                                        height={24}
+                                        viewBox='0 0 24 24'
+                                        fill='none'
+                                        stroke={colors.text}
+                                        strokeWidth={2}
+                                        strokeLinecap='round'
+                                        strokeLinejoin='round'
+                                    >
+                                        <Path d='M10 2h4l.5 3.5 1.5.9 3.3-1.3 2 3.5-2.8 2.2v2.4l2.8 2.2-2 3.5-3.3-1.3-1.5.9L14 22h-4l-.5-3.5-1.5-.9-3.3 1.3-2-3.5 2.8-2.2v-2.4L2.7 8.6l2-3.5L8 6.4l1.5-.9Z' />
+                                        <Circle cx={12} cy={12} r={3} />
+                                    </Svg>
+                                </Pressable>
+                            </Link>
+                        </View>
+                    ) : (
+                        <Link href='/login' asChild>
+                            <Pressable accessibilityRole='link' style={styles.headerAction}>
+                                <Text style={styles.headerActionText}>Login</Text>
+                            </Pressable>
+                        </Link>
+                    )}
+                </View>
 
+                <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps='handled'>
+                    <View style={styles.content}>
                         {counterState.loading && counterState.counters.length === 0 ? (
                             <ActivityIndicator color={colors.link} size='large' style={styles.loader} />
                         ) : counterState.counters.length ? (
@@ -213,6 +230,18 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
+    headerActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    settingsButton: {
+        width: 44,
+        height: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 22,
+    },
     headerActionText: {
         color: colors.onPrimary,
         fontSize: 14,
@@ -230,7 +259,6 @@ const styles = StyleSheet.create({
         gap: 22,
     },
     status: {
-        alignSelf: 'flex-end',
         flexDirection: 'row',
         alignItems: 'center',
         gap: 7,
