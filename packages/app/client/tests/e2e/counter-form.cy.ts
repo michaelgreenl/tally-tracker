@@ -49,17 +49,21 @@ describe('Counter sheet', () => {
         cy.get('[data-testid="counter-form-error"]').should('be.visible');
         cy.get('[data-testid="counter-title"]').type('Custom color');
         cy.get('[data-testid="counter-color-2563eb"]').click();
+        cy.get('[data-testid="counter-custom-color-dialog"]').should('not.exist');
+        cy.get('[data-testid="counter-custom-color"]').click();
         // The picker owns this accessible slider, so use its label instead of an internal selector.
         cy.get('[aria-label="Color hue"]').focus().type('{rightarrow}');
-        cy.get('[data-testid="counter-color-preview"]')
-            .should('not.have.attr', 'aria-label', 'Selected color #2563eb')
+        cy.get('[data-testid="counter-custom-color-done"]').click();
+        cy.get('[data-testid="counter-custom-color-dialog"]').should('not.exist');
+        cy.get('[data-testid="counter-custom-color"]')
+            .should('not.have.attr', 'aria-label', 'Custom color, selected #2563eb')
             .invoke('attr', 'aria-label')
             .then((chosenColor) => {
                 cy.get('[data-testid="counter-form-submit"]').click();
                 cy.get('[data-testid="home-counter-form"]').should('not.exist');
                 cy.reload();
                 cy.get('[data-testid^="counter-"][data-testid$="-edit"]').click();
-                cy.get('[data-testid="counter-color-preview"]').should('have.attr', 'aria-label', chosenColor);
+                cy.get('[data-testid="counter-custom-color"]').should('have.attr', 'aria-label', chosenColor);
             });
 
         cy.get('[data-testid="counter-color-be123c"]').click();
@@ -67,6 +71,10 @@ describe('Counter sheet', () => {
         cy.get('[data-testid="home-counter-form"]').should('not.exist');
         cy.reload();
         cy.get('[data-testid^="counter-"][data-testid$="-edit"]').click();
-        cy.get('[data-testid="counter-color-preview"]').should('have.attr', 'aria-label', 'Selected color #be123c');
+        cy.get('[data-testid="counter-custom-color"]').should(
+            'have.attr',
+            'aria-label',
+            'Custom color, selected #be123c',
+        );
     });
 });
