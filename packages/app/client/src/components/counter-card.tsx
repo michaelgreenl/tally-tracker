@@ -1,6 +1,7 @@
 import * as Clipboard from 'expo-clipboard';
 import { createURL } from 'expo-linking';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 
 import { colors } from '../colors';
 
@@ -37,7 +38,9 @@ export function CounterCard({ counter, onDelete, onEdit, onIncrement }: CounterC
                     style={({ pressed }) => [styles.countButton, pressed && styles.buttonPressed]}
                     testID={`counter-${counter.id}-decrease`}
                 >
-                    <Text style={styles.countButtonText}>−</Text>
+                    <Svg aria-hidden width={24} height={24} viewBox='0 0 24 24' fill='none'>
+                        <Path d='M5 12h14' stroke={colors.onPrimary} strokeWidth={2} strokeLinecap='round' />
+                    </Svg>
                 </Pressable>
                 <Text
                     accessibilityLabel={`${counter.title} count ${counter.count}`}
@@ -53,7 +56,9 @@ export function CounterCard({ counter, onDelete, onEdit, onIncrement }: CounterC
                     style={({ pressed }) => [styles.countButton, pressed && styles.buttonPressed]}
                     testID={`counter-${counter.id}-increase`}
                 >
-                    <Text style={styles.countButtonText}>+</Text>
+                    <Svg aria-hidden width={24} height={24} viewBox='0 0 24 24' fill='none'>
+                        <Path d='M12 5v14M5 12h14' stroke={colors.onPrimary} strokeWidth={2} strokeLinecap='round' />
+                    </Svg>
                 </Pressable>
             </View>
 
@@ -127,12 +132,6 @@ const styles = StyleSheet.create({
     buttonPressed: {
         backgroundColor: colors.primaryPressed,
         transform: [{ scale: 0.97 }],
-    },
-    countButtonText: {
-        color: colors.onPrimary,
-        fontSize: 30,
-        fontWeight: '500',
-        lineHeight: 34,
     },
     count: {
         minWidth: 80,
