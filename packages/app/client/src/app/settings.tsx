@@ -222,7 +222,8 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 12,
+        paddingLeft: 20,
+        paddingRight: 12,
         backgroundColor: colors.background,
     },
     backButton: {

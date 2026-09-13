@@ -99,6 +99,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                     <Pressable
                         accessibilityLabel='Back'
                         accessibilityRole='button'
+                        hitSlop={{ left: 13, right: 13 }}
                         onPress={() =>
                             router.canGoBack() ? router.back() : router.replace(isLogin ? '/home' : '/login')
                         }
@@ -365,7 +366,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         gap: 16,
         paddingHorizontal: 32,
-        paddingTop: 24,
+        paddingTop: 12,
         paddingBottom: 12,
     },
     scrollContent: {
@@ -373,7 +374,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     backButton: {
-        width: 44,
+        width: 18,
         height: 44,
         alignItems: 'center',
         justifyContent: 'center',
