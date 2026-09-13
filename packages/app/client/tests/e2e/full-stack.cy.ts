@@ -87,7 +87,8 @@ describe('Expo full-stack counter journey', () => {
         });
 
         cy.intercept('POST', '**/users/logout').as('logoutUser');
-        cy.get('[data-testid="home-logout"]').click();
+        cy.get('[data-testid="home-settings-link"]').click();
+        cy.get('[data-testid="settings-logout"]').click();
         cy.wait('@logoutUser').its('response.statusCode').should('eq', OK);
         cy.location('pathname').should('eq', '/login');
 

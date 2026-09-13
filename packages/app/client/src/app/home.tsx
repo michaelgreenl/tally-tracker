@@ -51,25 +51,11 @@ export default function HomeScreen() {
                         {session.isPremium && <Text style={styles.premiumBadge}>Premium</Text>}
                     </View>
                     {session.isAuthenticated ? (
-                        <View style={styles.headerActions}>
-                            <Link href='/settings' asChild>
-                                <Pressable
-                                    accessibilityRole='link'
-                                    style={styles.headerAction}
-                                    testID='home-settings-link'
-                                >
-                                    <Text style={styles.headerActionText}>Settings</Text>
-                                </Pressable>
-                            </Link>
-                            <Pressable
-                                accessibilityRole='button'
-                                onPress={() => void session.logout()}
-                                style={styles.headerAction}
-                                testID='home-logout'
-                            >
-                                <Text style={styles.headerActionText}>Logout</Text>
+                        <Link href='/settings' asChild>
+                            <Pressable accessibilityRole='link' style={styles.headerAction} testID='home-settings-link'>
+                                <Text style={styles.headerActionText}>Settings</Text>
                             </Pressable>
-                        </View>
+                        </Link>
                     ) : (
                         <Link href='/login' asChild>
                             <Pressable accessibilityRole='link' style={styles.headerAction}>
@@ -226,9 +212,6 @@ const styles = StyleSheet.create({
         minHeight: 44,
         alignItems: 'center',
         justifyContent: 'center',
-    },
-    headerActions: {
-        flexDirection: 'row',
     },
     headerActionText: {
         color: colors.onPrimary,
