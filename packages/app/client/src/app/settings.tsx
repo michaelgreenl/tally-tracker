@@ -3,9 +3,9 @@ import Head from 'expo-router/head';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Path } from 'react-native-svg';
 
 import { colors } from '../colors';
+import { BackButton } from '../components/back-button';
 import { Dialog } from '../components/dialog';
 import { useSession } from '../session';
 
@@ -60,23 +60,10 @@ export default function SettingsScreen() {
             </Head>
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.header}>
-                    <Pressable
-                        accessibilityRole='button'
+                    <BackButton
                         onPress={() => (router.canGoBack() ? router.back() : router.replace('/home'))}
-                        style={styles.backButton}
-                    >
-                        <Svg aria-hidden width={5} height={8} viewBox='0 0 5 8' style={styles.backChevron}>
-                            <Path
-                                d='m4.25 0.75-3.5 3.25 3.5 3.25'
-                                fill='none'
-                                stroke={colors.onPrimary}
-                                strokeWidth={1.5}
-                                strokeLinecap='round'
-                                strokeLinejoin='round'
-                            />
-                        </Svg>
-                        <Text style={styles.headerActionText}>Back</Text>
-                    </Pressable>
+                        testID='settings-back'
+                    />
                     <Text accessibilityRole='header' aria-level={1} style={styles.headerTitle}>
                         Settings
                     </Text>
@@ -226,23 +213,8 @@ const styles = StyleSheet.create({
         paddingRight: 12,
         backgroundColor: colors.background,
     },
-    backButton: {
-        width: 64,
-        minHeight: 44,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-    },
-    backChevron: {
-        transform: [{ translateY: 1 }],
-    },
     headerSpacer: {
-        width: 64,
-    },
-    headerActionText: {
-        color: colors.onPrimary,
-        fontSize: 15,
-        fontWeight: '700',
+        width: 18,
     },
     headerTitle: {
         color: colors.onPrimary,

@@ -20,6 +20,7 @@ import { colors } from '../colors';
 import { useSession } from '../session';
 import { unstable_styles as webStyles } from './auth-form.module.css';
 import { AuthLink, FormField, styles as formStyles } from './auth-form';
+import { BackButton } from './back-button';
 import { Checkbox } from './checkbox';
 import { TallyBrand } from './tally-brand';
 
@@ -96,27 +97,12 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                     style={styles.pageHeader}
                     testID='auth-page-header'
                 >
-                    <Pressable
-                        accessibilityLabel='Back'
-                        accessibilityRole='button'
-                        hitSlop={{ left: 13, right: 13 }}
+                    <BackButton
                         onPress={() =>
                             router.canGoBack() ? router.back() : router.replace(isLogin ? '/home' : '/login')
                         }
-                        style={({ pressed }) => [styles.backButton, pressed && styles.linkPressed]}
                         testID={`auth-${mode}-back`}
-                    >
-                        <Svg aria-hidden width={24} height={24} viewBox='0 0 24 24'>
-                            <Path
-                                d='M19 12H5m7-7-7 7 7 7'
-                                fill='none'
-                                stroke={colors.text}
-                                strokeWidth={2}
-                                strokeLinecap='round'
-                                strokeLinejoin='round'
-                            />
-                        </Svg>
-                    </Pressable>
+                    />
                     <TallyBrand style={styles.brand} />
                 </View>
                 <KeyboardAvoidingView
@@ -372,13 +358,6 @@ const styles = StyleSheet.create({
     scrollContent: {
         ...formStyles.scrollContent,
         justifyContent: 'center',
-    },
-    backButton: {
-        width: 18,
-        height: 44,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderRadius: 22,
     },
     brand: {
         fontSize: 28,
