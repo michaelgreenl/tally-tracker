@@ -48,7 +48,6 @@ export default function HomeScreen() {
                 <View style={styles.header}>
                     <View style={styles.brandRow}>
                         <TallyBrand style={styles.brand} />
-                        {session.isPremium && <Text style={styles.premiumBadge}>Premium</Text>}
                     </View>
                     {session.isAuthenticated ? (
                         <View style={styles.headerActions}>
@@ -214,15 +213,6 @@ const styles = StyleSheet.create({
     },
     brand: {
         fontSize: 24,
-    },
-    premiumBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        color: colors.warning,
-        fontSize: 11,
-        fontWeight: '800',
-        backgroundColor: colors.warningSurface,
-        borderRadius: 999,
     },
     headerAction: {
         minWidth: 56,
