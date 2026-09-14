@@ -140,6 +140,47 @@ describe('apiFetch', () => {
         removeHandler();
     });
 
+    it.each(['connection loss', 'server error', 'rate limit', 'invalid response', 'missing tokens'])(
+        'preserves the session and allows recovery after refresh encounters %s',
+        async (failure) => {
+            const storedTokens = new Map(tokens);
+            const removeHandler = setUnauthorizedHandler(() => tokens.clear());
+            fetchMock
+                .mockResolvedValue(jsonResponse({ message: 'Unauthorized' }, UNAUTHORIZED))
+                .mockResolvedValueOnce(jsonResponse({ message: 'Unauthorized' }, UNAUTHORIZED));
+            if (failure === 'connection loss') {
+                fetchMock.mockRejectedValueOnce(new Error('Connection refused'));
+            } else {
+                fetchMock.mockResolvedValueOnce(
+                    jsonResponse(
+                        failure === 'missing tokens' ? { success: true, data: { accessToken: 'partial-token' } } : {},
+                        failure === 'server error' ? 503 : failure === 'rate limit' ? 429 : OK,
+                    ),
+                );
+            }
+
+            try {
+                await expect(apiFetch('/users/check-auth')).rejects.toMatchObject({ status: 500 });
+                expect(tokens).toEqual(storedTokens);
+
+                fetchMock
+                    .mockResolvedValueOnce(jsonResponse({ message: 'Unauthorized' }, UNAUTHORIZED))
+                    .mockResolvedValueOnce(
+                        jsonResponse({
+                            success: true,
+                            data: { accessToken: 'fresh-access-token', refreshToken: 'fresh-refresh-token' },
+                        }),
+                    )
+                    .mockResolvedValueOnce(jsonResponse({ success: true }));
+
+                await expect(apiFetch('/users/check-auth')).resolves.toEqual({ success: true });
+                expect(tokens.get('refresh')).toBe('fresh-refresh-token');
+            } finally {
+                removeHandler();
+            }
+        },
+    );
+
     it('returns public login errors without expiring the current session', async () => {
         const unauthorized = vi.fn();
         const removeHandler = setUnauthorizedHandler(unauthorized);

@@ -1,4 +1,4 @@
-import { OK_NO_CONTENT, REQUEST_TIMEOUT, UNAUTHORIZED } from '@tally/core/client';
+import { OK_NO_CONTENT, REQUEST_TIMEOUT, SERVER_ERROR, UNAUTHORIZED } from '@tally/core/client';
 import { Platform } from 'react-native';
 
 import { tokenStorage } from './services/token-storage';
@@ -42,35 +42,30 @@ export const setUnauthorizedHandler = (handler: () => void | Promise<void>) => {
 
 async function executeRefresh(): Promise<boolean> {
     try {
-        const headers = { 'Content-Type': 'application/json' };
-        let body: string | undefined;
+        const refreshToken = isNative ? await tokenStorage.getRefreshToken() : null;
+        if (isNative && !refreshToken) return false;
 
-        if (isNative) {
-            const refreshToken = await tokenStorage.getRefreshToken();
-            if (!refreshToken) return false;
-            body = JSON.stringify({ refreshToken });
-        }
-
-        const response = await fetch(`${API_URL}/users/refresh`, {
+        const result = await apiFetch<AuthResponse>('/users/refresh', {
             method: 'POST',
-            credentials: 'include',
-            headers,
-            body,
+            requiresAuth: false,
+            body: refreshToken ? { refreshToken } : undefined,
         });
 
-        if (!response.ok) return false;
+        if (!result.success) throw new Error('Invalid refresh response');
 
-        const result = (await response.json()) as AuthResponse;
-        if (isNative && result.data) {
-            const writes = [];
-            if (result.data.accessToken) writes.push(tokenStorage.setAccessToken(result.data.accessToken));
-            if (result.data.refreshToken) writes.push(tokenStorage.setRefreshToken(result.data.refreshToken));
-            await Promise.all(writes);
+        if (isNative) {
+            if (!result.data?.accessToken || !result.data.refreshToken) throw new Error('Missing refreshed tokens');
+            await Promise.all([
+                tokenStorage.setAccessToken(result.data.accessToken),
+                tokenStorage.setRefreshToken(result.data.refreshToken),
+            ]);
         }
 
         return true;
-    } catch {
-        return false;
+    } catch (error: unknown) {
+        if (error instanceof ApiError && error.status === UNAUTHORIZED) return false;
+        // Keep the session and queued mutations when refresh is temporarily unavailable.
+        throw new ApiError('Session refresh unavailable. Please try again.', SERVER_ERROR, error);
     }
 }
 
