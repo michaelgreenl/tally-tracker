@@ -72,7 +72,7 @@ export const reconcileAuthenticatedCounters = (
 export function CounterProvider({ children }: PropsWithChildren) {
     const session = useSession();
     const [counters, setCounters] = useState<ClientCounter[]>([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [syncError, setSyncError] = useState(false);
     const countersRef = useRef<ClientCounter[]>([]);
     const previousUserId = useRef<string | null>(null);

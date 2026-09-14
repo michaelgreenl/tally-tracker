@@ -151,7 +151,7 @@ export default function SettingsScreen() {
                             </Link>
                             <Link href='/legal/support' asChild>
                                 <Pressable accessibilityRole='link' style={styles.actionRow}>
-                                    <Text style={styles.actionText}>Support/contact</Text>
+                                    <Text style={styles.actionText}>Support/Contact</Text>
                                 </Pressable>
                             </Link>
                         </Section>

@@ -29,7 +29,8 @@ const getEmailParameter = (email: string | string[] | undefined) =>
 
 export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
     const router = useRouter();
-    const params = useLocalSearchParams<{ email?: string | string[] }>();
+    const params = useLocalSearchParams<{ email?: string | string[]; inviteCode?: string | string[] }>();
+    const inviteCode = typeof params.inviteCode === 'string' ? params.inviteCode : undefined;
     const isVerification = mode === 'verify';
     const codeInputRef = useRef<TextInput>(null);
     const passwordInputRef = useRef<TextInput>(null);
@@ -118,7 +119,7 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
 
     function primaryAction() {
         if (complete) {
-            router.replace('/login');
+            router.replace({ pathname: '/login', params: { inviteCode } });
             return;
         }
 
@@ -302,7 +303,7 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
 
                             {!complete && (
                                 <View style={styles.footer}>
-                                    <Link href='/login' asChild>
+                                    <Link href={{ pathname: '/login', params: { inviteCode } }} asChild>
                                         <Pressable
                                             accessibilityRole='link'
                                             hitSlop={8}

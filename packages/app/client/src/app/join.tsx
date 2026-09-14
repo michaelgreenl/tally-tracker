@@ -16,7 +16,7 @@ export default function JoinScreen() {
     const handled = useRef(false);
 
     useEffect(() => {
-        if (handled.current) return;
+        if (handled.current || counters.loading) return;
         handled.current = true;
         const code = Array.isArray(params.code) ? params.code[0] : params.code;
 
@@ -28,7 +28,7 @@ export default function JoinScreen() {
             }
             if (!session.isAuthenticated) {
                 Alert.alert('Sign in to join shared counters');
-                router.replace('/login');
+                router.replace({ pathname: '/login', params: { inviteCode: code } });
                 return;
             }
 

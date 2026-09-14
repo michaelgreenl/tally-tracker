@@ -1,5 +1,5 @@
 import { PASSWORD_REQUIREMENTS, passwordSchema } from '@tally/core/client';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { Fragment, useRef, useState } from 'react';
 import {
@@ -36,6 +36,8 @@ const legalLinks = [
 
 export function AuthScreen({ mode }: AuthScreenProps) {
     const router = useRouter();
+    const params = useLocalSearchParams<{ inviteCode?: string | string[] }>();
+    const inviteCode = typeof params.inviteCode === 'string' ? params.inviteCode : undefined;
     const session = useSession();
     const insets = useSafeAreaInsets();
     const [headerHeight, setHeaderHeight] = useState(0);
@@ -83,7 +85,11 @@ export function AuthScreen({ mode }: AuthScreenProps) {
             return;
         }
 
-        router.replace(isLogin ? '/home' : { pathname: '/verify-email', params: { email } });
+        if (isLogin) {
+            router.replace(inviteCode ? { pathname: '/join', params: { code: inviteCode } } : '/home');
+        } else {
+            router.replace({ pathname: '/verify-email', params: { email, inviteCode } });
+        }
     }
 
     return (
@@ -99,7 +105,9 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                 >
                     <BackButton
                         onPress={() =>
-                            router.canGoBack() ? router.back() : router.replace(isLogin ? '/home' : '/login')
+                            router.canGoBack()
+                                ? router.back()
+                                : router.replace(isLogin ? '/home' : { pathname: '/login', params: { inviteCode } })
                         }
                         testID={`auth-${mode}-back`}
                     />
@@ -258,7 +266,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                         </View>
                                     )}
                                     <AuthLink
-                                        href='/forgot-password'
+                                        href={{ pathname: '/forgot-password', params: { inviteCode } }}
                                         style={styles.forgotPassword}
                                         textStyle={styles.loginOptionLink}
                                         testID='auth-forgot-password'
@@ -303,7 +311,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                         {isLogin ? "Don't have an account?" : 'Already have an account?'}
                                     </Text>
                                     <AuthLink
-                                        href={isLogin ? '/register' : '/login'}
+                                        href={{ pathname: isLogin ? '/register' : '/login', params: { inviteCode } }}
                                         hitSlop={8}
                                         testID='auth-switch-mode'
                                     >
