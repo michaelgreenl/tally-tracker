@@ -1,7 +1,7 @@
 import * as Crypto from 'expo-crypto';
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 
-import { getErrorMessage } from './api';
+import { ApiError, getErrorMessage, REQUEST_FAILED_MESSAGE } from './api';
 import { CounterService } from './services/counter.service';
 import { SyncManager } from './services/sync-manager';
 import { connectSocket, disconnectSocket, subscribeToCounterUpdates } from './socket';
@@ -237,7 +237,7 @@ export function CounterProvider({ children }: PropsWithChildren) {
             const response = await CounterService.share(counterId);
             const inviteCode = response.data?.counter?.inviteCode;
             if (!response.success || !inviteCode) {
-                return { success: false as const, message: response.message || 'Failed to share counter' };
+                return { success: false as const, message: REQUEST_FAILED_MESSAGE };
             }
             await replaceCounters(
                 countersRef.current.map((counter) =>
@@ -246,7 +246,10 @@ export function CounterProvider({ children }: PropsWithChildren) {
             );
             return { success: true as const, inviteCode };
         } catch (error: unknown) {
-            return { success: false as const, message: getErrorMessage(error, 'Failed to share counter') };
+            return {
+                success: false as const,
+                message: error instanceof ApiError ? error.message : REQUEST_FAILED_MESSAGE,
+            };
         }
     }
 

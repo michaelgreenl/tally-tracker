@@ -10,6 +10,8 @@ export interface ApiRequestOptions<T = unknown> extends Omit<RequestInit, 'body'
     requiresAuth?: boolean;
 }
 
+export const REQUEST_FAILED_MESSAGE = 'Something went wrong. Please try again later.';
+
 export class ApiError extends Error {
     success = false;
 
@@ -114,10 +116,18 @@ async function apiFetch<ResT = unknown, ReqT = unknown>(
 
             if (requiresAuth && response.status === UNAUTHORIZED) await unauthorizedHandler?.();
 
-            const errorData = (await response.json().catch(() => ({}))) as Record<string, unknown> & {
-                message?: string;
-            };
-            throw new ApiError(errorData.message || 'An API error occurred', response.status, errorData);
+            const errorData: unknown = await response.json().catch(() => null);
+            const message =
+                typeof errorData === 'object' &&
+                errorData !== null &&
+                'message' in errorData &&
+                typeof errorData.message === 'string' &&
+                errorData.message.trim();
+            throw new ApiError(
+                response.status < SERVER_ERROR && message ? message : REQUEST_FAILED_MESSAGE,
+                response.status,
+                errorData,
+            );
         }
 
         if (response.status === OK_NO_CONTENT) return {} as ResT;
@@ -128,7 +138,7 @@ async function apiFetch<ResT = unknown, ReqT = unknown>(
         }
 
         if (error instanceof ApiError) throw error;
-        throw new ApiError(getErrorMessage(error, 'Network Error'), 0);
+        throw new ApiError(REQUEST_FAILED_MESSAGE, 0, error);
     } finally {
         clearTimeout(timeout);
     }

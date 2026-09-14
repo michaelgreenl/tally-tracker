@@ -5,7 +5,7 @@ import { Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import { colors } from '../colors';
-import { getErrorMessage } from '../api';
+import { REQUEST_FAILED_MESSAGE } from '../api';
 import { useCounters } from '../counters';
 import { useSession } from '../session';
 import { CounterMenu } from './counter-menu';
@@ -17,33 +17,33 @@ type CounterCardProps = {
     onDelete: (counter: ClientCounter) => void;
     onEdit: (counter: ClientCounter) => void;
     onIncrement: (counterId: string, amount: number) => void;
+    onNotice: (message: string) => void;
 };
 
-export function CounterCard({ counter, onDelete, onEdit, onIncrement }: CounterCardProps) {
+export function CounterCard({ counter, onDelete, onEdit, onIncrement, onNotice }: CounterCardProps) {
     const { isPremium } = useSession();
     const { shareCounter } = useCounters();
     const [sharing, setSharing] = useState(false);
-    const [notice, setNotice] = useState('');
 
     async function share() {
         if (!isPremium || sharing) return;
         setSharing(true);
-        setNotice('');
+        onNotice('');
         try {
             const result = await shareCounter(counter.id);
             if (!result.success) {
-                setNotice(result.message);
+                onNotice(result.message);
                 return;
             }
             const url = createURL('/join', { queryParams: { code: result.inviteCode } });
             if (Platform.OS === 'web') {
                 await Clipboard.setStringAsync(url);
-                setNotice('Share link copied');
+                onNotice('Share link copied');
             } else {
                 await Share.share(Platform.OS === 'ios' ? { url } : { message: url });
             }
-        } catch (error: unknown) {
-            setNotice(getErrorMessage(error, 'Failed to share counter'));
+        } catch {
+            onNotice(REQUEST_FAILED_MESSAGE);
         } finally {
             setSharing(false);
         }
@@ -108,12 +108,6 @@ export function CounterCard({ counter, onDelete, onEdit, onIncrement }: CounterC
                     </Svg>
                 </Pressable>
             </View>
-
-            {Boolean(notice) && (
-                <Text accessibilityLiveRegion='polite' style={styles.notice}>
-                    {notice}
-                </Text>
-            )}
         </View>
     );
 }
@@ -182,9 +176,5 @@ const styles = StyleSheet.create({
         height: 44,
         alignItems: 'center',
         justifyContent: 'center',
-    },
-    notice: {
-        color: colors.muted,
-        fontSize: 14,
     },
 });

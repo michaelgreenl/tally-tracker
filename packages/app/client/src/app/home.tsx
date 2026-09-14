@@ -10,6 +10,7 @@ import { colors } from '../colors';
 import { CounterCard } from '../components/counter-card';
 import { CounterForm } from '../components/counter-form';
 import { Dialog } from '../components/dialog';
+import { Snackbar } from '../components/snackbar';
 import { TallyBrand } from '../components/tally-brand';
 import { GUEST_COUNTER_CAP, GUEST_COUNTER_LIMIT_MESSAGE, useCounters } from '../counters';
 import { useSession } from '../session';
@@ -24,6 +25,7 @@ export default function HomeScreen() {
     const [formOpen, setFormOpen] = useState(false);
     const [counterToEdit, setCounterToEdit] = useState<ClientCounter | null>(null);
     const [guestLimitOpen, setGuestLimitOpen] = useState(false);
+    const [notice, setNotice] = useState('');
 
     function openCreateForm() {
         if (!session.isAuthenticated && counterState.eligibleCount >= GUEST_COUNTER_CAP) {
@@ -120,6 +122,7 @@ export default function HomeScreen() {
                                             setFormOpen(true);
                                         }}
                                         onIncrement={(id, amount) => void counterState.incrementCounter(id, amount)}
+                                        onNotice={setNotice}
                                     />
                                 ))}
                             </View>
@@ -185,6 +188,7 @@ export default function HomeScreen() {
                         </Pressable>
                     </View>
                 </Dialog>
+                <Snackbar message={notice} onDismiss={() => setNotice('')} />
             </SafeAreaView>
         </>
     );

@@ -46,7 +46,7 @@ describe('Counter actions', () => {
         cy.intercept('GET', '**/counters', { body: { success: true, data: { counters: [counter] } } });
         cy.intercept('POST', `**/counters/${counter.id}/share`, {
             statusCode: 503,
-            body: { success: false, message: 'Sharing unavailable' },
+            body: { success: false, message: 'Database connection refused' },
         }).as('failedShare');
         cy.visit('/login', {
             onBeforeLoad(win) {
@@ -56,11 +56,33 @@ describe('Counter actions', () => {
         cy.get('[data-testid="auth-email"]').type('premium@example.com');
         cy.get('[data-testid="auth-password"]').type('Password123');
         cy.get('[data-testid="auth-submit"]').click();
+        let cardHeight = 0;
+        cy.get(`[data-testid="counter-${counter.id}"]`).then(($card) => {
+            cardHeight = $card[0].getBoundingClientRect().height;
+        });
         cy.get(`[data-testid="counter-${counter.id}-menu"]`).click();
         cy.get(`[data-testid="counter-${counter.id}-share"]`).should('be.enabled').click();
         cy.wait('@failedShare');
-        cy.get(`[data-testid="counter-${counter.id}"]`).should('contain.text', 'Sharing unavailable');
+        cy.get('[data-testid="snackbar"]')
+            .should('be.visible')
+            .and('not.contain.text', 'Database connection refused')
+            .should(($banner) => {
+                const bounds = $banner[0].getBoundingClientRect();
+                const viewport = $banner[0].ownerDocument.defaultView!;
+                expect(bounds.left, 'message stays inside viewport').to.be.at.least(0);
+                expect(bounds.right, 'message stays inside viewport').to.be.at.most(viewport.innerWidth);
+                expect(bounds.bottom, 'message stays above page bottom').to.be.at.most(viewport.innerHeight);
+            });
+        cy.get(`[data-testid="counter-${counter.id}"]`).should(($card) => {
+            expect($card[0].getBoundingClientRect().height, 'message does not resize the card').to.equal(cardHeight);
+        });
         cy.get('@clipboard').should('not.have.been.called');
+        cy.get('[data-testid="snackbar-dismiss"]').click();
+        cy.get('[data-testid="snackbar"]').should('not.exist');
+        cy.get(`[data-testid="counter-${counter.id}-menu"]`).click();
+        cy.get(`[data-testid="counter-${counter.id}-share"]`).click();
+        cy.wait('@failedShare');
+        cy.get('[data-testid="snackbar"]').should('be.visible');
 
         const inviteCode = crypto.randomUUID();
         cy.intercept('POST', `**/counters/${counter.id}/share`, {
@@ -78,5 +100,6 @@ describe('Counter actions', () => {
             'have.been.calledOnceWithExactly',
             `${Cypress.config('baseUrl')}/join?code=${inviteCode}`,
         );
+        cy.get('[data-testid="snackbar"]').should('be.visible');
     });
 });
