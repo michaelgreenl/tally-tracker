@@ -60,19 +60,23 @@ describe('Expo full-stack counter journey', () => {
                 title,
                 color: '#000000',
                 count: 0,
-                type: 'PERSONAL',
-                inviteCode: null,
             });
             expect(request.headers['x-idempotency-key']).to.be.a('string').and.not.be.empty;
             expect(response?.statusCode).to.eq(CREATED);
         });
 
-        cy.intercept('PUT', '**/counters/*/count').as('incrementCounter');
+        cy.then(() => {
+            cy.get(`[data-testid="counter-${counterId}-menu"]`).click();
+            cy.get(`[data-testid="counter-${counterId}-share"]`).should('be.disabled');
+            cy.get(`[data-testid="counter-${counterId}-menu"]`).click();
+        });
+
+        cy.intercept('PUT', '**/counters/increment/*').as('incrementCounter');
         cy.then(() => {
             cy.get(`[data-testid="counter-${counterId}-increase"]`).click();
         });
         cy.wait('@incrementCounter').then(({ request, response }) => {
-            expect(request.body).to.deep.equal({ count: 1 });
+            expect(request.body).to.deep.equal({ amount: 1 });
             expect(request.headers['x-idempotency-key']).to.be.a('string').and.not.be.empty;
             expect(response?.statusCode).to.eq(OK);
         });

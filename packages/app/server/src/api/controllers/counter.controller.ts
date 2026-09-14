@@ -39,31 +39,13 @@ export const post = async (
     try {
         const result = await runIdempotentMutation<CounterResponse>(req, async (tx) => {
             const userId = req.user?.id;
-            const { id, title, count, color, type, inviteCode } = req.body;
+            const { id, title, count, color } = req.body;
 
             if (!userId) {
                 return { status: BAD_REQUEST, body: { success: false, message: 'Invalid userId' } };
             }
 
-            if (type === 'SHARED') {
-                const user = await userRepository.getUserTierById(userId, tx);
-
-                if (!user) {
-                    return { status: NOT_FOUND, body: { success: false, message: 'User not found' } };
-                }
-
-                if (user.tier === 'BASIC') {
-                    return {
-                        status: FORBIDDEN,
-                        body: {
-                            success: false,
-                            message: 'Basic accounts cannot create shared counters.',
-                        },
-                    };
-                }
-            }
-
-            const counter = await counterRepository.post({ id, userId, title, count, color, type, inviteCode }, tx);
+            const counter = await counterRepository.post({ id, userId, title, count, color }, tx);
 
             if (!counter) {
                 return { status: NOT_FOUND, body: { success: false, message: 'Counter not found' } };
@@ -87,6 +69,29 @@ export const post = async (
             success: false,
             message: 'Server error: ' + getErrorMessage(error),
         });
+    }
+};
+
+export const share = async (req: Request, res: Response<CounterResponse>) => {
+    try {
+        const result = await runIdempotentMutation<CounterResponse>(req, async (tx) => {
+            const userId = req.user?.id;
+            if (!userId) return { status: BAD_REQUEST, body: { success: false, message: 'Invalid userId' } };
+
+            const user = await userRepository.getUserTierById(userId, tx);
+            if (!user) return { status: NOT_FOUND, body: { success: false, message: 'User not found' } };
+            if (user.tier !== 'PREMIUM') {
+                return { status: FORBIDDEN, body: { success: false, message: 'Sharing requires premium access.' } };
+            }
+
+            const counter = await counterRepository.share({ counterId: req.params.counterId as string, userId }, tx);
+            if (!counter) return { status: NOT_FOUND, body: { success: false, message: 'Counter not found' } };
+            return { status: OK, body: { success: true, data: { counter } } };
+        });
+        return sendMutationResponse(res, result);
+    } catch (error: unknown) {
+        captureServerError(error, { req, source: 'counter.share' });
+        return res.status(SERVER_ERROR).json({ success: false, message: 'Failed to share counter' });
     }
 };
 

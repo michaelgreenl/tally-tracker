@@ -42,8 +42,6 @@ export const CounterService = {
                 title: counter.title,
                 color: counter.color,
                 count: counter.count,
-                type: counter.type,
-                inviteCode: counter.inviteCode,
             },
         });
     },
@@ -54,9 +52,9 @@ export const CounterService = {
 
     increment(counter: ClientCounter, amount: number) {
         return command({
-            type: counter.type === 'SHARED' ? 'INCREMENT' : 'SET_COUNT',
+            type: 'INCREMENT',
             entityId: counter.id,
-            payload: counter.type === 'SHARED' ? { amount } : { count: counter.count },
+            payload: { amount },
         });
     },
 
@@ -70,6 +68,16 @@ export const CounterService = {
             payload: {},
         });
         void SyncManager.processQueue();
+    },
+
+    async share(counterId: string) {
+        const userId = await queuedUserId();
+        await SyncManager.processQueue();
+        const pending = await SyncQueue.get();
+        if (pending.some((item) => item.entityId === counterId && item.queuedByUserId === userId)) {
+            throw new Error('Wait for this counter to sync, then try sharing again.');
+        }
+        return apiFetch<CounterResponse>(`/counters/${counterId}/share`, { method: 'POST' });
     },
 
     join(inviteCode: string) {

@@ -1,17 +1,14 @@
 import { useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Path } from 'react-native-svg';
 
 import { colors } from '../colors';
 import { useCounters } from '../counters';
-import { useSession } from '../session';
 import { FormField } from './auth-form';
-import { Checkbox } from './checkbox';
 import { CounterSheet } from './counter-sheet';
 import { CustomColorPicker } from './custom-color-picker';
 
-import type { ClientCounter, CounterTypeType as CounterType, HexColor } from '@tally/core/client';
+import type { ClientCounter, HexColor } from '@tally/core/client';
 
 type CounterFormProps = {
     visible: boolean;
@@ -24,12 +21,10 @@ const colorChoices = ['#000000', '#0f7899', '#2563eb', '#7c3aed', '#be123c', '#1
 const isHexColor = (value: string): value is HexColor => /^#(?:[0-9a-fA-F]{3}){1,2}$/.test(value);
 
 export function CounterForm({ visible, counter, onCancel, onDone }: CounterFormProps) {
-    const session = useSession();
     const counterState = useCounters();
     const insets = useSafeAreaInsets();
     const [title, setTitle] = useState(counter?.title || '');
     const [color, setColor] = useState(counter?.color || '#000000');
-    const [type, setType] = useState<CounterType>(counter?.type || 'PERSONAL');
     const [errorMessage, setErrorMessage] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -40,7 +35,6 @@ export function CounterForm({ visible, counter, onCancel, onDone }: CounterFormP
         if (visible) {
             setTitle(counter?.title || '');
             setColor(counter?.color || '#000000');
-            setType(counter?.type || 'PERSONAL');
             setErrorMessage('');
         }
     }
@@ -63,8 +57,8 @@ export function CounterForm({ visible, counter, onCancel, onDone }: CounterFormP
         setLoading(true);
         setErrorMessage('');
         const result = counter
-            ? await counterState.updateCounter(counter.id, { title, color, type })
-            : await counterState.createCounter(title, color, type);
+            ? await counterState.updateCounter(counter.id, { title, color })
+            : await counterState.createCounter(title, color);
         setLoading(false);
 
         if (!result.success) {
@@ -164,35 +158,6 @@ export function CounterForm({ visible, counter, onCancel, onDone }: CounterFormP
                         </ScrollView>
                     </View>
 
-                    {!counter && (
-                        <View style={styles.shareRow}>
-                            <Checkbox
-                                label='Enable sharing'
-                                disabled={!session.isPremium || loading}
-                                onValueChange={(enabled) => setType(enabled ? 'SHARED' : 'PERSONAL')}
-                                value={type === 'SHARED'}
-                                testID='counter-sharing'
-                            />
-                            <Text style={styles.label}>Enable sharing</Text>
-                            <Svg
-                                accessibilityLabel='Premium feature'
-                                accessibilityRole='image'
-                                width={18}
-                                height={18}
-                                viewBox='0 0 24 24'
-                            >
-                                <Path
-                                    d='m3 6 4 4 5-7 5 7 4-4-2 12H5L3 6Zm3 15h12'
-                                    fill='none'
-                                    stroke={colors.warning}
-                                    strokeWidth={1.8}
-                                    strokeLinecap='round'
-                                    strokeLinejoin='round'
-                                />
-                            </Svg>
-                        </View>
-                    )}
-
                     {Boolean(errorMessage) && (
                         <View
                             accessibilityLiveRegion='polite'
@@ -257,12 +222,6 @@ const styles = StyleSheet.create({
     },
     colorSelected: {
         boxShadow: `0 0 0 3px ${colors.link}`,
-    },
-    shareRow: {
-        minHeight: 44,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
     },
     errorBox: {
         padding: 12,

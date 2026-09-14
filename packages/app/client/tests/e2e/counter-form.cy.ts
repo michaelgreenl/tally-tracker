@@ -44,7 +44,6 @@ describe('Counter sheet', () => {
 
     it('saves custom picker colors and loads them when editing', () => {
         cy.get('[data-testid="add-counter-button"]').click();
-        cy.get('[data-testid="counter-sharing"]').should('be.disabled').and('not.be.checked');
         cy.get('[data-testid="counter-form-submit"]').click();
         cy.get('[data-testid="counter-form-error"]').should('be.visible');
         cy.get('[data-testid="counter-title"]').type('Custom color');
@@ -62,6 +61,7 @@ describe('Counter sheet', () => {
                 cy.get('[data-testid="counter-form-submit"]').click();
                 cy.get('[data-testid="home-counter-form"]').should('not.exist');
                 cy.reload();
+                cy.get('[data-testid^="counter-"][data-testid$="-menu"]').click();
                 cy.get('[data-testid^="counter-"][data-testid$="-edit"]').click();
                 cy.get('[data-testid="counter-custom-color"]').should('have.attr', 'aria-label', chosenColor);
             });
@@ -70,6 +70,7 @@ describe('Counter sheet', () => {
         cy.get('[data-testid="counter-form-submit"]').click();
         cy.get('[data-testid="home-counter-form"]').should('not.exist');
         cy.reload();
+        cy.get('[data-testid^="counter-"][data-testid$="-menu"]').click();
         cy.get('[data-testid^="counter-"][data-testid$="-edit"]').click();
         cy.get('[data-testid="counter-custom-color"]').should(
             'have.attr',

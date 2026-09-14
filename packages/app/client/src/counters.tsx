@@ -7,7 +7,7 @@ import { SyncManager } from './services/sync-manager';
 import { connectSocket, disconnectSocket, subscribeToCounterUpdates } from './socket';
 import { useSession } from './session';
 
-import type { ClientCounter, CounterTypeType as CounterType, HexColor, UpdateCounterRequest } from '@tally/core/client';
+import type { ClientCounter, HexColor, UpdateCounterRequest } from '@tally/core/client';
 import type { PropsWithChildren } from 'react';
 
 type ActionResult = { success: true } | { success: false; message: string };
@@ -17,7 +17,10 @@ type CounterContextValue = {
     loading: boolean;
     syncError: boolean;
     eligibleCount: number;
-    createCounter: (title: string, color: HexColor, type: CounterType) => Promise<ActionResult>;
+    createCounter: (title: string, color: HexColor) => Promise<ActionResult>;
+    shareCounter: (
+        counterId: string,
+    ) => Promise<{ success: true; inviteCode: string } | { success: false; message: string }>;
     incrementCounter: (counterId: string, amount: number) => Promise<ActionResult>;
     updateCounter: (counterId: string, updates: UpdateCounterRequest) => Promise<ActionResult>;
     deleteCounter: (counter: ClientCounter) => Promise<ActionResult>;
@@ -64,11 +67,6 @@ export const reconcileAuthenticatedCounters = (
         guestCounters,
         syncError: remoteCounters === null,
     };
-};
-
-const inviteCode = () => {
-    const alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    return Array.from(Crypto.getRandomBytes(8), (byte) => alphabet[byte % alphabet.length]).join('');
 };
 
 export function CounterProvider({ children }: PropsWithChildren) {
@@ -162,13 +160,12 @@ export function CounterProvider({ children }: PropsWithChildren) {
         };
     }, [replaceCounters, session.ready, session.user?.id]);
 
-    async function createCounter(title: string, color: HexColor, type: CounterType): Promise<ActionResult> {
+    async function createCounter(title: string, color: HexColor): Promise<ActionResult> {
         const cleanTitle = title.trim();
         if (!cleanTitle) return fail('Counter title is required');
         if (!session.isAuthenticated && isGuestCounterLimitReached(countersRef.current)) {
             return fail(GUEST_COUNTER_LIMIT_MESSAGE);
         }
-        if (type === 'SHARED' && !session.isPremium) return fail('Sharing requires premium access');
 
         const counter: ClientCounter = {
             id: Crypto.randomUUID(),
@@ -176,8 +173,8 @@ export function CounterProvider({ children }: PropsWithChildren) {
             color,
             count: 0,
             userId: session.user?.id || 'guest',
-            type,
-            inviteCode: type === 'SHARED' ? inviteCode() : null,
+            type: 'PERSONAL',
+            inviteCode: null,
         };
 
         try {
@@ -234,6 +231,25 @@ export function CounterProvider({ children }: PropsWithChildren) {
         }
     }
 
+    async function shareCounter(counterId: string) {
+        if (!session.isPremium) return { success: false as const, message: 'Sharing requires premium access.' };
+        try {
+            const response = await CounterService.share(counterId);
+            const inviteCode = response.data?.counter?.inviteCode;
+            if (!response.success || !inviteCode) {
+                return { success: false as const, message: response.message || 'Failed to share counter' };
+            }
+            await replaceCounters(
+                countersRef.current.map((counter) =>
+                    counter.id === counterId ? { ...counter, type: 'SHARED', inviteCode } : counter,
+                ),
+            );
+            return { success: true as const, inviteCode };
+        } catch (error: unknown) {
+            return { success: false as const, message: getErrorMessage(error, 'Failed to share counter') };
+        }
+    }
+
     async function joinCounter(code: string): Promise<ActionResult> {
         setLoading(true);
 
@@ -271,6 +287,7 @@ export function CounterProvider({ children }: PropsWithChildren) {
                 syncError,
                 eligibleCount: counters.filter(isGuestEligible).length,
                 createCounter,
+                shareCounter,
                 incrementCounter,
                 updateCounter,
                 deleteCounter,

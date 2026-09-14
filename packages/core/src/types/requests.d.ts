@@ -1,5 +1,5 @@
 import { HexColor } from './index';
-import { UserTier, CounterTypeType as CounterType, ShareStatusType } from './generated/index.ts';
+import { UserTier, ShareStatusType } from './generated/index.ts';
 
 export interface AccessTokenPayload {
     id: string;
@@ -51,14 +51,11 @@ export interface CreateCounterRequest {
     title: string;
     count?: number;
     color?: HexColor;
-    type?: CounterType;
-    inviteCode?: string;
 }
 
 export interface UpdateCounterRequest {
     title?: string;
     color?: HexColor;
-    type?: CounterType;
 }
 
 export interface SetCounterCountRequest {

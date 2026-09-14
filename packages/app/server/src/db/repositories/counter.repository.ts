@@ -1,5 +1,6 @@
 import prisma from '../prisma.js';
 import { Prisma } from '@prisma/client';
+import { randomUUID } from 'node:crypto';
 
 import type { ShareStatusType, CounterTypeType as CounterType } from '@tally/core';
 
@@ -12,16 +13,12 @@ export const post = async (
         title,
         count,
         color,
-        type,
-        inviteCode,
     }: {
         id?: string; // Client-generated UUID for optimistic/offline creation
         userId: string;
         title: string;
         count?: number;
         color?: string;
-        type?: CounterType;
-        inviteCode?: string;
     },
     db: DbClient = prisma,
 ) => {
@@ -32,8 +29,6 @@ export const post = async (
             title,
             count,
             color,
-            type,
-            inviteCode,
         },
     });
 };
@@ -92,6 +87,18 @@ export const getByIdOrShare = async (
             ],
         },
     });
+
+export const share = async (input: { counterId: string; userId: string }, db: DbClient = prisma) => {
+    const counter = await getByIdOrShare(input, db);
+    if (!counter || counter.inviteCode) return counter;
+
+    // A concurrent request must reuse the first link, not replace it.
+    await db.counter.updateMany({
+        where: { id: counter.id, inviteCode: null },
+        data: { type: 'SHARED', inviteCode: randomUUID() },
+    });
+    return getByIdOrShare(input, db);
+};
 
 // Returns all user IDs that should receive socket broadcasts for this counter
 export const getParticipants = async (counterId: string, db: DbClient = prisma) => {

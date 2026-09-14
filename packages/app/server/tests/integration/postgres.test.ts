@@ -3,6 +3,7 @@ import type { PrismaClient } from '@prisma/client';
 import type { Express } from 'express';
 import request from 'supertest';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { Server } from 'socket.io';
 
 import { digestEmailOtp } from '../../src/services/email-otp.service.js';
 
@@ -17,9 +18,89 @@ beforeAll(async () => {
 
     app = loadedApp;
     prisma = loadedPrisma;
+    app.set('io', new Server());
 });
 
+async function sharingAccount(tier: 'BASIC' | 'PREMIUM') {
+    const email = `sharing.${randomUUID()}@example.com`;
+    const password = 'Integration-password1';
+    await request(app).post('/users').send({ email, password }).expect(201);
+    const login = await request(app).post('/users/login').send({ email, password }).expect(200);
+    const { user, accessToken } = login.body.data;
+    await prisma.user.update({ where: { id: user.id }, data: { tier } });
+    return { id: user.id as string, authorization: `Bearer ${accessToken}` };
+}
+
 describe('PostgreSQL integration', () => {
+    it('denies sharing to basic owners and unrelated premium users without changing the counter', async () => {
+        const owner = await sharingAccount('BASIC');
+        const outsider = await sharingAccount('PREMIUM');
+        const created = await request(app)
+            .post('/counters')
+            .set('Authorization', owner.authorization)
+            .send({ title: 'Private counter', count: 7 })
+            .expect(201);
+        const counter = created.body.data.counter;
+
+        await request(app).post(`/counters/${counter.id}/share`).expect(401);
+        await request(app).post(`/counters/${counter.id}/share`).set('Authorization', owner.authorization).expect(403);
+        await request(app)
+            .post(`/counters/${counter.id}/share`)
+            .set('Authorization', outsider.authorization)
+            .expect(404);
+        expect(await prisma.counter.findUnique({ where: { id: counter.id } })).toMatchObject({
+            type: 'PERSONAL',
+            inviteCode: null,
+            count: 7,
+        });
+    });
+
+    it('reuses one invite for concurrent share requests and preserves count updates after sharing', async () => {
+        const owner = await sharingAccount('PREMIUM');
+        const member = await sharingAccount('PREMIUM');
+        const created = await request(app)
+            .post('/counters')
+            .set('Authorization', owner.authorization)
+            .send({ title: 'Share an existing counter', count: 7 })
+            .expect(201);
+        const counterId = created.body.data.counter.id;
+        const share = () => request(app).post(`/counters/${counterId}/share`).set('Authorization', owner.authorization);
+
+        const [first, second] = await Promise.all([share().expect(200), share().expect(200)]);
+        const inviteCode = first.body.data.counter.inviteCode;
+        expect(inviteCode).toMatch(/^[0-9a-f-]{36}$/);
+        expect(second.body.data.counter.inviteCode).toBe(inviteCode);
+        await request(app)
+            .post('/counters/join')
+            .set('Authorization', member.authorization)
+            .send({ inviteCode })
+            .expect(201);
+
+        // An owner can still have a PERSONAL snapshot when another device starts sharing.
+        await Promise.all(
+            [owner, member].map(({ authorization }) =>
+                request(app)
+                    .put(`/counters/increment/${counterId}`)
+                    .set('Authorization', authorization)
+                    .send({ amount: 1 })
+                    .expect(200),
+            ),
+        );
+        const forwarded = await request(app)
+            .post(`/counters/${counterId}/share`)
+            .set('Authorization', member.authorization)
+            .expect(200);
+        expect(forwarded.body.data.counter.inviteCode).toBe(inviteCode);
+        expect(await prisma.counter.findUnique({ where: { id: counterId } })).toMatchObject({
+            count: 9,
+            type: 'SHARED',
+            inviteCode,
+        });
+
+        await prisma.user.update({ where: { id: owner.id }, data: { tier: 'BASIC' } });
+        await share().expect(403);
+    });
+
     it('normalizes mixed-case email registration and login while rejecting a case-insensitive duplicate', async () => {
         const email = `Mixed.${randomUUID()}@Example.COM`;
         const password = 'Integration-password1';
@@ -211,7 +292,7 @@ describe('PostgreSQL integration', () => {
                 .post('/counters')
                 .set('Authorization', `Bearer ${accessToken}`)
                 .set('X-Idempotency-Key', idempotencyKey)
-                .send({ id: counterId, title: 'Idempotent personal counter', type: 'PERSONAL' });
+                .send({ id: counterId, title: 'Idempotent personal counter' });
 
         const firstCreate = await createCounter();
         const replayedCreate = await createCounter();
@@ -266,7 +347,6 @@ describe('PostgreSQL integration', () => {
         const ownerEmail = `owner.${suffix}@example.com`;
         const memberEmail = `member.${suffix}@example.com`;
         const counterId = randomUUID();
-        const inviteCode = `integration-share-${suffix}`;
         const ownerAgent = request.agent(app);
         const memberAgent = request.agent(app);
 
@@ -293,13 +373,13 @@ describe('PostgreSQL integration', () => {
             .send({
                 id: counterId,
                 title: 'Real shared counter',
-                type: 'SHARED',
-                inviteCode,
             });
         expect(createShared.status).toBe(201);
-        expect(createShared.body.data.counter).toEqual(
-            expect.objectContaining({ id: counterId, userId: owner.id, type: 'SHARED', inviteCode }),
-        );
+        const shared = await ownerAgent
+            .post(`/counters/${counterId}/share`)
+            .set('Authorization', `Bearer ${ownerAccessToken}`);
+        expect(shared.status).toBe(200);
+        const inviteCode = shared.body.data.counter.inviteCode;
 
         const joinShared = await memberAgent
             .post('/counters/join')

@@ -26,7 +26,7 @@ export function CounterSheet({ visible, loading, onDismiss, children, footer }: 
                 <VStack
                     spacing={0}
                     modifiers={[
-                        presentationDetents([{ fraction: 0.65 }, { fraction: 0.9 }]),
+                        presentationDetents([{ fraction: 0.5 }, { fraction: 0.9 }]),
                         presentationDragIndicator('visible'),
                         interactiveDismissDisabled(loading),
                         presentationBackground(colors.surface),

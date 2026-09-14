@@ -1,9 +1,14 @@
 import * as Clipboard from 'expo-clipboard';
 import { createURL } from 'expo-linking';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import { useState } from 'react';
+import { Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import Svg, { Circle, Path } from 'react-native-svg';
 
 import { colors } from '../colors';
+import { getErrorMessage } from '../api';
+import { useCounters } from '../counters';
+import { useSession } from '../session';
+import { CounterMenu } from './counter-menu';
 
 import type { ClientCounter } from '@tally/core/client';
 
@@ -15,10 +20,33 @@ type CounterCardProps = {
 };
 
 export function CounterCard({ counter, onDelete, onEdit, onIncrement }: CounterCardProps) {
-    async function copyShareLink() {
-        if (!counter.inviteCode) return;
-        await Clipboard.setStringAsync(createURL('/join', { queryParams: { code: counter.inviteCode } }));
-        Alert.alert('Share link copied');
+    const { isPremium } = useSession();
+    const { shareCounter } = useCounters();
+    const [sharing, setSharing] = useState(false);
+    const [notice, setNotice] = useState('');
+
+    async function share() {
+        if (!isPremium || sharing) return;
+        setSharing(true);
+        setNotice('');
+        try {
+            const result = await shareCounter(counter.id);
+            if (!result.success) {
+                setNotice(result.message);
+                return;
+            }
+            const url = createURL('/join', { queryParams: { code: result.inviteCode } });
+            if (Platform.OS === 'web') {
+                await Clipboard.setStringAsync(url);
+                setNotice('Share link copied');
+            } else {
+                await Share.share(Platform.OS === 'ios' ? { url } : { message: url });
+            }
+        } catch (error: unknown) {
+            setNotice(getErrorMessage(error, 'Failed to share counter'));
+        } finally {
+            setSharing(false);
+        }
     }
 
     return (
@@ -28,6 +56,25 @@ export function CounterCard({ counter, onDelete, onEdit, onIncrement }: CounterC
                     {counter.title}
                 </Text>
                 {counter.type === 'SHARED' && <Text style={styles.sharedBadge}>Shared</Text>}
+                <CounterMenu
+                    counterId={counter.id}
+                    title={counter.title}
+                    isPremium={isPremium}
+                    busy={sharing}
+                    onAction={(action) => {
+                        if (action === 'edit') onEdit(counter);
+                        else if (action === 'delete') onDelete(counter);
+                        else void share();
+                    }}
+                >
+                    <View style={styles.menuButton}>
+                        <Svg aria-hidden width={24} height={24} viewBox='0 0 24 24' fill={colors.text}>
+                            <Circle cx={5} cy={12} r={2} />
+                            <Circle cx={12} cy={12} r={2} />
+                            <Circle cx={19} cy={12} r={2} />
+                        </Svg>
+                    </View>
+                </CounterMenu>
             </View>
 
             <View style={styles.counterRow}>
@@ -62,24 +109,11 @@ export function CounterCard({ counter, onDelete, onEdit, onIncrement }: CounterC
                 </Pressable>
             </View>
 
-            <View style={styles.actions}>
-                <Pressable
-                    accessibilityRole='button'
-                    hitSlop={6}
-                    onPress={() => onEdit(counter)}
-                    testID={`counter-${counter.id}-edit`}
-                >
-                    <Text style={styles.actionText}>Edit</Text>
-                </Pressable>
-                {counter.type === 'SHARED' && counter.inviteCode && (
-                    <Pressable accessibilityRole='button' hitSlop={6} onPress={() => void copyShareLink()}>
-                        <Text style={styles.actionText}>Share</Text>
-                    </Pressable>
-                )}
-                <Pressable accessibilityRole='button' hitSlop={6} onPress={() => onDelete(counter)}>
-                    <Text style={styles.deleteText}>Delete</Text>
-                </Pressable>
-            </View>
+            {Boolean(notice) && (
+                <Text accessibilityLiveRegion='polite' style={styles.notice}>
+                    {notice}
+                </Text>
+            )}
         </View>
     );
 }
@@ -87,7 +121,9 @@ export function CounterCard({ counter, onDelete, onEdit, onIncrement }: CounterC
 const styles = StyleSheet.create({
     card: {
         gap: 18,
-        padding: 20,
+        paddingTop: 12,
+        paddingHorizontal: 20,
+        paddingBottom: 28,
         backgroundColor: colors.surface,
         borderLeftWidth: 6,
         borderRadius: 14,
@@ -96,14 +132,14 @@ const styles = StyleSheet.create({
     },
     header: {
         flexDirection: 'row',
-        alignItems: 'flex-start',
+        alignItems: 'center',
         justifyContent: 'space-between',
         gap: 12,
     },
     title: {
         flex: 1,
         color: colors.text,
-        fontSize: 20,
+        fontSize: 24,
         fontWeight: '700',
     },
     sharedBadge: {
@@ -141,22 +177,14 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         textAlign: 'center',
     },
-    actions: {
-        flexDirection: 'row',
-        justifyContent: 'flex-end',
-        gap: 22,
-        paddingTop: 14,
-        borderTopWidth: 1,
-        borderTopColor: colors.divider,
+    menuButton: {
+        width: 44,
+        height: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
-    actionText: {
-        color: colors.link,
+    notice: {
+        color: colors.muted,
         fontSize: 14,
-        fontWeight: '700',
-    },
-    deleteText: {
-        color: colors.danger,
-        fontSize: 14,
-        fontWeight: '700',
     },
 });

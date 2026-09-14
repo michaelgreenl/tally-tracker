@@ -9,7 +9,7 @@ export function CounterSheet({ visible, loading, onDismiss, children, footer }: 
     return (
         <BottomSheet
             index={visible ? 0 : -1}
-            snapPoints={['65%', '90%']}
+            snapPoints={['50%', '90%']}
             enablePanDownToClose={!loading}
             onDismiss={onDismiss}
             backgroundStyle={{ backgroundColor: colors.surface }}

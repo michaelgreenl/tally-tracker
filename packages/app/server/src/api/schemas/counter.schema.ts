@@ -1,26 +1,16 @@
 import { z } from 'zod';
 
-import { CounterTypeSchema, HexColorSchema } from '@tally/core';
+import { HexColorSchema } from '@tally/core';
 
-const createCounterBaseSchema = z.object({
+const createCounterBaseSchema = z.strictObject({
     id: z.string().uuid('Invalid UUID').optional(),
     title: z.string().min(1, 'Title is required').max(50, 'Title is too long'),
     count: z.number().int().default(0).optional(),
     color: HexColorSchema.optional(),
 });
 
-const createPersonalCounterSchema = createCounterBaseSchema.extend({
-    type: z.literal('PERSONAL').optional(),
-    inviteCode: z.null().optional(),
-});
-
-const createSharedCounterSchema = createCounterBaseSchema.extend({
-    type: z.literal('SHARED'),
-    inviteCode: z.string().min(1, 'Shared counters must have an invite code'),
-});
-
 export const createCounterSchema = z.object({
-    body: z.union([createSharedCounterSchema, createPersonalCounterSchema]),
+    body: createCounterBaseSchema,
 });
 
 export const deleteCounterSchema = z.object({
@@ -42,7 +32,6 @@ export const updateCounterSchema = z.object({
     body: z.strictObject({
         title: z.string().min(1).max(50).optional(),
         color: HexColorSchema.optional().or(z.literal(null)),
-        type: CounterTypeSchema.optional(),
     }),
 });
 
