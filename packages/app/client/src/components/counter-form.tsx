@@ -25,6 +25,7 @@ export function CounterForm({ visible, counter, onCancel, onDone }: CounterFormP
     const insets = useSafeAreaInsets();
     const [title, setTitle] = useState(counter?.title || '');
     const [color, setColor] = useState(counter?.color || '#000000');
+    const [metric, setMetric] = useState(counter?.metric || '');
     const [errorMessage, setErrorMessage] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -35,6 +36,7 @@ export function CounterForm({ visible, counter, onCancel, onDone }: CounterFormP
         if (visible) {
             setTitle(counter?.title || '');
             setColor(counter?.color || '#000000');
+            setMetric(counter?.metric || '');
             setErrorMessage('');
         }
     }
@@ -57,8 +59,8 @@ export function CounterForm({ visible, counter, onCancel, onDone }: CounterFormP
         setLoading(true);
         setErrorMessage('');
         const result = counter
-            ? await counterState.updateCounter(counter.id, { title, color })
-            : await counterState.createCounter(title, color);
+            ? await counterState.updateCounter(counter.id, { title, color, metric })
+            : await counterState.createCounter(title, color, metric);
         setLoading(false);
 
         if (!result.success) {
@@ -109,7 +111,7 @@ export function CounterForm({ visible, counter, onCancel, onDone }: CounterFormP
                 <ScrollView
                     contentContainerStyle={styles.form}
                     keyboardShouldPersistTaps='handled'
-                    keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+                    keyboardDismissMode={Platform.select({ ios: 'interactive', android: 'on-drag', default: 'none' })}
                     testID='counter-form-scroll'
                 >
                     <FormField
@@ -121,6 +123,18 @@ export function CounterForm({ visible, counter, onCancel, onDone }: CounterFormP
                         returnKeyType='done'
                         testID='counter-title'
                         value={title}
+                    />
+
+                    <FormField
+                        editable={!loading}
+                        label='Metric (optional)'
+                        value={metric}
+                        onChangeText={setMetric}
+                        placeholder='e.g. 16oz water bottle'
+                        maxLength={80}
+                        returnKeyType='done'
+                        onSubmitEditing={() => void submit()}
+                        testID='counter-metric'
                     />
 
                     <View style={styles.field}>

@@ -40,7 +40,6 @@ const command = (id: string, type: MutationCommand['type'] = 'CREATE'): Mutation
 describe('SyncManager', () => {
     beforeEach(() => {
         SyncManager.dispose();
-        SyncManager.isSyncing = false;
         SyncManager.syncRequested = false;
         apiFetch.mockReset();
         authService.getCachedUser.mockReset();
@@ -68,23 +67,44 @@ describe('SyncManager', () => {
         expect(syncQueue.remove).not.toHaveBeenCalled();
     });
 
-    it('removes rejected client mutations and continues the queue', async () => {
-        syncQueue.get.mockResolvedValue([command('bad'), command('good')]);
-        apiFetch.mockRejectedValueOnce(new ApiError('Invalid mutation', 422)).mockResolvedValueOnce({ success: true });
+    it.each(['DELETE', 'REMOVE'] as const)('completes an already-missing %s and continues the queue', async (type) => {
+        syncQueue.get.mockResolvedValue([command('missing', type), command('good')]);
+        apiFetch.mockRejectedValueOnce(new ApiError('Counter not found', 404)).mockResolvedValueOnce({ success: true });
 
         await expect(SyncManager.processQueuePass()).resolves.toBe(true);
         expect(syncQueue.remove).toHaveBeenCalledTimes(2);
-        expect(syncQueue.remove).toHaveBeenNthCalledWith(1, 'bad');
+        expect(syncQueue.remove).toHaveBeenNthCalledWith(1, 'missing');
         expect(syncQueue.remove).toHaveBeenNthCalledWith(2, 'good');
     });
 
-    it.each([0, 401, 500])('preserves the queue and stops after retryable status %s', async (status) => {
+    it.each([0, 401, 403, 404, 408, 422, 429, 500])('preserves failed writes after status %s', async (status) => {
         syncQueue.get.mockResolvedValue([command('retry'), command('later')]);
         apiFetch.mockRejectedValueOnce(new ApiError('Retry later', status));
 
         await expect(SyncManager.processQueuePass()).resolves.toBe(false);
         expect(apiFetch).toHaveBeenCalledOnce();
         expect(syncQueue.remove).not.toHaveBeenCalled();
+    });
+
+    it('reports a rejected create and retries the same queued write after recovery', async () => {
+        let queue = [command('retry')];
+        syncQueue.get.mockImplementation(async () => queue);
+        syncQueue.remove.mockImplementation(async (id: string) => {
+            queue = queue.filter((item) => item.id !== id);
+        });
+        const status = vi.fn();
+        SyncManager.init(status);
+        apiFetch.mockRejectedValueOnce(new ApiError('Invalid mutation', 422));
+
+        await SyncManager.processQueue();
+        expect(queue).toEqual([command('retry')]);
+        expect(status).toHaveBeenLastCalledWith('error');
+
+        apiFetch.mockResolvedValueOnce({ success: true });
+        await SyncManager.processQueue();
+        expect(queue).toEqual([]);
+        expect(status).toHaveBeenLastCalledWith('idle');
+        expect(apiFetch.mock.calls[1]).toEqual(apiFetch.mock.calls[0]);
     });
 
     it.each([

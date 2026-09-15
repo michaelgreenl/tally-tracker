@@ -37,7 +37,9 @@ BASIC BASIC
   "counters" {
     String id "PK"
     String title 
-    Int count 
+    Decimal count
+    Decimal increment
+    String metric "nullable"
     String color "nullable"
     CounterType type 
     String invite_code "nullable"

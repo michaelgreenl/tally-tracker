@@ -110,6 +110,7 @@ describe('Counter Routes', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         prismaMock.idempotencyLogs.clear();
+        vi.mocked(counterRepository.getParticipants).mockResolvedValue([TEST_USER_ID]);
         app.set('io', { to: () => ({ emit: vi.fn() }) });
     });
 
@@ -247,6 +248,19 @@ describe('Counter Routes', () => {
     });
 
     describe('PUT /counters/update/:counterId', () => {
+        it.each([
+            { increment: 0 },
+            { increment: -0.5 },
+            { increment: 0.0000001 },
+            { increment: 1_000_000_000 },
+            { increment: '0.5' },
+            { metric: 'x'.repeat(81) },
+        ])('rejects invalid counter settings: %j', async (body) => {
+            const response = await request(app).put(`/counters/update/${TEST_COUNTER_ID}`).send(body);
+            expect(response.status).toBe(UNPROCESSABLE_ENTITY);
+            expect(counterRepository.put).not.toHaveBeenCalled();
+        });
+
         it('should update counter fields', async () => {
             const counter = buildCounter({ title: 'Updated Title', color: '#FF0000' });
             vi.mocked(counterRepository.put).mockResolvedValue(counter);

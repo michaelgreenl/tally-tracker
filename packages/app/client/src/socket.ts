@@ -25,7 +25,11 @@ export const disconnectSocket = () => {
     if (socket.connected || socket.active) socket.disconnect();
 };
 
-export const subscribeToCounterUpdates = (listener: (counter: ClientCounter) => void) => {
+export const subscribeToCounterUpdates = (listener: (counter: ClientCounter) => void, onConnect: () => void) => {
     socket.on('counter-update', listener);
-    return () => socket.off('counter-update', listener);
+    socket.on('connect', onConnect);
+    return () => {
+        socket.off('counter-update', listener);
+        socket.off('connect', onConnect);
+    };
 };

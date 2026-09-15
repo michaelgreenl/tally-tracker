@@ -2,6 +2,14 @@ import * as Clipboard from 'expo-clipboard';
 import { createURL } from 'expo-linking';
 import { useState } from 'react';
 import { Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+    Easing,
+    FadeIn,
+    FadeOut,
+    LayoutAnimationConfig,
+    LinearTransition,
+    ReduceMotion,
+} from 'react-native-reanimated';
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import { colors } from '../colors';
@@ -9,6 +17,7 @@ import { REQUEST_FAILED_MESSAGE } from '../api';
 import { useCounters } from '../counters';
 import { useSession } from '../session';
 import { CounterMenu } from './counter-menu';
+import { CounterStepper } from './counter-stepper';
 
 import type { ClientCounter } from '@tally/core/client';
 
@@ -16,16 +25,29 @@ type CounterCardProps = {
     counter: ClientCounter;
     onDelete: (counter: ClientCounter) => void;
     onEdit: (counter: ClientCounter) => void;
+    onEditIncrement: (counter: ClientCounter) => void;
     onIncrement: (counterId: string, amount: number) => void;
     onNotice: (message: string) => void;
-    moveUp?: () => void;
-    moveDown?: () => void;
+    canReorder: boolean;
+    reordering: boolean;
+    onReorder: () => void;
 };
 
-export function CounterCard({ counter, onDelete, onEdit, onIncrement, onNotice, moveUp, moveDown }: CounterCardProps) {
+export function CounterCard({
+    counter,
+    onDelete,
+    onEdit,
+    onEditIncrement,
+    onIncrement,
+    onNotice,
+    canReorder,
+    reordering,
+    onReorder,
+}: CounterCardProps) {
     const { isPremium } = useSession();
     const { shareCounter } = useCounters();
     const [sharing, setSharing] = useState(false);
+    const increment = counter.increment ?? 1;
 
     async function share() {
         if (!isPremium || sharing) return;
@@ -52,82 +74,134 @@ export function CounterCard({ counter, onDelete, onEdit, onIncrement, onNotice, 
     }
 
     return (
-        <View style={[styles.card, { borderLeftColor: counter.color || '#343a40' }]} testID={`counter-${counter.id}`}>
-            <View style={styles.header}>
-                <Text accessibilityRole='header' aria-level={2} numberOfLines={2} style={styles.title}>
-                    {counter.title}
-                </Text>
-                {counter.type === 'SHARED' && <Text style={styles.sharedBadge}>Shared</Text>}
-                <CounterMenu
-                    counterId={counter.id}
-                    title={counter.title}
-                    isPremium={isPremium}
-                    busy={sharing}
-                    moveUp={moveUp}
-                    moveDown={moveDown}
-                    onAction={(action) => {
-                        if (action === 'edit') onEdit(counter);
-                        else if (action === 'delete') onDelete(counter);
-                        else void share();
-                    }}
-                >
-                    <View style={styles.menuButton}>
-                        <Svg aria-hidden width={24} height={24} viewBox='0 0 24 24' fill={colors.text}>
-                            <Circle cx={5} cy={12} r={2} />
-                            <Circle cx={12} cy={12} r={2} />
-                            <Circle cx={19} cy={12} r={2} />
-                        </Svg>
+        <LayoutAnimationConfig skipEntering>
+            <Animated.View layout={counterLayoutTransition} style={styles.card} testID={`counter-${counter.id}`}>
+                <View style={styles.header}>
+                    <View style={styles.titleRow}>
+                        <Text
+                            accessibilityRole='header'
+                            aria-level={2}
+                            numberOfLines={2}
+                            style={styles.title}
+                            testID={`counter-${counter.id}-title`}
+                        >
+                            {counter.title}
+                        </Text>
+                        {!reordering && Boolean(counter.metric) && (
+                            <Animated.Text
+                                entering={controlsEntering}
+                                exiting={controlsExiting}
+                                style={styles.metric}
+                                testID={`counter-${counter.id}-metric`}
+                            >
+                                {counter.metric}
+                            </Animated.Text>
+                        )}
                     </View>
-                </CounterMenu>
-            </View>
+                    {reordering ? (
+                        <Animated.View entering={controlsEntering} exiting={controlsExiting} style={styles.menuButton}>
+                            <Svg aria-hidden width={24} height={24} viewBox='0 0 24 24' fill='none'>
+                                <Path
+                                    d='M5 7h14M5 12h14M5 17h14'
+                                    stroke={colors.muted}
+                                    strokeWidth={2}
+                                    strokeLinecap='round'
+                                />
+                            </Svg>
+                        </Animated.View>
+                    ) : (
+                        <Animated.View entering={controlsEntering} exiting={controlsExiting}>
+                            <CounterMenu
+                                counterId={counter.id}
+                                title={counter.title}
+                                isPremium={isPremium}
+                                busy={sharing}
+                                canReorder={canReorder}
+                                onAction={(action) => {
+                                    if (action === 'edit') onEdit(counter);
+                                    else if (action === 'delete') onDelete(counter);
+                                    else if (action === 'reorder') onReorder();
+                                    else void share();
+                                }}
+                            >
+                                <View style={styles.menuButton}>
+                                    <Svg aria-hidden width={24} height={24} viewBox='0 0 24 24' fill={colors.text}>
+                                        <Circle cx={5} cy={12} r={2} />
+                                        <Circle cx={12} cy={12} r={2} />
+                                        <Circle cx={19} cy={12} r={2} />
+                                    </Svg>
+                                </View>
+                            </CounterMenu>
+                        </Animated.View>
+                    )}
+                </View>
 
-            <View style={styles.counterRow}>
-                <Pressable
-                    accessibilityLabel={`Decrease ${counter.title}`}
-                    accessibilityRole='button'
-                    onPress={() => onIncrement(counter.id, -1)}
-                    style={({ pressed }) => [styles.countButton, pressed && styles.buttonPressed]}
-                    testID={`counter-${counter.id}-decrease`}
-                >
-                    <Svg aria-hidden width={24} height={24} viewBox='0 0 24 24' fill='none'>
-                        <Path d='M5 12h14' stroke={colors.onPrimary} strokeWidth={2} strokeLinecap='round' />
-                    </Svg>
-                </Pressable>
-                <Text
-                    accessibilityLabel={`${counter.title} count ${counter.count}`}
-                    style={styles.count}
-                    testID={`counter-${counter.id}-count`}
-                >
-                    {counter.count}
-                </Text>
-                <Pressable
-                    accessibilityLabel={`Increase ${counter.title}`}
-                    accessibilityRole='button'
-                    onPress={() => onIncrement(counter.id, 1)}
-                    style={({ pressed }) => [styles.countButton, pressed && styles.buttonPressed]}
-                    testID={`counter-${counter.id}-increase`}
-                >
-                    <Svg aria-hidden width={24} height={24} viewBox='0 0 24 24' fill='none'>
-                        <Path d='M12 5v14M5 12h14' stroke={colors.onPrimary} strokeWidth={2} strokeLinecap='round' />
-                    </Svg>
-                </Pressable>
-            </View>
-        </View>
+                {!reordering && (
+                    <Animated.View entering={controlsEntering} exiting={controlsExiting} style={styles.controls}>
+                        <CounterStepper
+                            value={counter.count}
+                            increment={increment}
+                            label={counter.title}
+                            testID={`counter-${counter.id}`}
+                            onIncrement={(amount) => onIncrement(counter.id, amount)}
+                        />
+
+                        <View style={styles.footer}>
+                            {counter.type === 'SHARED' && (
+                                <View accessible accessibilityLabel='Shared counter' accessibilityRole='image'>
+                                    <Svg
+                                        aria-hidden
+                                        width={20}
+                                        height={20}
+                                        viewBox='0 0 24 24'
+                                        fill='none'
+                                        stroke={colors.muted}
+                                        strokeWidth={1.8}
+                                        strokeLinecap='round'
+                                        strokeLinejoin='round'
+                                    >
+                                        <Circle cx={9} cy={8} r={3} />
+                                        <Path d='M3 20v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6M18 14a5 5 0 0 1 3 4v2' />
+                                    </Svg>
+                                </View>
+                            )}
+                            <Pressable
+                                accessibilityLabel={`Change increment for ${counter.title}, currently ${increment}`}
+                                accessibilityRole='button'
+                                onPress={() => onEditIncrement(counter)}
+                                style={({ pressed }) => [styles.incrementButton, pressed && styles.incrementPressed]}
+                                testID={`counter-${counter.id}-increment`}
+                            >
+                                <Text style={styles.incrementText}>± {increment}</Text>
+                            </Pressable>
+                        </View>
+                    </Animated.View>
+                )}
+            </Animated.View>
+        </LayoutAnimationConfig>
     );
 }
+
+export const counterLayoutTransition = LinearTransition.duration(280)
+    .easing(Easing.out(Easing.cubic))
+    .reduceMotion(ReduceMotion.System);
+const controlsEntering = FadeIn.duration(180).delay(80).reduceMotion(ReduceMotion.System);
+const controlsExiting = FadeOut.duration(120).reduceMotion(ReduceMotion.System);
 
 const styles = StyleSheet.create({
     card: {
         gap: 18,
-        paddingTop: 12,
-        paddingHorizontal: 20,
-        paddingBottom: 28,
+        paddingTop: 16,
+        paddingRight: 20,
+        paddingBottom: 20,
+        paddingLeft: 26,
         backgroundColor: colors.surface,
-        borderLeftWidth: 6,
-        borderRadius: 14,
+        borderRadius: 16,
         boxShadow: '0 3px 10px rgba(0, 0, 0, 0.12)',
         elevation: 3,
+        overflow: 'hidden',
     },
+    controls: { gap: 18 },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -135,45 +209,47 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     title: {
-        flex: 1,
+        flexShrink: 1,
         color: colors.text,
         fontSize: 24,
         fontWeight: '700',
     },
-    sharedBadge: {
-        paddingHorizontal: 9,
-        paddingVertical: 4,
-        color: colors.link,
-        fontSize: 12,
-        fontWeight: '700',
-        backgroundColor: colors.infoSurface,
-        borderRadius: 999,
+    titleRow: {
+        flex: 1,
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        alignItems: 'baseline',
+        gap: 8,
     },
-    counterRow: {
+    metric: {
+        flexShrink: 1,
+        color: colors.muted,
+        fontSize: 14,
+        lineHeight: 20,
+    },
+    incrementButton: {
+        marginLeft: 'auto',
+        minWidth: 48,
+        minHeight: 48,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 10,
+    },
+    incrementPressed: {
+        backgroundColor: colors.input,
+    },
+    incrementText: {
+        color: colors.link,
+        fontSize: 16,
+        fontWeight: '600',
+        fontVariant: ['tabular-nums'],
+    },
+    footer: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        gap: 24,
-    },
-    countButton: {
-        width: 52,
-        height: 52,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: colors.primary,
-        borderRadius: 26,
-    },
-    buttonPressed: {
-        backgroundColor: colors.primaryPressed,
-        transform: [{ scale: 0.97 }],
-    },
-    count: {
-        minWidth: 80,
-        color: colors.text,
-        fontSize: 38,
-        fontVariant: ['tabular-nums'],
-        fontWeight: '800',
-        textAlign: 'center',
+        justifyContent: 'space-between',
+        marginTop: -12,
+        marginBottom: -12,
     },
     menuButton: {
         width: 44,

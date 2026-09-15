@@ -1,4 +1,4 @@
-import { UNAUTHORIZED } from '@tally/core/client';
+import { NOT_FOUND } from '@tally/core/client';
 import * as Network from 'expo-network';
 
 import apiFetch, { ApiError } from '../api';
@@ -15,12 +15,16 @@ import type {
 } from '@tally/core/client';
 
 let networkSubscription: ReturnType<typeof Network.addNetworkStateListener> | null = null;
+let activeSync: Promise<void> | null = null;
+export type SyncStatus = 'idle' | 'syncing' | 'error';
+let onStatusChange: ((status: SyncStatus) => void) | null = null;
 
 export const SyncManager = {
-    isSyncing: false,
     syncRequested: false,
 
-    init() {
+    init(listener: (status: SyncStatus) => void) {
+        onStatusChange = listener;
+        listener(activeSync ? 'syncing' : 'idle');
         if (networkSubscription) return;
         networkSubscription = Network.addNetworkStateListener((status) => {
             if (status.isConnected) void this.processQueue();
@@ -30,26 +34,33 @@ export const SyncManager = {
     dispose() {
         networkSubscription?.remove();
         networkSubscription = null;
+        onStatusChange = null;
     },
 
-    async processQueue() {
-        if (this.isSyncing) {
+    processQueue(): Promise<void> {
+        if (activeSync) {
             this.syncRequested = true;
-            return;
+            return activeSync;
         }
 
-        this.isSyncing = true;
-
-        try {
-            let drained = true;
-            do {
+        onStatusChange?.('syncing');
+        activeSync = (async () => {
+            try {
+                let drained: boolean;
+                do {
+                    this.syncRequested = false;
+                    drained = await this.processQueuePass();
+                } while (drained && this.syncRequested);
+                onStatusChange?.(drained ? 'idle' : 'error');
+            } catch (error: unknown) {
+                onStatusChange?.('error');
+                console.warn('Counter sync failed', error);
+            } finally {
+                activeSync = null;
                 this.syncRequested = false;
-                drained = await this.processQueuePass();
-            } while (drained && this.syncRequested);
-        } finally {
-            this.isSyncing = false;
-            this.syncRequested = false;
-        }
+            }
+        })();
+        return activeSync;
     },
 
     async processQueuePass(): Promise<boolean> {
@@ -69,12 +80,13 @@ export const SyncManager = {
             } catch (error: unknown) {
                 const statusCode = error instanceof ApiError ? error.status || 0 : 0;
 
-                if (statusCode === UNAUTHORIZED) return false;
-                if (statusCode >= 400 && statusCode < 500) {
+                // An already-removed counter completes a removal, not a failed write.
+                if (statusCode === NOT_FOUND && (command.type === 'DELETE' || command.type === 'REMOVE')) {
                     await SyncQueue.remove(command.id);
                     continue;
                 }
 
+                // Keep rejected writes until a later retry succeeds. Never report them as synced.
                 return false;
             }
         }

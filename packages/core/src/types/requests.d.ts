@@ -51,11 +51,15 @@ export interface CreateCounterRequest {
     title: string;
     count?: number;
     color?: HexColor;
+    metric?: string | null;
+    increment?: number;
 }
 
 export interface UpdateCounterRequest {
     title?: string;
     color?: HexColor;
+    metric?: string | null;
+    increment?: number;
 }
 
 export interface SetCounterCountRequest {

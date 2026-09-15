@@ -10,21 +10,11 @@ export type CounterMenuProps = PropsWithChildren<{
     title: string;
     isPremium: boolean;
     busy: boolean;
-    moveUp?: () => void;
-    moveDown?: () => void;
-    onAction: (action: 'edit' | 'share' | 'delete') => void;
+    canReorder: boolean;
+    onAction: (action: 'edit' | 'share' | 'delete' | 'reorder') => void;
 }>;
 
-export function CounterMenu({
-    counterId,
-    title,
-    isPremium,
-    busy,
-    onAction,
-    moveUp,
-    moveDown,
-    children,
-}: CounterMenuProps) {
+export function CounterMenu({ counterId, title, isPremium, busy, canReorder, onAction, children }: CounterMenuProps) {
     const id = useId();
     const popover = useRef<HTMLDivElement>(null);
     const trigger = useRef<HTMLButtonElement>(null);
@@ -32,12 +22,7 @@ export function CounterMenu({
     const actions = [
         { id: 'edit', label: 'Edit', run: () => onAction('edit'), disabled: false },
         { id: 'share', label: shareLabel, run: () => onAction('share'), disabled: !isPremium || busy },
-        ...(moveUp || moveDown
-            ? [
-                  { id: 'move-up', label: 'Move up', run: moveUp, disabled: !moveUp },
-                  { id: 'move-down', label: 'Move down', run: moveDown, disabled: !moveDown },
-              ]
-            : []),
+        { id: 'reorder', label: 'Reorder', run: () => onAction('reorder'), disabled: !canReorder },
         { id: 'delete', label: 'Delete', run: () => onAction('delete'), disabled: false },
     ];
 

@@ -13,7 +13,7 @@ import { colors } from '../colors';
 import type { CounterSheetProps } from './counter-sheet';
 
 export function CounterSheet({ visible, loading, onDismiss, children, footer }: CounterSheetProps) {
-    const { width } = useWindowDimensions();
+    const { width, fontScale } = useWindowDimensions();
 
     return (
         <Host style={{ position: 'absolute', width }} pointerEvents='none'>
@@ -26,7 +26,7 @@ export function CounterSheet({ visible, loading, onDismiss, children, footer }: 
                 <VStack
                     spacing={0}
                     modifiers={[
-                        presentationDetents([{ fraction: 0.5 }, { fraction: 0.9 }]),
+                        presentationDetents([{ fraction: Math.min(0.5 * fontScale, 0.85) }, { fraction: 0.9 }]),
                         presentationDragIndicator('visible'),
                         interactiveDismissDisabled(loading),
                         presentationBackground(colors.surface),

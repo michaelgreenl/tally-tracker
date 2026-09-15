@@ -25,6 +25,8 @@ const counter = (type: ClientCounter['type']): ClientCounter => ({
     title: 'Counter',
     color: '#000000' as HexColor,
     count: 4,
+    metric: null,
+    increment: 1,
     inviteCode: type === 'SHARED' ? 'invite-1' : null,
     userId: 'user-1',
     type,

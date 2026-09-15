@@ -3,17 +3,19 @@ import Head from 'expo-router/head';
 import { useNetworkState } from 'expo-network';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import { colors } from '../colors';
 import { CounterCard } from '../components/counter-card';
 import { CounterForm } from '../components/counter-form';
+import { CounterIncrementDialog } from '../components/counter-increment-dialog';
 import { CounterList } from '../components/counter-list';
 import { Dialog } from '../components/dialog';
 import { Snackbar } from '../components/snackbar';
 import { TallyBrand } from '../components/tally-brand';
-import { GUEST_COUNTER_CAP, GUEST_COUNTER_LIMIT_MESSAGE, useCounters } from '../counters';
+import { ToolbarButton } from '../components/toolbar-button';
+import { GUEST_COUNTER_CAP, GUEST_COUNTER_LIMIT_MESSAGE, orderCounters, useCounters } from '../counters';
 import { useSession } from '../session';
 
 import type { ClientCounter } from '@tally/core/client';
@@ -23,10 +25,15 @@ export default function HomeScreen() {
     const network = useNetworkState();
     const session = useSession();
     const counterState = useCounters();
+    const insets = useSafeAreaInsets();
     const [formOpen, setFormOpen] = useState(false);
     const [counterToEdit, setCounterToEdit] = useState<ClientCounter | null>(null);
+    const [incrementToEdit, setIncrementToEdit] = useState<ClientCounter | null>(null);
     const [guestLimitOpen, setGuestLimitOpen] = useState(false);
     const [notice, setNotice] = useState('');
+    const [reorderDraft, setReorderDraft] = useState<string[] | null>(null);
+    const [savingOrder, setSavingOrder] = useState(false);
+    const reordering = reorderDraft !== null;
 
     function openCreateForm() {
         if (!session.isAuthenticated && counterState.eligibleCount >= GUEST_COUNTER_CAP) {
@@ -43,15 +50,26 @@ export default function HomeScreen() {
     }
 
     async function reorderCounters(ids: string[]) {
+        if (reordering) {
+            setReorderDraft((draft) => (draft ? ids : null));
+            return;
+        }
         const result = await counterState.reorderCounters(ids);
         if (!result.success) setNotice(result.message);
     }
 
-    function moveCounter(index: number, offset: number) {
-        const ids = counterState.counters.map((counter) => counter.id);
-        const [id] = ids.splice(index, 1);
-        ids.splice(index + offset, 0, id);
-        void reorderCounters(ids);
+    async function finishReordering() {
+        if (!reorderDraft || savingOrder) return;
+        setSavingOrder(true);
+        const result = await counterState.reorderCounters(reorderDraft);
+        setSavingOrder(false);
+        if (result.success) setReorderDraft(null);
+        else setNotice(result.message);
+    }
+
+    async function incrementCounter(id: string, amount: number) {
+        const result = await counterState.incrementCounter(id, amount);
+        if (!result.success) setNotice(result.message);
     }
 
     return (
@@ -59,12 +77,29 @@ export default function HomeScreen() {
             <Head>
                 <title>Tally</title>
             </Head>
-            <SafeAreaView style={styles.safeArea}>
+            <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
                 <View style={styles.header}>
                     <View style={styles.brandRow}>
-                        <TallyBrand style={styles.brand} />
+                        {reordering ? (
+                            <ToolbarButton
+                                label='Cancel'
+                                role='cancel'
+                                disabled={savingOrder}
+                                onPress={() => setReorderDraft(null)}
+                                testID='counter-reorder-cancel'
+                            />
+                        ) : (
+                            <TallyBrand style={styles.brand} />
+                        )}
                     </View>
-                    {session.isAuthenticated ? (
+                    {reordering ? (
+                        <ToolbarButton
+                            label='Done'
+                            disabled={savingOrder}
+                            onPress={() => void finishReordering()}
+                            testID='counter-reorder-done'
+                        />
+                    ) : session.isAuthenticated ? (
                         <View style={styles.headerActions}>
                             <View accessibilityLiveRegion='polite' style={styles.status}>
                                 <View
@@ -76,7 +111,7 @@ export default function HomeScreen() {
                                             styles.statusDotError,
                                     ]}
                                 />
-                                <Text style={styles.statusText}>
+                                <Text style={styles.statusText} testID='home-sync-status'>
                                     {counterState.loading
                                         ? 'Syncing'
                                         : network.isConnected === false
@@ -120,7 +155,8 @@ export default function HomeScreen() {
                 </View>
 
                 <CounterList
-                    counters={counterState.counters}
+                    counters={reorderDraft ? orderCounters(counterState.counters, reorderDraft) : counterState.counters}
+                    reordering={reordering}
                     onReorder={(ids) => void reorderCounters(ids)}
                     emptyState={
                         counterState.loading ? (
@@ -131,7 +167,7 @@ export default function HomeScreen() {
                             </View>
                         )
                     }
-                    renderItem={(counter, index) => (
+                    renderItem={(counter) => (
                         <CounterCard
                             key={counter.id}
                             counter={counter}
@@ -140,34 +176,39 @@ export default function HomeScreen() {
                                 setCounterToEdit(item);
                                 setFormOpen(true);
                             }}
-                            onIncrement={(id, amount) => void counterState.incrementCounter(id, amount)}
+                            onEditIncrement={setIncrementToEdit}
+                            onIncrement={(id, amount) => void incrementCounter(id, amount)}
                             onNotice={setNotice}
-                            moveUp={index > 0 ? () => moveCounter(index, -1) : undefined}
-                            moveDown={
-                                index < counterState.counters.length - 1 ? () => moveCounter(index, 1) : undefined
-                            }
+                            canReorder={counterState.counters.length > 1}
+                            reordering={reordering}
+                            onReorder={() => {
+                                if (counterState.counters.length > 1)
+                                    setReorderDraft(counterState.counters.map((item) => item.id));
+                            }}
                         />
                     )}
                 />
 
-                <View style={styles.bottomActions}>
-                    <Pressable
-                        accessibilityLabel='Add counter'
-                        accessibilityRole='button'
-                        onPress={openCreateForm}
-                        style={({ pressed }) => [styles.addButton, pressed && styles.addButtonPressed]}
-                        testID='add-counter-button'
-                    >
-                        <Svg aria-hidden width={24} height={24} viewBox='0 0 24 24' fill='none'>
-                            <Path
-                                d='M12 5v14M5 12h14'
-                                stroke={colors.onPrimary}
-                                strokeWidth={2}
-                                strokeLinecap='round'
-                            />
-                        </Svg>
-                    </Pressable>
-                </View>
+                {!reordering && (
+                    <View pointerEvents='box-none' style={[styles.bottomActions, { bottom: insets.bottom }]}>
+                        <Pressable
+                            accessibilityLabel='Add counter'
+                            accessibilityRole='button'
+                            onPress={openCreateForm}
+                            style={({ pressed }) => [styles.addButton, pressed && styles.addButtonPressed]}
+                            testID='add-counter-button'
+                        >
+                            <Svg aria-hidden width={24} height={24} viewBox='0 0 24 24' fill='none'>
+                                <Path
+                                    d='M12 5v14M5 12h14'
+                                    stroke={colors.onPrimary}
+                                    strokeWidth={2}
+                                    strokeLinecap='round'
+                                />
+                            </Svg>
+                        </Pressable>
+                    </View>
+                )}
 
                 <CounterForm
                     visible={formOpen}
@@ -175,6 +216,10 @@ export default function HomeScreen() {
                     onCancel={closeForm}
                     onDone={closeForm}
                 />
+
+                {incrementToEdit && (
+                    <CounterIncrementDialog counter={incrementToEdit} onClose={() => setIncrementToEdit(null)} />
+                )}
 
                 <Dialog
                     onRequestClose={() => setGuestLimitOpen(false)}
@@ -284,6 +329,7 @@ const styles = StyleSheet.create({
         fontWeight: '700',
     },
     bottomActions: {
+        position: 'absolute',
         width: '100%',
         maxWidth: 720,
         alignSelf: 'center',

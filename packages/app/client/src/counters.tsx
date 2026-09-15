@@ -1,14 +1,19 @@
 import * as Crypto from 'expo-crypto';
+import { addCounterAmount, counterValueSchema, counterIncrementSchema, counterMetricSchema } from '@tally/core/client';
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 
 import { ApiError, getErrorMessage, REQUEST_FAILED_MESSAGE } from './api';
 import { CounterService } from './services/counter.service';
 import { SyncManager } from './services/sync-manager';
+import { SyncQueue } from './services/sync-queue';
 import { connectSocket, disconnectSocket, subscribeToCounterUpdates } from './socket';
 import { useSession } from './session';
 
 import type { ClientCounter, HexColor, UpdateCounterRequest } from '@tally/core/client';
 import type { PropsWithChildren } from 'react';
+import type { SyncStatus } from './services/sync-manager';
+import type { MutationCommand } from './services/sync-queue';
 
 type ActionResult = { success: true } | { success: false; message: string };
 
@@ -17,7 +22,7 @@ type CounterContextValue = {
     loading: boolean;
     syncError: boolean;
     eligibleCount: number;
-    createCounter: (title: string, color: HexColor) => Promise<ActionResult>;
+    createCounter: (title: string, color: HexColor, metric?: string) => Promise<ActionResult>;
     shareCounter: (
         counterId: string,
     ) => Promise<{ success: true; inviteCode: string } | { success: false; message: string }>;
@@ -52,6 +57,7 @@ export const reconcileAuthenticatedCounters = (
     localCounters: readonly ClientCounter[],
     remoteCounters: readonly ClientCounter[] | null,
     userId: string,
+    pending: readonly MutationCommand[] = [],
 ) => {
     const availableRemoteCounters = remoteCounters ?? [];
     const eligibleLocal = localCounters.filter(
@@ -67,9 +73,16 @@ export const reconcileAuthenticatedCounters = (
         .filter((counter) => counter.userId === 'guest')
         .map((counter) => ({ ...counter, userId }));
     const remoteIds = new Set(availableRemoteCounters.map((counter) => counter.id));
+    const pendingIds = new Set(pending.filter((item) => item.queuedByUserId === userId).map((item) => item.entityId));
+    const localById = new Map(migratedLocal.map((counter) => [counter.id, counter]));
 
     return {
-        counters: [...availableRemoteCounters, ...migratedLocal.filter((counter) => !remoteIds.has(counter.id))],
+        counters: [
+            ...availableRemoteCounters.flatMap((counter) =>
+                pendingIds.has(counter.id) ? localById.get(counter.id) || [] : counter,
+            ),
+            ...migratedLocal.filter((counter) => !remoteIds.has(counter.id)),
+        ],
         guestCounters,
         syncError: remoteCounters === null,
     };
@@ -80,6 +93,8 @@ export function CounterProvider({ children }: PropsWithChildren) {
     const [counters, setCounters] = useState<ClientCounter[]>([]);
     const [loading, setLoading] = useState(true);
     const [syncError, setSyncError] = useState(false);
+    const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
+    const [refreshKey, setRefreshKey] = useState(0);
     const countersRef = useRef<ClientCounter[]>([]);
     const previousUserId = useRef<string | null>(null);
 
@@ -92,21 +107,26 @@ export function CounterProvider({ children }: PropsWithChildren) {
     const applyRemoteUpdate = useCallback(
         async (updatedCounter: ClientCounter) => {
             const index = countersRef.current.findIndex((counter) => counter.id === updatedCounter.id);
-            if (index === -1) return;
 
             const next = [...countersRef.current];
-            next[index] = { ...next[index], ...updatedCounter };
+            if (index === -1) next.push(updatedCounter);
+            else next[index] = { ...next[index], ...updatedCounter };
             await replaceCounters(next);
         },
         [replaceCounters],
     );
 
     useEffect(() => {
-        SyncManager.init();
-        const unsubscribe = subscribeToCounterUpdates((counter) => void applyRemoteUpdate(counter));
+        SyncManager.init(setSyncStatus);
+        const refresh = () => setRefreshKey((key) => key + 1);
+        const unsubscribe = subscribeToCounterUpdates((counter) => void applyRemoteUpdate(counter), refresh);
+        const appState = AppState.addEventListener('change', (state) => {
+            if (state === 'active') refresh();
+        });
 
         return () => {
             unsubscribe();
+            appState.remove();
             disconnectSocket();
             SyncManager.dispose();
         };
@@ -137,16 +157,23 @@ export function CounterProvider({ children }: PropsWithChildren) {
                     return;
                 }
 
+                const beforeFetch = countersRef.current;
                 const localCounters = await CounterService.getAllLocal();
 
                 let remoteCounters: ClientCounter[] | null = null;
                 try {
-                    remoteCounters = (await CounterService.fetchRemote()) || [];
+                    remoteCounters = await CounterService.fetchRemote();
                 } catch {
                     // Keep the local snapshot available while offline.
                 }
 
-                const reconciled = reconcileAuthenticatedCounters(localCounters, remoteCounters, userId);
+                const pending = await SyncQueue.get();
+                const reconciled = reconcileAuthenticatedCounters(
+                    countersRef.current === beforeFetch ? localCounters : countersRef.current,
+                    remoteCounters,
+                    userId,
+                    pending,
+                );
 
                 if (!active) return;
                 setSyncError(reconciled.syncError);
@@ -165,11 +192,12 @@ export function CounterProvider({ children }: PropsWithChildren) {
         return () => {
             active = false;
         };
-    }, [replaceCounters, session.ready, session.user?.id]);
+    }, [replaceCounters, session.ready, session.user?.id, refreshKey]);
 
-    async function createCounter(title: string, color: HexColor): Promise<ActionResult> {
+    async function createCounter(title: string, color: HexColor, metric = ''): Promise<ActionResult> {
         const cleanTitle = title.trim();
         if (!cleanTitle) return fail('Counter title is required');
+        if (!counterMetricSchema.safeParse(metric).success) return fail('Metric must be 80 characters or less.');
         if (!session.isAuthenticated && isGuestCounterLimitReached(countersRef.current)) {
             return fail(GUEST_COUNTER_LIMIT_MESSAGE);
         }
@@ -179,6 +207,8 @@ export function CounterProvider({ children }: PropsWithChildren) {
             title: cleanTitle,
             color,
             count: 0,
+            metric: metric.trim() || null,
+            increment: 1,
             userId: session.user?.id || 'guest',
             type: 'PERSONAL',
             inviteCode: null,
@@ -211,7 +241,10 @@ export function CounterProvider({ children }: PropsWithChildren) {
         const counter = countersRef.current.find((item) => item.id === counterId);
         if (!counter) return fail('Counter not found');
 
-        const updated = { ...counter, count: counter.count + amount };
+        if (!counterValueSchema.safeParse(amount).success) return fail('Enter a valid increment.');
+        const count = addCounterAmount(counter.count, amount);
+        if (!counterValueSchema.safeParse(count).success) return fail('This change exceeds the counter limit.');
+        const updated = { ...counter, count };
         try {
             await replaceCounters(countersRef.current.map((item) => (item.id === counterId ? updated : item)));
             if (session.isAuthenticated) await CounterService.increment(updated, amount);
@@ -227,7 +260,17 @@ export function CounterProvider({ children }: PropsWithChildren) {
 
         const title = updates.title?.trim();
         if (updates.title !== undefined && !title) return fail('Counter title is required');
-        const cleanUpdates = { ...updates, ...(title ? { title } : {}) };
+        if (updates.increment !== undefined && !counterIncrementSchema.safeParse(updates.increment).success) {
+            return fail('Enter a positive increment with up to 6 decimal places.');
+        }
+        if (updates.metric !== undefined && !counterMetricSchema.safeParse(updates.metric).success) {
+            return fail('Metric must be 80 characters or less.');
+        }
+        const cleanUpdates = {
+            ...updates,
+            ...(title ? { title } : {}),
+            ...(updates.metric !== undefined ? { metric: updates.metric?.trim() || null } : {}),
+        };
 
         try {
             await replaceCounters(
@@ -307,8 +350,8 @@ export function CounterProvider({ children }: PropsWithChildren) {
         <CounterContext.Provider
             value={{
                 counters,
-                loading,
-                syncError,
+                loading: loading || syncStatus === 'syncing',
+                syncError: syncError || syncStatus === 'error',
                 eligibleCount: counters.filter(isGuestEligible).length,
                 createCounter,
                 shareCounter,

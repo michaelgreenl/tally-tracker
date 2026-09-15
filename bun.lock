@@ -148,6 +148,7 @@
   ],
   "patchedDependencies": {
     "react-native-reorderable-list@0.18.1": "patches/react-native-reorderable-list@0.18.1.patch",
+    "zod-prisma-types@3.3.11": "patches/zod-prisma-types@3.3.11.patch",
   },
   "overrides": {
     "@babel/core": "^7.29.7",

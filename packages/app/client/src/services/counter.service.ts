@@ -44,6 +44,8 @@ export const CounterService = {
                 title: counter.title,
                 color: counter.color,
                 count: counter.count,
+                metric: counter.metric,
+                increment: counter.increment,
             },
         });
     },

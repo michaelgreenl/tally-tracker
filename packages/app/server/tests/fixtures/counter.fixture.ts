@@ -7,6 +7,8 @@ type CounterFixture = {
     id: string;
     title: string;
     count: number;
+    metric: string | null;
+    increment: number;
     color: string | null;
     type: CounterType;
     inviteCode: string | null;
@@ -30,6 +32,8 @@ export const buildCounter = (overrides: Partial<CounterFixture> = {}): CounterFi
     id: TEST_COUNTER_ID,
     title: 'Test Counter',
     count: 0,
+    metric: null,
+    increment: 1,
     color: null,
     type: 'PERSONAL' as CounterType,
     inviteCode: null,

@@ -6,6 +6,14 @@ import type { ShareStatusType, CounterTypeType as CounterType } from '@tally/cor
 
 type DbClient = typeof prisma | Prisma.TransactionClient;
 
+const serializeCounter = <T extends { count: Prisma.Decimal; increment: Prisma.Decimal }>(
+    counter: T,
+): Omit<T, 'count' | 'increment'> & { count: number; increment: number } => ({
+    ...counter,
+    count: Number(counter.count),
+    increment: Number(counter.increment),
+});
+
 export const post = async (
     {
         id,
@@ -13,24 +21,32 @@ export const post = async (
         title,
         count,
         color,
+        metric,
+        increment,
     }: {
         id?: string; // Client-generated UUID for optimistic/offline creation
         userId: string;
         title: string;
         count?: number;
         color?: string;
+        metric?: string | null;
+        increment?: number;
     },
     db: DbClient = prisma,
 ) => {
-    return db.counter.create({
-        data: {
-            id,
-            userId,
-            title,
-            count,
-            color,
-        },
-    });
+    return db.counter
+        .create({
+            data: {
+                id,
+                userId,
+                title,
+                count,
+                color,
+                metric,
+                increment,
+            },
+        })
+        .then(serializeCounter);
 };
 
 export const remove = async ({ counterId, userId }: { counterId: string; userId: string }, db: DbClient = prisma) => {
@@ -41,52 +57,56 @@ export const remove = async ({ counterId, userId }: { counterId: string; userId:
 
 // Returns owned counters + counters shared with this user (ACCEPTED status)
 export const getAllByUser = async (userId: string) =>
-    prisma.counter.findMany({
-        where: {
-            OR: [
-                { userId: userId },
-                {
-                    shares: {
-                        some: {
-                            userId: userId,
-                            status: 'ACCEPTED' as ShareStatusType,
+    prisma.counter
+        .findMany({
+            where: {
+                OR: [
+                    { userId: userId },
+                    {
+                        shares: {
+                            some: {
+                                userId: userId,
+                                status: 'ACCEPTED' as ShareStatusType,
+                            },
                         },
                     },
-                },
-            ],
-        },
-        include: {
-            shares: true,
-            owner: {
-                select: { email: true, id: true },
+                ],
             },
-        },
-        orderBy: {
-            updatedAt: 'desc',
-        },
-    });
+            include: {
+                shares: true,
+                owner: {
+                    select: { email: true, id: true },
+                },
+            },
+            orderBy: {
+                updatedAt: 'desc',
+            },
+        })
+        .then((counters) => counters.map(serializeCounter));
 
 // Authorization check: user must be the owner OR have an accepted share
 export const getByIdOrShare = async (
     { counterId, userId }: { counterId: string; userId: string },
     db: DbClient = prisma,
 ) =>
-    await db.counter.findFirst({
-        where: {
-            id: counterId,
-            OR: [
-                { userId: userId },
-                {
-                    shares: {
-                        some: {
-                            userId: userId,
-                            status: 'ACCEPTED' as ShareStatusType,
+    await db.counter
+        .findFirst({
+            where: {
+                id: counterId,
+                OR: [
+                    { userId: userId },
+                    {
+                        shares: {
+                            some: {
+                                userId: userId,
+                                status: 'ACCEPTED' as ShareStatusType,
+                            },
                         },
                     },
-                },
-            ],
-        },
-    });
+                ],
+            },
+        })
+        .then((counter) => counter && serializeCounter(counter));
 
 export const share = async (input: { counterId: string; userId: string }, db: DbClient = prisma) => {
     const counter = await getByIdOrShare(input, db);
@@ -137,10 +157,12 @@ export const put = async (
 
     if (!counter) return null;
 
-    return db.counter.update({
-        where: { id: counterId },
-        data,
-    });
+    return db.counter
+        .update({
+            where: { id: counterId },
+            data,
+        })
+        .then(serializeCounter);
 };
 
 export const setCount = async (
@@ -158,7 +180,7 @@ export const setCount = async (
 
     if (result.count === 0) return null;
 
-    return db.counter.findUnique({ where: { id: counterId } });
+    return db.counter.findUnique({ where: { id: counterId } }).then((counter) => counter && serializeCounter(counter));
 };
 
 export const increment = async (
@@ -178,26 +200,30 @@ export const increment = async (
     if (!counter) return null;
 
     // Atomic increment avoids race conditions on concurrent shared counter updates
-    return db.counter.update({
-        where: { id: counterId },
-        data: {
-            count: {
-                increment: amount,
+    return db.counter
+        .update({
+            where: { id: counterId },
+            data: {
+                count: {
+                    increment: amount,
+                },
             },
-        },
-    });
+        })
+        .then(serializeCounter);
 };
 
 export const join = (inviteCode: string, db: DbClient = prisma) =>
-    db.counter.findFirst({
-        where: {
-            inviteCode,
-            type: 'SHARED' as CounterType,
-        },
-        include: {
-            shares: true,
-        },
-    });
+    db.counter
+        .findFirst({
+            where: {
+                inviteCode,
+                type: 'SHARED' as CounterType,
+            },
+            include: {
+                shares: true,
+            },
+        })
+        .then((counter) => counter && serializeCounter(counter));
 
 export const countAcceptedJoinedSharesByUserId = (userId: string, db: DbClient = prisma) =>
     db.counterShare.count({

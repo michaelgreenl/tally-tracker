@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
+import { Decimal } from 'decimal.js';
 
 /////////////////////////////////////////
 // HELPER FUNCTIONS
@@ -56,6 +57,30 @@ export const InputJsonValueSchema: z.ZodType<Prisma.InputJsonValue> = z.lazy(() 
 
 export type InputJsonValueType = z.infer<typeof InputJsonValueSchema>;
 
+// DECIMAL
+//------------------------------------------------------
+
+export const DecimalJsLikeSchema: z.ZodType<Prisma.DecimalJsLike> = z.object({
+    d: z.array(z.number()),
+    e: z.number(),
+    s: z.number(),
+    toFixed: z.any(),
+});
+
+export const DECIMAL_STRING_REGEX =
+    /^(?:-?Infinity|NaN|-?(?:0[bB][01]+(?:\.[01]+)?(?:[pP][-+]?\d+)?|0[oO][0-7]+(?:\.[0-7]+)?(?:[pP][-+]?\d+)?|0[xX][\da-fA-F]+(?:\.[\da-fA-F]+)?(?:[pP][-+]?\d+)?|(?:\d+|\d*\.\d+)(?:[eE][-+]?\d+)?))$/;
+
+export const isValidDecimalInput = (
+    v?: null | string | number | Prisma.DecimalJsLike,
+): v is string | number | Prisma.DecimalJsLike => {
+    if (v === undefined || v === null) return false;
+    return (
+        (typeof v === 'object' && 'd' in v && 'e' in v && 's' in v && 'toFixed' in v) ||
+        (typeof v === 'string' && DECIMAL_STRING_REGEX.test(v)) ||
+        typeof v === 'number'
+    );
+};
+
 /////////////////////////////////////////
 // ENUMS
 /////////////////////////////////////////
@@ -71,6 +96,8 @@ export const CounterScalarFieldEnumSchema = z.enum([
     'id',
     'title',
     'count',
+    'increment',
+    'metric',
     'color',
     'type',
     'inviteCode',
@@ -177,7 +204,13 @@ export const CounterSchema = z.object({
     type: CounterTypeSchema,
     id: z.uuid(),
     title: z.string(),
-    count: z.number().int(),
+    count: z.instanceof(Prisma.Decimal, {
+        message: "Field 'count' must be a Decimal. Location: ['Models', 'Counter']",
+    }),
+    increment: z.instanceof(Prisma.Decimal, {
+        message: "Field 'increment' must be a Decimal. Location: ['Models', 'Counter']",
+    }),
+    metric: z.string().nullable(),
     color: z.string().nullable(),
     inviteCode: z.string().nullable(),
     userId: z.string(),
@@ -305,6 +338,8 @@ export const CounterSelectSchema: z.ZodType<Prisma.CounterSelect> = z
         id: z.boolean().optional(),
         title: z.boolean().optional(),
         count: z.boolean().optional(),
+        increment: z.boolean().optional(),
+        metric: z.boolean().optional(),
         color: z.boolean().optional(),
         type: z.boolean().optional(),
         inviteCode: z.boolean().optional(),
@@ -485,7 +520,38 @@ export const CounterWhereInputSchema: z.ZodType<Prisma.CounterWhereInput> = z.st
     NOT: z.union([z.lazy(() => CounterWhereInputSchema), z.lazy(() => CounterWhereInputSchema).array()]).optional(),
     id: z.union([z.lazy(() => StringFilterSchema), z.string()]).optional(),
     title: z.union([z.lazy(() => StringFilterSchema), z.string()]).optional(),
-    count: z.union([z.lazy(() => IntFilterSchema), z.number()]).optional(),
+    count: z
+        .union([
+            z.lazy(() => DecimalFilterSchema),
+            z
+                .union([
+                    z.number(),
+                    z.string(),
+                    z.instanceof(Decimal),
+                    z.instanceof(Prisma.Decimal),
+                    DecimalJsLikeSchema,
+                ])
+                .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+        ])
+        .optional(),
+    increment: z
+        .union([
+            z.lazy(() => DecimalFilterSchema),
+            z
+                .union([
+                    z.number(),
+                    z.string(),
+                    z.instanceof(Decimal),
+                    z.instanceof(Prisma.Decimal),
+                    DecimalJsLikeSchema,
+                ])
+                .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+        ])
+        .optional(),
+    metric: z
+        .union([z.lazy(() => StringNullableFilterSchema), z.string()])
+        .optional()
+        .nullable(),
     color: z
         .union([z.lazy(() => StringNullableFilterSchema), z.string()])
         .optional()
@@ -506,6 +572,8 @@ export const CounterOrderByWithRelationInputSchema: z.ZodType<Prisma.CounterOrde
     id: z.lazy(() => SortOrderSchema).optional(),
     title: z.lazy(() => SortOrderSchema).optional(),
     count: z.lazy(() => SortOrderSchema).optional(),
+    increment: z.lazy(() => SortOrderSchema).optional(),
+    metric: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
     color: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
     type: z.lazy(() => SortOrderSchema).optional(),
     inviteCode: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
@@ -544,7 +612,38 @@ export const CounterWhereUniqueInputSchema: z.ZodType<Prisma.CounterWhereUniqueI
                 .union([z.lazy(() => CounterWhereInputSchema), z.lazy(() => CounterWhereInputSchema).array()])
                 .optional(),
             title: z.union([z.lazy(() => StringFilterSchema), z.string()]).optional(),
-            count: z.union([z.lazy(() => IntFilterSchema), z.number().int()]).optional(),
+            count: z
+                .union([
+                    z.lazy(() => DecimalFilterSchema),
+                    z
+                        .union([
+                            z.number(),
+                            z.string(),
+                            z.instanceof(Decimal),
+                            z.instanceof(Prisma.Decimal),
+                            DecimalJsLikeSchema,
+                        ])
+                        .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+                ])
+                .optional(),
+            increment: z
+                .union([
+                    z.lazy(() => DecimalFilterSchema),
+                    z
+                        .union([
+                            z.number(),
+                            z.string(),
+                            z.instanceof(Decimal),
+                            z.instanceof(Prisma.Decimal),
+                            DecimalJsLikeSchema,
+                        ])
+                        .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+                ])
+                .optional(),
+            metric: z
+                .union([z.lazy(() => StringNullableFilterSchema), z.string()])
+                .optional()
+                .nullable(),
             color: z
                 .union([z.lazy(() => StringNullableFilterSchema), z.string()])
                 .optional()
@@ -565,6 +664,8 @@ export const CounterOrderByWithAggregationInputSchema: z.ZodType<Prisma.CounterO
         id: z.lazy(() => SortOrderSchema).optional(),
         title: z.lazy(() => SortOrderSchema).optional(),
         count: z.lazy(() => SortOrderSchema).optional(),
+        increment: z.lazy(() => SortOrderSchema).optional(),
+        metric: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
         color: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
         type: z.lazy(() => SortOrderSchema).optional(),
         inviteCode: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
@@ -598,7 +699,38 @@ export const CounterScalarWhereWithAggregatesInputSchema: z.ZodType<Prisma.Count
             .optional(),
         id: z.union([z.lazy(() => StringWithAggregatesFilterSchema), z.string()]).optional(),
         title: z.union([z.lazy(() => StringWithAggregatesFilterSchema), z.string()]).optional(),
-        count: z.union([z.lazy(() => IntWithAggregatesFilterSchema), z.number()]).optional(),
+        count: z
+            .union([
+                z.lazy(() => DecimalWithAggregatesFilterSchema),
+                z
+                    .union([
+                        z.number(),
+                        z.string(),
+                        z.instanceof(Decimal),
+                        z.instanceof(Prisma.Decimal),
+                        DecimalJsLikeSchema,
+                    ])
+                    .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+            ])
+            .optional(),
+        increment: z
+            .union([
+                z.lazy(() => DecimalWithAggregatesFilterSchema),
+                z
+                    .union([
+                        z.number(),
+                        z.string(),
+                        z.instanceof(Decimal),
+                        z.instanceof(Prisma.Decimal),
+                        DecimalJsLikeSchema,
+                    ])
+                    .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+            ])
+            .optional(),
+        metric: z
+            .union([z.lazy(() => StringNullableWithAggregatesFilterSchema), z.string()])
+            .optional()
+            .nullable(),
         color: z
             .union([z.lazy(() => StringNullableWithAggregatesFilterSchema), z.string()])
             .optional()
@@ -1215,7 +1347,15 @@ export const UserScalarWhereWithAggregatesInputSchema: z.ZodType<Prisma.UserScal
 export const CounterCreateInputSchema: z.ZodType<Prisma.CounterCreateInput> = z.strictObject({
     id: z.uuid().optional(),
     title: z.string(),
-    count: z.number().int().optional(),
+    count: z
+        .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+        .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+        .optional(),
+    increment: z
+        .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+        .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+        .optional(),
+    metric: z.string().optional().nullable(),
     color: z.string().optional().nullable(),
     type: z.lazy(() => CounterTypeSchema).optional(),
     inviteCode: z.string().optional().nullable(),
@@ -1228,7 +1368,15 @@ export const CounterCreateInputSchema: z.ZodType<Prisma.CounterCreateInput> = z.
 export const CounterUncheckedCreateInputSchema: z.ZodType<Prisma.CounterUncheckedCreateInput> = z.strictObject({
     id: z.uuid().optional(),
     title: z.string(),
-    count: z.number().int().optional(),
+    count: z
+        .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+        .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+        .optional(),
+    increment: z
+        .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+        .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+        .optional(),
+    metric: z.string().optional().nullable(),
     color: z.string().optional().nullable(),
     type: z.lazy(() => CounterTypeSchema).optional(),
     inviteCode: z.string().optional().nullable(),
@@ -1241,7 +1389,38 @@ export const CounterUncheckedCreateInputSchema: z.ZodType<Prisma.CounterUnchecke
 export const CounterUpdateInputSchema: z.ZodType<Prisma.CounterUpdateInput> = z.strictObject({
     id: z.union([z.uuid(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
     title: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
-    count: z.union([z.number().int(), z.lazy(() => IntFieldUpdateOperationsInputSchema)]).optional(),
+    count: z
+        .union([
+            z
+                .union([
+                    z.number(),
+                    z.string(),
+                    z.instanceof(Decimal),
+                    z.instanceof(Prisma.Decimal),
+                    DecimalJsLikeSchema,
+                ])
+                .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+            z.lazy(() => DecimalFieldUpdateOperationsInputSchema),
+        ])
+        .optional(),
+    increment: z
+        .union([
+            z
+                .union([
+                    z.number(),
+                    z.string(),
+                    z.instanceof(Decimal),
+                    z.instanceof(Prisma.Decimal),
+                    DecimalJsLikeSchema,
+                ])
+                .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+            z.lazy(() => DecimalFieldUpdateOperationsInputSchema),
+        ])
+        .optional(),
+    metric: z
+        .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
     color: z
         .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
         .optional()
@@ -1262,7 +1441,38 @@ export const CounterUpdateInputSchema: z.ZodType<Prisma.CounterUpdateInput> = z.
 export const CounterUncheckedUpdateInputSchema: z.ZodType<Prisma.CounterUncheckedUpdateInput> = z.strictObject({
     id: z.union([z.uuid(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
     title: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
-    count: z.union([z.number().int(), z.lazy(() => IntFieldUpdateOperationsInputSchema)]).optional(),
+    count: z
+        .union([
+            z
+                .union([
+                    z.number(),
+                    z.string(),
+                    z.instanceof(Decimal),
+                    z.instanceof(Prisma.Decimal),
+                    DecimalJsLikeSchema,
+                ])
+                .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+            z.lazy(() => DecimalFieldUpdateOperationsInputSchema),
+        ])
+        .optional(),
+    increment: z
+        .union([
+            z
+                .union([
+                    z.number(),
+                    z.string(),
+                    z.instanceof(Decimal),
+                    z.instanceof(Prisma.Decimal),
+                    DecimalJsLikeSchema,
+                ])
+                .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+            z.lazy(() => DecimalFieldUpdateOperationsInputSchema),
+        ])
+        .optional(),
+    metric: z
+        .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
     color: z
         .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
         .optional()
@@ -1283,7 +1493,15 @@ export const CounterUncheckedUpdateInputSchema: z.ZodType<Prisma.CounterUnchecke
 export const CounterCreateManyInputSchema: z.ZodType<Prisma.CounterCreateManyInput> = z.strictObject({
     id: z.uuid().optional(),
     title: z.string(),
-    count: z.number().int().optional(),
+    count: z
+        .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+        .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+        .optional(),
+    increment: z
+        .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+        .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+        .optional(),
+    metric: z.string().optional().nullable(),
     color: z.string().optional().nullable(),
     type: z.lazy(() => CounterTypeSchema).optional(),
     inviteCode: z.string().optional().nullable(),
@@ -1295,7 +1513,38 @@ export const CounterCreateManyInputSchema: z.ZodType<Prisma.CounterCreateManyInp
 export const CounterUpdateManyMutationInputSchema: z.ZodType<Prisma.CounterUpdateManyMutationInput> = z.strictObject({
     id: z.union([z.uuid(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
     title: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
-    count: z.union([z.number().int(), z.lazy(() => IntFieldUpdateOperationsInputSchema)]).optional(),
+    count: z
+        .union([
+            z
+                .union([
+                    z.number(),
+                    z.string(),
+                    z.instanceof(Decimal),
+                    z.instanceof(Prisma.Decimal),
+                    DecimalJsLikeSchema,
+                ])
+                .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+            z.lazy(() => DecimalFieldUpdateOperationsInputSchema),
+        ])
+        .optional(),
+    increment: z
+        .union([
+            z
+                .union([
+                    z.number(),
+                    z.string(),
+                    z.instanceof(Decimal),
+                    z.instanceof(Prisma.Decimal),
+                    DecimalJsLikeSchema,
+                ])
+                .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+            z.lazy(() => DecimalFieldUpdateOperationsInputSchema),
+        ])
+        .optional(),
+    metric: z
+        .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
     color: z
         .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
         .optional()
@@ -1314,7 +1563,38 @@ export const CounterUpdateManyMutationInputSchema: z.ZodType<Prisma.CounterUpdat
 export const CounterUncheckedUpdateManyInputSchema: z.ZodType<Prisma.CounterUncheckedUpdateManyInput> = z.strictObject({
     id: z.union([z.uuid(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
     title: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
-    count: z.union([z.number().int(), z.lazy(() => IntFieldUpdateOperationsInputSchema)]).optional(),
+    count: z
+        .union([
+            z
+                .union([
+                    z.number(),
+                    z.string(),
+                    z.instanceof(Decimal),
+                    z.instanceof(Prisma.Decimal),
+                    DecimalJsLikeSchema,
+                ])
+                .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+            z.lazy(() => DecimalFieldUpdateOperationsInputSchema),
+        ])
+        .optional(),
+    increment: z
+        .union([
+            z
+                .union([
+                    z.number(),
+                    z.string(),
+                    z.instanceof(Decimal),
+                    z.instanceof(Prisma.Decimal),
+                    DecimalJsLikeSchema,
+                ])
+                .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+            z.lazy(() => DecimalFieldUpdateOperationsInputSchema),
+        ])
+        .optional(),
+    metric: z
+        .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
     color: z
         .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
         .optional()
@@ -1809,15 +2089,65 @@ export const StringFilterSchema: z.ZodType<Prisma.StringFilter> = z.strictObject
     not: z.union([z.string(), z.lazy(() => NestedStringFilterSchema)]).optional(),
 });
 
-export const IntFilterSchema: z.ZodType<Prisma.IntFilter> = z.strictObject({
-    equals: z.number().optional(),
-    in: z.number().array().optional(),
-    notIn: z.number().array().optional(),
-    lt: z.number().optional(),
-    lte: z.number().optional(),
-    gt: z.number().optional(),
-    gte: z.number().optional(),
-    not: z.union([z.number(), z.lazy(() => NestedIntFilterSchema)]).optional(),
+export const DecimalFilterSchema: z.ZodType<Prisma.DecimalFilter> = z.strictObject({
+    equals: z
+        .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+        .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+        .optional(),
+    in: z
+        .union([
+            z.number().array(),
+            z.string().array(),
+            z.instanceof(Decimal).array(),
+            z.instanceof(Prisma.Decimal).array(),
+            DecimalJsLikeSchema.array(),
+        ])
+        .refine((v) => Array.isArray(v) && (v as any[]).every((v) => isValidDecimalInput(v)), {
+            message: 'Must be a Decimal',
+        })
+        .optional(),
+    notIn: z
+        .union([
+            z.number().array(),
+            z.string().array(),
+            z.instanceof(Decimal).array(),
+            z.instanceof(Prisma.Decimal).array(),
+            DecimalJsLikeSchema.array(),
+        ])
+        .refine((v) => Array.isArray(v) && (v as any[]).every((v) => isValidDecimalInput(v)), {
+            message: 'Must be a Decimal',
+        })
+        .optional(),
+    lt: z
+        .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+        .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+        .optional(),
+    lte: z
+        .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+        .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+        .optional(),
+    gt: z
+        .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+        .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+        .optional(),
+    gte: z
+        .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+        .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+        .optional(),
+    not: z
+        .union([
+            z
+                .union([
+                    z.number(),
+                    z.string(),
+                    z.instanceof(Decimal),
+                    z.instanceof(Prisma.Decimal),
+                    DecimalJsLikeSchema,
+                ])
+                .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+            z.lazy(() => NestedDecimalFilterSchema),
+        ])
+        .optional(),
 });
 
 export const StringNullableFilterSchema: z.ZodType<Prisma.StringNullableFilter> = z.strictObject({
@@ -1900,6 +2230,8 @@ export const CounterCountOrderByAggregateInputSchema: z.ZodType<Prisma.CounterCo
         id: z.lazy(() => SortOrderSchema).optional(),
         title: z.lazy(() => SortOrderSchema).optional(),
         count: z.lazy(() => SortOrderSchema).optional(),
+        increment: z.lazy(() => SortOrderSchema).optional(),
+        metric: z.lazy(() => SortOrderSchema).optional(),
         color: z.lazy(() => SortOrderSchema).optional(),
         type: z.lazy(() => SortOrderSchema).optional(),
         inviteCode: z.lazy(() => SortOrderSchema).optional(),
@@ -1910,12 +2242,15 @@ export const CounterCountOrderByAggregateInputSchema: z.ZodType<Prisma.CounterCo
 
 export const CounterAvgOrderByAggregateInputSchema: z.ZodType<Prisma.CounterAvgOrderByAggregateInput> = z.strictObject({
     count: z.lazy(() => SortOrderSchema).optional(),
+    increment: z.lazy(() => SortOrderSchema).optional(),
 });
 
 export const CounterMaxOrderByAggregateInputSchema: z.ZodType<Prisma.CounterMaxOrderByAggregateInput> = z.strictObject({
     id: z.lazy(() => SortOrderSchema).optional(),
     title: z.lazy(() => SortOrderSchema).optional(),
     count: z.lazy(() => SortOrderSchema).optional(),
+    increment: z.lazy(() => SortOrderSchema).optional(),
+    metric: z.lazy(() => SortOrderSchema).optional(),
     color: z.lazy(() => SortOrderSchema).optional(),
     type: z.lazy(() => SortOrderSchema).optional(),
     inviteCode: z.lazy(() => SortOrderSchema).optional(),
@@ -1928,6 +2263,8 @@ export const CounterMinOrderByAggregateInputSchema: z.ZodType<Prisma.CounterMinO
     id: z.lazy(() => SortOrderSchema).optional(),
     title: z.lazy(() => SortOrderSchema).optional(),
     count: z.lazy(() => SortOrderSchema).optional(),
+    increment: z.lazy(() => SortOrderSchema).optional(),
+    metric: z.lazy(() => SortOrderSchema).optional(),
     color: z.lazy(() => SortOrderSchema).optional(),
     type: z.lazy(() => SortOrderSchema).optional(),
     inviteCode: z.lazy(() => SortOrderSchema).optional(),
@@ -1938,6 +2275,7 @@ export const CounterMinOrderByAggregateInputSchema: z.ZodType<Prisma.CounterMinO
 
 export const CounterSumOrderByAggregateInputSchema: z.ZodType<Prisma.CounterSumOrderByAggregateInput> = z.strictObject({
     count: z.lazy(() => SortOrderSchema).optional(),
+    increment: z.lazy(() => SortOrderSchema).optional(),
 });
 
 export const StringWithAggregatesFilterSchema: z.ZodType<Prisma.StringWithAggregatesFilter> = z.strictObject({
@@ -1958,20 +2296,70 @@ export const StringWithAggregatesFilterSchema: z.ZodType<Prisma.StringWithAggreg
     _max: z.lazy(() => NestedStringFilterSchema).optional(),
 });
 
-export const IntWithAggregatesFilterSchema: z.ZodType<Prisma.IntWithAggregatesFilter> = z.strictObject({
-    equals: z.number().optional(),
-    in: z.number().array().optional(),
-    notIn: z.number().array().optional(),
-    lt: z.number().optional(),
-    lte: z.number().optional(),
-    gt: z.number().optional(),
-    gte: z.number().optional(),
-    not: z.union([z.number(), z.lazy(() => NestedIntWithAggregatesFilterSchema)]).optional(),
+export const DecimalWithAggregatesFilterSchema: z.ZodType<Prisma.DecimalWithAggregatesFilter> = z.strictObject({
+    equals: z
+        .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+        .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+        .optional(),
+    in: z
+        .union([
+            z.number().array(),
+            z.string().array(),
+            z.instanceof(Decimal).array(),
+            z.instanceof(Prisma.Decimal).array(),
+            DecimalJsLikeSchema.array(),
+        ])
+        .refine((v) => Array.isArray(v) && (v as any[]).every((v) => isValidDecimalInput(v)), {
+            message: 'Must be a Decimal',
+        })
+        .optional(),
+    notIn: z
+        .union([
+            z.number().array(),
+            z.string().array(),
+            z.instanceof(Decimal).array(),
+            z.instanceof(Prisma.Decimal).array(),
+            DecimalJsLikeSchema.array(),
+        ])
+        .refine((v) => Array.isArray(v) && (v as any[]).every((v) => isValidDecimalInput(v)), {
+            message: 'Must be a Decimal',
+        })
+        .optional(),
+    lt: z
+        .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+        .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+        .optional(),
+    lte: z
+        .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+        .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+        .optional(),
+    gt: z
+        .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+        .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+        .optional(),
+    gte: z
+        .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+        .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+        .optional(),
+    not: z
+        .union([
+            z
+                .union([
+                    z.number(),
+                    z.string(),
+                    z.instanceof(Decimal),
+                    z.instanceof(Prisma.Decimal),
+                    DecimalJsLikeSchema,
+                ])
+                .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+            z.lazy(() => NestedDecimalWithAggregatesFilterSchema),
+        ])
+        .optional(),
     _count: z.lazy(() => NestedIntFilterSchema).optional(),
-    _avg: z.lazy(() => NestedFloatFilterSchema).optional(),
-    _sum: z.lazy(() => NestedIntFilterSchema).optional(),
-    _min: z.lazy(() => NestedIntFilterSchema).optional(),
-    _max: z.lazy(() => NestedIntFilterSchema).optional(),
+    _avg: z.lazy(() => NestedDecimalFilterSchema).optional(),
+    _sum: z.lazy(() => NestedDecimalFilterSchema).optional(),
+    _min: z.lazy(() => NestedDecimalFilterSchema).optional(),
+    _max: z.lazy(() => NestedDecimalFilterSchema).optional(),
 });
 
 export const StringNullableWithAggregatesFilterSchema: z.ZodType<Prisma.StringNullableWithAggregatesFilter> =
@@ -2306,6 +2694,17 @@ export const EnumEmailOtpPurposeFilterSchema: z.ZodType<Prisma.EnumEmailOtpPurpo
     not: z.union([z.lazy(() => EmailOtpPurposeSchema), z.lazy(() => NestedEnumEmailOtpPurposeFilterSchema)]).optional(),
 });
 
+export const IntFilterSchema: z.ZodType<Prisma.IntFilter> = z.strictObject({
+    equals: z.number().optional(),
+    in: z.number().array().optional(),
+    notIn: z.number().array().optional(),
+    lt: z.number().optional(),
+    lte: z.number().optional(),
+    gt: z.number().optional(),
+    gte: z.number().optional(),
+    not: z.union([z.number(), z.lazy(() => NestedIntFilterSchema)]).optional(),
+});
+
 export const DateTimeNullableFilterSchema: z.ZodType<Prisma.DateTimeNullableFilter> = z.strictObject({
     equals: z.coerce.date().optional().nullable(),
     in: z.coerce.date().array().optional().nullable(),
@@ -2393,6 +2792,22 @@ export const EnumEmailOtpPurposeWithAggregatesFilterSchema: z.ZodType<Prisma.Enu
         _min: z.lazy(() => NestedEnumEmailOtpPurposeFilterSchema).optional(),
         _max: z.lazy(() => NestedEnumEmailOtpPurposeFilterSchema).optional(),
     });
+
+export const IntWithAggregatesFilterSchema: z.ZodType<Prisma.IntWithAggregatesFilter> = z.strictObject({
+    equals: z.number().optional(),
+    in: z.number().array().optional(),
+    notIn: z.number().array().optional(),
+    lt: z.number().optional(),
+    lte: z.number().optional(),
+    gt: z.number().optional(),
+    gte: z.number().optional(),
+    not: z.union([z.number(), z.lazy(() => NestedIntWithAggregatesFilterSchema)]).optional(),
+    _count: z.lazy(() => NestedIntFilterSchema).optional(),
+    _avg: z.lazy(() => NestedFloatFilterSchema).optional(),
+    _sum: z.lazy(() => NestedIntFilterSchema).optional(),
+    _min: z.lazy(() => NestedIntFilterSchema).optional(),
+    _max: z.lazy(() => NestedIntFilterSchema).optional(),
+});
 
 export const DateTimeNullableWithAggregatesFilterSchema: z.ZodType<Prisma.DateTimeNullableWithAggregatesFilter> =
     z.strictObject({
@@ -2585,13 +3000,29 @@ export const StringFieldUpdateOperationsInputSchema: z.ZodType<Prisma.StringFiel
         set: z.string().optional(),
     });
 
-export const IntFieldUpdateOperationsInputSchema: z.ZodType<Prisma.IntFieldUpdateOperationsInput> = z.strictObject({
-    set: z.number().optional(),
-    increment: z.number().optional(),
-    decrement: z.number().optional(),
-    multiply: z.number().optional(),
-    divide: z.number().optional(),
-});
+export const DecimalFieldUpdateOperationsInputSchema: z.ZodType<Prisma.DecimalFieldUpdateOperationsInput> =
+    z.strictObject({
+        set: z
+            .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+            .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+            .optional(),
+        increment: z
+            .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+            .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+            .optional(),
+        decrement: z
+            .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+            .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+            .optional(),
+        multiply: z
+            .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+            .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+            .optional(),
+        divide: z
+            .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+            .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+            .optional(),
+    });
 
 export const NullableStringFieldUpdateOperationsInputSchema: z.ZodType<Prisma.NullableStringFieldUpdateOperationsInput> =
     z.strictObject({
@@ -2893,6 +3324,14 @@ export const EnumEmailOtpPurposeFieldUpdateOperationsInputSchema: z.ZodType<Pris
     z.strictObject({
         set: z.lazy(() => EmailOtpPurposeSchema).optional(),
     });
+
+export const IntFieldUpdateOperationsInputSchema: z.ZodType<Prisma.IntFieldUpdateOperationsInput> = z.strictObject({
+    set: z.number().optional(),
+    increment: z.number().optional(),
+    decrement: z.number().optional(),
+    multiply: z.number().optional(),
+    divide: z.number().optional(),
+});
 
 export const NullableDateTimeFieldUpdateOperationsInputSchema: z.ZodType<Prisma.NullableDateTimeFieldUpdateOperationsInput> =
     z.strictObject({
@@ -3602,15 +4041,65 @@ export const NestedStringFilterSchema: z.ZodType<Prisma.NestedStringFilter> = z.
     not: z.union([z.string(), z.lazy(() => NestedStringFilterSchema)]).optional(),
 });
 
-export const NestedIntFilterSchema: z.ZodType<Prisma.NestedIntFilter> = z.strictObject({
-    equals: z.number().optional(),
-    in: z.number().array().optional(),
-    notIn: z.number().array().optional(),
-    lt: z.number().optional(),
-    lte: z.number().optional(),
-    gt: z.number().optional(),
-    gte: z.number().optional(),
-    not: z.union([z.number(), z.lazy(() => NestedIntFilterSchema)]).optional(),
+export const NestedDecimalFilterSchema: z.ZodType<Prisma.NestedDecimalFilter> = z.strictObject({
+    equals: z
+        .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+        .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+        .optional(),
+    in: z
+        .union([
+            z.number().array(),
+            z.string().array(),
+            z.instanceof(Decimal).array(),
+            z.instanceof(Prisma.Decimal).array(),
+            DecimalJsLikeSchema.array(),
+        ])
+        .refine((v) => Array.isArray(v) && (v as any[]).every((v) => isValidDecimalInput(v)), {
+            message: 'Must be a Decimal',
+        })
+        .optional(),
+    notIn: z
+        .union([
+            z.number().array(),
+            z.string().array(),
+            z.instanceof(Decimal).array(),
+            z.instanceof(Prisma.Decimal).array(),
+            DecimalJsLikeSchema.array(),
+        ])
+        .refine((v) => Array.isArray(v) && (v as any[]).every((v) => isValidDecimalInput(v)), {
+            message: 'Must be a Decimal',
+        })
+        .optional(),
+    lt: z
+        .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+        .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+        .optional(),
+    lte: z
+        .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+        .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+        .optional(),
+    gt: z
+        .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+        .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+        .optional(),
+    gte: z
+        .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+        .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+        .optional(),
+    not: z
+        .union([
+            z
+                .union([
+                    z.number(),
+                    z.string(),
+                    z.instanceof(Decimal),
+                    z.instanceof(Prisma.Decimal),
+                    DecimalJsLikeSchema,
+                ])
+                .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+            z.lazy(() => NestedDecimalFilterSchema),
+        ])
+        .optional(),
 });
 
 export const NestedStringNullableFilterSchema: z.ZodType<Prisma.NestedStringNullableFilter> = z.strictObject({
@@ -3683,7 +4172,7 @@ export const NestedStringWithAggregatesFilterSchema: z.ZodType<Prisma.NestedStri
         _max: z.lazy(() => NestedStringFilterSchema).optional(),
     });
 
-export const NestedIntWithAggregatesFilterSchema: z.ZodType<Prisma.NestedIntWithAggregatesFilter> = z.strictObject({
+export const NestedIntFilterSchema: z.ZodType<Prisma.NestedIntFilter> = z.strictObject({
     equals: z.number().optional(),
     in: z.number().array().optional(),
     notIn: z.number().array().optional(),
@@ -3691,24 +4180,75 @@ export const NestedIntWithAggregatesFilterSchema: z.ZodType<Prisma.NestedIntWith
     lte: z.number().optional(),
     gt: z.number().optional(),
     gte: z.number().optional(),
-    not: z.union([z.number(), z.lazy(() => NestedIntWithAggregatesFilterSchema)]).optional(),
-    _count: z.lazy(() => NestedIntFilterSchema).optional(),
-    _avg: z.lazy(() => NestedFloatFilterSchema).optional(),
-    _sum: z.lazy(() => NestedIntFilterSchema).optional(),
-    _min: z.lazy(() => NestedIntFilterSchema).optional(),
-    _max: z.lazy(() => NestedIntFilterSchema).optional(),
+    not: z.union([z.number(), z.lazy(() => NestedIntFilterSchema)]).optional(),
 });
 
-export const NestedFloatFilterSchema: z.ZodType<Prisma.NestedFloatFilter> = z.strictObject({
-    equals: z.number().optional(),
-    in: z.number().array().optional(),
-    notIn: z.number().array().optional(),
-    lt: z.number().optional(),
-    lte: z.number().optional(),
-    gt: z.number().optional(),
-    gte: z.number().optional(),
-    not: z.union([z.number(), z.lazy(() => NestedFloatFilterSchema)]).optional(),
-});
+export const NestedDecimalWithAggregatesFilterSchema: z.ZodType<Prisma.NestedDecimalWithAggregatesFilter> =
+    z.strictObject({
+        equals: z
+            .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+            .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+            .optional(),
+        in: z
+            .union([
+                z.number().array(),
+                z.string().array(),
+                z.instanceof(Decimal).array(),
+                z.instanceof(Prisma.Decimal).array(),
+                DecimalJsLikeSchema.array(),
+            ])
+            .refine((v) => Array.isArray(v) && (v as any[]).every((v) => isValidDecimalInput(v)), {
+                message: 'Must be a Decimal',
+            })
+            .optional(),
+        notIn: z
+            .union([
+                z.number().array(),
+                z.string().array(),
+                z.instanceof(Decimal).array(),
+                z.instanceof(Prisma.Decimal).array(),
+                DecimalJsLikeSchema.array(),
+            ])
+            .refine((v) => Array.isArray(v) && (v as any[]).every((v) => isValidDecimalInput(v)), {
+                message: 'Must be a Decimal',
+            })
+            .optional(),
+        lt: z
+            .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+            .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+            .optional(),
+        lte: z
+            .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+            .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+            .optional(),
+        gt: z
+            .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+            .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+            .optional(),
+        gte: z
+            .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+            .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+            .optional(),
+        not: z
+            .union([
+                z
+                    .union([
+                        z.number(),
+                        z.string(),
+                        z.instanceof(Decimal),
+                        z.instanceof(Prisma.Decimal),
+                        DecimalJsLikeSchema,
+                    ])
+                    .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+                z.lazy(() => NestedDecimalWithAggregatesFilterSchema),
+            ])
+            .optional(),
+        _count: z.lazy(() => NestedIntFilterSchema).optional(),
+        _avg: z.lazy(() => NestedDecimalFilterSchema).optional(),
+        _sum: z.lazy(() => NestedDecimalFilterSchema).optional(),
+        _min: z.lazy(() => NestedDecimalFilterSchema).optional(),
+        _max: z.lazy(() => NestedDecimalFilterSchema).optional(),
+    });
 
 export const NestedStringNullableWithAggregatesFilterSchema: z.ZodType<Prisma.NestedStringNullableWithAggregatesFilter> =
     z.strictObject({
@@ -3963,6 +4503,33 @@ export const NestedEnumEmailOtpPurposeWithAggregatesFilterSchema: z.ZodType<Pris
         _max: z.lazy(() => NestedEnumEmailOtpPurposeFilterSchema).optional(),
     });
 
+export const NestedIntWithAggregatesFilterSchema: z.ZodType<Prisma.NestedIntWithAggregatesFilter> = z.strictObject({
+    equals: z.number().optional(),
+    in: z.number().array().optional(),
+    notIn: z.number().array().optional(),
+    lt: z.number().optional(),
+    lte: z.number().optional(),
+    gt: z.number().optional(),
+    gte: z.number().optional(),
+    not: z.union([z.number(), z.lazy(() => NestedIntWithAggregatesFilterSchema)]).optional(),
+    _count: z.lazy(() => NestedIntFilterSchema).optional(),
+    _avg: z.lazy(() => NestedFloatFilterSchema).optional(),
+    _sum: z.lazy(() => NestedIntFilterSchema).optional(),
+    _min: z.lazy(() => NestedIntFilterSchema).optional(),
+    _max: z.lazy(() => NestedIntFilterSchema).optional(),
+});
+
+export const NestedFloatFilterSchema: z.ZodType<Prisma.NestedFloatFilter> = z.strictObject({
+    equals: z.number().optional(),
+    in: z.number().array().optional(),
+    notIn: z.number().array().optional(),
+    lt: z.number().optional(),
+    lte: z.number().optional(),
+    gt: z.number().optional(),
+    gte: z.number().optional(),
+    not: z.union([z.number(), z.lazy(() => NestedFloatFilterSchema)]).optional(),
+});
+
 export const NestedDateTimeNullableWithAggregatesFilterSchema: z.ZodType<Prisma.NestedDateTimeNullableWithAggregatesFilter> =
     z.strictObject({
         equals: z.coerce.date().optional().nullable(),
@@ -4206,7 +4773,15 @@ export const CounterShareScalarWhereInputSchema: z.ZodType<Prisma.CounterShareSc
 export const CounterCreateWithoutSharesInputSchema: z.ZodType<Prisma.CounterCreateWithoutSharesInput> = z.strictObject({
     id: z.uuid().optional(),
     title: z.string(),
-    count: z.number().int().optional(),
+    count: z
+        .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+        .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+        .optional(),
+    increment: z
+        .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+        .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+        .optional(),
+    metric: z.string().optional().nullable(),
     color: z.string().optional().nullable(),
     type: z.lazy(() => CounterTypeSchema).optional(),
     inviteCode: z.string().optional().nullable(),
@@ -4219,7 +4794,15 @@ export const CounterUncheckedCreateWithoutSharesInputSchema: z.ZodType<Prisma.Co
     z.strictObject({
         id: z.uuid().optional(),
         title: z.string(),
-        count: z.number().int().optional(),
+        count: z
+            .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+            .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+            .optional(),
+        increment: z
+            .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+            .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+            .optional(),
+        metric: z.string().optional().nullable(),
         color: z.string().optional().nullable(),
         type: z.lazy(() => CounterTypeSchema).optional(),
         inviteCode: z.string().optional().nullable(),
@@ -4300,7 +4883,38 @@ export const CounterUpdateToOneWithWhereWithoutSharesInputSchema: z.ZodType<Pris
 export const CounterUpdateWithoutSharesInputSchema: z.ZodType<Prisma.CounterUpdateWithoutSharesInput> = z.strictObject({
     id: z.union([z.uuid(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
     title: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
-    count: z.union([z.number().int(), z.lazy(() => IntFieldUpdateOperationsInputSchema)]).optional(),
+    count: z
+        .union([
+            z
+                .union([
+                    z.number(),
+                    z.string(),
+                    z.instanceof(Decimal),
+                    z.instanceof(Prisma.Decimal),
+                    DecimalJsLikeSchema,
+                ])
+                .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+            z.lazy(() => DecimalFieldUpdateOperationsInputSchema),
+        ])
+        .optional(),
+    increment: z
+        .union([
+            z
+                .union([
+                    z.number(),
+                    z.string(),
+                    z.instanceof(Decimal),
+                    z.instanceof(Prisma.Decimal),
+                    DecimalJsLikeSchema,
+                ])
+                .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+            z.lazy(() => DecimalFieldUpdateOperationsInputSchema),
+        ])
+        .optional(),
+    metric: z
+        .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
     color: z
         .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
         .optional()
@@ -4321,7 +4935,38 @@ export const CounterUncheckedUpdateWithoutSharesInputSchema: z.ZodType<Prisma.Co
     z.strictObject({
         id: z.union([z.uuid(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
         title: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
-        count: z.union([z.number().int(), z.lazy(() => IntFieldUpdateOperationsInputSchema)]).optional(),
+        count: z
+            .union([
+                z
+                    .union([
+                        z.number(),
+                        z.string(),
+                        z.instanceof(Decimal),
+                        z.instanceof(Prisma.Decimal),
+                        DecimalJsLikeSchema,
+                    ])
+                    .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+                z.lazy(() => DecimalFieldUpdateOperationsInputSchema),
+            ])
+            .optional(),
+        increment: z
+            .union([
+                z
+                    .union([
+                        z.number(),
+                        z.string(),
+                        z.instanceof(Decimal),
+                        z.instanceof(Prisma.Decimal),
+                        DecimalJsLikeSchema,
+                    ])
+                    .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+                z.lazy(() => DecimalFieldUpdateOperationsInputSchema),
+            ])
+            .optional(),
+        metric: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
         color: z
             .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
             .optional()
@@ -4602,7 +5247,15 @@ export const UserUncheckedUpdateWithoutEmailOtpsInputSchema: z.ZodType<Prisma.Us
 export const CounterCreateWithoutOwnerInputSchema: z.ZodType<Prisma.CounterCreateWithoutOwnerInput> = z.strictObject({
     id: z.uuid().optional(),
     title: z.string(),
-    count: z.number().int().optional(),
+    count: z
+        .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+        .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+        .optional(),
+    increment: z
+        .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+        .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+        .optional(),
+    metric: z.string().optional().nullable(),
     color: z.string().optional().nullable(),
     type: z.lazy(() => CounterTypeSchema).optional(),
     inviteCode: z.string().optional().nullable(),
@@ -4615,7 +5268,15 @@ export const CounterUncheckedCreateWithoutOwnerInputSchema: z.ZodType<Prisma.Cou
     z.strictObject({
         id: z.uuid().optional(),
         title: z.string(),
-        count: z.number().int().optional(),
+        count: z
+            .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+            .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+            .optional(),
+        increment: z
+            .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+            .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+            .optional(),
+        metric: z.string().optional().nullable(),
         color: z.string().optional().nullable(),
         type: z.lazy(() => CounterTypeSchema).optional(),
         inviteCode: z.string().optional().nullable(),
@@ -4793,7 +5454,38 @@ export const CounterScalarWhereInputSchema: z.ZodType<Prisma.CounterScalarWhereI
         .optional(),
     id: z.union([z.lazy(() => StringFilterSchema), z.string()]).optional(),
     title: z.union([z.lazy(() => StringFilterSchema), z.string()]).optional(),
-    count: z.union([z.lazy(() => IntFilterSchema), z.number()]).optional(),
+    count: z
+        .union([
+            z.lazy(() => DecimalFilterSchema),
+            z
+                .union([
+                    z.number(),
+                    z.string(),
+                    z.instanceof(Decimal),
+                    z.instanceof(Prisma.Decimal),
+                    DecimalJsLikeSchema,
+                ])
+                .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+        ])
+        .optional(),
+    increment: z
+        .union([
+            z.lazy(() => DecimalFilterSchema),
+            z
+                .union([
+                    z.number(),
+                    z.string(),
+                    z.instanceof(Decimal),
+                    z.instanceof(Prisma.Decimal),
+                    DecimalJsLikeSchema,
+                ])
+                .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+        ])
+        .optional(),
+    metric: z
+        .union([z.lazy(() => StringNullableFilterSchema), z.string()])
+        .optional()
+        .nullable(),
     color: z
         .union([z.lazy(() => StringNullableFilterSchema), z.string()])
         .optional()
@@ -4993,7 +5685,15 @@ export const CounterShareUncheckedUpdateManyWithoutCounterInputSchema: z.ZodType
 export const CounterCreateManyOwnerInputSchema: z.ZodType<Prisma.CounterCreateManyOwnerInput> = z.strictObject({
     id: z.uuid().optional(),
     title: z.string(),
-    count: z.number().int().optional(),
+    count: z
+        .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+        .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+        .optional(),
+    increment: z
+        .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+        .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+        .optional(),
+    metric: z.string().optional().nullable(),
     color: z.string().optional().nullable(),
     type: z.lazy(() => CounterTypeSchema).optional(),
     inviteCode: z.string().optional().nullable(),
@@ -5028,7 +5728,38 @@ export const EmailOtpCreateManyUserInputSchema: z.ZodType<Prisma.EmailOtpCreateM
 export const CounterUpdateWithoutOwnerInputSchema: z.ZodType<Prisma.CounterUpdateWithoutOwnerInput> = z.strictObject({
     id: z.union([z.uuid(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
     title: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
-    count: z.union([z.number().int(), z.lazy(() => IntFieldUpdateOperationsInputSchema)]).optional(),
+    count: z
+        .union([
+            z
+                .union([
+                    z.number(),
+                    z.string(),
+                    z.instanceof(Decimal),
+                    z.instanceof(Prisma.Decimal),
+                    DecimalJsLikeSchema,
+                ])
+                .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+            z.lazy(() => DecimalFieldUpdateOperationsInputSchema),
+        ])
+        .optional(),
+    increment: z
+        .union([
+            z
+                .union([
+                    z.number(),
+                    z.string(),
+                    z.instanceof(Decimal),
+                    z.instanceof(Prisma.Decimal),
+                    DecimalJsLikeSchema,
+                ])
+                .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+            z.lazy(() => DecimalFieldUpdateOperationsInputSchema),
+        ])
+        .optional(),
+    metric: z
+        .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
     color: z
         .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
         .optional()
@@ -5049,7 +5780,38 @@ export const CounterUncheckedUpdateWithoutOwnerInputSchema: z.ZodType<Prisma.Cou
     z.strictObject({
         id: z.union([z.uuid(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
         title: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
-        count: z.union([z.number().int(), z.lazy(() => IntFieldUpdateOperationsInputSchema)]).optional(),
+        count: z
+            .union([
+                z
+                    .union([
+                        z.number(),
+                        z.string(),
+                        z.instanceof(Decimal),
+                        z.instanceof(Prisma.Decimal),
+                        DecimalJsLikeSchema,
+                    ])
+                    .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+                z.lazy(() => DecimalFieldUpdateOperationsInputSchema),
+            ])
+            .optional(),
+        increment: z
+            .union([
+                z
+                    .union([
+                        z.number(),
+                        z.string(),
+                        z.instanceof(Decimal),
+                        z.instanceof(Prisma.Decimal),
+                        DecimalJsLikeSchema,
+                    ])
+                    .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+                z.lazy(() => DecimalFieldUpdateOperationsInputSchema),
+            ])
+            .optional(),
+        metric: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
         color: z
             .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
             .optional()
@@ -5070,7 +5832,38 @@ export const CounterUncheckedUpdateManyWithoutOwnerInputSchema: z.ZodType<Prisma
     z.strictObject({
         id: z.union([z.uuid(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
         title: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
-        count: z.union([z.number().int(), z.lazy(() => IntFieldUpdateOperationsInputSchema)]).optional(),
+        count: z
+            .union([
+                z
+                    .union([
+                        z.number(),
+                        z.string(),
+                        z.instanceof(Decimal),
+                        z.instanceof(Prisma.Decimal),
+                        DecimalJsLikeSchema,
+                    ])
+                    .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+                z.lazy(() => DecimalFieldUpdateOperationsInputSchema),
+            ])
+            .optional(),
+        increment: z
+            .union([
+                z
+                    .union([
+                        z.number(),
+                        z.string(),
+                        z.instanceof(Decimal),
+                        z.instanceof(Prisma.Decimal),
+                        DecimalJsLikeSchema,
+                    ])
+                    .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+                z.lazy(() => DecimalFieldUpdateOperationsInputSchema),
+            ])
+            .optional(),
+        metric: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
         color: z
             .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
             .optional()

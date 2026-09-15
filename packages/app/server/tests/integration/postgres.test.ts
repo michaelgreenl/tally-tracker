@@ -1,14 +1,22 @@
 import { randomUUID } from 'node:crypto';
+import { once } from 'node:events';
+import { createServer } from 'node:http';
+import { Prisma } from '@prisma/client';
 import type { PrismaClient } from '@prisma/client';
 import type { Express } from 'express';
 import request from 'supertest';
-import { beforeAll, describe, expect, it } from 'vitest';
-import { Server } from 'socket.io';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import type { ClientCounter } from '@tally/core';
+import { io as createSocket } from 'socket.io-client';
+import type { Server } from 'socket.io';
+import type { AddressInfo } from 'node:net';
 
 import { digestEmailOtp } from '../../src/services/email-otp.service.js';
 
 let app: Express;
 let prisma: PrismaClient;
+let io: Server;
+let socketUrl: string;
 
 beforeAll(async () => {
     const [{ default: loadedApp }, { default: loadedPrisma }] = await Promise.all([
@@ -18,7 +26,17 @@ beforeAll(async () => {
 
     app = loadedApp;
     prisma = loadedPrisma;
-    app.set('io', new Server());
+    const { default: initializeIO } = await import('../../src/socket/index.js');
+    const server = createServer(app);
+    io = initializeIO(server);
+    app.set('io', io);
+    server.listen(0, '127.0.0.1');
+    await once(server, 'listening');
+    socketUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+});
+
+afterAll(async () => {
+    await new Promise<void>((resolve) => io.close(() => resolve()));
 });
 
 async function sharingAccount(tier: 'BASIC' | 'PREMIUM') {
@@ -32,6 +50,80 @@ async function sharingAccount(tier: 'BASIC' | 'PREMIUM') {
 }
 
 describe('PostgreSQL integration', () => {
+    it('persists decimal settings and keeps concurrent shared taps exact and idempotent', async () => {
+        const owner = await sharingAccount('PREMIUM');
+        const member = await sharingAccount('BASIC');
+        const created = await request(app)
+            .post('/counters')
+            .set('Authorization', owner.authorization)
+            .send({ title: 'Water', metric: '16oz water bottle', increment: 0.1, count: 0.1 })
+            .expect(201);
+        const counterId = created.body.data.counter.id;
+        expect(created.body.data.counter).toMatchObject({ metric: '16oz water bottle', increment: 0.1, count: 0.1 });
+        const shared = await request(app)
+            .post(`/counters/${counterId}/share`)
+            .set('Authorization', owner.authorization)
+            .expect(200);
+        const joined = await request(app)
+            .post('/counters/join')
+            .set('Authorization', member.authorization)
+            .send({ inviteCode: shared.body.data.counter.inviteCode })
+            .expect(201);
+        expect(joined.body.data.counter).toMatchObject({ metric: '16oz water bottle', increment: 0.1, count: 0.1 });
+
+        const memberSocket = createSocket(socketUrl, {
+            auth: { token: member.authorization.replace('Bearer ', '') },
+            transports: ['websocket'],
+            autoConnect: false,
+        });
+        try {
+            await new Promise<void>((resolve, reject) => {
+                memberSocket.once('connect', resolve);
+                memberSocket.once('connect_error', reject);
+                memberSocket.connect();
+            });
+            let received: ClientCounter | undefined;
+            memberSocket.once('counter-update', (counter: ClientCounter) => {
+                received = counter;
+            });
+            await request(app)
+                .put(`/counters/update/${counterId}`)
+                .set('Authorization', owner.authorization)
+                .send({ title: 'Water bottles', increment: 0.25, metric: 'Bottle' })
+                .expect(200);
+            await vi.waitFor(() =>
+                expect(received).toMatchObject({
+                    id: counterId,
+                    title: 'Water bottles',
+                    increment: 0.25,
+                    metric: 'Bottle',
+                    count: 0.1,
+                }),
+            );
+        } finally {
+            memberSocket.disconnect();
+        }
+        const key = randomUUID();
+        const tap = (authorization: string, id: string, amount: number) =>
+            request(app)
+                .put(`/counters/increment/${counterId}`)
+                .set('Authorization', authorization)
+                .set('X-Idempotency-Key', id)
+                .send({ amount })
+                .expect(200);
+        await Promise.all([tap(owner.authorization, key, 0.1), tap(member.authorization, randomUUID(), 0.1)]);
+        await tap(owner.authorization, key, 0.1);
+        let fetched = await request(app).get('/counters').set('Authorization', member.authorization).expect(200);
+        expect(fetched.body.data.counters[0]).toMatchObject({ count: 0.3, increment: 0.25, metric: 'Bottle' });
+        await tap(member.authorization, randomUUID(), -0.25);
+        await request(app)
+            .put(`/counters/update/${counterId}`)
+            .set('Authorization', owner.authorization)
+            .send({ metric: null })
+            .expect(200);
+        fetched = await request(app).get('/counters').set('Authorization', owner.authorization).expect(200);
+        expect(fetched.body.data.counters[0]).toMatchObject({ count: 0.05, increment: 0.25, metric: null });
+    });
     it('denies sharing to basic owners and unrelated premium users without changing the counter', async () => {
         const owner = await sharingAccount('BASIC');
         const outsider = await sharingAccount('PREMIUM');
@@ -51,7 +143,7 @@ describe('PostgreSQL integration', () => {
         expect(await prisma.counter.findUnique({ where: { id: counter.id } })).toMatchObject({
             type: 'PERSONAL',
             inviteCode: null,
-            count: 7,
+            count: new Prisma.Decimal(7),
         });
     });
 
@@ -92,7 +184,7 @@ describe('PostgreSQL integration', () => {
             .expect(200);
         expect(forwarded.body.data.counter.inviteCode).toBe(inviteCode);
         expect(await prisma.counter.findUnique({ where: { id: counterId } })).toMatchObject({
-            count: 9,
+            count: new Prisma.Decimal(9),
             type: 'SHARED',
             inviteCode,
         });

@@ -60,6 +60,8 @@ describe('Expo full-stack counter journey', () => {
                 title,
                 color: '#000000',
                 count: 0,
+                metric: null,
+                increment: 1,
             });
             expect(request.headers['x-idempotency-key']).to.be.a('string').and.not.be.empty;
             expect(response?.statusCode).to.eq(CREATED);
@@ -88,6 +90,14 @@ describe('Expo full-stack counter journey', () => {
         cy.then(() => {
             cy.request('PUT', `/counters/increment/${counterId}`, { amount: 1 });
             cy.get(`[data-testid="counter-${counterId}-count"]`).should('have.text', '2');
+            cy.request('PUT', `/counters/update/${counterId}`, {
+                title: `${title} edited`,
+                increment: 0.5,
+                metric: '16oz water bottle',
+            });
+            cy.get(`[data-testid="counter-${counterId}-title"]`).should('have.text', `${title} edited`);
+            cy.get(`[data-testid="counter-${counterId}-increment"]`).should('have.text', '± 0.5');
+            cy.get(`[data-testid="counter-${counterId}-metric"]`).should('have.text', '16oz water bottle');
         });
 
         cy.intercept('POST', '**/users/logout').as('logoutUser');

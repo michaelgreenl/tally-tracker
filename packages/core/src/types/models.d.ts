@@ -5,7 +5,9 @@ export type ClientUser = Omit<User, 'password' | 'createdAt' | 'updatedAt' | 'em
     emailVerified: boolean;
 };
 
-export type ClientCounter = Omit<Counter, 'createdAt' | 'updatedAt' | 'color'> & {
+export type ClientCounter = Omit<Counter, 'createdAt' | 'updatedAt' | 'color' | 'count' | 'increment'> & {
+    count: number;
+    increment: number;
     color: HexColor | null;
     shares?: CounterShare[];
 };

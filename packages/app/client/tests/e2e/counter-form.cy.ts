@@ -35,11 +35,58 @@ describe('Counter sheet', () => {
         cy.get('[data-testid="add-counter-button"]').click();
         cy.get('[data-testid="counter-title"]').should('have.value', '');
         cy.focused().closest('[data-testid="home-counter-form"]').should('exist');
-        cy.focused().type('{esc}');
+        cy.get('[data-testid="counter-title"]').focus().type('{esc}');
         cy.get('[data-testid="home-counter-form"]').should('not.exist');
         cy.get('[data-testid="add-counter-button"]').should('be.focused');
         cy.reload();
         cy.get('[data-testid="counter-list"]').should('not.exist');
+    });
+
+    it('saves a metric and decimal step, applies each tap, and discards canceled changes', () => {
+        cy.viewport(390, 844);
+        cy.get('[data-testid="add-counter-button"]').click();
+        cy.get('[data-testid="counter-title"]').type('Water');
+        cy.get('[data-testid="counter-metric"]').type('16oz water bottle');
+        cy.get('[data-testid="counter-form-submit"]').click();
+        cy.get('[data-testid$="-increment"]').click();
+        cy.get('[data-testid="home-counter-form"]').should('not.exist');
+        cy.get('[data-testid="counter-increment-dialog"]').should(($dialog) => {
+            const bounds = $dialog[0].getBoundingClientRect();
+            expect((bounds.top + bounds.bottom) / 2, 'dialog centers in viewport').to.be.closeTo(422, 1);
+        });
+        cy.get('[data-testid="counter-increment-value"]').should('not.exist');
+        cy.get('[data-testid="increment-editor-increase"]').click();
+        cy.get('[data-testid="counter-increment-edit"]').should('have.text', '2');
+        cy.get('[data-testid="increment-editor-decrease"]').click();
+        cy.get('[data-testid="counter-increment-edit"]').should('have.text', '1').click();
+        cy.get('[data-testid="counter-increment-value"]').clear().type('0');
+        cy.get('[data-testid="counter-increment-save"]').click();
+        cy.get('[data-testid="counter-increment-error"]').should('be.visible');
+        cy.get('[data-testid="counter-increment-value"]').clear().type('0.1');
+        cy.get('[data-testid="counter-increment-save"]').click();
+        cy.get('[data-testid$="-count"]').should('have.text', '0');
+        for (let tap = 0; tap < 3; tap += 1) cy.get('[data-testid$="-increase"]').click();
+        cy.get('[data-testid$="-count"]').should('have.text', '0.3');
+        cy.get('[data-testid$="-decrease"]').click();
+        cy.get('[data-testid$="-count"]').should('have.text', '0.2');
+
+        cy.get('[data-testid$="-increment"]').click();
+        cy.get('[data-testid="counter-increment-edit"]').click();
+        cy.get('[data-testid="counter-increment-value"]').clear().type('2.5');
+        cy.get('[data-testid="counter-increment-cancel"]').click();
+        cy.get('[data-testid$="-increment"]').should('be.focused');
+        cy.reload();
+        cy.get('[data-testid$="-metric"]').should('have.text', '16oz water bottle');
+        cy.get('[data-testid$="-increment"]').should('have.text', '± 0.1');
+        cy.get('[data-testid$="-count"]').should('have.text', '0.2');
+
+        cy.get('[data-testid$="-menu"]').click();
+        cy.get('[data-testid$="-edit"]').click();
+        cy.get('[data-testid="counter-metric"]').clear();
+        cy.get('[data-testid="counter-form-submit"]').click();
+        cy.reload();
+        cy.get('[data-testid$="-metric"]').should('not.exist');
+        cy.get('[data-testid$="-increment"]').should('have.text', '± 0.1');
     });
 
     it('saves custom picker colors and loads them when editing', () => {
