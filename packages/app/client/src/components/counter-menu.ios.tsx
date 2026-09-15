@@ -3,7 +3,16 @@ import { accessibilityLabel, disabled } from '@expo/ui/swift-ui/modifiers';
 
 import type { CounterMenuProps } from './counter-menu';
 
-export function CounterMenu({ counterId, title, isPremium, busy, onAction, children }: CounterMenuProps) {
+export function CounterMenu({
+    counterId,
+    title,
+    isPremium,
+    busy,
+    onAction,
+    moveUp,
+    moveDown,
+    children,
+}: CounterMenuProps) {
     return (
         <Host matchContents colorScheme='dark' ignoreSafeArea='all'>
             <Menu
@@ -21,6 +30,12 @@ export function CounterMenu({ counterId, title, isPremium, busy, onAction, child
                     modifiers={[disabled(!isPremium || busy)]}
                     onPress={() => onAction('share')}
                 />
+                {(moveUp || moveDown) && (
+                    <>
+                        <Button label='Move up' modifiers={[disabled(!moveUp)]} onPress={moveUp} />
+                        <Button label='Move down' modifiers={[disabled(!moveDown)]} onPress={moveDown} />
+                    </>
+                )}
                 <Button label='Delete' role='destructive' onPress={() => onAction('delete')} />
             </Menu>
         </Host>

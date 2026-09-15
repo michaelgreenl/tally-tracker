@@ -98,5 +98,8 @@
     },
     "trustedDependencies": [
         "@sentry/cli"
-    ]
+    ],
+    "patchedDependencies": {
+        "react-native-reorderable-list@0.18.1": "patches/react-native-reorderable-list@0.18.1.patch"
+    }
 }

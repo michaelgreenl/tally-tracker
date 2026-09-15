@@ -1,0 +1,40 @@
+diff --git a/lib/commonjs/components/ReorderableListCore.js b/lib/commonjs/components/ReorderableListCore.js
+index 05e1cdbe3ec993e5ba3ff53715892a637e799756..2fc1e3cb8e486dd566ee19ca10afd6224af789c5 100644
+--- a/lib/commonjs/components/ReorderableListCore.js
++++ b/lib/commonjs/components/ReorderableListCore.js
+@@ -553,7 +553,7 @@ const ReorderableListCore = ({
+       // 1. Within the threshold area (start or end of list)
+       // 2. Have dragged in the same direction as the scroll
+       // 3. Not already in autoscroll mode
+-      if (dragDirection.value === scrollDirection()) {
++      if (dragDirection.value !== 0 && dragDirection.value === scrollDirection()) {
+         // When the first two conditions are met and it's already in autoscroll mode,
+         // we let it continue (no-op).
+         if (state.value !== _types.ReorderableListState.AUTOSCROLL) {
+diff --git a/lib/module/components/ReorderableListCore.js b/lib/module/components/ReorderableListCore.js
+index 794a065285ee5b8c2e6aed2656c021312d93890c..04a437e172658bf9693ef02df259ea8dc787d97c 100644
+--- a/lib/module/components/ReorderableListCore.js
++++ b/lib/module/components/ReorderableListCore.js
+@@ -545,7 +545,7 @@ const ReorderableListCore = ({
+       // 1. Within the threshold area (start or end of list)
+       // 2. Have dragged in the same direction as the scroll
+       // 3. Not already in autoscroll mode
+-      if (dragDirection.value === scrollDirection()) {
++      if (dragDirection.value !== 0 && dragDirection.value === scrollDirection()) {
+         // When the first two conditions are met and it's already in autoscroll mode,
+         // we let it continue (no-op).
+         if (state.value !== ReorderableListState.AUTOSCROLL) {
+diff --git a/src/components/ReorderableListCore.tsx b/src/components/ReorderableListCore.tsx
+index 81bdff2c77320769401e3609dab2edd5716a437c..dc6306e2726614f3569041d43989a48020b6141a 100644
+--- a/src/components/ReorderableListCore.tsx
++++ b/src/components/ReorderableListCore.tsx
+@@ -875,7 +875,8 @@ const ReorderableListCore = <T,>(
+         // 1. Within the threshold area (start or end of list)
+         // 2. Have dragged in the same direction as the scroll
+         // 3. Not already in autoscroll mode
+-        if (dragDirection.value === scrollDirection()) {
++        // A zero direction must not lock the list in autoscroll mode.
++        if (dragDirection.value !== 0 && dragDirection.value === scrollDirection()) {
+           // When the first two conditions are met and it's already in autoscroll mode,
+           // we let it continue (no-op).
+           if (state.value !== ReorderableListState.AUTOSCROLL) {

@@ -25,6 +25,7 @@ type CounterContextValue = {
     updateCounter: (counterId: string, updates: UpdateCounterRequest) => Promise<ActionResult>;
     deleteCounter: (counter: ClientCounter) => Promise<ActionResult>;
     joinCounter: (inviteCode: string) => Promise<ActionResult>;
+    reorderCounters: (ids: string[]) => Promise<ActionResult>;
 };
 
 export const GUEST_COUNTER_CAP = 3;
@@ -41,6 +42,11 @@ export const isGuestCounterLimitReached = (counters: readonly ClientCounter[]) =
 
 export const hasJoinedSharedCounter = (counters: readonly ClientCounter[], userId: string) =>
     counters.some((counter) => counter.type === 'SHARED' && counter.userId !== userId);
+
+export function orderCounters(counters: readonly ClientCounter[], ids: readonly string[]) {
+    const positions = new Map(ids.map((id, index) => [id, index]));
+    return [...counters].sort((a, b) => (positions.get(a.id) ?? ids.length) - (positions.get(b.id) ?? ids.length));
+}
 
 export const reconcileAuthenticatedCounters = (
     localCounters: readonly ClientCounter[],
@@ -119,6 +125,7 @@ export function CounterProvider({ children }: PropsWithChildren) {
             setSyncError(false);
 
             try {
+                const order = await CounterService.getOrder(userId || 'guest');
                 if (!userId) {
                     disconnectSocket();
                     if (priorUserId) await CounterService.clearLocal();
@@ -126,7 +133,7 @@ export function CounterProvider({ children }: PropsWithChildren) {
                     const localCounters = (await CounterService.getAllLocal()).filter(
                         (counter) => counter.userId === 'guest',
                     );
-                    if (active) await replaceCounters(localCounters);
+                    if (active) await replaceCounters(orderCounters(localCounters, order));
                     return;
                 }
 
@@ -143,7 +150,7 @@ export function CounterProvider({ children }: PropsWithChildren) {
 
                 if (!active) return;
                 setSyncError(reconciled.syncError);
-                await replaceCounters(reconciled.counters);
+                await replaceCounters(orderCounters(reconciled.counters, order));
                 if (reconciled.guestCounters.length) await CounterService.consolidate(reconciled.guestCounters);
                 connectSocket();
                 await SyncManager.processQueue();
@@ -183,6 +190,20 @@ export function CounterProvider({ children }: PropsWithChildren) {
             return ok();
         } catch (error: unknown) {
             return fail(getErrorMessage(error, 'Failed to create counter'));
+        }
+    }
+
+    async function reorderCounters(ids: string[]): Promise<ActionResult> {
+        const next = orderCounters(countersRef.current, ids);
+        try {
+            await replaceCounters(next);
+            await CounterService.persistOrder(
+                session.user?.id || 'guest',
+                next.map((counter) => counter.id),
+            );
+            return ok();
+        } catch {
+            return fail('Could not save the counter order. Please try again.');
         }
     }
 
@@ -295,6 +316,7 @@ export function CounterProvider({ children }: PropsWithChildren) {
                 updateCounter,
                 deleteCounter,
                 joinCounter,
+                reorderCounters,
             }}
         >
             {children}

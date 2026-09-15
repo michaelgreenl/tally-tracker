@@ -27,6 +27,8 @@ export const CounterService = {
     getAllLocal: CounterStorage.getAll,
     persist: CounterStorage.save,
     clearLocal: CounterStorage.clear,
+    getOrder: CounterStorage.getOrder,
+    persistOrder: CounterStorage.saveOrder,
 
     async fetchRemote() {
         const response = await apiFetch<CounterResponse>('/counters', { method: 'GET' });

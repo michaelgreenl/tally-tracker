@@ -13,6 +13,7 @@
         },
         "android": {
             "package": "com.tallytracker.app",
+            "permissions": ["android.permission.VIBRATE"],
             "adaptiveIcon": {
                 "backgroundColor": "#E6F4FE",
                 "foregroundImage": "./assets/images/android-icon-foreground.png",

@@ -10,14 +10,36 @@ export type CounterMenuProps = PropsWithChildren<{
     title: string;
     isPremium: boolean;
     busy: boolean;
+    moveUp?: () => void;
+    moveDown?: () => void;
     onAction: (action: 'edit' | 'share' | 'delete') => void;
 }>;
 
-export function CounterMenu({ counterId, title, isPremium, busy, onAction, children }: CounterMenuProps) {
+export function CounterMenu({
+    counterId,
+    title,
+    isPremium,
+    busy,
+    onAction,
+    moveUp,
+    moveDown,
+    children,
+}: CounterMenuProps) {
     const id = useId();
     const popover = useRef<HTMLDivElement>(null);
     const trigger = useRef<HTMLButtonElement>(null);
     const shareLabel = !isPremium ? 'Share (Premium)' : busy ? 'Sharing…' : 'Share';
+    const actions = [
+        { id: 'edit', label: 'Edit', run: () => onAction('edit'), disabled: false },
+        { id: 'share', label: shareLabel, run: () => onAction('share'), disabled: !isPremium || busy },
+        ...(moveUp || moveDown
+            ? [
+                  { id: 'move-up', label: 'Move up', run: moveUp, disabled: !moveUp },
+                  { id: 'move-down', label: 'Move down', run: moveDown, disabled: !moveDown },
+              ]
+            : []),
+        { id: 'delete', label: 'Delete', run: () => onAction('delete'), disabled: false },
+    ];
 
     return (
         <>
@@ -54,29 +76,27 @@ export function CounterMenu({ counterId, title, isPremium, busy, onAction, child
                     boxShadow: '0 6px 24px #0006',
                 }}
             >
-                {(['edit', 'share', 'delete'] as const).map((action) => (
+                {actions.map(({ id, label, run, disabled }) => (
                     <button
-                        key={action}
+                        key={id}
                         type='button'
-                        disabled={action === 'share' && (!isPremium || busy)}
-                        data-testid={`counter-${counterId}-${action}`}
+                        disabled={disabled}
+                        data-testid={`counter-${counterId}-${id}`}
                         onClick={() => {
                             popover.current?.hidePopover();
                             trigger.current?.focus();
-                            onAction(action);
+                            run?.();
                         }}
                         style={{
                             ...buttonStyle,
                             width: '100%',
                             padding: '10px 12px',
                             justifyContent: 'flex-start',
-                            color: action === 'delete' ? colors.danger : colors.text,
-                            opacity: action === 'share' && (!isPremium || busy) ? 0.5 : 1,
+                            color: id === 'delete' ? colors.danger : colors.text,
+                            opacity: disabled ? 0.5 : 1,
                         }}
                     >
-                        <Text style={{ color: 'inherit', fontSize: 16 }}>
-                            {action === 'edit' ? 'Edit' : action === 'delete' ? 'Delete' : shareLabel}
-                        </Text>
+                        <Text style={{ color: 'inherit', fontSize: 16 }}>{label}</Text>
                     </button>
                 ))}
             </div>

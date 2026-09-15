@@ -2,13 +2,14 @@ import { Link, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { useNetworkState } from 'expo-network';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import { colors } from '../colors';
 import { CounterCard } from '../components/counter-card';
 import { CounterForm } from '../components/counter-form';
+import { CounterList } from '../components/counter-list';
 import { Dialog } from '../components/dialog';
 import { Snackbar } from '../components/snackbar';
 import { TallyBrand } from '../components/tally-brand';
@@ -39,6 +40,18 @@ export default function HomeScreen() {
 
     function closeForm() {
         setFormOpen(false);
+    }
+
+    async function reorderCounters(ids: string[]) {
+        const result = await counterState.reorderCounters(ids);
+        if (!result.success) setNotice(result.message);
+    }
+
+    function moveCounter(index: number, offset: number) {
+        const ids = counterState.counters.map((counter) => counter.id);
+        const [id] = ids.splice(index, 1);
+        ids.splice(index + offset, 0, id);
+        void reorderCounters(ids);
     }
 
     return (
@@ -106,33 +119,36 @@ export default function HomeScreen() {
                     )}
                 </View>
 
-                <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps='handled'>
-                    <View style={styles.content}>
-                        {counterState.loading && counterState.counters.length === 0 ? (
+                <CounterList
+                    counters={counterState.counters}
+                    onReorder={(ids) => void reorderCounters(ids)}
+                    emptyState={
+                        counterState.loading ? (
                             <ActivityIndicator color={colors.link} size='large' style={styles.loader} />
-                        ) : counterState.counters.length ? (
-                            <View style={styles.counterList} testID='counter-list'>
-                                {counterState.counters.map((counter) => (
-                                    <CounterCard
-                                        key={counter.id}
-                                        counter={counter}
-                                        onDelete={(item) => void counterState.deleteCounter(item)}
-                                        onEdit={(item) => {
-                                            setCounterToEdit(item);
-                                            setFormOpen(true);
-                                        }}
-                                        onIncrement={(id, amount) => void counterState.incrementCounter(id, amount)}
-                                        onNotice={setNotice}
-                                    />
-                                ))}
-                            </View>
                         ) : (
                             <View style={styles.emptyState}>
                                 <Text style={styles.emptyTitle}>No counters yet</Text>
                             </View>
-                        )}
-                    </View>
-                </ScrollView>
+                        )
+                    }
+                    renderItem={(counter, index) => (
+                        <CounterCard
+                            key={counter.id}
+                            counter={counter}
+                            onDelete={(item) => void counterState.deleteCounter(item)}
+                            onEdit={(item) => {
+                                setCounterToEdit(item);
+                                setFormOpen(true);
+                            }}
+                            onIncrement={(id, amount) => void counterState.incrementCounter(id, amount)}
+                            onNotice={setNotice}
+                            moveUp={index > 0 ? () => moveCounter(index, -1) : undefined}
+                            moveDown={
+                                index < counterState.counters.length - 1 ? () => moveCounter(index, 1) : undefined
+                            }
+                        />
+                    )}
+                />
 
                 <View style={styles.bottomActions}>
                     <Pressable
@@ -241,17 +257,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '700',
     },
-    scrollContent: {
-        flexGrow: 1,
-        padding: 20,
-        paddingTop: 0,
-    },
-    content: {
-        width: '100%',
-        maxWidth: 680,
-        alignSelf: 'center',
-        gap: 22,
-    },
     status: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -298,9 +303,6 @@ const styles = StyleSheet.create({
     },
     loader: {
         marginTop: 40,
-    },
-    counterList: {
-        gap: 16,
     },
     emptyState: {
         alignItems: 'center',

@@ -18,9 +18,11 @@ type CounterCardProps = {
     onEdit: (counter: ClientCounter) => void;
     onIncrement: (counterId: string, amount: number) => void;
     onNotice: (message: string) => void;
+    moveUp?: () => void;
+    moveDown?: () => void;
 };
 
-export function CounterCard({ counter, onDelete, onEdit, onIncrement, onNotice }: CounterCardProps) {
+export function CounterCard({ counter, onDelete, onEdit, onIncrement, onNotice, moveUp, moveDown }: CounterCardProps) {
     const { isPremium } = useSession();
     const { shareCounter } = useCounters();
     const [sharing, setSharing] = useState(false);
@@ -61,6 +63,8 @@ export function CounterCard({ counter, onDelete, onEdit, onIncrement, onNotice }
                     title={counter.title}
                     isPremium={isPremium}
                     busy={sharing}
+                    moveUp={moveUp}
+                    moveDown={moveDown}
                     onAction={(action) => {
                         if (action === 'edit') onEdit(counter);
                         else if (action === 'delete') onDelete(counter);

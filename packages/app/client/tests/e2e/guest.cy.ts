@@ -16,9 +16,9 @@ describe('Guest counters', () => {
             cy.get('[data-testid="counter-form-submit"]').click();
         }
 
-        cy.get('[data-testid="counter-list"]').children().should('have.length', 3);
+        cy.get('[data-testid="counter-list"] [data-testid$="-count"]').should('have.length', 3);
         cy.reload();
-        cy.get('[data-testid="counter-list"]').children().should('have.length', 3);
+        cy.get('[data-testid="counter-list"] [data-testid$="-count"]').should('have.length', 3);
 
         cy.get('[data-testid="add-counter-button"]').click();
         cy.get('[data-testid="guest-limit-modal"]').closest('[role="dialog"]').should('be.visible');

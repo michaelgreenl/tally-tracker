@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { hasJoinedSharedCounter, isGuestCounterLimitReached, reconcileAuthenticatedCounters } from './counters';
+import {
+    hasJoinedSharedCounter,
+    isGuestCounterLimitReached,
+    orderCounters,
+    reconcileAuthenticatedCounters,
+} from './counters';
 
 import type { ClientCounter, HexColor } from '@tally/core/client';
 
@@ -19,6 +24,17 @@ const counter = (id: string, type: ClientCounter['type'], userId = 'guest'): Cli
     inviteCode: null,
     userId,
     type,
+});
+
+it('reorders current records without restoring deleted counters or losing new counters and live counts', () => {
+    const first = counter('first', 'PERSONAL');
+    const second = { ...counter('second', 'SHARED'), count: 9 };
+    const added = counter('added', 'PERSONAL');
+    expect(orderCounters([first, second, added], ['deleted', 'second', 'second', 'first'])).toEqual([
+        second,
+        first,
+        added,
+    ]);
 });
 
 describe('authenticated counter reconciliation', () => {
