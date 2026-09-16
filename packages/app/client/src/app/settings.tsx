@@ -181,7 +181,7 @@ export default function SettingsScreen() {
                     visible={deleteOpen}
                     testID='delete-account-confirm'
                     title='Delete account?'
-                    description='This permanently deletes your account and server-side account data. This action cannot be undone.'
+                    description='This permanently deletes your account and server-side account data. This action cannot be undone. Deleting your account does not cancel store subscriptions.'
                 >
                     {Boolean(deleteError) && (
                         <Text accessibilityLiveRegion='polite' accessibilityRole='alert' style={styles.deleteError}>

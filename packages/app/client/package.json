@@ -22,6 +22,7 @@
         "react-dom": "19.2.3",
         "react-native": "0.86.3",
         "react-native-gesture-handler": "3.2.1",
+        "react-native-purchases": "10.9.1",
         "react-native-reanimated": "4.5.1",
         "react-native-reorderable-list": "0.18.1",
         "react-native-safe-area-context": "~5.7.0",
@@ -34,9 +35,11 @@
     },
     "devDependencies": {
         "@types/react": "~19.2.2",
+        "@types/react-dom": "~19.2.0",
         "cypress": "^13.17.0",
         "eslint": "^9.0.0",
         "eslint-config-expo": "~57.0.2",
+        "jsdom": "^28.0.0",
         "typescript": "~6.0.3",
         "vitest": "4.1.9"
     },

@@ -11,7 +11,7 @@ config.server.enhanceMiddleware = (middleware, server) => {
     const metro = enhanceMiddleware ? enhanceMiddleware(middleware, server) : middleware;
 
     return (req, res, next) => {
-        if (!/^\/(users|counters|health|socket\.io)(\/|\?|$)/.test(req.url)) return metro(req, res, next);
+        if (!/^\/(users|counters|billing|health|socket\.io)(\/|\?|$)/.test(req.url)) return metro(req, res, next);
 
         // Only the dev site's requests may use its authenticated proxy.
         const origin = req.headers.origin;

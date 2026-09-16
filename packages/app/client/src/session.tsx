@@ -1,10 +1,11 @@
 import { UNAUTHORIZED } from '@tally/core/client';
 import { useRouter } from 'expo-router';
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { Platform } from 'react-native';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { AppState, Platform } from 'react-native';
 
 import { ApiError, getErrorMessage, setUnauthorizedHandler } from './api';
 import { AuthService } from './services/auth.service';
+import { billingApiKey, BillingService } from './services/billing.service';
 
 import type { AuthRequest, ClientUser, UpdateUserRequest } from '@tally/core/client';
 import type { PropsWithChildren } from 'react';
@@ -21,6 +22,7 @@ type SessionContextValue = {
     logout: () => Promise<ActionResult>;
     deleteAccount: () => Promise<ActionResult>;
     updateUser: (request: UpdateUserRequest) => Promise<ActionResult>;
+    refreshPurchases: () => Promise<ClientUser>;
 };
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -78,13 +80,70 @@ export async function restoreSession(): Promise<ClientUser | null> {
 
 export function SessionProvider({ children }: PropsWithChildren) {
     const router = useRouter();
-    const [user, setUser] = useState<ClientUser | null>(null);
+    const [user, updateUserState] = useState<ClientUser | null>(null);
     const [ready, setReady] = useState(false);
+    const userRef = useRef<ClientUser | null>(null);
+    const setUser = useCallback((value: ClientUser | null) => {
+        userRef.current = value;
+        updateUserState(value);
+    }, []);
 
     const clearSession = useCallback(async () => {
         setUser(null);
         await AuthService.clearLocalAuth();
-    }, []);
+    }, [setUser]);
+
+    const refreshPurchases = useCallback(async () => {
+        const userId = userRef.current?.id;
+        if (!userId) throw new Error('Sign in to verify purchases.');
+        await BillingService.sync();
+        const response = await AuthService.checkAuth();
+        const verifiedUser = response.data?.user;
+        if (!response.success || !verifiedUser || verifiedUser.id !== userId || userRef.current?.id !== userId) {
+            throw new Error('The account changed. Sign in again to verify purchases.');
+        }
+        await AuthService.cacheUser(verifiedUser);
+        if (userRef.current?.id !== userId) {
+            await AuthService.cacheUser(userRef.current);
+            throw new Error('The account changed. Sign in again to verify purchases.');
+        }
+        setUser(verifiedUser);
+        return verifiedUser;
+    }, [setUser]);
+
+    useEffect(() => {
+        if (!user?.id || !billingApiKey()) return;
+        let active = true;
+        let refreshing = false;
+        let unsubscribe: (() => void) | undefined;
+        const refresh = async () => {
+            if (!active || refreshing) return;
+            refreshing = true;
+            try {
+                await refreshPurchases();
+            } catch {
+                // Keep the last verified profile offline. Explicit purchase/restore actions report failures.
+            } finally {
+                refreshing = false;
+            }
+        };
+        void BillingService.subscribe(user.id, () => void refresh())
+            .then((remove) => {
+                if (active) {
+                    unsubscribe = remove;
+                    void refresh();
+                } else remove();
+            })
+            .catch(() => undefined);
+        const subscription = AppState.addEventListener('change', (state) => {
+            if (state === 'active') void refresh();
+        });
+        return () => {
+            active = false;
+            unsubscribe?.();
+            subscription.remove();
+        };
+    }, [user?.id, refreshPurchases]);
 
     useEffect(() => {
         return setUnauthorizedHandler(async () => {
@@ -110,7 +169,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
         return () => {
             active = false;
         };
-    }, []);
+    }, [setUser]);
 
     async function login(request: AuthRequest): Promise<ActionResult> {
         try {
@@ -203,6 +262,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
                 logout,
                 deleteAccount,
                 updateUser,
+                refreshPurchases,
             }}
         >
             {children}
