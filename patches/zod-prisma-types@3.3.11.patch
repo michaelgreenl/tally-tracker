@@ -1,0 +1,26 @@
+diff --git a/dist/classes/extendedDMMFInputType.js b/dist/classes/extendedDMMFInputType.js
+index 863fead34d16cd7efc97c3056679fa0006d6e2af..94ab3bbe5add8f652af340cbea6e92ecd81b85fc 100644
+--- a/dist/classes/extendedDMMFInputType.js
++++ b/dist/classes/extendedDMMFInputType.js
+@@ -176,7 +176,7 @@ class ExtendedDMMFInputType extends formattedNames_1.FormattedNames {
+             prismaImports.push(`import type { Prisma } from '${prismaClientPath}';`);
+         }
+         const decimalJSImport = decimalJSInstalled && this.isDecimalField
+-            ? `import Decimal from 'decimal.js';`
++            ? `import { Decimal } from 'decimal.js';`
+             : '';
+         const zodImport = "import { z } from 'zod';";
+         const fieldImports = [
+diff --git a/dist/functions/writeSingleFileImportStatements.js b/dist/functions/writeSingleFileImportStatements.js
+index 10aa91ce5c8bee6959956715e6fa9e91dca36572..85215c55ecc7f3957eb8e5a3f5b64d0fde6f49b1 100644
+--- a/dist/functions/writeSingleFileImportStatements.js
++++ b/dist/functions/writeSingleFileImportStatements.js
+@@ -33,7 +33,7 @@ const writeSingleFileImportStatements = ({ writer, writeImport, }) => {
+         }
+     }
+     if (dmmf.schema.hasDecimalTypes && decimalJSInstalled) {
+-        writeImport(`Decimal`, 'decimal.js');
++        writeImport(`{ Decimal }`, 'decimal.js');
+     }
+     if (dmmf.customImports) {
+         dmmf.customImports.forEach((statement) => {

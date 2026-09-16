@@ -2,12 +2,20 @@ import { Link, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { useNetworkState } from 'expo-network';
 import { useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Circle, Path } from 'react-native-svg';
 
+import { colors } from '../colors';
 import { CounterCard } from '../components/counter-card';
 import { CounterForm } from '../components/counter-form';
-import { GUEST_COUNTER_CAP, GUEST_COUNTER_LIMIT_MESSAGE, useCounters } from '../counters';
+import { CounterIncrementDialog } from '../components/counter-increment-dialog';
+import { CounterList } from '../components/counter-list';
+import { Dialog } from '../components/dialog';
+import { Snackbar } from '../components/snackbar';
+import { TallyBrand } from '../components/tally-brand';
+import { ToolbarButton } from '../components/toolbar-button';
+import { GUEST_COUNTER_CAP, GUEST_COUNTER_LIMIT_MESSAGE, orderCounters, useCounters } from '../counters';
 import { useSession } from '../session';
 
 import type { ClientCounter } from '@tally/core/client';
@@ -17,9 +25,15 @@ export default function HomeScreen() {
     const network = useNetworkState();
     const session = useSession();
     const counterState = useCounters();
+    const insets = useSafeAreaInsets();
     const [formOpen, setFormOpen] = useState(false);
     const [counterToEdit, setCounterToEdit] = useState<ClientCounter | null>(null);
+    const [incrementToEdit, setIncrementToEdit] = useState<ClientCounter | null>(null);
     const [guestLimitOpen, setGuestLimitOpen] = useState(false);
+    const [notice, setNotice] = useState('');
+    const [reorderDraft, setReorderDraft] = useState<string[] | null>(null);
+    const [savingOrder, setSavingOrder] = useState(false);
+    const reordering = reorderDraft !== null;
 
     function openCreateForm() {
         if (!session.isAuthenticated && counterState.eligibleCount >= GUEST_COUNTER_CAP) {
@@ -32,42 +46,104 @@ export default function HomeScreen() {
     }
 
     function closeForm() {
-        setCounterToEdit(null);
         setFormOpen(false);
+    }
+
+    async function reorderCounters(ids: string[]) {
+        if (reordering) {
+            setReorderDraft((draft) => (draft ? ids : null));
+            return;
+        }
+        const result = await counterState.reorderCounters(ids);
+        if (!result.success) setNotice(result.message);
+    }
+
+    async function finishReordering() {
+        if (!reorderDraft || savingOrder) return;
+        setSavingOrder(true);
+        const result = await counterState.reorderCounters(reorderDraft);
+        setSavingOrder(false);
+        if (result.success) setReorderDraft(null);
+        else setNotice(result.message);
+    }
+
+    async function incrementCounter(id: string, amount: number) {
+        const result = await counterState.incrementCounter(id, amount);
+        if (!result.success) setNotice(result.message);
     }
 
     return (
         <>
             <Head>
-                <title>Tally Tracker</title>
+                <title>Tally</title>
             </Head>
-            <SafeAreaView style={styles.safeArea}>
+            <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
                 <View style={styles.header}>
                     <View style={styles.brandRow}>
-                        <Text accessibilityRole='header' aria-level={1} style={styles.headerTitle}>
-                            Tally Counter
-                        </Text>
-                        {session.isPremium && <Text style={styles.premiumBadge}>Premium</Text>}
+                        {reordering ? (
+                            <ToolbarButton
+                                label='Cancel'
+                                role='cancel'
+                                disabled={savingOrder}
+                                onPress={() => setReorderDraft(null)}
+                                testID='counter-reorder-cancel'
+                            />
+                        ) : (
+                            <TallyBrand style={styles.brand} />
+                        )}
                     </View>
-                    {session.isAuthenticated ? (
+                    {reordering ? (
+                        <ToolbarButton
+                            label='Done'
+                            disabled={savingOrder}
+                            onPress={() => void finishReordering()}
+                            testID='counter-reorder-done'
+                        />
+                    ) : session.isAuthenticated ? (
                         <View style={styles.headerActions}>
+                            <View accessibilityLiveRegion='polite' style={styles.status}>
+                                <View
+                                    style={[
+                                        styles.statusDot,
+                                        network.isConnected === false && styles.statusDotOffline,
+                                        network.isConnected !== false &&
+                                            counterState.syncError &&
+                                            styles.statusDotError,
+                                    ]}
+                                />
+                                <Text style={styles.statusText} testID='home-sync-status'>
+                                    {counterState.loading
+                                        ? 'Syncing'
+                                        : network.isConnected === false
+                                          ? 'Offline'
+                                          : counterState.syncError
+                                            ? 'Sync failed'
+                                            : 'Synced'}
+                                </Text>
+                            </View>
                             <Link href='/settings' asChild>
                                 <Pressable
+                                    accessibilityLabel='Settings'
                                     accessibilityRole='link'
-                                    style={styles.headerAction}
+                                    style={styles.settingsButton}
                                     testID='home-settings-link'
                                 >
-                                    <Text style={styles.headerActionText}>Settings</Text>
+                                    <Svg
+                                        aria-hidden
+                                        width={24}
+                                        height={24}
+                                        viewBox='0 0 24 24'
+                                        fill='none'
+                                        stroke={colors.text}
+                                        strokeWidth={2}
+                                        strokeLinecap='round'
+                                        strokeLinejoin='round'
+                                    >
+                                        <Path d='M10 2h4l.5 3.5 1.5.9 3.3-1.3 2 3.5-2.8 2.2v2.4l2.8 2.2-2 3.5-3.3-1.3-1.5.9L14 22h-4l-.5-3.5-1.5-.9-3.3 1.3-2-3.5 2.8-2.2v-2.4L2.7 8.6l2-3.5L8 6.4l1.5-.9Z' />
+                                        <Circle cx={12} cy={12} r={3} />
+                                    </Svg>
                                 </Pressable>
                             </Link>
-                            <Pressable
-                                accessibilityRole='button'
-                                onPress={() => void session.logout()}
-                                style={styles.headerAction}
-                                testID='home-logout'
-                            >
-                                <Text style={styles.headerActionText}>Logout</Text>
-                            </Pressable>
                         </View>
                     ) : (
                         <Link href='/login' asChild>
@@ -78,118 +154,102 @@ export default function HomeScreen() {
                     )}
                 </View>
 
-                <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps='handled'>
-                    <View style={styles.content}>
-                        <View style={styles.welcomeRow}>
-                            <View style={styles.welcomeCopy}>
-                                <Text style={styles.welcome}>Welcome {session.user?.email || 'Guest'}!</Text>
-                                {!session.isAuthenticated && (
-                                    <Text style={styles.guestCopy}>
-                                        Your counters stay on this device until you sign in.
-                                    </Text>
-                                )}
-                            </View>
-                            {session.isAuthenticated && (
-                                <View accessibilityLiveRegion='polite' style={styles.status}>
-                                    <View
-                                        style={[
-                                            styles.statusDot,
-                                            network.isConnected === false && styles.statusDotOffline,
-                                            network.isConnected !== false &&
-                                                counterState.syncError &&
-                                                styles.statusDotError,
-                                        ]}
-                                    />
-                                    <Text style={styles.statusText}>
-                                        {counterState.loading
-                                            ? 'Syncing'
-                                            : network.isConnected === false
-                                              ? 'Offline'
-                                              : counterState.syncError
-                                                ? 'Sync failed'
-                                                : 'Synced'}
-                                    </Text>
-                                </View>
-                            )}
-                        </View>
-
-                        {formOpen ? (
-                            <CounterForm counter={counterToEdit || undefined} onCancel={closeForm} onDone={closeForm} />
-                        ) : (
-                            <Pressable
-                                accessibilityRole='button'
-                                onPress={openCreateForm}
-                                style={({ pressed }) => [styles.addButton, pressed && styles.addButtonPressed]}
-                                testID='add-counter-button'
-                            >
-                                <Text style={styles.addButtonText}>Add counter</Text>
-                            </Pressable>
-                        )}
-
-                        {counterState.loading && counterState.counters.length === 0 ? (
-                            <ActivityIndicator color='#0f7899' size='large' style={styles.loader} />
-                        ) : counterState.counters.length ? (
-                            <View style={styles.counterList} testID='counter-list'>
-                                {counterState.counters.map((counter) => (
-                                    <CounterCard
-                                        key={counter.id}
-                                        counter={counter}
-                                        onDelete={(item) => void counterState.deleteCounter(item)}
-                                        onEdit={(item) => {
-                                            setCounterToEdit(item);
-                                            setFormOpen(true);
-                                        }}
-                                        onIncrement={(id, amount) => void counterState.incrementCounter(id, amount)}
-                                    />
-                                ))}
-                            </View>
+                <CounterList
+                    counters={reorderDraft ? orderCounters(counterState.counters, reorderDraft) : counterState.counters}
+                    reordering={reordering}
+                    onReorder={(ids) => void reorderCounters(ids)}
+                    emptyState={
+                        counterState.loading ? (
+                            <ActivityIndicator color={colors.link} size='large' style={styles.loader} />
                         ) : (
                             <View style={styles.emptyState}>
                                 <Text style={styles.emptyTitle}>No counters yet</Text>
-                                <Text style={styles.emptyCopy}>Add one to start tracking.</Text>
                             </View>
-                        )}
-                    </View>
-                </ScrollView>
+                        )
+                    }
+                    renderItem={(counter) => (
+                        <CounterCard
+                            key={counter.id}
+                            counter={counter}
+                            onDelete={(item) => void counterState.deleteCounter(item)}
+                            onEdit={(item) => {
+                                setCounterToEdit(item);
+                                setFormOpen(true);
+                            }}
+                            onEditIncrement={setIncrementToEdit}
+                            onIncrement={(id, amount) => void incrementCounter(id, amount)}
+                            onNotice={setNotice}
+                            canReorder={counterState.counters.length > 1}
+                            reordering={reordering}
+                            onReorder={() => {
+                                if (counterState.counters.length > 1)
+                                    setReorderDraft(counterState.counters.map((item) => item.id));
+                            }}
+                        />
+                    )}
+                />
 
-                <Modal
-                    animationType='fade'
-                    onRequestClose={() => setGuestLimitOpen(false)}
-                    transparent
-                    visible={guestLimitOpen}
-                >
-                    <View accessibilityViewIsModal style={styles.modalOverlay} testID='guest-limit-modal'>
-                        <View style={styles.modalCard}>
-                            <Text accessibilityRole='header' aria-level={2} style={styles.modalTitle}>
-                                {GUEST_COUNTER_LIMIT_MESSAGE}
-                            </Text>
-                            <Text style={styles.modalCopy}>
-                                Guest sessions can create up to {GUEST_COUNTER_CAP} counters. Your existing counters
-                                remain usable.
-                            </Text>
-                            <View style={styles.modalActions}>
-                                <Pressable
-                                    accessibilityRole='button'
-                                    onPress={() => setGuestLimitOpen(false)}
-                                    style={styles.modalSecondary}
-                                >
-                                    <Text style={styles.modalSecondaryText}>Close</Text>
-                                </Pressable>
-                                <Pressable
-                                    accessibilityRole='button'
-                                    onPress={() => {
-                                        setGuestLimitOpen(false);
-                                        router.push('/upgrade');
-                                    }}
-                                    style={styles.modalPrimary}
-                                    testID='guest-limit-modal-upgrade'
-                                >
-                                    <Text style={styles.modalPrimaryText}>View upgrade info</Text>
-                                </Pressable>
-                            </View>
-                        </View>
+                {!reordering && (
+                    <View pointerEvents='box-none' style={[styles.bottomActions, { bottom: insets.bottom }]}>
+                        <Pressable
+                            accessibilityLabel='Add counter'
+                            accessibilityRole='button'
+                            onPress={openCreateForm}
+                            style={({ pressed }) => [styles.addButton, pressed && styles.addButtonPressed]}
+                            testID='add-counter-button'
+                        >
+                            <Svg aria-hidden width={24} height={24} viewBox='0 0 24 24' fill='none'>
+                                <Path
+                                    d='M12 5v14M5 12h14'
+                                    stroke={colors.onPrimary}
+                                    strokeWidth={2}
+                                    strokeLinecap='round'
+                                />
+                            </Svg>
+                        </Pressable>
                     </View>
-                </Modal>
+                )}
+
+                <CounterForm
+                    visible={formOpen}
+                    counter={counterToEdit || undefined}
+                    onCancel={closeForm}
+                    onDone={closeForm}
+                />
+
+                {incrementToEdit && (
+                    <CounterIncrementDialog counter={incrementToEdit} onClose={() => setIncrementToEdit(null)} />
+                )}
+
+                <Dialog
+                    onRequestClose={() => setGuestLimitOpen(false)}
+                    visible={guestLimitOpen}
+                    testID='guest-limit-modal'
+                    title={GUEST_COUNTER_LIMIT_MESSAGE}
+                    description={`Guest sessions can create up to ${GUEST_COUNTER_CAP} counters. Your existing counters remain usable.`}
+                >
+                    <View style={styles.modalActions}>
+                        <Pressable
+                            accessibilityRole='button'
+                            onPress={() => setGuestLimitOpen(false)}
+                            style={styles.modalSecondary}
+                        >
+                            <Text style={styles.modalSecondaryText}>Close</Text>
+                        </Pressable>
+                        <Pressable
+                            accessibilityRole='button'
+                            onPress={() => {
+                                setGuestLimitOpen(false);
+                                router.push('/upgrade');
+                            }}
+                            style={styles.modalPrimary}
+                            testID='guest-limit-modal-upgrade'
+                        >
+                            <Text style={styles.modalPrimaryText}>View upgrade info</Text>
+                        </Pressable>
+                    </View>
+                </Dialog>
+                <Snackbar message={notice} onDismiss={() => setNotice('')} />
             </SafeAreaView>
         </>
     );
@@ -198,35 +258,26 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: '#f1f3f5',
+        backgroundColor: colors.background,
     },
     header: {
-        minHeight: 62,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 18,
-        backgroundColor: '#0f7899',
+        gap: 16,
+        paddingHorizontal: 20,
+        paddingVertical: 16,
+        backgroundColor: colors.background,
     },
     brandRow: {
         flex: 1,
         flexDirection: 'row',
+        flexWrap: 'wrap',
         alignItems: 'center',
         gap: 10,
     },
-    headerTitle: {
-        color: '#ffffff',
-        fontSize: 20,
-        fontWeight: '800',
-    },
-    premiumBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        color: '#5f3b00',
-        fontSize: 11,
-        fontWeight: '800',
-        backgroundColor: '#ffe08a',
-        borderRadius: 999,
+    brand: {
+        fontSize: 24,
     },
     headerAction: {
         minWidth: 56,
@@ -236,42 +287,20 @@ const styles = StyleSheet.create({
     },
     headerActions: {
         flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    settingsButton: {
+        width: 44,
+        height: 44,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 22,
     },
     headerActionText: {
-        color: '#ffffff',
+        color: colors.onPrimary,
         fontSize: 14,
         fontWeight: '700',
-    },
-    scrollContent: {
-        flexGrow: 1,
-        padding: 20,
-        paddingBottom: 42,
-    },
-    content: {
-        width: '100%',
-        maxWidth: 680,
-        alignSelf: 'center',
-        gap: 22,
-    },
-    welcomeRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 16,
-    },
-    welcomeCopy: {
-        flex: 1,
-        gap: 5,
-    },
-    welcome: {
-        color: '#212529',
-        fontSize: 24,
-        fontWeight: '800',
-    },
-    guestCopy: {
-        color: '#575e64',
-        fontSize: 14,
-        lineHeight: 20,
     },
     status: {
         flexDirection: 'row',
@@ -279,89 +308,60 @@ const styles = StyleSheet.create({
         gap: 7,
         paddingHorizontal: 11,
         paddingVertical: 7,
-        backgroundColor: '#ffffff',
+        backgroundColor: colors.surface,
         borderRadius: 999,
     },
     statusDot: {
         width: 8,
         height: 8,
-        backgroundColor: '#15803d',
+        backgroundColor: colors.success,
         borderRadius: 4,
     },
     statusDotOffline: {
-        backgroundColor: '#b45309',
+        backgroundColor: colors.warning,
     },
     statusDotError: {
-        backgroundColor: '#b42318',
+        backgroundColor: colors.danger,
     },
     statusText: {
-        color: '#343a40',
+        color: colors.text,
         fontSize: 13,
         fontWeight: '700',
     },
+    bottomActions: {
+        position: 'absolute',
+        width: '100%',
+        maxWidth: 720,
+        alignSelf: 'center',
+        alignItems: 'flex-end',
+        padding: 20,
+    },
     addButton: {
-        minHeight: 50,
+        width: 52,
+        height: 52,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#0f7899',
-        borderRadius: 10,
+        backgroundColor: colors.primary,
+        borderRadius: 26,
     },
     addButtonPressed: {
-        backgroundColor: '#0d6f8f',
-    },
-    addButtonText: {
-        color: '#ffffff',
-        fontSize: 16,
-        fontWeight: '800',
+        backgroundColor: colors.primaryPressed,
     },
     loader: {
         marginTop: 40,
     },
-    counterList: {
-        gap: 16,
-    },
     emptyState: {
         alignItems: 'center',
-        gap: 6,
         padding: 36,
-        backgroundColor: '#ffffff',
+        backgroundColor: colors.surface,
         borderWidth: 1,
-        borderColor: '#dee2e6',
+        borderColor: colors.divider,
         borderRadius: 14,
     },
     emptyTitle: {
-        color: '#343a40',
+        color: colors.muted,
         fontSize: 18,
-        fontWeight: '700',
-    },
-    emptyCopy: {
-        color: '#575e64',
-        fontSize: 14,
-    },
-    modalOverlay: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 20,
-        backgroundColor: 'rgba(0, 0, 0, 0.55)',
-    },
-    modalCard: {
-        width: '100%',
-        maxWidth: 460,
-        gap: 16,
-        padding: 24,
-        backgroundColor: '#ffffff',
-        borderRadius: 16,
-    },
-    modalTitle: {
-        color: '#212529',
-        fontSize: 22,
-        fontWeight: '800',
-    },
-    modalCopy: {
-        color: '#343a40',
-        fontSize: 16,
-        lineHeight: 24,
+        fontWeight: '500',
     },
     modalActions: {
         flexDirection: 'row',
@@ -376,11 +376,11 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         paddingHorizontal: 16,
         borderWidth: 1,
-        borderColor: '#6c757d',
+        borderColor: colors.border,
         borderRadius: 9,
     },
     modalSecondaryText: {
-        color: '#343a40',
+        color: colors.text,
         fontWeight: '700',
     },
     modalPrimary: {
@@ -388,11 +388,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 16,
-        backgroundColor: '#0f7899',
+        backgroundColor: colors.primary,
         borderRadius: 9,
     },
     modalPrimaryText: {
-        color: '#ffffff',
+        color: colors.onPrimary,
         fontWeight: '700',
     },
 });

@@ -1,6 +1,7 @@
-import { Link, useRouter } from 'expo-router';
+import { PASSWORD_REQUIREMENTS, passwordSchema } from '@tally/core/client';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
-import { forwardRef, useRef, useState } from 'react';
+import { Fragment, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     KeyboardAvoidingView,
@@ -8,49 +9,24 @@ import {
     Pressable,
     ScrollView,
     StyleSheet,
-    Switch,
     Text,
     TextInput,
     View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Path } from 'react-native-svg';
 
+import { colors } from '../colors';
 import { useSession } from '../session';
-
-import type { TextInputProps } from 'react-native';
+import { unstable_styles as webStyles } from './auth-form.module.css';
+import { AuthLink, FormField, styles as formStyles } from './auth-form';
+import { BackButton } from './back-button';
+import { Checkbox } from './checkbox';
+import { TallyBrand } from './tally-brand';
 
 type AuthScreenProps = {
     mode: 'login' | 'register';
 };
-
-export const FormField = forwardRef<TextInput, TextInputProps & { help?: string; label: string }>(function FormField(
-    { help, label, ...inputProps },
-    ref,
-) {
-    const [focused, setFocused] = useState(false);
-
-    return (
-        <View style={styles.field}>
-            <Text style={styles.label}>{label}</Text>
-            <TextInput
-                {...inputProps}
-                accessibilityLabel={label}
-                onBlur={(event) => {
-                    setFocused(false);
-                    inputProps.onBlur?.(event);
-                }}
-                onFocus={(event) => {
-                    setFocused(true);
-                    inputProps.onFocus?.(event);
-                }}
-                placeholderTextColor='#8d969e'
-                ref={ref}
-                style={[styles.input, focused && styles.inputFocused, inputProps.style]}
-            />
-            {help && <Text style={styles.helpText}>{help}</Text>}
-        </View>
-    );
-});
 
 const legalLinks = [
     { label: 'Privacy', document: 'privacy' },
@@ -60,7 +36,11 @@ const legalLinks = [
 
 export function AuthScreen({ mode }: AuthScreenProps) {
     const router = useRouter();
+    const params = useLocalSearchParams<{ inviteCode?: string | string[] }>();
+    const inviteCode = typeof params.inviteCode === 'string' ? params.inviteCode : undefined;
     const session = useSession();
+    const insets = useSafeAreaInsets();
+    const [headerHeight, setHeaderHeight] = useState(0);
     const isLogin = mode === 'login';
     const passwordInputRef = useRef<TextInput>(null);
     const confirmPasswordInputRef = useRef<TextInput>(null);
@@ -79,9 +59,12 @@ export function AuthScreen({ mode }: AuthScreenProps) {
             return;
         }
 
-        if (!isLogin && password.length < 6) {
-            setErrorMessage('Password must be at least 6 characters.');
-            return;
+        if (!isLogin) {
+            const result = passwordSchema.safeParse(password);
+            if (!result.success) {
+                setErrorMessage(result.error.issues[0].message);
+                return;
+            }
         }
 
         if (!isLogin && password !== confirmPassword) {
@@ -102,45 +85,93 @@ export function AuthScreen({ mode }: AuthScreenProps) {
             return;
         }
 
-        router.replace(isLogin ? '/home' : { pathname: '/verify-email', params: { email } });
+        if (isLogin) {
+            router.replace(inviteCode ? { pathname: '/join', params: { code: inviteCode } } : '/home');
+        } else {
+            router.replace({ pathname: '/verify-email', params: { email, inviteCode } });
+        }
     }
 
     return (
         <>
             <Head>
-                <title>{`Tally Tracker | ${isLogin ? 'Login' : 'Register'}`}</title>
+                <title>{`Tally | ${isLogin ? 'Login' : 'Register'}`}</title>
             </Head>
             <SafeAreaView style={styles.safeArea}>
+                <View
+                    onLayout={(event) => setHeaderHeight(event.nativeEvent.layout.height)}
+                    style={styles.pageHeader}
+                    testID='auth-page-header'
+                >
+                    <BackButton
+                        onPress={() =>
+                            router.canGoBack()
+                                ? router.back()
+                                : router.replace(isLogin ? '/home' : { pathname: '/login', params: { inviteCode } })
+                        }
+                        testID={`auth-${mode}-back`}
+                    />
+                    <TallyBrand style={styles.brand} />
+                </View>
                 <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                     style={styles.keyboardAvoider}
                 >
                     <ScrollView
-                        contentContainerStyle={styles.scrollContent}
+                        contentContainerStyle={[
+                            styles.scrollContent,
+                            // Balance the header and safe areas to center in the viewport, not below the header.
+                            {
+                                paddingBottom:
+                                    formStyles.scrollContent.paddingVertical +
+                                    headerHeight +
+                                    insets.top -
+                                    insets.bottom,
+                            },
+                        ]}
                         keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
                         keyboardShouldPersistTaps='handled'
                         showsVerticalScrollIndicator={false}
+                        testID='auth-scroll'
                     >
-                        <View style={styles.card}>
-                            <View style={styles.header}>
-                                <Text accessibilityRole='header' aria-level={1} style={styles.title}>
-                                    {isLogin ? 'Welcome to Tally Tracker' : 'Create Account'}
-                                </Text>
-                                {isLogin ? (
-                                    <Link href='/home' asChild>
-                                        <Pressable
-                                            accessibilityRole='link'
-                                            hitSlop={8}
-                                            style={({ pressed }) => pressed && styles.linkPressed}
-                                            testID='continue-as-guest'
+                        <View style={[styles.card, isLogin && styles.loginCard]} testID='auth-card'>
+                            {isLogin && (
+                                <AuthLink
+                                    href='/home'
+                                    hitSlop={8}
+                                    style={styles.guestLink}
+                                    textStyle={styles.guestLinkText}
+                                    testID='continue-as-guest'
+                                    icon={
+                                        <Svg
+                                            aria-hidden
+                                            width={5}
+                                            height={8}
+                                            viewBox='0 0 5 8'
+                                            style={styles.guestChevron}
                                         >
-                                            <Text style={styles.link}>Continue as guest</Text>
-                                        </Pressable>
-                                    </Link>
-                                ) : (
-                                    <Text style={styles.subtitle}>Get started with Tally App</Text>
-                                )}
-                            </View>
+                                            <Path
+                                                d='m0.75 0.75 3.5 3.25-3.5 3.25'
+                                                fill='none'
+                                                stroke={colors.text}
+                                                strokeWidth={1.5}
+                                                strokeLinecap='round'
+                                                strokeLinejoin='round'
+                                            />
+                                        </Svg>
+                                    }
+                                >
+                                    Continue as guest
+                                </AuthLink>
+                            )}
+                            {!isLogin && (
+                                <View style={styles.header}>
+                                    <Text accessibilityRole='header' aria-level={2} style={styles.title}>
+                                        Create Account
+                                    </Text>
+                                    <Text style={styles.subtitle}>Get started with Tally</Text>
+                                </View>
+                            )}
 
                             <FormField
                                 autoCapitalize='none'
@@ -157,9 +188,10 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                 value={email}
                             />
 
-                            <View style={styles.field}>
+                            <View style={[styles.field, isLogin && styles.loginPasswordField]}>
                                 <Text style={styles.label}>Password</Text>
                                 <View
+                                    testID='auth-password-field'
                                     style={[
                                         styles.passwordInput,
                                         passwordFocused && styles.inputFocused,
@@ -178,11 +210,11 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                             if (isLogin) void submit();
                                             else confirmPasswordInputRef.current?.focus();
                                         }}
-                                        placeholderTextColor='#8d969e'
+                                        placeholderTextColor={colors.muted}
                                         ref={passwordInputRef}
                                         returnKeyType={isLogin ? 'done' : 'next'}
                                         secureTextEntry={!showPassword}
-                                        style={styles.passwordTextInput}
+                                        style={[styles.passwordTextInput, Platform.OS === 'web' && webStyles.textInput]}
                                         testID='auth-password'
                                         textContentType={isLogin ? 'password' : 'newPassword'}
                                         value={password}
@@ -197,7 +229,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                         <Text style={styles.passwordToggle}>{showPassword ? 'Hide' : 'Show'}</Text>
                                     </Pressable>
                                 </View>
-                                {!isLogin && <Text style={styles.helpText}>Use at least 6 characters.</Text>}
+                                {!isLogin && <Text style={styles.helpText}>{PASSWORD_REQUIREMENTS}</Text>}
                             </View>
 
                             {!isLogin && (
@@ -217,30 +249,31 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                 />
                             )}
 
-                            {isLogin && Platform.OS === 'web' && (
-                                <View style={styles.rememberRow}>
-                                    <Text style={styles.rememberLabel}>Remember me</Text>
-                                    <Switch
-                                        accessibilityLabel='Remember me'
-                                        disabled={loading}
-                                        onValueChange={setRememberMe}
-                                        thumbColor='#f8f9fa'
-                                        trackColor={{ false: '#adb5bd', true: '#23a6d5' }}
-                                        value={rememberMe}
-                                    />
-                                </View>
-                            )}
-
                             {isLogin && (
-                                <Link href='/forgot-password' asChild>
-                                    <Pressable
-                                        accessibilityRole='link'
-                                        hitSlop={8}
-                                        style={({ pressed }) => [styles.forgotPassword, pressed && styles.linkPressed]}
+                                <View style={styles.loginOptions}>
+                                    {Platform.OS === 'web' && (
+                                        <View style={styles.rememberControl}>
+                                            <Checkbox
+                                                label='Remember me'
+                                                value={rememberMe}
+                                                testID='auth-remember-me'
+                                                disabled={loading}
+                                                onValueChange={setRememberMe}
+                                            />
+                                            <Text style={styles.rememberLabel} testID='auth-remember-me-label'>
+                                                Remember me
+                                            </Text>
+                                        </View>
+                                    )}
+                                    <AuthLink
+                                        href={{ pathname: '/forgot-password', params: { inviteCode } }}
+                                        style={styles.forgotPassword}
+                                        textStyle={styles.loginOptionLink}
+                                        testID='auth-forgot-password'
                                     >
-                                        <Text style={styles.link}>Forgot password?</Text>
-                                    </Pressable>
-                                </Link>
+                                        Forgot password?
+                                    </AuthLink>
+                                </View>
                             )}
 
                             {Boolean(errorMessage) && (
@@ -248,6 +281,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                     accessibilityLiveRegion='polite'
                                     accessibilityRole='alert'
                                     style={styles.errorBox}
+                                    testID='auth-error'
                                 >
                                     <Text style={styles.errorText}>{errorMessage}</Text>
                                 </View>
@@ -265,46 +299,48 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                 testID='auth-submit'
                             >
                                 {loading ? (
-                                    <ActivityIndicator color='#ffffff' />
+                                    <ActivityIndicator color={colors.onPrimary} />
                                 ) : (
                                     <Text style={styles.primaryButtonText}>{isLogin ? 'Login' : 'Register'}</Text>
                                 )}
                             </Pressable>
 
                             <View style={styles.footer}>
-                                <Link href={isLogin ? '/register' : '/login'} asChild>
-                                    <Pressable
-                                        accessibilityRole='link'
+                                <View style={styles.signupRow}>
+                                    <Text style={styles.rememberLabel}>
+                                        {isLogin ? "Don't have an account?" : 'Already have an account?'}
+                                    </Text>
+                                    <AuthLink
+                                        href={{ pathname: isLogin ? '/register' : '/login', params: { inviteCode } }}
                                         hitSlop={8}
-                                        style={({ pressed }) => pressed && styles.linkPressed}
+                                        testID='auth-switch-mode'
                                     >
-                                        <Text style={styles.link}>
-                                            {isLogin ? 'Create an account' : 'Already have an account?'}
-                                        </Text>
-                                    </Pressable>
-                                </Link>
+                                        {isLogin ? 'Sign up' : 'Sign in'}
+                                    </AuthLink>
+                                </View>
                                 <View
                                     accessibilityLabel='Legal links'
                                     accessibilityRole='summary'
                                     style={styles.legalLinks}
                                 >
-                                    {legalLinks.map((link) => (
-                                        <Link
-                                            key={link.document}
-                                            href={{
-                                                pathname: '/legal/[document]',
-                                                params: { document: link.document },
-                                            }}
-                                            asChild
-                                        >
-                                            <Pressable
-                                                accessibilityRole='link'
+                                    {legalLinks.map((link, index) => (
+                                        <Fragment key={link.document}>
+                                            {index > 0 && (
+                                                <Text aria-hidden style={styles.legalSeparator}>
+                                                    •
+                                                </Text>
+                                            )}
+                                            <AuthLink
+                                                href={{
+                                                    pathname: '/legal/[document]',
+                                                    params: { document: link.document },
+                                                }}
                                                 hitSlop={8}
-                                                style={({ pressed }) => pressed && styles.linkPressed}
+                                                textStyle={styles.legalLink}
                                             >
-                                                <Text style={styles.legalLink}>{link.label}</Text>
-                                            </Pressable>
-                                        </Link>
+                                                {link.label}
+                                            </AuthLink>
+                                        </Fragment>
                                     ))}
                                 </View>
                             </View>
@@ -317,64 +353,48 @@ export function AuthScreen({ mode }: AuthScreenProps) {
 }
 
 const styles = StyleSheet.create({
-    safeArea: {
-        flex: 1,
-        backgroundColor: '#495057',
-    },
-    keyboardAvoider: {
-        flex: 1,
+    ...formStyles,
+    pageHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 16,
+        paddingHorizontal: 32,
+        paddingTop: 12,
+        paddingBottom: 12,
     },
     scrollContent: {
-        flexGrow: 1,
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingVertical: 32,
+        ...formStyles.scrollContent,
+        justifyContent: 'center',
     },
-    card: {
-        width: '100%',
-        maxWidth: 430,
-        padding: 28,
-        backgroundColor: '#f8f9fa',
-        borderRadius: 16,
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.18)',
-        elevation: 5,
-    },
-    header: {
-        alignItems: 'center',
-        marginBottom: 30,
-    },
-    title: {
-        marginBottom: 8,
-        color: '#343a40',
+    brand: {
         fontSize: 28,
-        fontWeight: '700',
-        textAlign: 'center',
+        lineHeight: 34,
     },
-    subtitle: {
-        color: '#575e64',
-        fontSize: 15,
+    loginCard: {
+        padding: 24,
     },
-    field: {
-        marginBottom: 18,
+    guestLink: {
+        alignSelf: 'flex-end',
+        minHeight: 20,
+        marginBottom: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        flexShrink: 1,
+        gap: 4,
     },
-    label: {
-        marginBottom: 7,
-        color: '#343a40',
+    guestLinkText: {
+        color: colors.text,
+        flexShrink: 1,
         fontSize: 14,
-        fontWeight: '600',
+        textAlign: 'right',
     },
-    input: {
-        minHeight: 50,
-        paddingHorizontal: 14,
-        color: '#212529',
-        fontSize: 16,
-        backgroundColor: '#ffffff',
-        borderWidth: 2,
-        borderColor: '#ced4da',
-        borderRadius: 10,
+    guestChevron: {
+        // Align with the label's visible glyphs, below the center of its line box.
+        transform: [{ translateY: 1 }],
     },
-    inputFocused: {
-        borderColor: '#23a6d5',
+    loginPasswordField: {
+        marginBottom: 4,
     },
     inputDisabled: {
         opacity: 0.65,
@@ -384,115 +404,70 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 14,
-        backgroundColor: '#ffffff',
+        backgroundColor: colors.input,
         borderWidth: 2,
-        borderColor: '#ced4da',
+        borderColor: colors.border,
         borderRadius: 10,
     },
     passwordTextInput: {
         minWidth: 0,
         flex: 1,
         paddingVertical: 12,
-        color: '#212529',
+        color: colors.text,
         fontSize: 16,
     },
     passwordToggle: {
         paddingLeft: 12,
-        color: '#167ca3',
+        color: colors.link,
         fontSize: 14,
         fontWeight: '700',
     },
-    helpText: {
-        marginTop: 7,
-        color: '#575e64',
-        fontSize: 13,
-    },
-    rememberRow: {
-        minHeight: 48,
+    loginOptions: {
         flexDirection: 'row',
+        flexWrap: 'wrap',
         alignItems: 'center',
         justifyContent: 'space-between',
+        columnGap: 12,
         marginBottom: 18,
+    },
+    rememberControl: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        minHeight: 44,
     },
     rememberLabel: {
-        color: '#343a40',
-        fontSize: 15,
+        color: colors.text,
+        fontSize: 14,
     },
     forgotPassword: {
-        alignSelf: 'flex-end',
-        marginBottom: 18,
-    },
-    errorBox: {
-        padding: 12,
-        marginBottom: 18,
-        backgroundColor: '#fde8e7',
-        borderRadius: 8,
-    },
-    errorText: {
-        color: '#b42318',
-        fontSize: 14,
-        textAlign: 'center',
-    },
-    statusBox: {
-        padding: 12,
-        marginBottom: 18,
-        backgroundColor: '#e5f6fb',
-        borderRadius: 8,
-    },
-    statusText: {
-        color: '#14566b',
-        fontSize: 14,
-        textAlign: 'center',
-    },
-    primaryButton: {
-        minHeight: 50,
-        alignItems: 'center',
+        minHeight: 44,
         justifyContent: 'center',
-        backgroundColor: '#0f7899',
-        borderRadius: 10,
+        marginLeft: 'auto',
     },
-    primaryButtonPressed: {
-        backgroundColor: '#0d6f8f',
-        opacity: 0.8,
+    loginOptionLink: {
+        fontSize: 14,
     },
-    primaryButtonDisabled: {
-        opacity: 0.7,
-    },
-    primaryButtonText: {
-        color: '#ffffff',
-        fontSize: 16,
-        fontWeight: '700',
-    },
-    footer: {
+    signupRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'center',
         alignItems: 'center',
-        gap: 16,
-        marginTop: 22,
-    },
-    secondaryActions: {
-        alignItems: 'center',
-        gap: 18,
-        marginTop: 22,
-    },
-    link: {
-        color: '#167ca3',
-        fontSize: 15,
-        fontWeight: '700',
-        textDecorationLine: 'underline',
-    },
-    linkPressed: {
-        opacity: 0.55,
+        gap: 5,
     },
     legalLinks: {
         flexDirection: 'row',
         flexWrap: 'wrap',
+        alignItems: 'center',
         justifyContent: 'center',
-        gap: 18,
+        gap: 4,
+    },
+    legalSeparator: {
+        color: colors.link,
+        fontSize: 10,
     },
     legalLink: {
-        color: '#575e64',
         fontSize: 13,
-        textDecorationLine: 'underline',
+        fontWeight: '400',
     },
 });
-
-export { styles as authScreenStyles };

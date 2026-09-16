@@ -6,7 +6,9 @@ enum CounterType {
 model Counter {
     id         String      @id @default(uuid())
     title      String
-    count      Int         @default(0)
+    count      Decimal     @default(0) @db.Decimal(15, 6)
+    increment  Decimal     @default(1) @db.Decimal(15, 6)
+    metric     String?     @db.VarChar(80)
     color      String?
     type       CounterType @default(PERSONAL)
     inviteCode String?     @unique @map("invite_code")

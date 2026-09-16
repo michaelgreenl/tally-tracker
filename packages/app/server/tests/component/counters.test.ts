@@ -1,4 +1,4 @@
-import { OK, CREATED, FORBIDDEN, NOT_FOUND, UNPROCESSABLE_ENTITY, SERVER_ERROR } from '@tally/core';
+import { OK, CREATED, NOT_FOUND, UNPROCESSABLE_ENTITY, SERVER_ERROR } from '@tally/core';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Request, Response, NextFunction } from 'express';
 import request from 'supertest';
@@ -110,6 +110,7 @@ describe('Counter Routes', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         prismaMock.idempotencyLogs.clear();
+        vi.mocked(counterRepository.getParticipants).mockResolvedValue([TEST_USER_ID]);
         app.set('io', { to: () => ({ emit: vi.fn() }) });
     });
 
@@ -126,61 +127,16 @@ describe('Counter Routes', () => {
             expect(userRepository.getUserTierById).not.toHaveBeenCalled();
         });
 
-        it('should reject personal counter creation with an invite code', async () => {
-            const res = await request(app)
-                .post('/counters')
-                .send({ title: 'Personal', type: 'PERSONAL', inviteCode: 'ABC123' });
-
-            expect(res.status).toBe(UNPROCESSABLE_ENTITY);
-            expect(userRepository.getUserTierById).not.toHaveBeenCalled();
-            expect(counterRepository.post).not.toHaveBeenCalled();
-        });
-
-        it('should reject shared counter creation for persisted BASIC users', async () => {
-            vi.mocked(userRepository.getUserTierById).mockResolvedValue({ id: TEST_USER_ID, tier: 'BASIC' });
-
-            const res = await request(app)
-                .post('/counters')
-                .send({ title: 'Shared', type: 'SHARED', inviteCode: 'ABC123' });
-
-            expect(res.status).toBe(FORBIDDEN);
-            expect(res.body.message).toBe('Basic accounts cannot create shared counters.');
-            expect(userRepository.getUserTierById).toHaveBeenCalledWith(TEST_USER_ID, expect.anything());
-            expect(counterRepository.post).not.toHaveBeenCalled();
-        });
-
-        it('should create a shared counter for persisted PREMIUM users', async () => {
-            const counter = buildCounter({ type: 'SHARED', inviteCode: 'ABC123' });
-            vi.mocked(userRepository.getUserTierById).mockResolvedValue({ id: TEST_USER_ID, tier: 'PREMIUM' });
-            vi.mocked(counterRepository.post).mockResolvedValue(counter);
-
-            const res = await request(app)
-                .post('/counters')
-                .send({ title: 'Shared', type: 'SHARED', inviteCode: 'ABC123' });
-
-            expect(res.status).toBe(CREATED);
-            expect(res.body.data.counter.type).toBe('SHARED');
-            expect(userRepository.getUserTierById).toHaveBeenCalledWith(TEST_USER_ID, expect.anything());
-        });
-
-        it('should return 404 when the persisted user record is missing for shared counters', async () => {
-            vi.mocked(userRepository.getUserTierById).mockResolvedValue(null);
-
-            const res = await request(app)
-                .post('/counters')
-                .send({ title: 'Shared', type: 'SHARED', inviteCode: 'ABC123' });
-
-            expect(res.status).toBe(NOT_FOUND);
-            expect(res.body.message).toBe('User not found');
-            expect(userRepository.getUserTierById).toHaveBeenCalledWith(TEST_USER_ID, expect.anything());
-            expect(counterRepository.post).not.toHaveBeenCalled();
-        });
-
-        it('should reject shared counter without invite code', async () => {
-            const res = await request(app).post('/counters').send({ title: 'Broken', type: 'SHARED' });
-
-            expect(res.status).toBe(UNPROCESSABLE_ENTITY);
-        });
+        it.each([{ type: 'SHARED' }, { inviteCode: 'chosen-by-client' }])(
+            'rejects client-controlled sharing fields: %j',
+            async (fields) => {
+                const res = await request(app)
+                    .post('/counters')
+                    .send({ title: 'Counter', ...fields });
+                expect(res.status).toBe(UNPROCESSABLE_ENTITY);
+                expect(counterRepository.post).not.toHaveBeenCalled();
+            },
+        );
 
         it('should reject empty title', async () => {
             const res = await request(app).post('/counters').send({ title: '' });
@@ -292,6 +248,19 @@ describe('Counter Routes', () => {
     });
 
     describe('PUT /counters/update/:counterId', () => {
+        it.each([
+            { increment: 0 },
+            { increment: -0.5 },
+            { increment: 0.0000001 },
+            { increment: 1_000_000_000 },
+            { increment: '0.5' },
+            { metric: 'x'.repeat(81) },
+        ])('rejects invalid counter settings: %j', async (body) => {
+            const response = await request(app).put(`/counters/update/${TEST_COUNTER_ID}`).send(body);
+            expect(response.status).toBe(UNPROCESSABLE_ENTITY);
+            expect(counterRepository.put).not.toHaveBeenCalled();
+        });
+
         it('should update counter fields', async () => {
             const counter = buildCounter({ title: 'Updated Title', color: '#FF0000' });
             vi.mocked(counterRepository.put).mockResolvedValue(counter);
@@ -304,12 +273,15 @@ describe('Counter Routes', () => {
             expect(res.body.data.counter.title).toBe('Updated Title');
         });
 
-        it('should reject count updates on the metadata update route', async () => {
-            const res = await request(app).put(`/counters/update/${TEST_COUNTER_ID}`).send({ count: 0 });
+        it.each([{ count: 0 }, { type: 'SHARED' }, { inviteCode: 'chosen-by-client' }])(
+            'rejects protected metadata fields: %j',
+            async (body) => {
+                const res = await request(app).put(`/counters/update/${TEST_COUNTER_ID}`).send(body);
 
-            expect(res.status).toBe(UNPROCESSABLE_ENTITY);
-            expect(counterRepository.put).not.toHaveBeenCalled();
-        });
+                expect(res.status).toBe(UNPROCESSABLE_ENTITY);
+                expect(counterRepository.put).not.toHaveBeenCalled();
+            },
+        );
 
         it('should return 404 when counter not found', async () => {
             vi.mocked(counterRepository.put).mockResolvedValue(null);

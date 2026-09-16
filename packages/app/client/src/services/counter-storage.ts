@@ -20,4 +20,14 @@ export const CounterStorage = {
     clear() {
         return AsyncStorage.removeItem(COUNTERS_KEY);
     },
+
+    async getOrder(userId: string): Promise<string[]> {
+        const value = await AsyncStorage.getItem(`${COUNTERS_KEY}_order_${userId}`);
+        const ids: unknown = value ? JSON.parse(value) : [];
+        return Array.isArray(ids) ? ids.filter((id): id is string => typeof id === 'string') : [];
+    },
+
+    saveOrder(userId: string, ids: string[]) {
+        return AsyncStorage.setItem(`${COUNTERS_KEY}_order_${userId}`, JSON.stringify(ids));
+    },
 };

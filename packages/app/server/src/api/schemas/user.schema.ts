@@ -1,10 +1,11 @@
+import { passwordSchema } from '@tally/core';
 import { z } from 'zod';
 
 export const createUserSchema = z.object({
     body: z
         .object({
             email: z.string().email('Invalid email format'),
-            password: z.string().min(6, 'Password must be at least 6 characters'),
+            password: passwordSchema,
         })
         .refine((data) => data.email, {
             message: 'Email is required to login',
@@ -40,7 +41,7 @@ export const updateUserSchema = z.object({
     body: z.object({
         tier: z.string().optional(),
         email: z.string().email().optional(),
-        password: z.string().min(6).optional(),
+        password: passwordSchema.optional(),
     }),
 });
 
@@ -59,6 +60,6 @@ export const passwordResetSchema = z.object({
     body: z.object({
         email: emailSchema,
         code: codeSchema,
-        password: z.string().min(6, 'Password must be at least 6 characters'),
+        password: passwordSchema,
     }),
 });

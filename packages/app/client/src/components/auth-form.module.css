@@ -1,0 +1,14 @@
+:global(a):focus-visible .linkText {
+    text-decoration-line: underline;
+}
+
+@media (hover: hover) {
+    :global(a):hover .linkText {
+        text-decoration-line: underline;
+    }
+}
+
+.textInput:focus {
+    /* The field border supplies the focus indicator, including the password's Show button. */
+    outline: none;
+}

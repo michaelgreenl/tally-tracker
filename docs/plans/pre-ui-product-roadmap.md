@@ -1,6 +1,6 @@
 # Pre-Release Product Roadmap
 
-This plan ends when Tally Tracker is publicly available on the App Store and Google Play.
+This plan ends when Tally is publicly available on the App Store and Google Play.
 
 That release is the checkpoint for starting the broader product roadmap.
 

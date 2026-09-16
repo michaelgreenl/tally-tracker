@@ -96,7 +96,7 @@ describe('Auth Routes', () => {
 
             const res = await request(app).post('/users').send({
                 email: 'new@test.com',
-                password: 'password123',
+                password: 'Abcde1',
             });
 
             expect(res.status).toBe(CREATED);
@@ -110,19 +110,29 @@ describe('Auth Routes', () => {
 
         it('should reject registration without email', async () => {
             const res = await request(app).post('/users').send({
-                password: 'password123',
+                password: 'Abcde1',
             });
 
             expect(res.status).toBe(UNPROCESSABLE_ENTITY);
         });
+    });
 
-        it('should reject weak passwords', async () => {
-            const res = await request(app).post('/users').send({
-                email: 'new@test.com',
-                password: '123',
+    describe.each([
+        ['post', '/users'],
+        ['post', '/users/reset-password'],
+        ['put', '/users'],
+    ] as const)('%s %s password requirements', (method, path) => {
+        it.each(['Abc12', 'abcdef1', 'Abcdef'])('rejects a password missing a requirement: %s', async (password) => {
+            const res = await request(app)[method](path).send({
+                email: 'test@test.com',
+                code: '123456',
+                password,
             });
 
             expect(res.status).toBe(UNPROCESSABLE_ENTITY);
+            expect(res.body.errors).toEqual(
+                expect.arrayContaining([expect.objectContaining({ field: 'body.password' })]),
+            );
         });
     });
 

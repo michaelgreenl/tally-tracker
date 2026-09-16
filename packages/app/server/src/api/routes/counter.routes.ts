@@ -8,6 +8,7 @@ import {
     increment,
     join,
     removeShare,
+    share,
 } from '../controllers/counter.controller.js';
 import { jwt } from '../../middleware/auth.middleware.js';
 import { validate } from '../../middleware/validate.middleware.js';
@@ -19,6 +20,7 @@ import {
     deleteCounterSchema,
     joinCounterSchema,
     updateShareSchema,
+    getCounterSchema,
 } from '../schemas/counter.schema.js';
 
 const router = express.Router();
@@ -33,6 +35,7 @@ router.put('/:counterId/count', validate(setCounterCountSchema), setCount);
 
 router.put('/increment/:counterId', validate(incrementCounterSchema), increment);
 router.post('/join', validate(joinCounterSchema), join);
+router.post('/:counterId/share', validate(getCounterSchema), share);
 router.put('/remove-shared/:counterId', validate(updateShareSchema), removeShare);
 
 export default router;

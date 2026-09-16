@@ -1,3 +1,4 @@
+import { PASSWORD_REQUIREMENTS, passwordSchema } from '@tally/core/client';
 import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { useRef, useState } from 'react';
@@ -14,9 +15,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { colors } from '../colors';
 import { getErrorMessage } from '../api';
 import { AuthService } from '../services/auth.service';
-import { authScreenStyles as styles, FormField } from './auth-screen';
+import { FormField, styles } from './auth-form';
 
 type EmailAuthScreenProps = {
     mode: 'verify' | 'reset';
@@ -27,7 +29,8 @@ const getEmailParameter = (email: string | string[] | undefined) =>
 
 export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
     const router = useRouter();
-    const params = useLocalSearchParams<{ email?: string | string[] }>();
+    const params = useLocalSearchParams<{ email?: string | string[]; inviteCode?: string | string[] }>();
+    const inviteCode = typeof params.inviteCode === 'string' ? params.inviteCode : undefined;
     const isVerification = mode === 'verify';
     const codeInputRef = useRef<TextInput>(null);
     const passwordInputRef = useRef<TextInput>(null);
@@ -75,9 +78,12 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
             return;
         }
 
-        if (!isVerification && password.length < 6) {
-            setErrorMessage('Password must be at least 6 characters.');
-            return;
+        if (!isVerification) {
+            const result = passwordSchema.safeParse(password);
+            if (!result.success) {
+                setErrorMessage(result.error.issues[0].message);
+                return;
+            }
         }
 
         if (!isVerification && password !== confirmPassword) {
@@ -113,7 +119,7 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
 
     function primaryAction() {
         if (complete) {
-            router.replace('/login');
+            router.replace({ pathname: '/login', params: { inviteCode } });
             return;
         }
 
@@ -126,7 +132,7 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
     return (
         <>
             <Head>
-                <title>{`Tally Tracker | ${title}`}</title>
+                <title>{`Tally | ${title}`}</title>
             </Head>
             <SafeAreaView style={styles.safeArea}>
                 <KeyboardAvoidingView
@@ -197,7 +203,7 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
                                                 autoCapitalize='none'
                                                 autoComplete='new-password'
                                                 editable={!loading}
-                                                help='Use at least 6 characters. Choose a password that differs from your current password.'
+                                                help={`${PASSWORD_REQUIREMENTS} Choose a password that differs from your current password.`}
                                                 label='New Password'
                                                 onChangeText={setPassword}
                                                 onSubmitEditing={() => confirmPasswordInputRef.current?.focus()}
@@ -238,6 +244,7 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
                                     accessibilityLiveRegion='polite'
                                     accessibilityRole='alert'
                                     style={styles.errorBox}
+                                    testID='email-auth-error'
                                 >
                                     <Text style={styles.errorText}>{errorMessage}</Text>
                                 </View>
@@ -261,7 +268,7 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
                                 }
                             >
                                 {loading ? (
-                                    <ActivityIndicator color='#ffffff' />
+                                    <ActivityIndicator color={colors.onPrimary} />
                                 ) : (
                                     <Text style={styles.primaryButtonText}>
                                         {complete ? 'Continue to Login' : codeRequested ? 'Submit' : 'Send Code'}
@@ -296,7 +303,7 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
 
                             {!complete && (
                                 <View style={styles.footer}>
-                                    <Link href='/login' asChild>
+                                    <Link href={{ pathname: '/login', params: { inviteCode } }} asChild>
                                         <Pressable
                                             accessibilityRole='link'
                                             hitSlop={8}

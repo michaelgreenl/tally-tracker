@@ -22,10 +22,8 @@ const command = (id: string): MutationCommand => ({
     id,
     queuedByUserId: 'user-1',
     type: 'CREATE',
-    entity: 'counter',
     entityId: `counter-${id}`,
     payload: {},
-    timestamp: 1,
 });
 
 describe('SyncQueue', () => {

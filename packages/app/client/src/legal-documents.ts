@@ -3,7 +3,7 @@ export const legalDocuments = {
         title: 'Privacy Policy',
         updated: 'July 8, 2026',
         introduction:
-            'Tally Tracker is a cross-platform counter app. This policy explains the information Tally Tracker handles when you use the app.',
+            'Tally is a cross-platform counter app. This policy explains the information Tally handles when you use the app.',
         sections: [
             {
                 title: 'Information the app handles',
@@ -24,8 +24,8 @@ export const legalDocuments = {
             {
                 title: 'Sharing',
                 paragraphs: [
-                    'Tally Tracker does not sell personal information. Information may be processed by infrastructure and service providers that help operate features you use, such as hosting, database, authentication, app-store, payment, or diagnostics services.',
-                    'Diagnostics are used for crash and error reporting. Tally Tracker does not intentionally send passwords, authentication tokens, or counter contents in diagnostic events.',
+                    'Tally does not sell personal information. Information may be processed by infrastructure and service providers that help operate features you use, such as hosting, database, authentication, app-store, payment, or diagnostics services.',
+                    'Diagnostics are used for crash and error reporting. Tally does not intentionally send passwords, authentication tokens, or counter contents in diagnostic events.',
                 ],
             },
             {
@@ -37,13 +37,13 @@ export const legalDocuments = {
             {
                 title: 'Security',
                 paragraphs: [
-                    'Tally Tracker uses technical safeguards such as hashed passwords, authenticated API requests, and token rotation. No method of storage or transmission is perfectly secure.',
+                    'Tally uses technical safeguards such as hashed passwords, authenticated API requests, and token rotation. No method of storage or transmission is perfectly secure.',
                 ],
             },
             {
                 title: 'Children',
                 paragraphs: [
-                    'Tally Tracker is not directed to children under 13. If you believe a child provided personal information, request deletion using the account deletion page.',
+                    'Tally is not directed to children under 13. If you believe a child provided personal information, request deletion using the account deletion page.',
                 ],
             },
             {
@@ -56,12 +56,12 @@ export const legalDocuments = {
         title: 'Terms of Service',
         updated: 'July 6, 2026',
         introduction:
-            'These terms govern use of Tally Tracker, a counter and shared-counter app. By using Tally Tracker, you agree to these terms.',
+            'These terms govern use of Tally, a counter and shared-counter app. By using Tally, you agree to these terms.',
         sections: [
             {
                 title: 'Use of the app',
                 paragraphs: [
-                    'You may use Tally Tracker to create, manage, synchronize, and share counters. You are responsible for the information you enter and for keeping your account credentials secure.',
+                    'You may use Tally to create, manage, synchronize, and share counters. You are responsible for the information you enter and for keeping your account credentials secure.',
                 ],
             },
             {
@@ -91,13 +91,13 @@ export const legalDocuments = {
             {
                 title: 'Availability',
                 paragraphs: [
-                    'The app may change, pause, or stop operating. Tally Tracker is provided without warranties to the fullest extent allowed by law.',
+                    'The app may change, pause, or stop operating. Tally is provided without warranties to the fullest extent allowed by law.',
                 ],
             },
             {
                 title: 'Limitation of liability',
                 paragraphs: [
-                    'To the fullest extent allowed by law, the developer is not liable for indirect, incidental, special, or consequential damages related to use of Tally Tracker.',
+                    'To the fullest extent allowed by law, the developer is not liable for indirect, incidental, special, or consequential damages related to use of Tally.',
                 ],
             },
             {
@@ -110,12 +110,12 @@ export const legalDocuments = {
         title: 'Support',
         updated: 'July 7, 2026',
         introduction:
-            'Use this page for Tally Tracker support information. A direct support contact should be listed here before public store submission.',
+            'Use this page for Tally support information. A direct support contact should be listed here before public store submission.',
         sections: [
             {
                 title: 'Account help',
                 paragraphs: [
-                    'Include the email address associated with your Tally Tracker account when you need help with sign-in, account access, or account deletion.',
+                    'Include the email address associated with your Tally account when you need help with sign-in, account access, or account deletion.',
                 ],
             },
             {
@@ -130,19 +130,17 @@ export const legalDocuments = {
         title: 'Delete Account',
         updated: 'July 6, 2026',
         introduction:
-            'You can delete your Tally Tracker account and associated account data from the app, or request deletion if you cannot access the app. Deletion removes account access and server-side data linked to the account, including saved counters, sharing relationships, and active sessions.',
+            'You can delete your Tally account and associated account data from the app, or request deletion if you cannot access the app. Deletion removes account access and server-side data linked to the account, including saved counters, sharing relationships, and active sessions.',
         sections: [
             {
                 title: 'Delete in the app',
                 paragraphs: [
-                    'Sign in to Tally Tracker, open Settings, choose Delete Account, and confirm the deletion request. You may need an active internet connection so the app can remove server-side account data.',
+                    'Sign in to Tally, open Settings, choose Delete Account, and confirm the deletion request. You may need an active internet connection so the app can remove server-side account data.',
                 ],
             },
             {
                 title: 'If you cannot access the app',
-                paragraphs: [
-                    'Use the Support page and include the email address associated with your Tally Tracker account.',
-                ],
+                paragraphs: ['Use the Support page and include the email address associated with your Tally account.'],
             },
             {
                 title: 'What deletion removes',

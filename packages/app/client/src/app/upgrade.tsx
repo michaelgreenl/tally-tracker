@@ -3,13 +3,15 @@ import Head from 'expo-router/head';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { colors } from '../colors';
+
 export default function UpgradeScreen() {
     const router = useRouter();
 
     return (
         <>
             <Head>
-                <title>Tally Tracker | Upgrade</title>
+                <title>Tally | Upgrade</title>
             </Head>
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.content} testID='upgrade-placeholder-page'>
@@ -39,7 +41,7 @@ export default function UpgradeScreen() {
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: '#f1f3f5',
+        backgroundColor: colors.background,
     },
     content: {
         width: '100%',
@@ -49,12 +51,12 @@ const styles = StyleSheet.create({
         padding: 24,
     },
     title: {
-        color: '#212529',
+        color: colors.text,
         fontSize: 30,
         fontWeight: '800',
     },
     copy: {
-        color: '#343a40',
+        color: colors.muted,
         fontSize: 16,
         lineHeight: 24,
     },
@@ -63,14 +65,14 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         marginTop: 8,
-        backgroundColor: '#0f7899',
+        backgroundColor: colors.primary,
         borderRadius: 10,
     },
     buttonPressed: {
-        backgroundColor: '#0d6f8f',
+        backgroundColor: colors.primaryPressed,
     },
     buttonText: {
-        color: '#ffffff',
+        color: colors.onPrimary,
         fontSize: 16,
         fontWeight: '700',
     },

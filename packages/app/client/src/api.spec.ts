@@ -1,7 +1,7 @@
 import { OK, UNAUTHORIZED } from '@tally/core/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import apiFetch, { ApiError, setUnauthorizedHandler } from './api';
+import apiFetch, { ApiError, REQUEST_FAILED_MESSAGE, setUnauthorizedHandler } from './api';
 
 const { fetchMock, tokens, tokenStorage } = vi.hoisted(() => ({
     fetchMock: vi.fn(),
@@ -140,6 +140,47 @@ describe('apiFetch', () => {
         removeHandler();
     });
 
+    it.each(['connection loss', 'server error', 'rate limit', 'invalid response', 'missing tokens'])(
+        'preserves the session and allows recovery after refresh encounters %s',
+        async (failure) => {
+            const storedTokens = new Map(tokens);
+            const removeHandler = setUnauthorizedHandler(() => tokens.clear());
+            fetchMock
+                .mockResolvedValue(jsonResponse({ message: 'Unauthorized' }, UNAUTHORIZED))
+                .mockResolvedValueOnce(jsonResponse({ message: 'Unauthorized' }, UNAUTHORIZED));
+            if (failure === 'connection loss') {
+                fetchMock.mockRejectedValueOnce(new Error('Connection refused'));
+            } else {
+                fetchMock.mockResolvedValueOnce(
+                    jsonResponse(
+                        failure === 'missing tokens' ? { success: true, data: { accessToken: 'partial-token' } } : {},
+                        failure === 'server error' ? 503 : failure === 'rate limit' ? 429 : OK,
+                    ),
+                );
+            }
+
+            try {
+                await expect(apiFetch('/users/check-auth')).rejects.toMatchObject({ status: 500 });
+                expect(tokens).toEqual(storedTokens);
+
+                fetchMock
+                    .mockResolvedValueOnce(jsonResponse({ message: 'Unauthorized' }, UNAUTHORIZED))
+                    .mockResolvedValueOnce(
+                        jsonResponse({
+                            success: true,
+                            data: { accessToken: 'fresh-access-token', refreshToken: 'fresh-refresh-token' },
+                        }),
+                    )
+                    .mockResolvedValueOnce(jsonResponse({ success: true }));
+
+                await expect(apiFetch('/users/check-auth')).resolves.toEqual({ success: true });
+                expect(tokens.get('refresh')).toBe('fresh-refresh-token');
+            } finally {
+                removeHandler();
+            }
+        },
+    );
+
     it('returns public login errors without expiring the current session', async () => {
         const unauthorized = vi.fn();
         const removeHandler = setUnauthorizedHandler(unauthorized);
@@ -175,10 +216,27 @@ describe('apiFetch', () => {
         removeHandler();
     });
 
-    it('maps fetch failures to network errors', async () => {
-        fetchMock.mockRejectedValue(new Error('Connection refused'));
+    it.each([
+        [503, { message: 'Database connection refused' }],
+        [404, null],
+        [400, { message: { internal: 'Invalid response' } }],
+    ] as const)('hides unexpected response details from the public message (%s)', async (status, data) => {
+        fetchMock.mockResolvedValue(jsonResponse(data, status));
 
-        await expect(apiFetch('/counters')).rejects.toEqual(new ApiError('Connection refused', 0));
+        await expect(apiFetch('/counters')).rejects.toEqual(new ApiError(REQUEST_FAILED_MESSAGE, status, data));
+    });
+
+    it('uses the friendly fallback when an error response is not JSON', async () => {
+        fetchMock.mockResolvedValue(new Response('<html>Not found</html>', { status: 404 }));
+
+        await expect(apiFetch('/counters')).rejects.toEqual(new ApiError(REQUEST_FAILED_MESSAGE, 404, null));
+    });
+
+    it('keeps network diagnostics out of the public message', async () => {
+        const error = new Error('Connection refused');
+        fetchMock.mockRejectedValue(error);
+
+        await expect(apiFetch('/counters')).rejects.toEqual(new ApiError(REQUEST_FAILED_MESSAGE, 0, error));
     });
 
     it('aborts requests after ten seconds', async () => {

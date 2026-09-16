@@ -1,4 +1,4 @@
-import { OK_NO_CONTENT, REQUEST_TIMEOUT, UNAUTHORIZED } from '@tally/core/client';
+import { OK_NO_CONTENT, REQUEST_TIMEOUT, SERVER_ERROR, UNAUTHORIZED } from '@tally/core/client';
 import { Platform } from 'react-native';
 
 import { tokenStorage } from './services/token-storage';
@@ -9,6 +9,8 @@ export interface ApiRequestOptions<T = unknown> extends Omit<RequestInit, 'body'
     body?: T;
     requiresAuth?: boolean;
 }
+
+export const REQUEST_FAILED_MESSAGE = 'Something went wrong. Please try again later.';
 
 export class ApiError extends Error {
     success = false;
@@ -28,7 +30,7 @@ export const getErrorMessage = (error: unknown, fallback = 'Unknown error') =>
 
 const isNative = Platform.OS !== 'web';
 const defaultLocal = Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
-export const API_URL = process.env.EXPO_PUBLIC_API_URL || defaultLocal;
+export const API_URL = !isNative && __DEV__ ? '' : process.env.EXPO_PUBLIC_API_URL || defaultLocal;
 
 let refreshPromise: Promise<boolean> | null = null;
 let unauthorizedHandler: (() => void | Promise<void>) | undefined;
@@ -42,35 +44,30 @@ export const setUnauthorizedHandler = (handler: () => void | Promise<void>) => {
 
 async function executeRefresh(): Promise<boolean> {
     try {
-        const headers = { 'Content-Type': 'application/json' };
-        let body: string | undefined;
+        const refreshToken = isNative ? await tokenStorage.getRefreshToken() : null;
+        if (isNative && !refreshToken) return false;
 
-        if (isNative) {
-            const refreshToken = await tokenStorage.getRefreshToken();
-            if (!refreshToken) return false;
-            body = JSON.stringify({ refreshToken });
-        }
-
-        const response = await fetch(`${API_URL}/users/refresh`, {
+        const result = await apiFetch<AuthResponse>('/users/refresh', {
             method: 'POST',
-            credentials: 'include',
-            headers,
-            body,
+            requiresAuth: false,
+            body: refreshToken ? { refreshToken } : undefined,
         });
 
-        if (!response.ok) return false;
+        if (!result.success) throw new Error('Invalid refresh response');
 
-        const result = (await response.json()) as AuthResponse;
-        if (isNative && result.data) {
-            const writes = [];
-            if (result.data.accessToken) writes.push(tokenStorage.setAccessToken(result.data.accessToken));
-            if (result.data.refreshToken) writes.push(tokenStorage.setRefreshToken(result.data.refreshToken));
-            await Promise.all(writes);
+        if (isNative) {
+            if (!result.data?.accessToken || !result.data.refreshToken) throw new Error('Missing refreshed tokens');
+            await Promise.all([
+                tokenStorage.setAccessToken(result.data.accessToken),
+                tokenStorage.setRefreshToken(result.data.refreshToken),
+            ]);
         }
 
         return true;
-    } catch {
-        return false;
+    } catch (error: unknown) {
+        if (error instanceof ApiError && error.status === UNAUTHORIZED) return false;
+        // Keep the session and queued mutations when refresh is temporarily unavailable.
+        throw new ApiError('Session refresh unavailable. Please try again.', SERVER_ERROR, error);
     }
 }
 
@@ -119,10 +116,18 @@ async function apiFetch<ResT = unknown, ReqT = unknown>(
 
             if (requiresAuth && response.status === UNAUTHORIZED) await unauthorizedHandler?.();
 
-            const errorData = (await response.json().catch(() => ({}))) as Record<string, unknown> & {
-                message?: string;
-            };
-            throw new ApiError(errorData.message || 'An API error occurred', response.status, errorData);
+            const errorData: unknown = await response.json().catch(() => null);
+            const message =
+                typeof errorData === 'object' &&
+                errorData !== null &&
+                'message' in errorData &&
+                typeof errorData.message === 'string' &&
+                errorData.message.trim();
+            throw new ApiError(
+                response.status < SERVER_ERROR && message ? message : REQUEST_FAILED_MESSAGE,
+                response.status,
+                errorData,
+            );
         }
 
         if (response.status === OK_NO_CONTENT) return {} as ResT;
@@ -133,7 +138,7 @@ async function apiFetch<ResT = unknown, ReqT = unknown>(
         }
 
         if (error instanceof ApiError) throw error;
-        throw new ApiError(getErrorMessage(error, 'Network Error'), 0);
+        throw new ApiError(REQUEST_FAILED_MESSAGE, 0, error);
     } finally {
         clearTimeout(timeout);
     }

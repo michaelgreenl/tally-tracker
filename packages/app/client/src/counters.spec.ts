@@ -1,13 +1,20 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { hasJoinedSharedCounter, isGuestCounterLimitReached, reconcileAuthenticatedCounters } from './counters';
+import {
+    hasJoinedSharedCounter,
+    isGuestCounterLimitReached,
+    orderCounters,
+    reconcileAuthenticatedCounters,
+} from './counters';
 
 import type { ClientCounter, HexColor } from '@tally/core/client';
 
 vi.mock('expo-crypto', () => ({ getRandomBytes: vi.fn(), randomUUID: vi.fn() }));
+vi.mock('react-native', () => ({ AppState: {} }));
 vi.mock('./api', () => ({ getErrorMessage: (_error: unknown, fallback: string) => fallback }));
 vi.mock('./services/counter.service', () => ({ CounterService: {} }));
 vi.mock('./services/sync-manager', () => ({ SyncManager: {} }));
+vi.mock('./services/sync-queue', () => ({ SyncQueue: {} }));
 vi.mock('./socket', () => ({}));
 vi.mock('./session', () => ({ useSession: vi.fn() }));
 
@@ -16,9 +23,22 @@ const counter = (id: string, type: ClientCounter['type'], userId = 'guest'): Cli
     title: id,
     color: '#000000' as HexColor,
     count: 0,
+    metric: null,
+    increment: 1,
     inviteCode: null,
     userId,
     type,
+});
+
+it('reorders current records without restoring deleted counters or losing new counters and live counts', () => {
+    const first = counter('first', 'PERSONAL');
+    const second = { ...counter('second', 'SHARED'), count: 9 };
+    const added = counter('added', 'PERSONAL');
+    expect(orderCounters([first, second, added], ['deleted', 'second', 'second', 'first'])).toEqual([
+        second,
+        first,
+        added,
+    ]);
 });
 
 describe('authenticated counter reconciliation', () => {
@@ -52,6 +72,17 @@ describe('authenticated counter reconciliation', () => {
 
     it('reports a failed sync when no remote snapshot is available', () => {
         expect(reconcileAuthenticatedCounters([], null, 'user-1').syncError).toBe(true);
+    });
+
+    it('keeps queued local changes and deletions during a remote refresh', () => {
+        const local = { ...counter('pending', 'PERSONAL', 'user-1'), count: 5, metric: 'bottle' };
+        const remote = [counter('pending', 'PERSONAL', 'user-1'), counter('deleted', 'PERSONAL', 'user-1')];
+        const pending = [
+            { id: 'update', queuedByUserId: 'user-1', type: 'UPDATE' as const, entityId: 'pending', payload: {} },
+            { id: 'delete', queuedByUserId: 'user-1', type: 'DELETE' as const, entityId: 'deleted', payload: {} },
+        ];
+
+        expect(reconcileAuthenticatedCounters([local], remote, 'user-1', pending).counters).toEqual([local]);
     });
 });
 

@@ -1,6 +1,6 @@
 /// <reference types="cypress" />
 
-const PASSWORD = 'password123';
+const PASSWORD = 'Password123';
 const OK = 200;
 const CREATED = 201;
 
@@ -41,7 +41,11 @@ describe('Expo full-stack counter journey', () => {
             expect(request.body).to.deep.equal({ email, password: PASSWORD, rememberMe: false });
             expect(response?.statusCode).to.eq(OK);
         });
-        cy.wait('@getCounters').its('response.statusCode').should('eq', OK);
+        cy.wait('@getCounters').then(({ request, response }) => {
+            expect(new URL(request.url).origin).to.eq(new URL(Cypress.config('baseUrl')!).origin);
+            expect(request.headers.cookie).to.include('access_token=');
+            expect(response?.statusCode).to.eq(OK);
+        });
         cy.location('pathname').should('eq', '/home');
 
         cy.intercept('POST', '**/counters').as('createCounter');
@@ -56,19 +60,25 @@ describe('Expo full-stack counter journey', () => {
                 title,
                 color: '#000000',
                 count: 0,
-                type: 'PERSONAL',
-                inviteCode: null,
+                metric: null,
+                increment: 1,
             });
             expect(request.headers['x-idempotency-key']).to.be.a('string').and.not.be.empty;
             expect(response?.statusCode).to.eq(CREATED);
         });
 
-        cy.intercept('PUT', '**/counters/*/count').as('incrementCounter');
+        cy.then(() => {
+            cy.get(`[data-testid="counter-${counterId}-menu"]`).click();
+            cy.get(`[data-testid="counter-${counterId}-share"]`).should('be.disabled');
+            cy.get(`[data-testid="counter-${counterId}-menu"]`).click();
+        });
+
+        cy.intercept('PUT', '**/counters/increment/*').as('incrementCounter');
         cy.then(() => {
             cy.get(`[data-testid="counter-${counterId}-increase"]`).click();
         });
         cy.wait('@incrementCounter').then(({ request, response }) => {
-            expect(request.body).to.deep.equal({ count: 1 });
+            expect(request.body).to.deep.equal({ amount: 1 });
             expect(request.headers['x-idempotency-key']).to.be.a('string').and.not.be.empty;
             expect(response?.statusCode).to.eq(OK);
         });
@@ -76,18 +86,54 @@ describe('Expo full-stack counter journey', () => {
             cy.get(`[data-testid="counter-${counterId}-count"]`).should('have.text', '1');
         });
 
+        // A change outside the UI must arrive through the authenticated socket.
+        cy.then(() => {
+            cy.request('PUT', `/counters/increment/${counterId}`, { amount: 1 });
+            cy.get(`[data-testid="counter-${counterId}-count"]`).should('have.text', '2');
+            cy.request('PUT', `/counters/update/${counterId}`, {
+                title: `${title} edited`,
+                increment: 0.5,
+                metric: '16oz water bottle',
+            });
+            cy.get(`[data-testid="counter-${counterId}-title"]`).should('have.text', `${title} edited`);
+            cy.get(`[data-testid="counter-${counterId}-increment"]`).should('have.text', '± 0.5');
+            cy.get(`[data-testid="counter-${counterId}-metric"]`).should('have.text', '16oz water bottle');
+        });
+
         cy.intercept('POST', '**/users/logout').as('logoutUser');
-        cy.get('[data-testid="home-logout"]').click();
+        cy.get('[data-testid="home-settings-link"]').click();
+        cy.get('[data-testid="settings-logout"]').click();
         cy.wait('@logoutUser').its('response.statusCode').should('eq', OK);
         cy.location('pathname').should('eq', '/login');
 
         cy.get('[data-testid="auth-email"]').type(email);
         cy.get('[data-testid="auth-password"]').type(PASSWORD);
+        cy.get('[data-testid="auth-remember-me"]').check();
         cy.get('[data-testid="auth-submit"]').click();
         cy.wait('@loginUser').its('response.statusCode').should('eq', OK);
         cy.wait('@getCounters').its('response.statusCode').should('eq', OK);
+
+        let refreshAvailable = false;
+        cy.intercept('POST', '**/users/refresh', (request) => {
+            request.alias = refreshAvailable ? 'refreshSession' : 'refreshUnavailable';
+            if (refreshAvailable) request.continue();
+            else request.reply({ statusCode: 503, body: { success: false } });
+        });
+        cy.clearCookie('access_token');
+        cy.reload();
+        cy.wait('@refreshUnavailable').its('response.statusCode').should('eq', 503);
+        cy.get('[data-testid="home-settings-link"]').click();
+        cy.get('[data-testid="settings-logout"]').should('be.visible');
         cy.then(() => {
-            cy.get(`[data-testid="counter-${counterId}-count"]`).should('have.text', '1');
+            refreshAvailable = true;
+        });
+        cy.visit('/home');
+        cy.wait('@refreshSession').then(({ request, response }) => {
+            expect(request.headers.cookie).to.include('refresh_token=');
+            expect(response?.statusCode).to.eq(OK);
+        });
+        cy.then(() => {
+            cy.get(`[data-testid="counter-${counterId}-count"]`).should('have.text', '2');
         });
 
         cy.intercept('DELETE', '**/users').as('deleteAccount');

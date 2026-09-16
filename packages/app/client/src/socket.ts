@@ -6,9 +6,10 @@ import { AuthService } from './services/auth.service';
 
 import type { ClientCounter } from '@tally/core/client';
 
-const socket = io(API_URL, {
+const socket = io(API_URL || undefined, {
     autoConnect: false,
-    transports: ['websocket', 'polling'],
+    // Metro owns WebSocket upgrades; dev web uses the same-origin HTTP proxy.
+    transports: Platform.OS === 'web' && __DEV__ ? ['polling'] : ['websocket', 'polling'],
     withCredentials: true,
     auth: async (callback) => {
         const token = Platform.OS === 'web' ? null : await AuthService.getAccessToken();
@@ -24,7 +25,11 @@ export const disconnectSocket = () => {
     if (socket.connected || socket.active) socket.disconnect();
 };
 
-export const subscribeToCounterUpdates = (listener: (counter: ClientCounter) => void) => {
+export const subscribeToCounterUpdates = (listener: (counter: ClientCounter) => void, onConnect: () => void) => {
     socket.on('counter-update', listener);
-    return () => socket.off('counter-update', listener);
+    socket.on('connect', onConnect);
+    return () => {
+        socket.off('counter-update', listener);
+        socket.off('connect', onConnect);
+    };
 };

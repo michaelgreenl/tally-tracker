@@ -1,4 +1,4 @@
-# Tally Tracker
+# Tally
 > A cross-platform offline-first application utilizing a custom synchronization queue for network resilience, featuring real-time shared counters and native deep linking integration.
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=fff)](https://www.typescriptlang.org/docs/)
@@ -14,7 +14,7 @@
 
 ## Overview
 
-Tally Tracker is a React Native counter app for Android, iOS, and web. It supports guest, authenticated, and shared counters.
+Tally is a React Native counter app for Android, iOS, and web. It supports guest, authenticated, and shared counters.
 
 The client writes counter changes to React state first. It saves local state and queues authenticated mutations for later replay.
 
@@ -135,7 +135,7 @@ bun --filter=@tally/client run android -- --device
 bun run dev:client -- --dev-client
 ```
 
-Open the installed Tally Tracker development build. Scan the Expo QR code if the app does not connect automatically.
+Open the installed Tally development build. Scan the Expo QR code if the app does not connect automatically.
 
 Rebuild the native app after a native dependency or Expo config change. JavaScript and environment changes only need an Expo restart.
 

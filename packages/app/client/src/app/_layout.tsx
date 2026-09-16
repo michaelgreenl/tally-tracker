@@ -1,12 +1,27 @@
-import { Stack } from 'expo-router';
+import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
+import Head from 'expo-router/head';
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Appearance, Platform, StyleSheet, View } from 'react-native';
 
+import { colors } from '../colors';
 import { CounterProvider } from '../counters';
 import { initSentry, withSentry } from '../monitoring/sentry';
 import { SessionProvider, useSession } from '../session';
 
 initSentry();
+if (Platform.OS !== 'web') Appearance.setColorScheme('dark');
+
+const navigationTheme = {
+    ...DarkTheme,
+    colors: {
+        primary: colors.link,
+        background: colors.background,
+        card: colors.surface,
+        text: colors.text,
+        border: colors.divider,
+        notification: colors.danger,
+    },
+};
 
 function Navigator() {
     const session = useSession();
@@ -14,24 +29,24 @@ function Navigator() {
     if (!session.ready) {
         return (
             <View style={styles.loading}>
-                <ActivityIndicator color='#23a6d5' size='large' />
+                <ActivityIndicator color={colors.link} size='large' />
             </View>
         );
     }
 
     return (
         <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name='index' options={{ title: 'Tally Tracker' }} />
-            <Stack.Screen name='home' options={{ title: 'Tally Tracker' }} />
-            <Stack.Screen name='join' options={{ title: 'Tally Tracker | Join' }} />
-            <Stack.Screen name='settings' options={{ title: 'Tally Tracker | Settings' }} />
-            <Stack.Screen name='upgrade' options={{ title: 'Tally Tracker | Upgrade' }} />
+            <Stack.Screen name='index' options={{ title: 'Tally' }} />
+            <Stack.Screen name='home' options={{ title: 'Tally' }} />
+            <Stack.Screen name='join' options={{ title: 'Tally | Join' }} />
+            <Stack.Screen name='settings' options={{ title: 'Tally | Settings' }} />
+            <Stack.Screen name='upgrade' options={{ title: 'Tally | Upgrade' }} />
             <Stack.Screen name='legal/[document]' />
             <Stack.Protected guard={!session.isAuthenticated}>
-                <Stack.Screen name='login' options={{ title: 'Tally Tracker | Login' }} />
-                <Stack.Screen name='register' options={{ title: 'Tally Tracker | Register' }} />
-                <Stack.Screen name='verify-email' options={{ title: 'Tally Tracker | Verify Email' }} />
-                <Stack.Screen name='forgot-password' options={{ title: 'Tally Tracker | Reset Password' }} />
+                <Stack.Screen name='login' options={{ title: 'Tally | Login' }} />
+                <Stack.Screen name='register' options={{ title: 'Tally | Register' }} />
+                <Stack.Screen name='verify-email' options={{ title: 'Tally | Verify Email' }} />
+                <Stack.Screen name='forgot-password' options={{ title: 'Tally | Reset Password' }} />
             </Stack.Protected>
         </Stack>
     );
@@ -39,12 +54,19 @@ function Navigator() {
 
 function RootLayout() {
     return (
-        <SessionProvider>
-            <CounterProvider>
-                <Navigator />
-                <StatusBar style='light' />
-            </CounterProvider>
-        </SessionProvider>
+        <ThemeProvider value={navigationTheme}>
+            {Platform.OS === 'web' && (
+                <Head>
+                    <meta name='color-scheme' content='dark' />
+                </Head>
+            )}
+            <SessionProvider>
+                <CounterProvider>
+                    <Navigator />
+                    <StatusBar style='light' />
+                </CounterProvider>
+            </SessionProvider>
+        </ThemeProvider>
     );
 }
 
@@ -55,6 +77,6 @@ const styles = StyleSheet.create({
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#495057',
+        backgroundColor: colors.background,
     },
 });

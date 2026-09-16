@@ -1,9 +1,12 @@
 import { Link, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { colors } from '../colors';
+import { BackButton } from '../components/back-button';
+import { Dialog } from '../components/dialog';
 import { useSession } from '../session';
 
 import type { PropsWithChildren } from 'react';
@@ -53,17 +56,14 @@ export default function SettingsScreen() {
     return (
         <>
             <Head>
-                <title>Tally Tracker | Settings</title>
+                <title>Tally | Settings</title>
             </Head>
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.header}>
-                    <Pressable
-                        accessibilityRole='button'
+                    <BackButton
                         onPress={() => (router.canGoBack() ? router.back() : router.replace('/home'))}
-                        style={styles.backButton}
-                    >
-                        <Text style={styles.headerActionText}>Back</Text>
-                    </Pressable>
+                        testID='settings-back'
+                    />
                     <Text accessibilityRole='header' aria-level={1} style={styles.headerTitle}>
                         Settings
                     </Text>
@@ -108,9 +108,6 @@ export default function SettingsScreen() {
                                     </View>
                                 </>
                             )}
-                        </Section>
-
-                        <Section title='Subscription'>
                             <View style={styles.detailRow}>
                                 <View style={styles.detailCopy}>
                                     <Text style={styles.rowLabel}>Manage subscription</Text>
@@ -126,6 +123,19 @@ export default function SettingsScreen() {
                                     {session.isAuthenticated ? 'Coming later' : 'Unavailable'}
                                 </Text>
                             </View>
+                            {session.isAuthenticated && (
+                                <Pressable
+                                    accessibilityRole='button'
+                                    onPress={() => {
+                                        setDeleteError('');
+                                        setDeleteOpen(true);
+                                    }}
+                                    style={({ pressed }) => [styles.actionRow, pressed && styles.rowPressed]}
+                                    testID='settings-delete-account'
+                                >
+                                    <Text style={styles.deleteText}>Delete account</Text>
+                                </Pressable>
+                            )}
                         </Section>
 
                         <Section title='Legal'>
@@ -141,79 +151,49 @@ export default function SettingsScreen() {
                             </Link>
                             <Link href='/legal/support' asChild>
                                 <Pressable accessibilityRole='link' style={styles.actionRow}>
-                                    <Text style={styles.actionText}>Support/contact</Text>
+                                    <Text style={styles.actionText}>Support/Contact</Text>
                                 </Pressable>
                             </Link>
                         </Section>
-
-                        {session.isAuthenticated && (
-                            <Section title='Danger zone'>
-                                <Pressable
-                                    accessibilityRole='button'
-                                    onPress={() => {
-                                        setDeleteError('');
-                                        setDeleteOpen(true);
-                                    }}
-                                    style={({ pressed }) => [styles.actionRow, pressed && styles.rowPressed]}
-                                    testID='settings-delete-account'
-                                >
-                                    <Text style={styles.deleteText}>Delete account</Text>
-                                </Pressable>
-                            </Section>
-                        )}
                     </View>
                 </ScrollView>
 
-                <Modal
-                    animationType='fade'
+                <Dialog
                     onRequestClose={() => {
                         if (!deleteLoading) setDeleteOpen(false);
                     }}
-                    transparent
                     visible={deleteOpen}
+                    testID='delete-account-confirm'
+                    title='Delete account?'
+                    description='This permanently deletes your account and server-side account data. This action cannot be undone.'
                 >
-                    <View accessibilityViewIsModal style={styles.modalOverlay} testID='delete-account-confirm'>
-                        <View style={styles.modalCard}>
-                            <Text accessibilityRole='header' aria-level={2} style={styles.modalTitle}>
-                                Delete account?
+                    {Boolean(deleteError) && (
+                        <Text accessibilityLiveRegion='polite' accessibilityRole='alert' style={styles.deleteError}>
+                            {deleteError}
+                        </Text>
+                    )}
+                    <View style={styles.modalActions}>
+                        <Pressable
+                            accessibilityRole='button'
+                            disabled={deleteLoading}
+                            onPress={() => setDeleteOpen(false)}
+                            style={styles.secondaryButton}
+                        >
+                            <Text style={styles.secondaryButtonText}>Cancel</Text>
+                        </Pressable>
+                        <Pressable
+                            accessibilityRole='button'
+                            disabled={deleteLoading}
+                            onPress={() => void deleteAccount()}
+                            style={[styles.deleteButton, deleteLoading && styles.disabled]}
+                            testID='delete-account-confirm-submit'
+                        >
+                            <Text style={styles.deleteButtonText}>
+                                {deleteLoading ? 'Deleting…' : 'Delete account'}
                             </Text>
-                            <Text style={styles.modalCopy}>
-                                This permanently deletes your account and server-side account data. This action cannot
-                                be undone.
-                            </Text>
-                            {Boolean(deleteError) && (
-                                <Text
-                                    accessibilityLiveRegion='polite'
-                                    accessibilityRole='alert'
-                                    style={styles.deleteError}
-                                >
-                                    {deleteError}
-                                </Text>
-                            )}
-                            <View style={styles.modalActions}>
-                                <Pressable
-                                    accessibilityRole='button'
-                                    disabled={deleteLoading}
-                                    onPress={() => setDeleteOpen(false)}
-                                    style={styles.secondaryButton}
-                                >
-                                    <Text style={styles.secondaryButtonText}>Cancel</Text>
-                                </Pressable>
-                                <Pressable
-                                    accessibilityRole='button'
-                                    disabled={deleteLoading}
-                                    onPress={() => void deleteAccount()}
-                                    style={[styles.deleteButton, deleteLoading && styles.disabled]}
-                                    testID='delete-account-confirm-submit'
-                                >
-                                    <Text style={styles.deleteButtonText}>
-                                        {deleteLoading ? 'Deleting…' : 'Delete account'}
-                                    </Text>
-                                </Pressable>
-                            </View>
-                        </View>
+                        </Pressable>
                     </View>
-                </Modal>
+                </Dialog>
             </SafeAreaView>
         </>
     );
@@ -222,32 +202,22 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: '#f1f3f5',
+        backgroundColor: colors.background,
     },
     header: {
         minHeight: 62,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 12,
-        backgroundColor: '#0f7899',
-    },
-    backButton: {
-        width: 64,
-        minHeight: 44,
-        alignItems: 'flex-start',
-        justifyContent: 'center',
+        paddingLeft: 20,
+        paddingRight: 12,
+        backgroundColor: colors.background,
     },
     headerSpacer: {
-        width: 64,
-    },
-    headerActionText: {
-        color: '#ffffff',
-        fontSize: 15,
-        fontWeight: '700',
+        width: 18,
     },
     headerTitle: {
-        color: '#ffffff',
+        color: colors.onPrimary,
         fontSize: 20,
         fontWeight: '800',
     },
@@ -265,15 +235,15 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     sectionTitle: {
-        color: '#343a40',
+        color: colors.text,
         fontSize: 15,
         fontWeight: '800',
     },
     card: {
         overflow: 'hidden',
-        backgroundColor: '#ffffff',
+        backgroundColor: colors.surface,
         borderWidth: 1,
-        borderColor: '#dee2e6',
+        borderColor: colors.divider,
         borderRadius: 12,
     },
     row: {
@@ -284,16 +254,16 @@ const styles = StyleSheet.create({
         gap: 16,
         paddingHorizontal: 16,
         borderBottomWidth: 1,
-        borderBottomColor: '#e9ecef',
+        borderBottomColor: colors.divider,
     },
     rowLabel: {
-        color: '#212529',
+        color: colors.text,
         fontSize: 15,
         fontWeight: '700',
     },
     rowValue: {
         flexShrink: 1,
-        color: '#575e64',
+        color: colors.muted,
         fontSize: 14,
         textAlign: 'right',
     },
@@ -302,13 +272,13 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         paddingHorizontal: 16,
         borderBottomWidth: 1,
-        borderBottomColor: '#e9ecef',
+        borderBottomColor: colors.divider,
     },
     rowPressed: {
-        backgroundColor: '#f1f3f5',
+        backgroundColor: colors.input,
     },
     actionText: {
-        color: '#167ca3',
+        color: colors.link,
         fontSize: 15,
         fontWeight: '700',
     },
@@ -316,15 +286,15 @@ const styles = StyleSheet.create({
         gap: 5,
         padding: 16,
         borderBottomWidth: 1,
-        borderBottomColor: '#e9ecef',
+        borderBottomColor: colors.divider,
     },
     guestTitle: {
-        color: '#212529',
+        color: colors.text,
         fontSize: 16,
         fontWeight: '700',
     },
     guestCopy: {
-        color: '#575e64',
+        color: colors.muted,
         fontSize: 14,
         lineHeight: 20,
     },
@@ -339,11 +309,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 20,
-        backgroundColor: '#0f7899',
+        backgroundColor: colors.primary,
         borderRadius: 9,
     },
     primaryButtonText: {
-        color: '#ffffff',
+        color: colors.onPrimary,
         fontWeight: '700',
     },
     secondaryButton: {
@@ -352,11 +322,11 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         paddingHorizontal: 20,
         borderWidth: 1,
-        borderColor: '#6c757d',
+        borderColor: colors.border,
         borderRadius: 9,
     },
     secondaryButtonText: {
-        color: '#343a40',
+        color: colors.text,
         fontWeight: '700',
     },
     detailRow: {
@@ -366,43 +336,20 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         gap: 16,
         padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.divider,
     },
     detailCopy: {
         flex: 1,
         gap: 4,
     },
     deleteText: {
-        color: '#b42318',
+        color: colors.danger,
         fontSize: 15,
         fontWeight: '700',
     },
-    modalOverlay: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 20,
-        backgroundColor: 'rgba(0, 0, 0, 0.55)',
-    },
-    modalCard: {
-        width: '100%',
-        maxWidth: 460,
-        gap: 16,
-        padding: 24,
-        backgroundColor: '#ffffff',
-        borderRadius: 16,
-    },
-    modalTitle: {
-        color: '#212529',
-        fontSize: 22,
-        fontWeight: '800',
-    },
-    modalCopy: {
-        color: '#343a40',
-        fontSize: 16,
-        lineHeight: 24,
-    },
     deleteError: {
-        color: '#b42318',
+        color: colors.danger,
         fontSize: 14,
     },
     modalActions: {
@@ -416,11 +363,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 18,
-        backgroundColor: '#b42318',
+        backgroundColor: colors.dangerButton,
         borderRadius: 9,
     },
     deleteButtonText: {
-        color: '#ffffff',
+        color: colors.onPrimary,
         fontWeight: '700',
     },
     disabled: {
