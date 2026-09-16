@@ -4,6 +4,8 @@
 
 The server verifies Premium access with RevenueCat. The native purchase screen, Restore Purchases action, and subscription management are not connected yet.
 
+The upgrade page previews the planned prices and supports plan selection. Purchase and restore controls remain disabled until integration. Guests can create a free account; existing Premium accounts see their active access. Replace preview prices with localized store prices when connecting purchases.
+
 The existing Basic and Premium tiers remain. Monthly, yearly, and lifetime products must grant the same `premium` entitlement. Monthly and yearly products renew. Lifetime access does not expire.
 
 No RevenueCat account, store products, signing credentials, or deployed settings are created by this change.
@@ -14,12 +16,12 @@ Apply the committed database migrations before starting the updated API. Do not 
 
 Set these server-only values:
 
-| Variable | Value |
-| --- | --- |
-| `REVENUECAT_SECRET_API_KEY` | A RevenueCat secret API key with access to the v1 customer lookup. |
-| `REVENUECAT_ENTITLEMENT_ID` | `premium`, unless the project uses a different entitlement identifier. |
-| `REVENUECAT_WEBHOOK_SECRET` | At least 32 random characters. |
-| `REVENUECAT_ALLOW_SANDBOX` | `true` on the test backend. Leave `false` on the public release backend. |
+| Variable                    | Value                                                                    |
+| --------------------------- | ------------------------------------------------------------------------ |
+| `REVENUECAT_SECRET_API_KEY` | A RevenueCat secret API key with access to the v1 customer lookup.       |
+| `REVENUECAT_ENTITLEMENT_ID` | `premium`, unless the project uses a different entitlement identifier.   |
+| `REVENUECAT_WEBHOOK_SECRET` | At least 32 random characters.                                           |
+| `REVENUECAT_ALLOW_SANDBOX`  | `true` on the test backend. Leave `false` on the public release backend. |
 
 Never add a secret key to an `EXPO_PUBLIC_` variable. Keep test and public release billing in separate RevenueCat projects and databases. This prevents sandbox purchases from replacing a customer's production entitlement snapshot.
 

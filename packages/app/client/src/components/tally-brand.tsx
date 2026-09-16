@@ -5,7 +5,7 @@ import { TallyLogo } from './tally-logo';
 
 import type { TextProps } from 'react-native';
 
-export function TallyBrand({ style }: Pick<TextProps, 'style'>) {
+export function TallyBrand({ style, children = 'Tally' }: Pick<TextProps, 'style' | 'children'>) {
     const { fontSize = 34 } = StyleSheet.flatten(style) ?? {};
 
     return (
@@ -17,7 +17,7 @@ export function TallyBrand({ style }: Pick<TextProps, 'style'>) {
                 style={[styles.title, { fontSize }, style]}
                 testID='tally-title'
             >
-                Tally
+                {children}
             </Text>
         </View>
     );

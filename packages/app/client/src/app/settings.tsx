@@ -108,21 +108,30 @@ export default function SettingsScreen() {
                                     </View>
                                 </>
                             )}
-                            <View style={styles.detailRow}>
-                                <View style={styles.detailCopy}>
-                                    <Text style={styles.rowLabel}>Manage subscription</Text>
-                                    <Text style={styles.guestCopy}>
-                                        {session.isAuthenticated
-                                            ? session.isPremium
-                                                ? 'Premium access is active'
-                                                : 'No paid subscription'
-                                            : 'Sign in to view subscription status'}
-                                    </Text>
-                                </View>
-                                <Text style={styles.rowValue}>
-                                    {session.isAuthenticated ? 'Coming later' : 'Unavailable'}
-                                </Text>
-                            </View>
+                            <Link href='/upgrade' asChild>
+                                <Pressable accessibilityRole='link' testID='settings-subscription'>
+                                    {({ pressed }) => (
+                                        <View
+                                            style={[
+                                                styles.detailRow,
+                                                !session.isAuthenticated && styles.lastRow,
+                                                pressed && styles.rowPressed,
+                                            ]}
+                                        >
+                                            <View style={styles.detailCopy}>
+                                                <Text style={styles.rowLabel}>Manage subscription</Text>
+                                                <Text style={styles.guestCopy}>
+                                                    {session.isAuthenticated
+                                                        ? session.isPremium
+                                                            ? 'Premium access is active'
+                                                            : 'No paid subscription'
+                                                        : 'Sign in to view subscription status'}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                    )}
+                                </Pressable>
+                            </Link>
                             {session.isAuthenticated && (
                                 <Pressable
                                     accessibilityRole='button'
@@ -130,7 +139,11 @@ export default function SettingsScreen() {
                                         setDeleteError('');
                                         setDeleteOpen(true);
                                     }}
-                                    style={({ pressed }) => [styles.actionRow, pressed && styles.rowPressed]}
+                                    style={({ pressed }) => [
+                                        styles.actionRow,
+                                        styles.lastRow,
+                                        pressed && styles.rowPressed,
+                                    ]}
                                     testID='settings-delete-account'
                                 >
                                     <Text style={styles.deleteText}>Delete account</Text>
@@ -150,7 +163,10 @@ export default function SettingsScreen() {
                                 </Pressable>
                             </Link>
                             <Link href='/legal/support' asChild>
-                                <Pressable accessibilityRole='link' style={styles.actionRow}>
+                                <Pressable
+                                    accessibilityRole='link'
+                                    style={StyleSheet.flatten([styles.actionRow, styles.lastRow])}
+                                >
                                     <Text style={styles.actionText}>Support/Contact</Text>
                                 </Pressable>
                             </Link>
@@ -276,6 +292,9 @@ const styles = StyleSheet.create({
     },
     rowPressed: {
         backgroundColor: colors.input,
+    },
+    lastRow: {
+        borderBottomWidth: 0,
     },
     actionText: {
         color: colors.link,
