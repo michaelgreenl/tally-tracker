@@ -34,7 +34,7 @@ type CounterContextValue = {
 };
 
 export const GUEST_COUNTER_CAP = 3;
-export const GUEST_COUNTER_LIMIT_MESSAGE = 'Guest counter limit reached';
+export const GUEST_COUNTER_LIMIT_MESSAGE = 'Counter limit reached';
 export const BASIC_JOIN_LIMIT_MESSAGE = 'Basic accounts can only join one shared counter.';
 
 const CounterContext = createContext<CounterContextValue | null>(null);

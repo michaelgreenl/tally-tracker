@@ -36,6 +36,7 @@ export function CounterIncrementDialog({ counter, onClose }: { counter: ClientCo
     return (
         <Dialog
             visible
+            dismissOnBackdropPress
             onRequestClose={() => {
                 if (!saving) onClose();
             }}

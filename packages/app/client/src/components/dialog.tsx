@@ -2,6 +2,7 @@ import {
     KeyboardAvoidingView,
     Modal,
     Platform,
+    Pressable,
     ScrollView,
     StyleSheet,
     Text,
@@ -18,6 +19,8 @@ type DialogProps = PropsWithChildren<
     Pick<ModalProps, 'visible' | 'onRequestClose' | 'testID'> & {
         title: string;
         description: string;
+        descriptionGap?: number;
+        dismissOnBackdropPress?: boolean;
         leadingAction?: ReactNode;
         trailingAction?: ReactNode;
     }
@@ -29,6 +32,8 @@ export function Dialog({
     testID,
     title,
     description,
+    descriptionGap,
+    dismissOnBackdropPress = false,
     leadingAction,
     trailingAction,
     children,
@@ -49,22 +54,33 @@ export function Dialog({
                         ]}
                         testID={testID}
                     >
-                        <View style={[styles.header, hasHeaderActions && styles.editorHeader]}>
-                            {leadingAction && <View style={styles.headerAction}>{leadingAction}</View>}
-                            <Text
-                                accessibilityRole='header'
-                                aria-level={2}
-                                style={[styles.title, hasHeaderActions && styles.centeredTitle]}
-                            >
-                                {title}
+                        <View style={{ gap: descriptionGap ?? (hasHeaderActions ? 4 : 16) }}>
+                            <View style={[styles.header, hasHeaderActions && styles.editorHeader]}>
+                                {leadingAction && <View style={styles.headerAction}>{leadingAction}</View>}
+                                <Text
+                                    accessibilityRole='header'
+                                    aria-level={2}
+                                    style={[styles.title, hasHeaderActions && styles.centeredTitle]}
+                                >
+                                    {title}
+                                </Text>
+                                {trailingAction && <View style={styles.headerAction}>{trailingAction}</View>}
+                            </View>
+                            <Text style={[styles.description, hasHeaderActions && styles.editorDescription]}>
+                                {description}
                             </Text>
-                            {trailingAction && <View style={styles.headerAction}>{trailingAction}</View>}
                         </View>
-                        <Text style={[styles.description, hasHeaderActions && styles.editorDescription]}>
-                            {description}
-                        </Text>
                         {children}
                     </View>
+                    {dismissOnBackdropPress && (
+                        <Pressable
+                            accessible={false}
+                            tabIndex={-1}
+                            onPress={onRequestClose}
+                            style={StyleSheet.absoluteFill}
+                            testID={testID ? `${testID}-backdrop` : undefined}
+                        />
+                    )}
                 </ScrollView>
             </KeyboardAvoidingView>
         </Modal>
@@ -80,6 +96,7 @@ const styles = StyleSheet.create({
         padding: 20,
     },
     card: {
+        zIndex: 1,
         width: '100%',
         maxWidth: 460,
         gap: 16,

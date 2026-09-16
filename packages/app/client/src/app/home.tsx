@@ -227,6 +227,7 @@ export default function HomeScreen() {
                     testID='guest-limit-modal'
                     title={GUEST_COUNTER_LIMIT_MESSAGE}
                     description={`Guest sessions can create up to ${GUEST_COUNTER_CAP} counters. Your existing counters remain usable.`}
+                    descriptionGap={8}
                 >
                     <View style={styles.modalActions}>
                         <Pressable
@@ -245,7 +246,7 @@ export default function HomeScreen() {
                             style={styles.modalPrimary}
                             testID='guest-limit-modal-upgrade'
                         >
-                            <Text style={styles.modalPrimaryText}>View upgrade info</Text>
+                            <Text style={styles.modalPrimaryText}>Upgrade</Text>
                         </Pressable>
                     </View>
                 </Dialog>

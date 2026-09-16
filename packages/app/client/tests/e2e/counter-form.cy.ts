@@ -89,6 +89,38 @@ describe('Counter sheet', () => {
         cy.get('[data-testid$="-increment"]').should('have.text', '± 0.1');
     });
 
+    it('dismisses increment changes only when clicking outside the dialog', () => {
+        cy.get('[data-testid="add-counter-button"]').click();
+        cy.get('[data-testid="counter-title"]').type('Water');
+        cy.get('[data-testid="counter-form-submit"]').click();
+        cy.get('[data-testid="home-counter-form"]').should('not.exist');
+
+        for (const [width, height] of [
+            [1000, 900],
+            [390, 844],
+        ]) {
+            cy.viewport(width, height);
+            cy.get('[data-testid$="-increment"]').click();
+            cy.get('[data-testid="counter-increment-cancel"]').should('be.focused');
+            cy.get('[data-testid="counter-increment-dialog"]').click(8, 8);
+            cy.get('[data-testid="counter-increment-edit"]').should('have.text', '1').click();
+            cy.get('[data-testid="counter-increment-value"]').clear().type('2.5');
+            cy.get('[data-testid="counter-increment-dialog-backdrop"]')
+                .should(($backdrop) => {
+                    const backdrop = $backdrop[0];
+                    const { left, top } = backdrop.getBoundingClientRect();
+                    expect(backdrop.ownerDocument.elementFromPoint(left + 10, top + 10)).to.equal(backdrop);
+                })
+                // Cypress checks the covered center; verify the actual outside hit target above instead.
+                .click(10, 10, { force: true });
+            cy.get('[data-testid="counter-increment-dialog"]').should('not.exist');
+            cy.get('[data-testid$="-increment"]').should('be.focused');
+        }
+
+        cy.reload();
+        cy.get('[data-testid$="-increment"]').should('have.text', '± 1');
+    });
+
     it('saves custom picker colors and loads them when editing', () => {
         cy.get('[data-testid="add-counter-button"]').click();
         cy.get('[data-testid="counter-form-submit"]').click();
