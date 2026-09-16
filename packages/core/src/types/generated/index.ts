@@ -146,6 +146,9 @@ export const UserScalarFieldEnumSchema = z.enum([
     'tier',
     'emailVerifiedAt',
     'sessionVersion',
+    'premiumExpiresAt',
+    'billingCheckedAt',
+    'billingSandbox',
     'createdAt',
     'updatedAt',
 ]);
@@ -293,6 +296,9 @@ export const UserSchema = z.object({
     password: z.string(),
     emailVerifiedAt: z.coerce.date().nullable(),
     sessionVersion: z.number().int(),
+    premiumExpiresAt: z.coerce.date().nullable(),
+    billingCheckedAt: z.coerce.date().nullable(),
+    billingSandbox: z.boolean(),
     createdAt: z.coerce.date(),
     updatedAt: z.coerce.date(),
 });
@@ -497,6 +503,9 @@ export const UserSelectSchema: z.ZodType<Prisma.UserSelect> = z
         tier: z.boolean().optional(),
         emailVerifiedAt: z.boolean().optional(),
         sessionVersion: z.boolean().optional(),
+        premiumExpiresAt: z.boolean().optional(),
+        billingCheckedAt: z.boolean().optional(),
+        billingSandbox: z.boolean().optional(),
         createdAt: z.boolean().optional(),
         updatedAt: z.boolean().optional(),
         counters: z.union([z.boolean(), z.lazy(() => CounterFindManyArgsSchema)]).optional(),
@@ -1235,6 +1244,15 @@ export const UserWhereInputSchema: z.ZodType<Prisma.UserWhereInput> = z.strictOb
         .optional()
         .nullable(),
     sessionVersion: z.union([z.lazy(() => IntFilterSchema), z.number()]).optional(),
+    premiumExpiresAt: z
+        .union([z.lazy(() => DateTimeNullableFilterSchema), z.coerce.date()])
+        .optional()
+        .nullable(),
+    billingCheckedAt: z
+        .union([z.lazy(() => DateTimeNullableFilterSchema), z.coerce.date()])
+        .optional()
+        .nullable(),
+    billingSandbox: z.union([z.lazy(() => BoolFilterSchema), z.boolean()]).optional(),
     createdAt: z.union([z.lazy(() => DateTimeFilterSchema), z.coerce.date()]).optional(),
     updatedAt: z.union([z.lazy(() => DateTimeFilterSchema), z.coerce.date()]).optional(),
     counters: z.lazy(() => CounterListRelationFilterSchema).optional(),
@@ -1250,6 +1268,9 @@ export const UserOrderByWithRelationInputSchema: z.ZodType<Prisma.UserOrderByWit
     tier: z.lazy(() => SortOrderSchema).optional(),
     emailVerifiedAt: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
     sessionVersion: z.lazy(() => SortOrderSchema).optional(),
+    premiumExpiresAt: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
+    billingCheckedAt: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
+    billingSandbox: z.lazy(() => SortOrderSchema).optional(),
     createdAt: z.lazy(() => SortOrderSchema).optional(),
     updatedAt: z.lazy(() => SortOrderSchema).optional(),
     counters: z.lazy(() => CounterOrderByRelationAggregateInputSchema).optional(),
@@ -1288,6 +1309,15 @@ export const UserWhereUniqueInputSchema: z.ZodType<Prisma.UserWhereUniqueInput> 
                 .optional()
                 .nullable(),
             sessionVersion: z.union([z.lazy(() => IntFilterSchema), z.number().int()]).optional(),
+            premiumExpiresAt: z
+                .union([z.lazy(() => DateTimeNullableFilterSchema), z.coerce.date()])
+                .optional()
+                .nullable(),
+            billingCheckedAt: z
+                .union([z.lazy(() => DateTimeNullableFilterSchema), z.coerce.date()])
+                .optional()
+                .nullable(),
+            billingSandbox: z.union([z.lazy(() => BoolFilterSchema), z.boolean()]).optional(),
             createdAt: z.union([z.lazy(() => DateTimeFilterSchema), z.coerce.date()]).optional(),
             updatedAt: z.union([z.lazy(() => DateTimeFilterSchema), z.coerce.date()]).optional(),
             counters: z.lazy(() => CounterListRelationFilterSchema).optional(),
@@ -1304,6 +1334,9 @@ export const UserOrderByWithAggregationInputSchema: z.ZodType<Prisma.UserOrderBy
     tier: z.lazy(() => SortOrderSchema).optional(),
     emailVerifiedAt: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
     sessionVersion: z.lazy(() => SortOrderSchema).optional(),
+    premiumExpiresAt: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
+    billingCheckedAt: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
+    billingSandbox: z.lazy(() => SortOrderSchema).optional(),
     createdAt: z.lazy(() => SortOrderSchema).optional(),
     updatedAt: z.lazy(() => SortOrderSchema).optional(),
     _count: z.lazy(() => UserCountOrderByAggregateInputSchema).optional(),
@@ -1340,6 +1373,15 @@ export const UserScalarWhereWithAggregatesInputSchema: z.ZodType<Prisma.UserScal
             .optional()
             .nullable(),
         sessionVersion: z.union([z.lazy(() => IntWithAggregatesFilterSchema), z.number()]).optional(),
+        premiumExpiresAt: z
+            .union([z.lazy(() => DateTimeNullableWithAggregatesFilterSchema), z.coerce.date()])
+            .optional()
+            .nullable(),
+        billingCheckedAt: z
+            .union([z.lazy(() => DateTimeNullableWithAggregatesFilterSchema), z.coerce.date()])
+            .optional()
+            .nullable(),
+        billingSandbox: z.union([z.lazy(() => BoolWithAggregatesFilterSchema), z.boolean()]).optional(),
         createdAt: z.union([z.lazy(() => DateTimeWithAggregatesFilterSchema), z.coerce.date()]).optional(),
         updatedAt: z.union([z.lazy(() => DateTimeWithAggregatesFilterSchema), z.coerce.date()]).optional(),
     });
@@ -1968,6 +2010,9 @@ export const UserCreateInputSchema: z.ZodType<Prisma.UserCreateInput> = z.strict
     tier: z.lazy(() => UserTierSchema).optional(),
     emailVerifiedAt: z.coerce.date().optional().nullable(),
     sessionVersion: z.number().int().optional(),
+    premiumExpiresAt: z.coerce.date().optional().nullable(),
+    billingCheckedAt: z.coerce.date().optional().nullable(),
+    billingSandbox: z.boolean().optional(),
     createdAt: z.coerce.date().optional(),
     updatedAt: z.coerce.date().optional(),
     counters: z.lazy(() => CounterCreateNestedManyWithoutOwnerInputSchema).optional(),
@@ -1983,6 +2028,9 @@ export const UserUncheckedCreateInputSchema: z.ZodType<Prisma.UserUncheckedCreat
     tier: z.lazy(() => UserTierSchema).optional(),
     emailVerifiedAt: z.coerce.date().optional().nullable(),
     sessionVersion: z.number().int().optional(),
+    premiumExpiresAt: z.coerce.date().optional().nullable(),
+    billingCheckedAt: z.coerce.date().optional().nullable(),
+    billingSandbox: z.boolean().optional(),
     createdAt: z.coerce.date().optional(),
     updatedAt: z.coerce.date().optional(),
     counters: z.lazy(() => CounterUncheckedCreateNestedManyWithoutOwnerInputSchema).optional(),
@@ -2003,6 +2051,15 @@ export const UserUpdateInputSchema: z.ZodType<Prisma.UserUpdateInput> = z.strict
         .optional()
         .nullable(),
     sessionVersion: z.union([z.number().int(), z.lazy(() => IntFieldUpdateOperationsInputSchema)]).optional(),
+    premiumExpiresAt: z
+        .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
+    billingCheckedAt: z
+        .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
+    billingSandbox: z.union([z.boolean(), z.lazy(() => BoolFieldUpdateOperationsInputSchema)]).optional(),
     createdAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
     updatedAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
     counters: z.lazy(() => CounterUpdateManyWithoutOwnerNestedInputSchema).optional(),
@@ -2023,6 +2080,15 @@ export const UserUncheckedUpdateInputSchema: z.ZodType<Prisma.UserUncheckedUpdat
         .optional()
         .nullable(),
     sessionVersion: z.union([z.number().int(), z.lazy(() => IntFieldUpdateOperationsInputSchema)]).optional(),
+    premiumExpiresAt: z
+        .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
+    billingCheckedAt: z
+        .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
+    billingSandbox: z.union([z.boolean(), z.lazy(() => BoolFieldUpdateOperationsInputSchema)]).optional(),
     createdAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
     updatedAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
     counters: z.lazy(() => CounterUncheckedUpdateManyWithoutOwnerNestedInputSchema).optional(),
@@ -2038,6 +2104,9 @@ export const UserCreateManyInputSchema: z.ZodType<Prisma.UserCreateManyInput> = 
     tier: z.lazy(() => UserTierSchema).optional(),
     emailVerifiedAt: z.coerce.date().optional().nullable(),
     sessionVersion: z.number().int().optional(),
+    premiumExpiresAt: z.coerce.date().optional().nullable(),
+    billingCheckedAt: z.coerce.date().optional().nullable(),
+    billingSandbox: z.boolean().optional(),
     createdAt: z.coerce.date().optional(),
     updatedAt: z.coerce.date().optional(),
 });
@@ -2054,6 +2123,15 @@ export const UserUpdateManyMutationInputSchema: z.ZodType<Prisma.UserUpdateManyM
         .optional()
         .nullable(),
     sessionVersion: z.union([z.number().int(), z.lazy(() => IntFieldUpdateOperationsInputSchema)]).optional(),
+    premiumExpiresAt: z
+        .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
+    billingCheckedAt: z
+        .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
+    billingSandbox: z.union([z.boolean(), z.lazy(() => BoolFieldUpdateOperationsInputSchema)]).optional(),
     createdAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
     updatedAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
 });
@@ -2070,6 +2148,15 @@ export const UserUncheckedUpdateManyInputSchema: z.ZodType<Prisma.UserUncheckedU
         .optional()
         .nullable(),
     sessionVersion: z.union([z.number().int(), z.lazy(() => IntFieldUpdateOperationsInputSchema)]).optional(),
+    premiumExpiresAt: z
+        .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
+    billingCheckedAt: z
+        .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
+    billingSandbox: z.union([z.boolean(), z.lazy(() => BoolFieldUpdateOperationsInputSchema)]).optional(),
     createdAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
     updatedAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
 });
@@ -2840,6 +2927,11 @@ export const EnumUserTierFilterSchema: z.ZodType<Prisma.EnumUserTierFilter> = z.
     not: z.union([z.lazy(() => UserTierSchema), z.lazy(() => NestedEnumUserTierFilterSchema)]).optional(),
 });
 
+export const BoolFilterSchema: z.ZodType<Prisma.BoolFilter> = z.strictObject({
+    equals: z.boolean().optional(),
+    not: z.union([z.boolean(), z.lazy(() => NestedBoolFilterSchema)]).optional(),
+});
+
 export const CounterListRelationFilterSchema: z.ZodType<Prisma.CounterListRelationFilter> = z.strictObject({
     every: z.lazy(() => CounterWhereInputSchema).optional(),
     some: z.lazy(() => CounterWhereInputSchema).optional(),
@@ -2880,6 +2972,9 @@ export const UserCountOrderByAggregateInputSchema: z.ZodType<Prisma.UserCountOrd
     tier: z.lazy(() => SortOrderSchema).optional(),
     emailVerifiedAt: z.lazy(() => SortOrderSchema).optional(),
     sessionVersion: z.lazy(() => SortOrderSchema).optional(),
+    premiumExpiresAt: z.lazy(() => SortOrderSchema).optional(),
+    billingCheckedAt: z.lazy(() => SortOrderSchema).optional(),
+    billingSandbox: z.lazy(() => SortOrderSchema).optional(),
     createdAt: z.lazy(() => SortOrderSchema).optional(),
     updatedAt: z.lazy(() => SortOrderSchema).optional(),
 });
@@ -2895,6 +2990,9 @@ export const UserMaxOrderByAggregateInputSchema: z.ZodType<Prisma.UserMaxOrderBy
     tier: z.lazy(() => SortOrderSchema).optional(),
     emailVerifiedAt: z.lazy(() => SortOrderSchema).optional(),
     sessionVersion: z.lazy(() => SortOrderSchema).optional(),
+    premiumExpiresAt: z.lazy(() => SortOrderSchema).optional(),
+    billingCheckedAt: z.lazy(() => SortOrderSchema).optional(),
+    billingSandbox: z.lazy(() => SortOrderSchema).optional(),
     createdAt: z.lazy(() => SortOrderSchema).optional(),
     updatedAt: z.lazy(() => SortOrderSchema).optional(),
 });
@@ -2906,6 +3004,9 @@ export const UserMinOrderByAggregateInputSchema: z.ZodType<Prisma.UserMinOrderBy
     tier: z.lazy(() => SortOrderSchema).optional(),
     emailVerifiedAt: z.lazy(() => SortOrderSchema).optional(),
     sessionVersion: z.lazy(() => SortOrderSchema).optional(),
+    premiumExpiresAt: z.lazy(() => SortOrderSchema).optional(),
+    billingCheckedAt: z.lazy(() => SortOrderSchema).optional(),
+    billingSandbox: z.lazy(() => SortOrderSchema).optional(),
     createdAt: z.lazy(() => SortOrderSchema).optional(),
     updatedAt: z.lazy(() => SortOrderSchema).optional(),
 });
@@ -2932,6 +3033,14 @@ export const EnumUserTierWithAggregatesFilterSchema: z.ZodType<Prisma.EnumUserTi
         _min: z.lazy(() => NestedEnumUserTierFilterSchema).optional(),
         _max: z.lazy(() => NestedEnumUserTierFilterSchema).optional(),
     });
+
+export const BoolWithAggregatesFilterSchema: z.ZodType<Prisma.BoolWithAggregatesFilter> = z.strictObject({
+    equals: z.boolean().optional(),
+    not: z.union([z.boolean(), z.lazy(() => NestedBoolWithAggregatesFilterSchema)]).optional(),
+    _count: z.lazy(() => NestedIntFilterSchema).optional(),
+    _min: z.lazy(() => NestedBoolFilterSchema).optional(),
+    _max: z.lazy(() => NestedBoolFilterSchema).optional(),
+});
 
 export const UserCreateNestedOneWithoutCountersInputSchema: z.ZodType<Prisma.UserCreateNestedOneWithoutCountersInput> =
     z.strictObject({
@@ -3550,6 +3659,10 @@ export const EnumUserTierFieldUpdateOperationsInputSchema: z.ZodType<Prisma.Enum
     z.strictObject({
         set: z.lazy(() => UserTierSchema).optional(),
     });
+
+export const BoolFieldUpdateOperationsInputSchema: z.ZodType<Prisma.BoolFieldUpdateOperationsInput> = z.strictObject({
+    set: z.boolean().optional(),
+});
 
 export const CounterUpdateManyWithoutOwnerNestedInputSchema: z.ZodType<Prisma.CounterUpdateManyWithoutOwnerNestedInput> =
     z.strictObject({
@@ -4561,6 +4674,11 @@ export const NestedEnumUserTierFilterSchema: z.ZodType<Prisma.NestedEnumUserTier
     not: z.union([z.lazy(() => UserTierSchema), z.lazy(() => NestedEnumUserTierFilterSchema)]).optional(),
 });
 
+export const NestedBoolFilterSchema: z.ZodType<Prisma.NestedBoolFilter> = z.strictObject({
+    equals: z.boolean().optional(),
+    not: z.union([z.boolean(), z.lazy(() => NestedBoolFilterSchema)]).optional(),
+});
+
 export const NestedEnumUserTierWithAggregatesFilterSchema: z.ZodType<Prisma.NestedEnumUserTierWithAggregatesFilter> =
     z.strictObject({
         equals: z.lazy(() => UserTierSchema).optional(),
@@ -4580,6 +4698,14 @@ export const NestedEnumUserTierWithAggregatesFilterSchema: z.ZodType<Prisma.Nest
         _max: z.lazy(() => NestedEnumUserTierFilterSchema).optional(),
     });
 
+export const NestedBoolWithAggregatesFilterSchema: z.ZodType<Prisma.NestedBoolWithAggregatesFilter> = z.strictObject({
+    equals: z.boolean().optional(),
+    not: z.union([z.boolean(), z.lazy(() => NestedBoolWithAggregatesFilterSchema)]).optional(),
+    _count: z.lazy(() => NestedIntFilterSchema).optional(),
+    _min: z.lazy(() => NestedBoolFilterSchema).optional(),
+    _max: z.lazy(() => NestedBoolFilterSchema).optional(),
+});
+
 export const UserCreateWithoutCountersInputSchema: z.ZodType<Prisma.UserCreateWithoutCountersInput> = z.strictObject({
     id: z.uuid().optional(),
     email: z.string(),
@@ -4587,6 +4713,9 @@ export const UserCreateWithoutCountersInputSchema: z.ZodType<Prisma.UserCreateWi
     tier: z.lazy(() => UserTierSchema).optional(),
     emailVerifiedAt: z.coerce.date().optional().nullable(),
     sessionVersion: z.number().int().optional(),
+    premiumExpiresAt: z.coerce.date().optional().nullable(),
+    billingCheckedAt: z.coerce.date().optional().nullable(),
+    billingSandbox: z.boolean().optional(),
     createdAt: z.coerce.date().optional(),
     updatedAt: z.coerce.date().optional(),
     sharedCounters: z.lazy(() => CounterShareCreateNestedManyWithoutUserInputSchema).optional(),
@@ -4602,6 +4731,9 @@ export const UserUncheckedCreateWithoutCountersInputSchema: z.ZodType<Prisma.Use
         tier: z.lazy(() => UserTierSchema).optional(),
         emailVerifiedAt: z.coerce.date().optional().nullable(),
         sessionVersion: z.number().int().optional(),
+        premiumExpiresAt: z.coerce.date().optional().nullable(),
+        billingCheckedAt: z.coerce.date().optional().nullable(),
+        billingSandbox: z.boolean().optional(),
         createdAt: z.coerce.date().optional(),
         updatedAt: z.coerce.date().optional(),
         sharedCounters: z.lazy(() => CounterShareUncheckedCreateNestedManyWithoutUserInputSchema).optional(),
@@ -4687,6 +4819,15 @@ export const UserUpdateWithoutCountersInputSchema: z.ZodType<Prisma.UserUpdateWi
         .optional()
         .nullable(),
     sessionVersion: z.union([z.number().int(), z.lazy(() => IntFieldUpdateOperationsInputSchema)]).optional(),
+    premiumExpiresAt: z
+        .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
+    billingCheckedAt: z
+        .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
+    billingSandbox: z.union([z.boolean(), z.lazy(() => BoolFieldUpdateOperationsInputSchema)]).optional(),
     createdAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
     updatedAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
     sharedCounters: z.lazy(() => CounterShareUpdateManyWithoutUserNestedInputSchema).optional(),
@@ -4707,6 +4848,15 @@ export const UserUncheckedUpdateWithoutCountersInputSchema: z.ZodType<Prisma.Use
             .optional()
             .nullable(),
         sessionVersion: z.union([z.number().int(), z.lazy(() => IntFieldUpdateOperationsInputSchema)]).optional(),
+        premiumExpiresAt: z
+            .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        billingCheckedAt: z
+            .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        billingSandbox: z.union([z.boolean(), z.lazy(() => BoolFieldUpdateOperationsInputSchema)]).optional(),
         createdAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
         updatedAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
         sharedCounters: z.lazy(() => CounterShareUncheckedUpdateManyWithoutUserNestedInputSchema).optional(),
@@ -4828,6 +4978,9 @@ export const UserCreateWithoutSharedCountersInputSchema: z.ZodType<Prisma.UserCr
         tier: z.lazy(() => UserTierSchema).optional(),
         emailVerifiedAt: z.coerce.date().optional().nullable(),
         sessionVersion: z.number().int().optional(),
+        premiumExpiresAt: z.coerce.date().optional().nullable(),
+        billingCheckedAt: z.coerce.date().optional().nullable(),
+        billingSandbox: z.boolean().optional(),
         createdAt: z.coerce.date().optional(),
         updatedAt: z.coerce.date().optional(),
         counters: z.lazy(() => CounterCreateNestedManyWithoutOwnerInputSchema).optional(),
@@ -4843,6 +4996,9 @@ export const UserUncheckedCreateWithoutSharedCountersInputSchema: z.ZodType<Pris
         tier: z.lazy(() => UserTierSchema).optional(),
         emailVerifiedAt: z.coerce.date().optional().nullable(),
         sessionVersion: z.number().int().optional(),
+        premiumExpiresAt: z.coerce.date().optional().nullable(),
+        billingCheckedAt: z.coerce.date().optional().nullable(),
+        billingSandbox: z.boolean().optional(),
         createdAt: z.coerce.date().optional(),
         updatedAt: z.coerce.date().optional(),
         counters: z.lazy(() => CounterUncheckedCreateNestedManyWithoutOwnerInputSchema).optional(),
@@ -5018,6 +5174,15 @@ export const UserUpdateWithoutSharedCountersInputSchema: z.ZodType<Prisma.UserUp
             .optional()
             .nullable(),
         sessionVersion: z.union([z.number().int(), z.lazy(() => IntFieldUpdateOperationsInputSchema)]).optional(),
+        premiumExpiresAt: z
+            .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        billingCheckedAt: z
+            .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        billingSandbox: z.union([z.boolean(), z.lazy(() => BoolFieldUpdateOperationsInputSchema)]).optional(),
         createdAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
         updatedAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
         counters: z.lazy(() => CounterUpdateManyWithoutOwnerNestedInputSchema).optional(),
@@ -5038,6 +5203,15 @@ export const UserUncheckedUpdateWithoutSharedCountersInputSchema: z.ZodType<Pris
             .optional()
             .nullable(),
         sessionVersion: z.union([z.number().int(), z.lazy(() => IntFieldUpdateOperationsInputSchema)]).optional(),
+        premiumExpiresAt: z
+            .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        billingCheckedAt: z
+            .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        billingSandbox: z.union([z.boolean(), z.lazy(() => BoolFieldUpdateOperationsInputSchema)]).optional(),
         createdAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
         updatedAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
         counters: z.lazy(() => CounterUncheckedUpdateManyWithoutOwnerNestedInputSchema).optional(),
@@ -5053,6 +5227,9 @@ export const UserCreateWithoutRefreshTokensInputSchema: z.ZodType<Prisma.UserCre
         tier: z.lazy(() => UserTierSchema).optional(),
         emailVerifiedAt: z.coerce.date().optional().nullable(),
         sessionVersion: z.number().int().optional(),
+        premiumExpiresAt: z.coerce.date().optional().nullable(),
+        billingCheckedAt: z.coerce.date().optional().nullable(),
+        billingSandbox: z.boolean().optional(),
         createdAt: z.coerce.date().optional(),
         updatedAt: z.coerce.date().optional(),
         counters: z.lazy(() => CounterCreateNestedManyWithoutOwnerInputSchema).optional(),
@@ -5068,6 +5245,9 @@ export const UserUncheckedCreateWithoutRefreshTokensInputSchema: z.ZodType<Prism
         tier: z.lazy(() => UserTierSchema).optional(),
         emailVerifiedAt: z.coerce.date().optional().nullable(),
         sessionVersion: z.number().int().optional(),
+        premiumExpiresAt: z.coerce.date().optional().nullable(),
+        billingCheckedAt: z.coerce.date().optional().nullable(),
+        billingSandbox: z.boolean().optional(),
         createdAt: z.coerce.date().optional(),
         updatedAt: z.coerce.date().optional(),
         counters: z.lazy(() => CounterUncheckedCreateNestedManyWithoutOwnerInputSchema).optional(),
@@ -5119,6 +5299,15 @@ export const UserUpdateWithoutRefreshTokensInputSchema: z.ZodType<Prisma.UserUpd
             .optional()
             .nullable(),
         sessionVersion: z.union([z.number().int(), z.lazy(() => IntFieldUpdateOperationsInputSchema)]).optional(),
+        premiumExpiresAt: z
+            .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        billingCheckedAt: z
+            .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        billingSandbox: z.union([z.boolean(), z.lazy(() => BoolFieldUpdateOperationsInputSchema)]).optional(),
         createdAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
         updatedAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
         counters: z.lazy(() => CounterUpdateManyWithoutOwnerNestedInputSchema).optional(),
@@ -5139,6 +5328,15 @@ export const UserUncheckedUpdateWithoutRefreshTokensInputSchema: z.ZodType<Prism
             .optional()
             .nullable(),
         sessionVersion: z.union([z.number().int(), z.lazy(() => IntFieldUpdateOperationsInputSchema)]).optional(),
+        premiumExpiresAt: z
+            .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        billingCheckedAt: z
+            .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        billingSandbox: z.union([z.boolean(), z.lazy(() => BoolFieldUpdateOperationsInputSchema)]).optional(),
         createdAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
         updatedAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
         counters: z.lazy(() => CounterUncheckedUpdateManyWithoutOwnerNestedInputSchema).optional(),
@@ -5153,6 +5351,9 @@ export const UserCreateWithoutEmailOtpsInputSchema: z.ZodType<Prisma.UserCreateW
     tier: z.lazy(() => UserTierSchema).optional(),
     emailVerifiedAt: z.coerce.date().optional().nullable(),
     sessionVersion: z.number().int().optional(),
+    premiumExpiresAt: z.coerce.date().optional().nullable(),
+    billingCheckedAt: z.coerce.date().optional().nullable(),
+    billingSandbox: z.boolean().optional(),
     createdAt: z.coerce.date().optional(),
     updatedAt: z.coerce.date().optional(),
     counters: z.lazy(() => CounterCreateNestedManyWithoutOwnerInputSchema).optional(),
@@ -5168,6 +5369,9 @@ export const UserUncheckedCreateWithoutEmailOtpsInputSchema: z.ZodType<Prisma.Us
         tier: z.lazy(() => UserTierSchema).optional(),
         emailVerifiedAt: z.coerce.date().optional().nullable(),
         sessionVersion: z.number().int().optional(),
+        premiumExpiresAt: z.coerce.date().optional().nullable(),
+        billingCheckedAt: z.coerce.date().optional().nullable(),
+        billingSandbox: z.boolean().optional(),
         createdAt: z.coerce.date().optional(),
         updatedAt: z.coerce.date().optional(),
         counters: z.lazy(() => CounterUncheckedCreateNestedManyWithoutOwnerInputSchema).optional(),
@@ -5217,6 +5421,15 @@ export const UserUpdateWithoutEmailOtpsInputSchema: z.ZodType<Prisma.UserUpdateW
         .optional()
         .nullable(),
     sessionVersion: z.union([z.number().int(), z.lazy(() => IntFieldUpdateOperationsInputSchema)]).optional(),
+    premiumExpiresAt: z
+        .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
+    billingCheckedAt: z
+        .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
+    billingSandbox: z.union([z.boolean(), z.lazy(() => BoolFieldUpdateOperationsInputSchema)]).optional(),
     createdAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
     updatedAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
     counters: z.lazy(() => CounterUpdateManyWithoutOwnerNestedInputSchema).optional(),
@@ -5237,6 +5450,15 @@ export const UserUncheckedUpdateWithoutEmailOtpsInputSchema: z.ZodType<Prisma.Us
             .optional()
             .nullable(),
         sessionVersion: z.union([z.number().int(), z.lazy(() => IntFieldUpdateOperationsInputSchema)]).optional(),
+        premiumExpiresAt: z
+            .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        billingCheckedAt: z
+            .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        billingSandbox: z.union([z.boolean(), z.lazy(() => BoolFieldUpdateOperationsInputSchema)]).optional(),
         createdAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
         updatedAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
         counters: z.lazy(() => CounterUncheckedUpdateManyWithoutOwnerNestedInputSchema).optional(),

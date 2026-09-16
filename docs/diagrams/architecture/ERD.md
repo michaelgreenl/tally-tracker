@@ -97,6 +97,9 @@ BASIC BASIC
     UserTier tier 
     DateTime email_verified_at "nullable"
     Int session_version
+    DateTime premium_expires_at "nullable"
+    DateTime billing_checked_at "nullable"
+    Boolean billing_sandbox
     DateTime created_at 
     DateTime updated_at 
     }

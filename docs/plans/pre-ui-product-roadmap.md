@@ -83,6 +83,11 @@ If Google sign-in ships on iOS, ship Sign in with Apple in the same release.
 
 - [ ] complete
 - [x] required for version 1
+- [x] Server-side RevenueCat verification and lifecycle webhook handling implemented.
+- [ ] Connect the RevenueCat project and verify Test Store purchases.
+- [ ] Connect native purchases, restoration, and subscription management.
+
+See [billing setup and remaining work](../billing.md). The server foundation does not enable purchases by itself.
 
 Use RevenueCat or an equivalent entitlement service:
 
