@@ -1,6 +1,8 @@
+import { useEffect } from 'react';
 import { Platform, Pressable, RefreshControl, StyleSheet, Vibration, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { useReducedMotion } from 'react-native-reanimated';
+import { useAnimatedScrollHandler, useReducedMotion } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ReorderableList, { reorderItems, useIsActive, useReorderableDrag } from 'react-native-reorderable-list';
 
@@ -15,6 +17,7 @@ export type CounterListProps = {
     reordering: boolean;
     refreshing: boolean;
     onRefresh?: () => void;
+    onPullChange: (pulling: boolean) => void;
     onReorder: (ids: string[]) => void;
     renderItem: (counter: ClientCounter, index: number) => ReactNode;
     emptyState: ReactNode;
@@ -102,12 +105,35 @@ export function CounterList({
     reordering,
     refreshing,
     onRefresh,
+    onPullChange,
     onReorder,
     renderItem,
     emptyState,
 }: CounterListProps) {
     const reduceMotion = useReducedMotion();
     const insets = useSafeAreaInsets();
+    const canPull = Platform.OS === 'ios' && !reordering && !!onRefresh;
+    useEffect(() => () => onPullChange(false), [canPull, onPullChange]);
+    const handleScroll = useAnimatedScrollHandler<{ dragging?: boolean; pulling?: boolean }>({
+        onBeginDrag: (_, context) => {
+            context.dragging = true;
+            context.pulling = false;
+        },
+        onScroll: (event, context) => {
+            if (canPull && context.dragging && !context.pulling && event.contentOffset.y + event.contentInset.top < 0) {
+                // Keep the header busy until release, even if a refresh finishes while held.
+                context.pulling = true;
+                scheduleOnRN(onPullChange, true);
+            }
+        },
+        onEndDrag: (_, context) => {
+            context.dragging = false;
+            if (context.pulling) {
+                context.pulling = false;
+                scheduleOnRN(onPullChange, false);
+            }
+        },
+    });
     return (
         <GestureHandlerRootView style={styles.container}>
             <ReorderableList
@@ -117,6 +143,7 @@ export function CounterList({
                 testID={counters.length ? 'counter-list' : undefined}
                 ListEmptyComponent={<View>{emptyState}</View>}
                 alwaysBounceVertical
+                onScroll={handleScroll}
                 refreshControl={
                     !reordering && onRefresh ? (
                         <RefreshControl

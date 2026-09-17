@@ -4,6 +4,7 @@ import { ApiError } from '../api';
 import { SyncManager } from './sync-manager';
 
 import type { MutationCommand } from './sync-queue';
+import type { SyncStatus } from './sync-manager';
 
 const { apiError, apiFetch, authService, network, syncQueue } = vi.hoisted(() => {
     class MockApiError extends Error {
@@ -54,9 +55,11 @@ describe('SyncManager', () => {
 
     it('leaves the queue untouched while offline', async () => {
         network.getNetworkStateAsync.mockResolvedValue({ isConnected: false });
+        syncQueue.get.mockResolvedValue([command('offline')]);
 
         await expect(SyncManager.processQueuePass()).resolves.toBe(false);
-        expect(syncQueue.get).not.toHaveBeenCalled();
+        expect(syncQueue.remove).not.toHaveBeenCalled();
+        expect(apiFetch).not.toHaveBeenCalled();
     });
 
     it('processes only commands queued by the current user', async () => {
@@ -65,6 +68,32 @@ describe('SyncManager', () => {
         await expect(SyncManager.processQueuePass()).resolves.toBe(true);
         expect(apiFetch).not.toHaveBeenCalled();
         expect(syncQueue.remove).not.toHaveBeenCalled();
+    });
+
+    it('reports syncing only while this account has queued writes', async () => {
+        const statuses: SyncStatus[] = [];
+        SyncManager.init((status) => statuses.push(status));
+        syncQueue.get.mockResolvedValue([]);
+        await SyncManager.processQueue();
+        syncQueue.get.mockResolvedValue([{ ...command('other'), queuedByUserId: 'user-2' }]);
+        await SyncManager.processQueue();
+        expect(statuses).not.toContain('syncing');
+
+        syncQueue.get.mockResolvedValue([command('mine')]);
+        let finish!: () => void;
+        apiFetch.mockReturnValue(
+            new Promise<void>((resolve) => {
+                finish = resolve;
+            }),
+        );
+        const pending = SyncManager.processQueue();
+        try {
+            await vi.waitFor(() => expect(statuses.at(-1)).toBe('syncing'));
+        } finally {
+            finish();
+            await pending;
+        }
+        expect(statuses.at(-1)).toBe('idle');
     });
 
     it.each(['DELETE', 'REMOVE'] as const)('completes an already-missing %s and continues the queue', async (type) => {

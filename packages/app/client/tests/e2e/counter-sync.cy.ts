@@ -8,7 +8,7 @@ function openAccount(user: ClientUser) {
             win.localStorage.setItem('auth_user_profile', JSON.stringify(user));
         },
     });
-    cy.get('[data-testid="home-sync-status"]').should('have.text', 'Synced');
+    cy.get('[data-testid="home-sync-synced-icon"]').should('be.visible');
 }
 
 describe('Counter sync recovery', () => {
@@ -38,11 +38,11 @@ describe('Counter sync recovery', () => {
 
         cy.reload();
         cy.get('[data-testid="home-sync-spinner"]').should('be.visible');
-        cy.get('[data-testid="home-sync-dot"]').should('not.exist');
+        cy.get('[data-testid="home-sync-synced-icon"]').should('not.exist');
         cy.then(() => finishSync());
         cy.wait('@sync');
         cy.get('[data-testid="home-sync-spinner"]').should('not.exist');
-        cy.get('[data-testid="home-sync-dot"]').should('be.visible');
+        cy.get('[data-testid="home-sync-synced-icon"]').should('be.visible');
     });
 
     it('keeps rejected writes through reload and syncs them once the API recovers', () => {
@@ -61,9 +61,9 @@ describe('Counter sync recovery', () => {
             counterId = request.body.id;
             cy.get(`[data-testid="counter-${counterId}-increase"]`).click();
         });
-        cy.get('[data-testid="home-sync-status"]').should('have.text', 'Sync failed');
+        cy.get('[data-testid="home-sync-error-icon"]').should('be.visible');
         cy.reload();
-        cy.get('[data-testid="home-sync-status"]').should('have.text', 'Sync failed');
+        cy.get('[data-testid="home-sync-error-icon"]').should('be.visible');
         cy.then(() => {
             cy.get(`[data-testid="counter-${counterId}-count"]`).should('have.text', '1');
         });
@@ -77,7 +77,7 @@ describe('Counter sync recovery', () => {
         });
         cy.reload();
         cy.wait('@created').its('response.statusCode').should('eq', 201);
-        cy.get('[data-testid="home-sync-status"]').should('have.text', 'Synced');
+        cy.get('[data-testid="home-sync-synced-icon"]').should('be.visible');
         cy.request('GET', '/counters').then(({ body }) => {
             expect(body.data.counters).to.have.length(1);
             expect(body.data.counters[0]).to.include({ id: counterId, count: 1, metric: '16oz bottle' });

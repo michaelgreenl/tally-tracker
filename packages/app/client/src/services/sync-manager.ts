@@ -43,7 +43,6 @@ export const SyncManager = {
             return activeSync;
         }
 
-        onStatusChange?.('syncing');
         activeSync = (async () => {
             try {
                 let drained: boolean;
@@ -64,16 +63,20 @@ export const SyncManager = {
     },
 
     async processQueuePass(): Promise<boolean> {
-        const status = await Network.getNetworkStateAsync();
-        if (status.isConnected === false) return false;
-
         const queue = await SyncQueue.get();
         if (queue.length === 0) return true;
 
         const userId = (await AuthService.getCachedUser())?.id;
         if (!userId) return false;
 
-        for (const command of queue.filter((item) => item.queuedByUserId === userId)) {
+        const commands = queue.filter((item) => item.queuedByUserId === userId);
+        if (commands.length === 0) return true;
+
+        onStatusChange?.('syncing');
+        const status = await Network.getNetworkStateAsync();
+        if (status.isConnected === false) return false;
+
+        for (const command of commands) {
             try {
                 await this.executeCommand(command);
                 await SyncQueue.remove(command.id);

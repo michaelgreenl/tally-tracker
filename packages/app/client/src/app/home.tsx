@@ -13,6 +13,7 @@ import { CounterIncrementDialog } from '../components/counter-increment-dialog';
 import { CounterList } from '../components/counter-list';
 import { Dialog } from '../components/dialog';
 import { Snackbar } from '../components/snackbar';
+import { SyncIndicator } from '../components/sync-indicator';
 import { TallyBrand } from '../components/tally-brand';
 import { ToolbarButton } from '../components/toolbar-button';
 import { GUEST_COUNTER_CAP, GUEST_COUNTER_LIMIT_MESSAGE, orderCounters, useCounters } from '../counters';
@@ -33,6 +34,7 @@ export default function HomeScreen() {
     const [notice, setNotice] = useState('');
     const [reorderDraft, setReorderDraft] = useState<string[] | null>(null);
     const [savingOrder, setSavingOrder] = useState(false);
+    const [pulling, setPulling] = useState(false);
     const reordering = reorderDraft !== null;
 
     function openCreateForm() {
@@ -101,37 +103,17 @@ export default function HomeScreen() {
                         />
                     ) : session.isAuthenticated ? (
                         <View style={styles.headerActions}>
-                            <View accessibilityLiveRegion='polite' style={styles.status}>
-                                {counterState.loading ? (
-                                    <ActivityIndicator
-                                        aria-hidden
-                                        color={colors.link}
-                                        size='small'
-                                        testID='home-sync-spinner'
-                                    />
-                                ) : (
-                                    <View
-                                        aria-hidden
-                                        style={[
-                                            styles.statusDot,
-                                            network.isConnected === false && styles.statusDotOffline,
-                                            network.isConnected !== false &&
-                                                counterState.syncError &&
-                                                styles.statusDotError,
-                                        ]}
-                                        testID='home-sync-dot'
-                                    />
-                                )}
-                                <Text style={styles.statusText} testID='home-sync-status'>
-                                    {counterState.loading
-                                        ? 'Syncing'
+                            <SyncIndicator
+                                status={
+                                    counterState.loading || counterState.refreshing || pulling
+                                        ? 'syncing'
                                         : network.isConnected === false
-                                          ? 'Offline'
+                                          ? 'offline'
                                           : counterState.syncError
-                                            ? 'Sync failed'
-                                            : 'Synced'}
-                                </Text>
-                            </View>
+                                            ? 'error'
+                                            : 'synced'
+                                }
+                            />
                             <Link href='/settings' asChild>
                                 <Pressable
                                     accessibilityLabel='Settings'
@@ -170,6 +152,7 @@ export default function HomeScreen() {
                     reordering={reordering}
                     refreshing={counterState.refreshing}
                     onRefresh={session.isAuthenticated ? counterState.refreshCounters : undefined}
+                    onPullChange={setPulling}
                     onReorder={(ids) => void reorderCounters(ids)}
                     emptyState={
                         counterState.loading && !counterState.refreshing ? (
@@ -314,32 +297,6 @@ const styles = StyleSheet.create({
     headerActionText: {
         color: colors.onPrimary,
         fontSize: 14,
-        fontWeight: '700',
-    },
-    status: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 7,
-        paddingHorizontal: 11,
-        paddingVertical: 7,
-        backgroundColor: colors.surface,
-        borderRadius: 999,
-    },
-    statusDot: {
-        width: 8,
-        height: 8,
-        backgroundColor: colors.success,
-        borderRadius: 4,
-    },
-    statusDotOffline: {
-        backgroundColor: colors.warning,
-    },
-    statusDotError: {
-        backgroundColor: colors.danger,
-    },
-    statusText: {
-        color: colors.text,
-        fontSize: 13,
         fontWeight: '700',
     },
     bottomActions: {
