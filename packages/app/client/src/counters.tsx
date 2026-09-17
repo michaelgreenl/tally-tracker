@@ -20,8 +20,10 @@ type ActionResult = { success: true } | { success: false; message: string };
 type CounterContextValue = {
     counters: ClientCounter[];
     loading: boolean;
+    refreshing: boolean;
     syncError: boolean;
     eligibleCount: number;
+    refreshCounters: () => void;
     createCounter: (title: string, color: HexColor, metric?: string) => Promise<ActionResult>;
     shareCounter: (
         counterId: string,
@@ -92,11 +94,18 @@ export function CounterProvider({ children }: PropsWithChildren) {
     const session = useSession();
     const [counters, setCounters] = useState<ClientCounter[]>([]);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [syncError, setSyncError] = useState(false);
     const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
     const [refreshKey, setRefreshKey] = useState(0);
     const countersRef = useRef<ClientCounter[]>([]);
     const previousUserId = useRef<string | null>(null);
+
+    function refreshCounters() {
+        if (loading || refreshing) return;
+        setRefreshing(true);
+        setRefreshKey((key) => key + 1);
+    }
 
     const replaceCounters = useCallback(async (next: ClientCounter[]) => {
         countersRef.current = next;
@@ -185,7 +194,10 @@ export function CounterProvider({ children }: PropsWithChildren) {
                 if (active) setSyncError(true);
                 console.warn('Counter initialization failed', error);
             } finally {
-                if (active) setLoading(false);
+                if (active) {
+                    setLoading(false);
+                    setRefreshing(false);
+                }
             }
         })();
 
@@ -351,8 +363,10 @@ export function CounterProvider({ children }: PropsWithChildren) {
             value={{
                 counters,
                 loading: loading || syncStatus === 'syncing',
+                refreshing,
                 syncError: syncError || syncStatus === 'error',
                 eligibleCount: counters.filter(isGuestEligible).length,
+                refreshCounters,
                 createCounter,
                 shareCounter,
                 incrementCounter,

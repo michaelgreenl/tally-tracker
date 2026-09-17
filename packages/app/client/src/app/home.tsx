@@ -168,9 +168,11 @@ export default function HomeScreen() {
                 <CounterList
                     counters={reorderDraft ? orderCounters(counterState.counters, reorderDraft) : counterState.counters}
                     reordering={reordering}
+                    refreshing={counterState.refreshing}
+                    onRefresh={session.isAuthenticated ? counterState.refreshCounters : undefined}
                     onReorder={(ids) => void reorderCounters(ids)}
                     emptyState={
-                        counterState.loading ? (
+                        counterState.loading && !counterState.refreshing ? (
                             <ActivityIndicator color={colors.link} size='large' style={styles.loader} />
                         ) : (
                             <View style={styles.emptyState}>

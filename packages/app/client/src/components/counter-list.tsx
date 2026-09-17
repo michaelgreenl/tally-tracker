@@ -1,4 +1,4 @@
-import { Platform, Pressable, StyleSheet, Vibration, View } from 'react-native';
+import { Platform, Pressable, RefreshControl, StyleSheet, Vibration, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,6 +13,8 @@ import type { KeyboardEvent, ReactNode } from 'react';
 export type CounterListProps = {
     counters: ClientCounter[];
     reordering: boolean;
+    refreshing: boolean;
+    onRefresh?: () => void;
     onReorder: (ids: string[]) => void;
     renderItem: (counter: ClientCounter, index: number) => ReactNode;
     emptyState: ReactNode;
@@ -95,7 +97,15 @@ function DraggableCard({
     );
 }
 
-export function CounterList({ counters, reordering, onReorder, renderItem, emptyState }: CounterListProps) {
+export function CounterList({
+    counters,
+    reordering,
+    refreshing,
+    onRefresh,
+    onReorder,
+    renderItem,
+    emptyState,
+}: CounterListProps) {
     const reduceMotion = useReducedMotion();
     const insets = useSafeAreaInsets();
     return (
@@ -106,6 +116,18 @@ export function CounterList({ counters, reordering, onReorder, renderItem, empty
                 contentContainerStyle={[styles.content, { paddingBottom: 92 + insets.bottom }]}
                 testID={counters.length ? 'counter-list' : undefined}
                 ListEmptyComponent={<View>{emptyState}</View>}
+                alwaysBounceVertical
+                refreshControl={
+                    !reordering && onRefresh ? (
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                            tintColor={colors.link}
+                            colors={[colors.link]}
+                            progressBackgroundColor={colors.surface}
+                        />
+                    ) : undefined
+                }
                 dragEnabled={counters.length > 1}
                 // Leave ordinary swipes available until the 500ms long press has fired.
                 panActivateAfterLongPress={reordering ? 0 : 520}
