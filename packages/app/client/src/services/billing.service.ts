@@ -45,6 +45,7 @@ export const BillingService = {
                     yearly: offerings.current?.annual ?? null,
                     lifetime: offerings.current?.lifetime ?? null,
                 },
+                hasSubscription: customer.activeSubscriptions.length > 0,
                 managementURL: customer.managementURL,
             };
         });

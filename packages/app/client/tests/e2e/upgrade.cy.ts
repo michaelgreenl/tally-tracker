@@ -55,6 +55,7 @@ describe('Upgrade', () => {
                 cy.get('[data-testid="upgrade-active"]').should('be.visible');
                 cy.get('[data-testid="upgrade-plans"]').should('not.exist');
                 cy.get('[data-testid="upgrade-purchase"]').should('not.exist');
+                cy.get('[data-testid="upgrade-restore"]').should('not.exist');
             } else {
                 cy.get('[data-testid="upgrade-plans"]').should('be.visible');
                 cy.get('[data-testid="upgrade-active"]').should('not.exist');

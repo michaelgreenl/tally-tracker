@@ -43,17 +43,22 @@ function UpgradeContent({ session }: { session: ReturnType<typeof useSession> })
             currentUserId.current = undefined;
         };
     }, [userId]);
-    const available = Boolean(billingApiKey());
+    const apiKey = billingApiKey();
+    const available = Boolean(apiKey);
     const canLoad = available && Boolean(userId);
     const product = canLoad ? store?.packages[selectedPlan.id] : null;
     const purchaseDisabled = !product || Boolean(busy) || needsRestore;
+    const managementURL = store?.managementURL?.startsWith('https://') ? store.managementURL : null;
 
     useEffect(() => {
         let active = true;
         if (canLoad && userId) {
             void BillingService.load(userId)
                 .then((result) => {
-                    if (active) setStore(result);
+                    if (active) {
+                        setStore(result);
+                        setLoadError(false);
+                    }
                 })
                 .catch(() => {
                     if (active) setLoadError(true);
@@ -62,7 +67,7 @@ function UpgradeContent({ session }: { session: ReturnType<typeof useSession> })
         return () => {
             active = false;
         };
-    }, [canLoad, userId, retry]);
+    }, [canLoad, userId, retry, session.isPremium]);
 
     async function submit(action: 'purchase' | 'restore') {
         if (!userId || !available || busyRef.current || (action === 'purchase' && purchaseDisabled)) return;
@@ -81,9 +86,7 @@ function UpgradeContent({ session }: { session: ReturnType<typeof useSession> })
             setNeedsRestore(action === 'purchase' && !premium);
             setMessage(
                 premium
-                    ? action === 'purchase'
-                        ? 'Premium is active.'
-                        : 'Premium restored.'
+                    ? 'Premium is active.'
                     : action === 'restore'
                       ? 'No purchases to restore.'
                       : 'Purchase received. Try Restore purchases.',
@@ -185,24 +188,6 @@ function UpgradeContent({ session }: { session: ReturnType<typeof useSession> })
                                             Loading store prices…
                                         </Text>
                                     )}
-                                    {loadError && (
-                                        <View>
-                                            <Text accessibilityRole='alert' style={styles.copy}>
-                                                Store prices could not be loaded.
-                                            </Text>
-                                            <Pressable
-                                                accessibilityRole='button'
-                                                onPress={() => {
-                                                    setLoadError(false);
-                                                    setRetry((value) => value + 1);
-                                                }}
-                                                style={styles.textAction}
-                                                testID='upgrade-retry'
-                                            >
-                                                <Text style={styles.restoreText}>Try again</Text>
-                                            </Pressable>
-                                        </View>
-                                    )}
                                 </View>
                                 {plans.map((plan) => {
                                     const selected = plan.id === selectedPlan.id;
@@ -268,42 +253,86 @@ function UpgradeContent({ session }: { session: ReturnType<typeof useSession> })
                                     </Text>
                                 </Pressable>
                             )}
-                            {session.isPremium && store?.managementURL?.startsWith('https://') && (
-                                <Pressable
-                                    accessibilityRole='button'
-                                    disabled={Boolean(busy)}
-                                    onPress={() =>
-                                        void Linking.openURL(store.managementURL!).catch(() =>
-                                            setMessage('Couldn’t open subscriptions. Try again.'),
-                                        )
-                                    }
-                                    style={styles.restoreButton}
-                                    testID='upgrade-manage'
-                                >
-                                    <Text style={styles.restoreText}>Manage subscription</Text>
-                                </Pressable>
+                            {session.isPremium && store?.hasSubscription && (
+                                <View>
+                                    <Pressable
+                                        accessibilityRole='button'
+                                        accessibilityHint='Opens your store’s subscription settings.'
+                                        accessibilityState={{ disabled: !managementURL || Boolean(busy) }}
+                                        disabled={!managementURL || Boolean(busy)}
+                                        onPress={() => {
+                                            if (managementURL)
+                                                void Linking.openURL(managementURL).catch(() =>
+                                                    setMessage('Couldn’t open subscriptions. Try again.'),
+                                                );
+                                        }}
+                                        style={({ pressed }) => [styles.restoreButton, pressed && styles.pressed]}
+                                        testID='upgrade-manage'
+                                    >
+                                        <Text style={[styles.restoreText, !managementURL && styles.disabled]}>
+                                            Cancel subscription
+                                        </Text>
+                                    </Pressable>
+                                    <Text style={[styles.copy, styles.disclosure]}>
+                                        {managementURL
+                                            ? 'Finish cancellation in your store settings.'
+                                            : apiKey.startsWith('test_')
+                                              ? 'Test subscriptions expire automatically.'
+                                              : 'Cancel in the store where you subscribed.'}
+                                    </Text>
+                                </View>
                             )}
-                            <Pressable
-                                accessibilityRole='button'
-                                accessibilityState={{ disabled: !canLoad || Boolean(busy), busy: busy === 'restore' }}
-                                disabled={!canLoad || Boolean(busy)}
-                                onPress={() => void submit('restore')}
-                                style={styles.restoreButton}
-                                testID='upgrade-restore'
-                            >
-                                <Text style={[styles.restoreText, !canLoad && styles.disabled]}>
-                                    {busy === 'restore' ? 'Restoring purchases…' : 'Restore purchases'}
+                            {loadError && (
+                                <View>
+                                    <Text accessibilityRole='alert' style={styles.copy}>
+                                        Couldn’t load store details.
+                                    </Text>
+                                    <Pressable
+                                        accessibilityRole='button'
+                                        onPress={() => {
+                                            setLoadError(false);
+                                            setRetry((value) => value + 1);
+                                        }}
+                                        style={styles.textAction}
+                                        testID='upgrade-retry'
+                                    >
+                                        <Text style={styles.restoreText}>Try again</Text>
+                                    </Pressable>
+                                </View>
+                            )}
+                            {!session.isPremium && (
+                                <>
+                                    <Pressable
+                                        accessibilityRole='button'
+                                        accessibilityState={{
+                                            disabled: !canLoad || Boolean(busy),
+                                            busy: busy === 'restore',
+                                        }}
+                                        disabled={!canLoad || Boolean(busy)}
+                                        onPress={() => void submit('restore')}
+                                        style={styles.restoreButton}
+                                        testID='upgrade-restore'
+                                    >
+                                        <Text style={[styles.restoreText, !canLoad && styles.disabled]}>
+                                            {busy === 'restore' ? 'Restoring purchases…' : 'Restore purchases'}
+                                        </Text>
+                                    </Pressable>
+                                    <Text style={[styles.copy, styles.disclosure]}>
+                                        {Platform.OS === 'web'
+                                            ? 'Purchase and restore in the Tally iOS or Android app.'
+                                            : !available
+                                              ? 'Purchases are unavailable in this build.'
+                                              : !session.isAuthenticated
+                                                ? 'Sign in or create an account to purchase or restore.'
+                                                : 'Subscriptions renew automatically. Cancel in your store settings. Lifetime is a one-time purchase.'}
+                                    </Text>
+                                </>
+                            )}
+                            {session.isPremium && Platform.OS === 'web' && (
+                                <Text style={[styles.copy, styles.disclosure]}>
+                                    Manage subscriptions in the Tally iOS or Android app.
                                 </Text>
-                            </Pressable>
-                            <Text style={[styles.copy, styles.disclosure]}>
-                                {Platform.OS === 'web'
-                                    ? 'Purchase and restore in the Tally iOS or Android app.'
-                                    : !available
-                                      ? 'Purchases are unavailable in this build.'
-                                      : !session.isAuthenticated
-                                        ? 'Sign in or create an account to purchase or restore.'
-                                        : 'Subscriptions renew automatically. Cancel in your store settings. Lifetime is a one-time purchase.'}
-                            </Text>
+                            )}
                             <View style={styles.legalLinks}>
                                 <AuthLink href='/legal/terms' style={styles.textAction} textStyle={styles.legalText}>
                                     Terms

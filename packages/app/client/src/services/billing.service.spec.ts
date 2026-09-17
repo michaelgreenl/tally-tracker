@@ -36,7 +36,7 @@ beforeEach(() => {
     platform.OS = 'ios';
     sdk.isConfigured.mockResolvedValue(false);
     sdk.getOfferings.mockResolvedValue({ current: { annual } });
-    sdk.getCustomerInfo.mockResolvedValue({ managementURL: null });
+    sdk.getCustomerInfo.mockResolvedValue({ activeSubscriptions: [], managementURL: null });
 });
 
 afterEach(() => {
@@ -69,6 +69,14 @@ it('requires an account and uses the exact current store package, not a client p
     expect(result.packages).toEqual({ monthly: null, yearly: annual, lifetime: null });
     expect(sdk.purchasePackage).toHaveBeenCalledWith(annual);
     expect(sdk.restorePurchases).not.toHaveBeenCalled();
+});
+
+it.each([
+    { activeSubscriptions: ['tally_premium_monthly'], hasSubscription: true },
+    { activeSubscriptions: [], hasSubscription: false },
+])('keeps subscription management separate from lifetime access: $hasSubscription', async (customer) => {
+    sdk.getCustomerInfo.mockResolvedValue({ activeSubscriptions: customer.activeSubscriptions, managementURL: null });
+    expect((await BillingService.load('account-a')).hasSubscription).toBe(customer.hasSubscription);
 });
 
 it('does not switch SDK identity during checkout and releases the queue after a cancellation', async () => {

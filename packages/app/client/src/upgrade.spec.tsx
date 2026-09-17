@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, createElement } from 'react';
 import { createRoot } from 'react-dom/client';
+import { Linking } from 'react-native';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 import UpgradeScreen from './app/upgrade';
@@ -38,23 +39,30 @@ let container: HTMLDivElement;
 beforeEach(async () => {
     vi.resetAllMocks();
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
-    billing.load.mockResolvedValue({ packages: { yearly: { product: { priceString: '$10.00' } } } });
+    session.isPremium = false;
+    session.user.tier = 'BASIC';
+    billing.load.mockResolvedValue({
+        packages: { yearly: { product: { priceString: '$10.00' } } },
+        hasSubscription: false,
+        managementURL: null,
+    });
     billing.purchase.mockResolvedValue({});
     billing.restore.mockResolvedValue({});
     session.refreshPurchases.mockRejectedValue(new Error('Verification unavailable'));
     container = document.createElement('div');
     document.body.append(container);
     root = createRoot(container);
-    await act(async () => root.render(createElement(UpgradeScreen)));
 });
 
 afterEach(async () => {
     await act(async () => root.unmount());
     container.remove();
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
 });
 
 it('keeps checkout available after a failed restore but blocks duplicate purchases after checkout', async () => {
+    await act(async () => root.render(createElement(UpgradeScreen)));
     const purchase = container.querySelector<HTMLButtonElement>('[data-testid="upgrade-purchase"]')!;
     const restore = container.querySelector<HTMLButtonElement>('[data-testid="upgrade-restore"]')!;
 
@@ -68,4 +76,51 @@ it('keeps checkout available after a failed restore but blocks duplicate purchas
     expect(purchase.disabled).toBe(true);
     await act(async () => purchase.click());
     expect(billing.purchase).toHaveBeenCalledTimes(1);
+});
+
+it.each([
+    {
+        plan: 'store subscription',
+        hasSubscription: true,
+        managementURL: 'https://apps.apple.com/account/subscriptions',
+    },
+    { plan: 'test subscription', hasSubscription: true, managementURL: null },
+    { plan: 'lifetime purchase', hasSubscription: false, managementURL: null },
+])('offers cancellation, not restoration, for an active $plan', async ({ hasSubscription, managementURL }) => {
+    session.isPremium = true;
+    session.user.tier = 'PREMIUM';
+    billing.load.mockResolvedValue({ packages: {}, hasSubscription, managementURL });
+    const openURL = vi.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+    await act(async () => root.render(createElement(UpgradeScreen)));
+
+    expect(container.querySelector('[data-testid="upgrade-restore"]')).toBeNull();
+    const cancel = container.querySelector<HTMLButtonElement>('[data-testid="upgrade-manage"]');
+    if (!hasSubscription) {
+        expect(cancel).toBeNull();
+        return;
+    }
+    expect(cancel?.disabled).toBe(!managementURL);
+    await act(async () => cancel!.click());
+    if (managementURL) expect(openURL).toHaveBeenCalledWith(managementURL);
+    else expect(openURL).not.toHaveBeenCalled();
+});
+
+it('loads subscription management when a restored purchase activates Premium', async () => {
+    const managementURL = 'https://play.google.com/store/account/subscriptions';
+    await act(async () => root.render(createElement(UpgradeScreen)));
+    billing.load.mockResolvedValue({ packages: {}, hasSubscription: true, managementURL });
+    session.refreshPurchases.mockImplementation(async () => {
+        session.isPremium = true;
+        session.user.tier = 'PREMIUM';
+        root.render(createElement(UpgradeScreen));
+        return session.user;
+    });
+    const openURL = vi.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="upgrade-restore"]')!.click());
+    expect(billing.restore).toHaveBeenCalledWith('account-a');
+    const cancel = container.querySelector<HTMLButtonElement>('[data-testid="upgrade-manage"]');
+    expect(cancel?.disabled).toBe(false);
+    await act(async () => cancel!.click());
+    expect(openURL).toHaveBeenCalledWith(managementURL);
 });
