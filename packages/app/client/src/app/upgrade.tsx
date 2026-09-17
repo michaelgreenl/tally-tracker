@@ -82,24 +82,26 @@ function UpgradeContent({ session }: { session: ReturnType<typeof useSession> })
             setMessage(
                 premium
                     ? action === 'purchase'
-                        ? 'Premium is now active. Thank you!'
-                        : 'Your Premium access has been restored.'
+                        ? 'Premium is active.'
+                        : 'Premium restored.'
                     : action === 'restore'
-                      ? 'No active purchases were found for this store account.'
-                      : 'Your purchase is complete. Access is still being verified. Try Restore purchases shortly.',
+                      ? 'No purchases to restore.'
+                      : 'Purchase received. Try Restore purchases.',
             );
         } catch (error) {
             if (currentUserId.current !== userId) return;
             if (completed) {
-                setNeedsRestore(true);
+                if (action === 'purchase') setNeedsRestore(true);
                 setMessage(
-                    'Your purchase could not be verified. Use Restore purchases to try again; do not purchase again.',
+                    action === 'purchase'
+                        ? 'Couldn’t verify purchase. Try Restore purchases.'
+                        : 'Couldn’t restore purchases. Try again.',
                 );
             } else {
                 setMessage(
                     purchaseNotice(
                         error,
-                        action === 'restore' ? 'Purchases could not be restored. Please try again.' : undefined,
+                        action === 'restore' ? 'Couldn’t restore purchases. Try again.' : undefined,
                     ) ?? '',
                 );
             }
@@ -272,7 +274,7 @@ function UpgradeContent({ session }: { session: ReturnType<typeof useSession> })
                                     disabled={Boolean(busy)}
                                     onPress={() =>
                                         void Linking.openURL(store.managementURL!).catch(() =>
-                                            setMessage('Subscription settings could not be opened. Please try again.'),
+                                            setMessage('Couldn’t open subscriptions. Try again.'),
                                         )
                                     }
                                     style={styles.restoreButton}

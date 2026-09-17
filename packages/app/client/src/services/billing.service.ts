@@ -67,20 +67,16 @@ export const BillingService = {
     },
 };
 
-export function purchaseNotice(
-    error: unknown,
-    fallback = 'The purchase could not be completed. Please try again.',
-): string | null {
+export function purchaseNotice(error: unknown, fallback = 'Purchase failed. Try again.'): string | null {
     if (typeof error === 'object' && error !== null) {
         if ('userCancelled' in error && error.userCancelled === true) return null;
         if ('code' in error) {
             // RevenueCat's stable purchase error codes; do not expose provider diagnostics in the UI.
             if (String(error.code) === '1') return null;
-            if (String(error.code) === '20') return 'Payment is pending. Premium will activate after approval.';
+            if (String(error.code) === '20') return 'Payment awaiting approval.';
             if (['7', '13'].includes(String(error.code)))
-                return 'This purchase belongs to another Tally account. Sign in to that account to restore it.';
-            if (String(error.code) === '6')
-                return 'You already own this plan. Use Restore purchases to recover access.';
+                return 'Sign in to the Tally account that owns this purchase.';
+            if (String(error.code) === '6') return 'Already purchased. Try Restore purchases.';
         }
     }
     return fallback;
