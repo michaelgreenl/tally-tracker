@@ -85,7 +85,7 @@ function DraggableCard({
                     : undefined
             }
             onLongPress={!enabled && count > 1 ? startDrag : undefined}
-            style={styles.row}
+            style={[styles.inset, styles.row]}
             testID={`counter-${counter.id}-drag`}
         >
             <View
@@ -141,7 +141,7 @@ export function CounterList({
                 keyExtractor={(counter) => counter.id}
                 contentContainerStyle={[styles.content, { paddingBottom: 92 + insets.bottom }]}
                 testID={counters.length ? 'counter-list' : undefined}
-                ListEmptyComponent={<View>{emptyState}</View>}
+                ListEmptyComponent={<View style={styles.inset}>{emptyState}</View>}
                 bounces={!reordering}
                 alwaysBounceVertical={!reordering}
                 onScroll={handleScroll}
@@ -166,7 +166,12 @@ export function CounterList({
                 itemLayoutAnimation={counterLayoutTransition}
                 cellAnimations={reduceMotion ? { opacity: 1, transform: [] } : { opacity: 1 }}
                 onReorder={({ from, to }) => onReorder(reorderItems(counters, from, to).map((counter) => counter.id))}
-                renderDropIndicator={() => <View style={styles.dropIndicator} />}
+                renderDropIndicator={() => (
+                    <View
+                        style={[styles.inset, styles.dropIndicator, !reduceMotion && styles.dropIndicatorOffset]}
+                        testID='counter-drop-indicator'
+                    />
+                )}
                 renderItem={({ item, index }) => (
                     <DraggableCard
                         counter={item}
@@ -189,7 +194,9 @@ export function CounterList({
 
 const styles = StyleSheet.create({
     container: { flex: 1, width: '100%', maxWidth: 720, alignSelf: 'center' },
-    content: { flexGrow: 1, paddingHorizontal: 20 },
+    // Inset children, not scroll content: the drop indicator is absolutely positioned.
+    content: { flexGrow: 1 },
+    inset: { marginHorizontal: 20 },
     row: { paddingBottom: 16 },
     lifted: { borderRadius: 16, boxShadow: '0 6px 12px #0006', elevation: 8 },
     dropIndicator: {
@@ -200,5 +207,9 @@ const styles = StyleSheet.create({
         borderStyle: 'dashed',
         borderColor: colors.link,
         backgroundColor: colors.infoSurface,
+    },
+    dropIndicatorOffset: {
+        // The held card grows 2.5%; shift left by 1.5 times that added width.
+        transform: [{ translateX: '-3.75%' }],
     },
 });

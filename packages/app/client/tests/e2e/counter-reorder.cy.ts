@@ -141,6 +141,19 @@ describe('Counter order', () => {
                                     new Cypress.Promise<void>((resolve) => win.requestAnimationFrame(() => resolve())),
                             );
                         }
+                        cy.get('[data-testid="counter-drop-indicator"]').should(($indicator) => {
+                            const outline = $indicator[0].getBoundingClientRect();
+                            const addedWidth = $first[0].getBoundingClientRect().width - first.width;
+                            const offset = addedWidth * 1.5;
+                            expect(
+                                outline.left,
+                                'drop outline shifts left by 1.5 times the card’s growth',
+                            ).to.be.closeTo(first.left - offset, 1);
+                            expect(outline.right, 'drop outline keeps the card’s original width').to.be.closeTo(
+                                first.right - offset,
+                                1,
+                            );
+                        });
                         cy.wrap($first).trigger('pointerup', {
                             ...pointer,
                             buttons: 0,
