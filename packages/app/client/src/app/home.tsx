@@ -102,15 +102,26 @@ export default function HomeScreen() {
                     ) : session.isAuthenticated ? (
                         <View style={styles.headerActions}>
                             <View accessibilityLiveRegion='polite' style={styles.status}>
-                                <View
-                                    style={[
-                                        styles.statusDot,
-                                        network.isConnected === false && styles.statusDotOffline,
-                                        network.isConnected !== false &&
-                                            counterState.syncError &&
-                                            styles.statusDotError,
-                                    ]}
-                                />
+                                {counterState.loading ? (
+                                    <ActivityIndicator
+                                        aria-hidden
+                                        color={colors.link}
+                                        size='small'
+                                        testID='home-sync-spinner'
+                                    />
+                                ) : (
+                                    <View
+                                        aria-hidden
+                                        style={[
+                                            styles.statusDot,
+                                            network.isConnected === false && styles.statusDotOffline,
+                                            network.isConnected !== false &&
+                                                counterState.syncError &&
+                                                styles.statusDotError,
+                                        ]}
+                                        testID='home-sync-dot'
+                                    />
+                                )}
                                 <Text style={styles.statusText} testID='home-sync-status'>
                                     {counterState.loading
                                         ? 'Syncing'

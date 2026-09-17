@@ -29,6 +29,22 @@ describe('Counter sync recovery', () => {
         cy.request('DELETE', '/users');
     });
 
+    it('shows a spinner while sync is pending and replaces it when sync finishes', () => {
+        let finishSync!: () => void;
+        const response = new Cypress.Promise<void>((resolve) => {
+            finishSync = resolve;
+        });
+        cy.intercept('GET', '**/counters', (request) => response.then(() => request.continue())).as('sync');
+
+        cy.reload();
+        cy.get('[data-testid="home-sync-spinner"]').should('be.visible');
+        cy.get('[data-testid="home-sync-dot"]').should('not.exist');
+        cy.then(() => finishSync());
+        cy.wait('@sync');
+        cy.get('[data-testid="home-sync-spinner"]').should('not.exist');
+        cy.get('[data-testid="home-sync-dot"]').should('be.visible');
+    });
+
     it('keeps rejected writes through reload and syncs them once the API recovers', () => {
         let available = false;
         let counterId = '';
