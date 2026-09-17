@@ -86,6 +86,14 @@ export const AuthService = {
         });
     },
 
+    verifyPasswordResetCode(data: EmailOtpRequest) {
+        return apiFetch<AuthResponse, EmailOtpRequest>('/users/reset-password/verify', {
+            method: 'POST',
+            body: data,
+            requiresAuth: false,
+        });
+    },
+
     resetPassword(data: PasswordResetRequest) {
         return apiFetch<AuthResponse, PasswordResetRequest>('/users/reset-password', {
             method: 'POST',

@@ -46,9 +46,10 @@ export const requestPasswordReset = (
     res: Response<AuthResponse>,
 ) => requestCode(req, res, 'PASSWORD_RESET');
 
-export const verifyEmail = async (
+const verifyCode = async (
     req: Request<Record<string, never>, AuthResponse, EmailOtpRequest>,
     res: Response<AuthResponse>,
+    purpose: 'EMAIL_VERIFICATION' | 'PASSWORD_RESET',
 ) => {
     try {
         const user = await userRepository.getUserByEmail(normalizeEmail(req.body.email));
@@ -56,18 +57,30 @@ export const verifyEmail = async (
             return res.status(UNPROCESSABLE_ENTITY).json({ success: false, message: INVALID_CODE_MESSAGE });
         }
 
-        const digest = digestEmailOtp(user.id, 'EMAIL_VERIFICATION', req.body.code);
-        const verified = await emailOtpRepository.verifyEmail(user.id, digest);
+        const digest = digestEmailOtp(user.id, purpose, req.body.code);
+        const verified = await (purpose === 'EMAIL_VERIFICATION'
+            ? emailOtpRepository.verifyEmail(user.id, digest)
+            : emailOtpRepository.verifyPasswordResetCode(user.id, digest));
         if (!verified) {
             return res.status(UNPROCESSABLE_ENTITY).json({ success: false, message: INVALID_CODE_MESSAGE });
         }
 
         return res.status(OK).json({ success: true });
     } catch (error: unknown) {
-        captureServerError(error, { req, source: 'emailAuth.verifyEmail' });
-        return res.status(SERVER_ERROR).json({ success: false, message: 'Email verification failed.' });
+        captureServerError(error, { req, source: `emailAuth.verify.${purpose}` });
+        return res.status(SERVER_ERROR).json({ success: false, message: 'Code verification failed.' });
     }
 };
+
+export const verifyEmail = (
+    req: Request<Record<string, never>, AuthResponse, EmailOtpRequest>,
+    res: Response<AuthResponse>,
+) => verifyCode(req, res, 'EMAIL_VERIFICATION');
+
+export const verifyPasswordResetCode = (
+    req: Request<Record<string, never>, AuthResponse, EmailOtpRequest>,
+    res: Response<AuthResponse>,
+) => verifyCode(req, res, 'PASSWORD_RESET');
 
 export const resetPassword = async (
     req: Request<Record<string, never>, AuthResponse, PasswordResetRequest>,

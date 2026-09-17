@@ -33,7 +33,7 @@ describe('Expo full-stack counter journey', () => {
 
         cy.intercept('POST', '**/users/login').as('loginUser');
         cy.intercept('GET', '**/counters').as('getCounters');
-        cy.get('[data-testid="auth-email"]').type(email);
+        cy.get('[data-testid="auth-email"]').should('have.value', email);
         cy.get('[data-testid="auth-password"]').type(PASSWORD);
         cy.get('[data-testid="auth-submit"]').click();
 
@@ -163,5 +163,6 @@ describe('Expo full-stack counter journey', () => {
         cy.wait('@verifyEmail').its('request.body').should('deep.equal', { email, code: '123456' });
         cy.get('[data-testid="email-auth-login"]').click();
         cy.location('pathname').should('eq', '/login');
+        cy.get('[data-testid="auth-email"]').should('have.value', email);
     });
 });

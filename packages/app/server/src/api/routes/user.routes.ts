@@ -8,6 +8,7 @@ import {
     requestPasswordReset,
     resetPassword,
     verifyEmail,
+    verifyPasswordResetCode,
 } from '../controllers/email-auth.controller.js';
 import {
     createUserSchema,
@@ -32,6 +33,7 @@ router.post('/refresh', validate(refreshSchema), refresh);
 router.post('/verify-email/request', emailAuthLimiter, validate(emailAddressSchema), requestEmailVerification);
 router.post('/verify-email', validate(emailOtpSchema), verifyEmail);
 router.post('/reset-password/request', emailAuthLimiter, validate(emailAddressSchema), requestPasswordReset);
+router.post('/reset-password/verify', validate(emailOtpSchema), verifyPasswordResetCode);
 router.post('/reset-password', validate(passwordResetSchema), resetPassword);
 
 export default router;

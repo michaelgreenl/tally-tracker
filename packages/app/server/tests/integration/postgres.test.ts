@@ -270,12 +270,24 @@ describe('PostgreSQL integration', () => {
             },
         });
 
+        await request(app).post('/users/reset-password/verify').send({ email, code: resetCode }).expect(200);
+        const checkedCode = await prisma.emailOtp.findUniqueOrThrow({
+            where: { userId_purpose: { userId: user.id, purpose: 'PASSWORD_RESET' } },
+        });
+        expect(checkedCode.consumedAt).toBeNull();
+
         const reset = await request(app).post('/users/reset-password').send({
             email,
             code: resetCode,
             password: newPassword,
         });
         expect(reset.status).toBe(200);
+
+        await request(app).post('/users/reset-password/verify').send({ email, code: resetCode }).expect(422);
+        await request(app)
+            .post('/users/reset-password')
+            .send({ email, code: resetCode, password: 'Another-password1' })
+            .expect(422);
 
         const oldAccess = await request(app).get('/counters').set('Authorization', `Bearer ${accessToken}`);
         const oldRefresh = await request(app).post('/users/refresh').send({ refreshToken });
@@ -321,6 +333,35 @@ describe('PostgreSQL integration', () => {
         const newLogin = await request(app).post('/users/login').send({ email, password: newPassword });
         expect(oldLogin.status).toBe(401);
         expect(newLogin.status).toBe(200);
+    });
+
+    it('shares reset-code attempt limits between verification and saving, and rejects expired codes', async () => {
+        const email = `reset-attempts.${randomUUID()}@example.com`;
+        const password = 'Integration-password1';
+        const code = '123456';
+        await request(app).post('/users').send({ email, password }).expect(201);
+        const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+        const where = { userId_purpose: { userId: user.id, purpose: 'PASSWORD_RESET' as const } };
+        await prisma.emailOtp.create({
+            data: {
+                userId: user.id,
+                purpose: 'PASSWORD_RESET',
+                digest: digestEmailOtp(user.id, 'PASSWORD_RESET', code),
+                expiresAt: new Date(Date.now() - 1_000),
+            },
+        });
+        await request(app).post('/users/reset-password/verify').send({ email, code }).expect(422);
+        await prisma.emailOtp.update({ where, data: { expiresAt: new Date(Date.now() + 60_000) } });
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+            await request(app)
+                .post(attempt % 2 === 0 ? '/users/reset-password/verify' : '/users/reset-password')
+                .send({ email, code: '000000', password: 'New-password1' })
+                .expect(422);
+        }
+        await request(app).post('/users/reset-password/verify').send({ email, code }).expect(422);
+        await request(app).post('/users/reset-password').send({ email, code, password: 'New-password1' }).expect(422);
+        expect((await prisma.emailOtp.findUniqueOrThrow({ where })).attempts).toBe(5);
+        await request(app).post('/users/login').send({ email, password }).expect(200);
     });
 
     it('locks an email code after five incorrect attempts', async () => {

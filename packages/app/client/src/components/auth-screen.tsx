@@ -36,15 +36,17 @@ const legalLinks = [
 
 export function AuthScreen({ mode }: AuthScreenProps) {
     const router = useRouter();
-    const params = useLocalSearchParams<{ inviteCode?: string | string[] }>();
+    const params = useLocalSearchParams<{ email?: string | string[]; inviteCode?: string | string[] }>();
     const inviteCode = typeof params.inviteCode === 'string' ? params.inviteCode : undefined;
+    const emailParameter = typeof params.email === 'string' ? params.email : params.email?.[0] || '';
     const session = useSession();
     const insets = useSafeAreaInsets();
     const [headerHeight, setHeaderHeight] = useState(0);
     const isLogin = mode === 'login';
     const passwordInputRef = useRef<TextInput>(null);
     const confirmPasswordInputRef = useRef<TextInput>(null);
-    const [email, setEmail] = useState('');
+    const [email, setEmail] = useState(emailParameter);
+    const [previousEmailParameter, setPreviousEmailParameter] = useState(emailParameter);
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [rememberMe, setRememberMe] = useState(false);
@@ -52,6 +54,14 @@ export function AuthScreen({ mode }: AuthScreenProps) {
     const [passwordFocused, setPasswordFocused] = useState(false);
     const [loading, setLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
+
+    if (emailParameter !== previousEmailParameter) {
+        setPreviousEmailParameter(emailParameter);
+        setEmail(emailParameter);
+        setPassword('');
+        setConfirmPassword('');
+        setErrorMessage('');
+    }
 
     async function submit() {
         if (!email.includes('@')) {
@@ -107,7 +117,9 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                         onPress={() =>
                             router.canGoBack()
                                 ? router.back()
-                                : router.replace(isLogin ? '/home' : { pathname: '/login', params: { inviteCode } })
+                                : router.replace(
+                                      isLogin ? '/home' : { pathname: '/login', params: { email, inviteCode } },
+                                  )
                         }
                         testID={`auth-${mode}-back`}
                     />
@@ -266,7 +278,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                         </View>
                                     )}
                                     <AuthLink
-                                        href={{ pathname: '/forgot-password', params: { inviteCode } }}
+                                        href={{ pathname: '/forgot-password', params: { email, inviteCode } }}
                                         style={styles.forgotPassword}
                                         textStyle={styles.loginOptionLink}
                                         testID='auth-forgot-password'
@@ -311,7 +323,10 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                         {isLogin ? "Don't have an account?" : 'Already have an account?'}
                                     </Text>
                                     <AuthLink
-                                        href={{ pathname: isLogin ? '/register' : '/login', params: { inviteCode } }}
+                                        href={{
+                                            pathname: isLogin ? '/register' : '/login',
+                                            params: { email, inviteCode },
+                                        }}
                                         hitSlop={8}
                                         testID='auth-switch-mode'
                                     >

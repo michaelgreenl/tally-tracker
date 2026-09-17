@@ -48,11 +48,13 @@ describe('Shared counter invitations', () => {
                     cy.get('[data-testid="email-auth-login"]').click();
                 } else if (flow === 'reset') {
                     cy.intercept('POST', '**/users/reset-password/request', { body: { success: true } });
+                    cy.intercept('POST', '**/users/reset-password/verify', { body: { success: true } });
                     cy.intercept('POST', '**/users/reset-password', { body: { success: true } });
                     cy.get('[data-testid="auth-forgot-password"]').click();
                     cy.get('[data-testid="email-auth-email"]').type('recipient@example.com');
                     cy.get('[data-testid="email-auth-request"]').click();
                     cy.get('[data-testid="email-auth-code"]').type('123456');
+                    cy.get('[data-testid="email-auth-submit"]').click();
                     cy.get('[data-testid="email-auth-password"]').type('Password123');
                     cy.get('[data-testid="email-auth-confirm-password"]').type('Password123');
                     cy.get('[data-testid="email-auth-submit"]').click();
@@ -65,7 +67,8 @@ describe('Shared counter invitations', () => {
                     statusCode: 401,
                     body: { success: false, message: 'Incorrect password.' },
                 }).as('failedLogin');
-                cy.get('[data-testid="auth-email"]').type('recipient@example.com');
+                if (flow === 'login') cy.get('[data-testid="auth-email"]').type('recipient@example.com');
+                else cy.get('[data-testid="auth-email"]').should('have.value', 'recipient@example.com');
                 cy.get('[data-testid="auth-password"]').type('WrongPassword123');
                 cy.get('[data-testid="auth-submit"]').click();
                 cy.wait('@failedLogin');

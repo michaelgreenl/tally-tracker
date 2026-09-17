@@ -109,6 +109,7 @@ export const styles = StyleSheet.create({
         textAlign: 'center',
     },
     subtitle: {
+        textAlign: 'center',
         color: colors.muted,
         fontSize: 15,
     },
