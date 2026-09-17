@@ -142,13 +142,16 @@ export function CounterList({
                 contentContainerStyle={[styles.content, { paddingBottom: 92 + insets.bottom }]}
                 testID={counters.length ? 'counter-list' : undefined}
                 ListEmptyComponent={<View>{emptyState}</View>}
-                alwaysBounceVertical
+                bounces={!reordering}
+                alwaysBounceVertical={!reordering}
                 onScroll={handleScroll}
+                // Removing this control remounts native scroll content and interrupts card animations.
                 refreshControl={
-                    !reordering && onRefresh ? (
+                    onRefresh ? (
                         <RefreshControl
-                            refreshing={refreshing}
-                            onRefresh={onRefresh}
+                            enabled={!reordering}
+                            refreshing={!reordering && refreshing}
+                            onRefresh={reordering ? undefined : onRefresh}
                             tintColor={colors.link}
                             colors={[colors.link]}
                             progressBackgroundColor={colors.surface}

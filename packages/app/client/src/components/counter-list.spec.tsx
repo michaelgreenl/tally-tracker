@@ -6,18 +6,23 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { CounterList } from './counter-list';
 
 import type { CounterListProps } from './counter-list';
+import type { ReactNode } from 'react';
 import type { Root } from 'react-dom/client';
+import type { RefreshControlProps } from 'react-native';
 import type { ScrollHandlers } from 'react-native-reanimated';
 
 type PullContext = { dragging?: boolean; pulling?: boolean };
 let handlers: ScrollHandlers<PullContext>;
 let root: Root;
+let container: HTMLDivElement;
 
 vi.mock('react-native', () => ({
     Platform: { OS: 'ios' },
     StyleSheet: { create: (styles: unknown) => styles },
     View: 'div',
-    RefreshControl: () => null,
+    // iOS has no enabled prop, so refresh must also be gated at the callback.
+    RefreshControl: ({ onRefresh }: RefreshControlProps) =>
+        createElement('button', { onClick: onRefresh, 'data-testid': 'refresh-control' }),
 }));
 vi.mock('react-native-gesture-handler', () => ({ GestureHandlerRootView: 'div' }));
 vi.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({ bottom: 0 }) }));
@@ -31,20 +36,49 @@ vi.mock('react-native-worklets', () => ({
     scheduleOnRN: (callback: (pulling: boolean) => void, pulling: boolean) => callback(pulling),
 }));
 vi.mock('react-native-reorderable-list', () => ({
-    default: ({ onScroll }: { onScroll: ScrollHandlers<PullContext> }) => {
+    default: ({ onScroll, refreshControl }: { onScroll: ScrollHandlers<PullContext>; refreshControl?: ReactNode }) => {
         handlers = onScroll;
-        return null;
+        return refreshControl ?? null;
     },
 }));
 
 beforeEach(() => {
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
-    root = createRoot(document.createElement('div'));
+    container = document.createElement('div');
+    root = createRoot(container);
 });
 
 afterEach(async () => {
     await act(async () => root.unmount());
     vi.unstubAllGlobals();
+});
+
+it('keeps the native refresh control mounted but inactive during reorder', async () => {
+    let refreshes = 0;
+    const props: CounterListProps = {
+        counters: [],
+        reordering: false,
+        refreshing: false,
+        onRefresh: () => refreshes++,
+        onPullChange: vi.fn(),
+        onReorder: vi.fn(),
+        renderItem: () => null,
+        emptyState: null,
+    };
+    await act(async () => root.render(createElement(CounterList, props)));
+    const control = container.querySelector<HTMLButtonElement>('[data-testid="refresh-control"]')!;
+    control.click();
+    expect(refreshes).toBe(1);
+
+    await act(async () => root.render(createElement(CounterList, { ...props, reordering: true })));
+    expect(container.querySelector('[data-testid="refresh-control"]')).toBe(control);
+    control.click();
+    expect(refreshes).toBe(1);
+
+    await act(async () => root.render(createElement(CounterList, props)));
+    expect(container.querySelector('[data-testid="refresh-control"]')).toBe(control);
+    control.click();
+    expect(refreshes).toBe(2);
 });
 
 it('keeps an iOS pull active until release, not during bounce or reorder', async () => {
