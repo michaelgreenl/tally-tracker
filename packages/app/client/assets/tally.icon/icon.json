@@ -1,0 +1,26 @@
+{
+    "fill": {
+        "solid": "srgb:0.05882,0.47059,0.60000,1.00000"
+    },
+    "groups": [
+        {
+            "layers": [
+                {
+                    "image-name": "tally.svg",
+                    "name": "Tally"
+                }
+            ],
+            "shadow": {
+                "kind": "neutral",
+                "opacity": 0.2
+            },
+            "translucency": {
+                "enabled": false,
+                "value": 0
+            }
+        }
+    ],
+    "supported-platforms": {
+        "squares": "shared"
+    }
+}

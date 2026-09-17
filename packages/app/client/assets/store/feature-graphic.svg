@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="500" viewBox="0 0 1024 500">
+  <rect width="1024" height="500" fill="#17191c"/>
+  <g font-family="Arial, sans-serif" fill="#f1f3f5">
+    <text x="72" y="116" font-size="34" font-weight="700">Tally</text>
+    <text x="72" y="239" font-size="60" font-weight="700" letter-spacing="-1.8">Every count,</text>
+    <text x="72" y="309" font-size="60" font-weight="700" letter-spacing="-1.8">in one place.</text>
+    <rect x="584" y="64" width="368" height="180" rx="16" fill="#25292e"/>
+    <text x="610" y="111" font-size="24" font-weight="700">Water</text>
+    <text x="694" y="111" font-size="14" fill="#b8c0c8">16 oz bottle</text>
+    <g fill="#f1f3f5">
+      <circle cx="908" cy="103" r="2"/><circle cx="915" cy="103" r="2"/><circle cx="922" cy="103" r="2"/>
+    </g>
+    <circle cx="680" cy="173" r="26" fill="#0f7899"/>
+    <circle cx="856" cy="173" r="26" fill="#0f7899"/>
+    <text x="768" y="188" font-size="44" text-anchor="middle" font-weight="700">5</text>
+    <path d="M672 173h16M848 173h16m-8-8v16" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+    <text x="914" y="226" font-size="14" text-anchor="end" fill="#70c8e3">± 1</text>
+    <rect x="584" y="260" width="368" height="180" rx="16" fill="#25292e"/>
+    <text x="610" y="307" font-size="24" font-weight="700">Pushups</text>
+    <g fill="#f1f3f5">
+      <circle cx="908" cy="299" r="2"/><circle cx="915" cy="299" r="2"/><circle cx="922" cy="299" r="2"/>
+    </g>
+    <circle cx="680" cy="369" r="26" fill="#0f7899"/>
+    <circle cx="856" cy="369" r="26" fill="#0f7899"/>
+    <text x="768" y="384" font-size="44" text-anchor="middle" font-weight="700">12</text>
+    <path d="M672 369h16M848 369h16m-8-8v16" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+    <text x="914" y="422" font-size="14" text-anchor="end" fill="#70c8e3">± 1</text>
+  </g>
+</svg>

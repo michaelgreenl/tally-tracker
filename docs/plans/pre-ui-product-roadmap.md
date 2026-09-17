@@ -139,7 +139,8 @@ Google personal accounts created after November 13, 2023 require 12 testers for 
 
 - [ ] Confirm the app name and store availability.
 - [ ] Confirm `com.tallytracker.app` before the first store upload.
-- [ ] Replace all Expo starter icons and splash assets.
+- [x] Replace all Expo starter icons and splash assets. See [App assets](../app-assets.md).
+- [ ] Check icons and the launch screen in installed iOS and Android release builds.
 - [ ] Set the public release version.
 - [ ] Confirm supported devices, operating systems, and portrait orientation.
 - [ ] Remove or hide incomplete version 1 entry points.
