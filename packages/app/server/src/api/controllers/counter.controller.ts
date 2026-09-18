@@ -73,10 +73,14 @@ export const share = async (req: Request, res: Response<CounterResponse>) => {
         if (!counter) return { status: NOT_FOUND, body: { success: false, message: 'Counter not found' } };
         return { status: OK, body: { success: true, data: { counter } } };
     });
+    if (!result.replayed && result.body?.data?.counter) {
+        req.app.get('io').to(result.body.data.counter.userId).emit('counters-changed');
+    }
     return sendMutationResponse(res, result);
 };
 
 export const remove = async (req: Request, res: Response<CounterResponse>) => {
+    let participants: string[] = [];
     const result = await runIdempotentMutation<CounterResponse>(req, async (tx) => {
         const userId = req.user?.id;
         const counterId = req.params.counterId as string;
@@ -91,6 +95,7 @@ export const remove = async (req: Request, res: Response<CounterResponse>) => {
             };
         }
 
+        participants = await counterRepository.getParticipants(counterId, tx);
         const deleted = await counterRepository.remove({ counterId, userId }, tx);
 
         if (!deleted) {
@@ -100,6 +105,9 @@ export const remove = async (req: Request, res: Response<CounterResponse>) => {
         return { status: OK, body: { success: true } };
     });
 
+    if (!result.replayed && result.status === OK) {
+        participants.forEach((id) => req.app.get('io').to(id).emit('counters-changed'));
+    }
     return sendMutationResponse(res, result);
 };
 
@@ -301,23 +309,28 @@ export const join = async (
             status: 'ACCEPTED' as ShareStatusType,
         };
 
-        if (!share) {
-            await counterRepository.createShare(shareUpdates, tx);
-        } else {
-            // Previously rejected — flip back to accepted (re-join)
-            await counterRepository.updateShare(shareUpdates, tx);
-        }
+        const membership = !share
+            ? await counterRepository.createShare(shareUpdates, tx)
+            : await counterRepository.updateShare(shareUpdates, tx);
 
         return {
             status: CREATED,
             body: {
                 success: true,
                 message: 'Shared counter successfully joined',
-                data: { counter },
+                data: {
+                    counter: {
+                        ...counter,
+                        shares: [...counter.shares.filter((item) => item.userId !== userId), membership],
+                    },
+                },
             },
         };
     });
 
+    if (!result.replayed && result.status === CREATED) {
+        req.app.get('io').to(req.user!.id).emit('counters-changed');
+    }
     return sendMutationResponse(res, result);
 };
 
@@ -361,5 +374,8 @@ export const removeShare = async (
         };
     });
 
+    if (!result.replayed && result.status === OK) {
+        req.app.get('io').to(req.user!.id).emit('counters-changed');
+    }
     return sendMutationResponse(res, result);
 };

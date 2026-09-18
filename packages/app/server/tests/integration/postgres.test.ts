@@ -53,6 +53,73 @@ async function sharingAccount(tier: 'BASIC' | 'PREMIUM') {
 }
 
 describe('PostgreSQL integration', () => {
+    it('notifies other devices when shared membership or a counter is removed', async () => {
+        const owner = await sharingAccount('PREMIUM');
+        const member = await sharingAccount('BASIC');
+        const counter = await prisma.counter.create({
+            data: { title: 'Shared counter', userId: owner.id, type: 'SHARED', inviteCode: randomUUID() },
+        });
+        const join = () =>
+            request(app)
+                .post('/counters/join')
+                .set('Authorization', member.authorization)
+                .send({ inviteCode: counter.inviteCode })
+                .expect(201);
+        const joined = await join();
+        expect(joined.body.data.counter.shares).toEqual([
+            expect.objectContaining({ userId: member.id, status: 'ACCEPTED' }),
+        ]);
+        const sockets = [owner, member].map((account) =>
+            createSocket(socketUrl, {
+                auth: { token: account.authorization.slice(7) },
+                transports: ['websocket'],
+                autoConnect: false,
+            }),
+        );
+        try {
+            const ready = sockets.map((socket) => {
+                const arrived = vi.fn();
+                socket.once('session-ready', arrived);
+                socket.connect();
+                return arrived;
+            });
+            await vi.waitFor(() => ready.forEach((arrived) => expect(arrived).toHaveBeenCalled()));
+            const left = vi.fn();
+            sockets[1].once('counters-changed', left);
+            await request(app)
+                .put(`/counters/remove-shared/${counter.id}`)
+                .set('Authorization', member.authorization)
+                .expect(200);
+            await vi.waitFor(() => expect(left).toHaveBeenCalled());
+            const afterLeave = await request(app)
+                .get('/counters')
+                .set('Authorization', member.authorization)
+                .expect(200);
+            expect(afterLeave.body.data.counters).toEqual([]);
+
+            const rejoined = vi.fn();
+            sockets[1].once('counters-changed', rejoined);
+            await join();
+            await vi.waitFor(() => expect(rejoined).toHaveBeenCalled());
+            const deleted = sockets.map((socket) => {
+                const arrived = vi.fn();
+                socket.once('counters-changed', arrived);
+                return arrived;
+            });
+            await request(app).delete(`/counters/${counter.id}`).set('Authorization', owner.authorization).expect(200);
+            await vi.waitFor(() => deleted.forEach((arrived) => expect(arrived).toHaveBeenCalled()));
+            for (const account of [owner, member]) {
+                const snapshot = await request(app)
+                    .get('/counters')
+                    .set('Authorization', account.authorization)
+                    .expect(200);
+                expect(snapshot.body.data.counters).toEqual([]);
+            }
+        } finally {
+            sockets.forEach((socket) => socket.disconnect());
+        }
+    });
+
     it.each([false, true])('enforces the Basic join limit under concurrency (idempotency key: %s)', async (keyed) => {
         const owner = await sharingAccount('PREMIUM');
         const member = await sharingAccount('BASIC');

@@ -95,7 +95,7 @@ describe('Counter sync recovery', () => {
         });
     });
 
-    it('receives a counter created in another session without reloading', () => {
+    it('receives counter creation, edits, and deletion from another session without reloading', () => {
         cy.request('POST', '/counters', { title: 'From phone', metric: 'bottle', increment: 0.5, count: 2 }).then(
             ({ body }) => {
                 const counter: ClientCounter = body.data.counter;
@@ -104,6 +104,8 @@ describe('Counter sync recovery', () => {
                 cy.request('PUT', `/counters/update/${counter.id}`, { title: 'Renamed on phone', metric: 'cup' });
                 cy.get(`[data-testid="counter-${counter.id}-title"]`).should('have.text', 'Renamed on phone');
                 cy.get(`[data-testid="counter-${counter.id}-metric"]`).should('have.text', 'cup');
+                cy.request('DELETE', `/counters/${counter.id}`);
+                cy.get(`[data-testid="counter-${counter.id}-count"]`).should('not.exist');
             },
         );
     });

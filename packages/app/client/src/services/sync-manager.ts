@@ -21,12 +21,14 @@ let activeSync: Promise<void> | null = null;
 let activeScope: SessionScope | null = null;
 export type SyncStatus = 'idle' | 'syncing' | 'error';
 let onStatusChange: ((status: SyncStatus) => void) | null = null;
+let onAcknowledged: (() => void) | undefined;
 
 export const SyncManager = {
     syncRequested: false,
 
-    init(listener: (status: SyncStatus) => void) {
+    init(listener: (status: SyncStatus) => void, acknowledged?: () => void) {
         onStatusChange = listener;
+        onAcknowledged = acknowledged;
         listener(activeSync && activeScope === getSessionScope() ? 'syncing' : 'idle');
         if (networkSubscription) return;
         networkSubscription = Network.addNetworkStateListener((status) => {
@@ -38,6 +40,7 @@ export const SyncManager = {
         networkSubscription?.remove();
         networkSubscription = null;
         onStatusChange = null;
+        onAcknowledged = undefined;
     },
 
     processQueue(): Promise<void> {
@@ -95,6 +98,8 @@ export const SyncManager = {
                 await this.executeCommand(command, scope);
                 assertSession(scope);
                 await SyncQueue.remove(command.id);
+                assertSession(scope);
+                onAcknowledged?.();
             } catch (error: unknown) {
                 assertSession(scope);
                 const statusCode = error instanceof ApiError ? error.status || 0 : 0;
@@ -102,6 +107,8 @@ export const SyncManager = {
                 // An already-removed counter completes a removal, not a failed write.
                 if (statusCode === NOT_FOUND && (command.type === 'DELETE' || command.type === 'REMOVE')) {
                     await SyncQueue.remove(command.id);
+                    assertSession(scope);
+                    onAcknowledged?.();
                     continue;
                 }
 

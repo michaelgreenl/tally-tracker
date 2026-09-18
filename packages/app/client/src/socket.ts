@@ -5,8 +5,6 @@ import { API_URL } from './api';
 import { AuthService } from './services/auth.service';
 import { getSessionScope } from './services/session-scope';
 
-import type { ClientCounter } from '@tally/core/client';
-
 const socket = io(API_URL || undefined, {
     autoConnect: false,
     // Metro owns WebSocket upgrades; dev web uses the same-origin HTTP proxy.
@@ -45,11 +43,13 @@ socket.on('disconnect', (reason) => {
         .catch(() => undefined);
 });
 
-export const subscribeToCounterUpdates = (listener: (counter: ClientCounter) => void, onConnect: () => void) => {
+export const subscribeToCounterUpdates = (listener: () => void, onConnect: () => void) => {
     socket.on('counter-update', listener);
+    socket.on('counters-changed', listener);
     socket.on('session-ready', onConnect);
     return () => {
         socket.off('counter-update', listener);
+        socket.off('counters-changed', listener);
         socket.off('session-ready', onConnect);
     };
 };

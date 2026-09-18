@@ -42,7 +42,7 @@ it('reorders current records without restoring deleted counters or losing new co
 });
 
 describe('authenticated counter reconciliation', () => {
-    it('keeps eligible local data, migrates guests, and lets remote data win duplicates', () => {
+    it('removes stale local records after a server snapshot, but keeps guests for upload', () => {
         const remote = { ...counter('duplicate', 'PERSONAL', 'user-1'), count: 7 };
         const accepted = {
             ...counter('accepted', 'SHARED', 'owner'),
@@ -66,8 +66,13 @@ describe('authenticated counter reconciliation', () => {
 
         const result = reconcileAuthenticatedCounters(local, [remote], 'user-1');
 
-        expect(result.counters).toEqual([remote, counter('guest', 'PERSONAL', 'user-1'), accepted]);
+        expect(result.counters).toEqual([remote, counter('guest', 'PERSONAL', 'user-1')]);
         expect(result.guestCounters).toEqual([counter('guest', 'PERSONAL', 'user-1')]);
+        expect(reconcileAuthenticatedCounters(local, null, 'user-1').counters).toEqual([
+            counter('guest', 'PERSONAL', 'user-1'),
+            counter('duplicate', 'PERSONAL', 'user-1'),
+            accepted,
+        ]);
     });
 
     it('reports a failed sync when no remote snapshot is available', () => {

@@ -9,6 +9,7 @@ import { buildRevenueCatCustomer } from '../fixtures/revenuecat.fixture.js';
 const secret = 'test-only-revenuecat-webhook-secret';
 
 beforeEach(() => {
+    app.set('io', { to: () => ({ emit() {} }) });
     vi.stubEnv('REVENUECAT_SECRET_API_KEY', 'test-server-key');
     vi.stubEnv('REVENUECAT_WEBHOOK_SECRET', secret);
     vi.stubEnv('REVENUECAT_ENTITLEMENT_ID', 'premium');
