@@ -25,9 +25,10 @@ export function assertSession(scope: SessionScope) {
 }
 
 // Serialize credential/cache writes so an old write cannot finish after a new login's write.
-export function writeSession<T>(scope: SessionScope, write: () => Promise<T>): Promise<T> {
+// A null scope is reserved for account-targeted deletion, which must survive a new login.
+export function writeSession<T>(scope: SessionScope | null, write: () => Promise<T>): Promise<T> {
     const result = writes.then(() => {
-        assertSession(scope);
+        if (scope) assertSession(scope);
         return write();
     });
     writes = result.then(
@@ -35,7 +36,7 @@ export function writeSession<T>(scope: SessionScope, write: () => Promise<T>): P
         () => undefined,
     );
     return result.then((value) => {
-        assertSession(scope);
+        if (scope) assertSession(scope);
         return value;
     });
 }

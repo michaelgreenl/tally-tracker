@@ -2,7 +2,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import apiFetch from '../api';
 import { tokenStorage } from './token-storage';
-import { assertSession, getSessionScope, writeSession } from './session-scope';
+import { CounterStorage } from './counter-storage';
+import { SyncQueue } from './sync-queue';
+import { assertSession, getSessionScope, SessionChangedError, writeSession } from './session-scope';
 import type { SessionScope } from './session-scope';
 
 import type {
@@ -110,6 +112,17 @@ export const AuthService = {
 
     deleteAccount() {
         return apiFetch<AuthResponse>('/users', { method: 'DELETE' });
+    },
+
+    async clearDeletedAccount(userId: string, scope: SessionScope) {
+        const results = await Promise.allSettled([
+            this.clearLocalAuth(scope),
+            writeSession(null, () => CounterStorage.removeAccount(userId)),
+            SyncQueue.removeAccount(userId),
+        ]);
+        if (results.some((result) => result.status === 'rejected' && !(result.reason instanceof SessionChangedError))) {
+            throw new Error('Account deleted. Could not clear all device data.');
+        }
     },
 
     register(data: AuthRequest) {

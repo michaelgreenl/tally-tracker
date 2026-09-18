@@ -269,12 +269,21 @@ export function SessionProvider({ children }: PropsWithChildren) {
     }
 
     async function deleteAccount(): Promise<ActionResult> {
+        const scope = getSessionScope();
+        const userId = userRef.current?.id;
+        if (!userId) return fail('Sign in to delete your account.');
         try {
             const response = await AuthService.deleteAccount();
             if (!response.success) return fail(response.message || 'Failed to delete account');
-
-            await clearSession();
+            assertSession(scope);
+            const nextScope = changeSession();
+            setSessionId(nextScope.id);
+            setUser(null);
+            setNotice('');
             router.replace('/login');
+            await AuthService.clearDeletedAccount(userId, nextScope).catch(() => {
+                if (nextScope === getSessionScope()) setNotice('Account deleted. Could not clear all device data.');
+            });
             return ok();
         } catch (error: unknown) {
             return fail(getErrorMessage(error, 'Failed to delete account'));

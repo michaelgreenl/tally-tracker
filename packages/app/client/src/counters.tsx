@@ -338,9 +338,11 @@ function AccountCounters({ children }: PropsWithChildren) {
         const next = orderCounters(countersRef.current, ids);
         try {
             await replaceCounters(next);
-            await CounterService.persistOrder(
-                session.user?.id || 'guest',
-                next.map((counter) => counter.id),
+            await writeSession(scope, () =>
+                CounterService.persistOrder(
+                    session.user?.id || 'guest',
+                    next.map((counter) => counter.id),
+                ),
             );
             return ok();
         } catch {

@@ -98,7 +98,6 @@ async function apiFetch<ResT = unknown, ReqT = unknown>(
     endpoint: string,
     options: ApiRequestOptions<ReqT> = {},
     isRetry = false,
-    hasAuthLock = false,
 ): Promise<ResT> {
     const {
         body,
@@ -109,18 +108,6 @@ async function apiFetch<ResT = unknown, ReqT = unknown>(
         ...restOptions
     } = options;
     if (sessionScope) assertSession(sessionScope);
-    // Tabs share cookies. Finish each cookie-changing response before another tab signs in.
-    if (
-        !isNative &&
-        !hasAuthLock &&
-        ['/users/login', '/users/refresh', '/users/logout'].includes(endpoint) &&
-        typeof navigator !== 'undefined' &&
-        navigator.locks
-    ) {
-        return navigator.locks.request('tally-auth', () =>
-            apiFetch<ResT, ReqT>(endpoint, { ...options, sessionScope }, isRetry, true),
-        );
-    }
     const isFormData = body instanceof FormData;
     const requestHeaders: Record<string, string> = { ...(headers as Record<string, string>) };
 
@@ -141,13 +128,24 @@ async function apiFetch<ResT = unknown, ReqT = unknown>(
     const timeout = setTimeout(() => controller.abort(), 10_000);
 
     try {
-        const response = await fetch(`${API_URL}${endpoint}`, {
-            credentials: isNative ? 'omit' : 'include',
-            ...restOptions,
-            headers: requestHeaders,
-            body: isFormData ? body : body ? JSON.stringify(body) : undefined,
-            signal: controller.signal,
-        });
+        const send = () => {
+            if (sessionScope) assertSession(sessionScope);
+            return fetch(`${API_URL}${endpoint}`, {
+                credentials: isNative ? 'omit' : 'include',
+                ...restOptions,
+                headers: requestHeaders,
+                body: isFormData ? body : body ? JSON.stringify(body) : undefined,
+                signal: controller.signal,
+            });
+        };
+        // Serialize cookie changes across tabs. Release before a 401 can request its own refresh lock.
+        const changesCookies =
+            ['/users/login', '/users/refresh', '/users/logout'].includes(endpoint) ||
+            (endpoint === '/users' && options.method === 'DELETE');
+        const response =
+            !isNative && changesCookies && typeof navigator !== 'undefined' && navigator.locks
+                ? await navigator.locks.request('tally-auth', { signal: controller.signal }, send)
+                : await send();
         if (sessionScope) assertSession(sessionScope);
 
         if (!response.ok) {

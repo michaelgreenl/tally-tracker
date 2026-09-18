@@ -7,6 +7,7 @@ import { changeSession } from './session-scope';
 import { tokenStorage } from './token-storage';
 
 vi.mock('../api', () => ({ default: vi.fn() }));
+vi.mock('expo-crypto', () => ({ randomUUID: () => crypto.randomUUID() }));
 vi.mock('@react-native-async-storage/async-storage', () => ({ default: { removeItem: vi.fn(), setItem: vi.fn() } }));
 vi.mock('./token-storage', () => ({
     tokenStorage: {

@@ -98,6 +98,13 @@ export const SyncQueue = {
         });
     },
 
+    removeAccount(userId: string) {
+        return mutateQueue(async () => {
+            const queue = await this.get();
+            await this.save(queue.filter((item) => item.queuedByUserId !== userId));
+        });
+    },
+
     remove(id: string) {
         return mutateQueue(async () => {
             const queue = await this.get();
