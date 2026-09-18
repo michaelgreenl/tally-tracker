@@ -37,14 +37,6 @@ const refreshTokenBodySchema = z.object({
 export const refreshSchema = refreshTokenBodySchema;
 export const logoutSchema = refreshTokenBodySchema;
 
-export const updateUserSchema = z.object({
-    body: z.object({
-        tier: z.string().optional(),
-        email: z.string().email().optional(),
-        password: passwordSchema.optional(),
-    }),
-});
-
 const emailSchema = z.string().trim().email('Invalid email format');
 const codeSchema = z.string().regex(/^\d{6}$/, 'Code must contain six digits');
 

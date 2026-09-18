@@ -13,7 +13,6 @@ import type {
     EmailOtpRequest,
     PasswordResetRequest,
     RefreshRequest,
-    UpdateUserRequest,
 } from '@tally/core/client';
 
 export const USER_KEY = 'auth_user_profile';
@@ -155,9 +154,5 @@ export const AuthService = {
             body: data,
             requiresAuth: false,
         });
-    },
-
-    updateUser(data: UpdateUserRequest) {
-        return apiFetch<AuthResponse, UpdateUserRequest>('/users', { method: 'PUT', body: data });
     },
 };

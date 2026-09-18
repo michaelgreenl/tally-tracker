@@ -8,7 +8,7 @@ import { AuthService, USER_KEY } from './services/auth.service';
 import { billingApiKey, BillingService } from './services/billing.service';
 import { assertSession, changeSession, getSessionScope, SessionChangedError } from './services/session-scope';
 
-import type { AuthRequest, ClientUser, UpdateUserRequest } from '@tally/core/client';
+import type { AuthRequest, ClientUser } from '@tally/core/client';
 import type { PropsWithChildren } from 'react';
 
 type ActionResult = { success: true } | { success: false; message: string };
@@ -23,7 +23,6 @@ type SessionContextValue = {
     register: (request: AuthRequest) => Promise<ActionResult>;
     logout: () => Promise<ActionResult>;
     deleteAccount: () => Promise<ActionResult>;
-    updateUser: (request: UpdateUserRequest) => Promise<ActionResult>;
     refreshPurchases: () => Promise<ClientUser>;
     notice: string;
     dismissNotice: () => void;
@@ -275,29 +274,6 @@ export function SessionProvider({ children }: PropsWithChildren) {
         }
     }
 
-    async function updateUser(request: UpdateUserRequest): Promise<ActionResult> {
-        const scope = getSessionScope();
-        if (!user) return fail('No authenticated user');
-
-        try {
-            const response = await AuthService.updateUser(request);
-            if (!response.success) return fail(response.message || 'Failed to update user');
-
-            const { password: _, ...updates } = request;
-            const updatedUser = {
-                ...user,
-                ...updates,
-                emailVerified: request.email === user.email ? user.emailVerified : false,
-            };
-            await AuthService.cacheUser(updatedUser, scope);
-            assertSession(scope);
-            setUser(updatedUser);
-            return ok();
-        } catch (error: unknown) {
-            return fail(getErrorMessage(error, 'Failed to update user'));
-        }
-    }
-
     return (
         <SessionContext.Provider
             value={{
@@ -310,7 +286,6 @@ export function SessionProvider({ children }: PropsWithChildren) {
                 register,
                 logout,
                 deleteAccount,
-                updateUser,
                 refreshPurchases,
                 notice,
                 dismissNotice: () => setNotice(''),

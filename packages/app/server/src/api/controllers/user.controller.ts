@@ -256,49 +256,6 @@ export const logout = async (req: Request, res: Response<AuthResponse>) => {
     }
 };
 
-export const put = async (
-    req: Request<Record<string, never>, AuthResponse, AuthRequest>,
-    res: Response<AuthResponse>,
-) => {
-    try {
-        const userId = req.user?.id;
-        const { email, password } = req.body;
-
-        const updateData: Prisma.UserUpdateInput = {};
-        if (email) {
-            updateData.email = sanitizeEmail(email);
-            updateData.emailVerifiedAt = null;
-        }
-
-        if (password) {
-            updateData.password = await bcrypt.hash(password, 10);
-        }
-
-        if (typeof userId === 'string') {
-            await userRepository.updateUserInfo(userId, updateData);
-        }
-
-        res.json({ success: true });
-    } catch (error: unknown) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-            const target = (error.meta?.target as string[])?.[0] || 'Account';
-            const field = target.charAt(0).toUpperCase() + target.slice(1);
-
-            res.status(UNPROCESSABLE_ENTITY).json({
-                success: false,
-                message: `${field} is already in use.`,
-            });
-        } else {
-            captureServerError(error, { req, source: 'user.put' });
-            console.error('User Controller Error: ', error);
-            res.status(SERVER_ERROR).json({
-                success: false,
-                message: 'Server error: ' + getErrorMessage(error),
-            });
-        }
-    }
-};
-
 export const remove = async (req: Request, res: Response<AuthResponse>) => {
     try {
         const userId = req.user?.id;

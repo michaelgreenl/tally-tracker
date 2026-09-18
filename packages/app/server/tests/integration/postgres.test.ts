@@ -52,6 +52,20 @@ async function sharingAccount(tier: 'BASIC' | 'PREMIUM') {
 }
 
 describe('PostgreSQL integration', () => {
+    it('does not expose a credential or tier update through an ordinary session', async () => {
+        const account = await sharingAccount('BASIC');
+        const select = { email: true, password: true, emailVerifiedAt: true, tier: true } as const;
+        const before = await prisma.user.findUniqueOrThrow({ where: { id: account.id }, select });
+
+        await request(app)
+            .put('/users')
+            .set('Authorization', account.authorization)
+            .send({ email: 'changed@example.com', password: 'Changed-password1', tier: 'PREMIUM' })
+            .expect(404);
+
+        expect(await prisma.user.findUniqueOrThrow({ where: { id: account.id }, select })).toEqual(before);
+    });
+
     it('revokes every same-account credential and socket on access-only logout', async () => {
         const account = await sharingAccount('BASIC');
         const other = await sharingAccount('BASIC');

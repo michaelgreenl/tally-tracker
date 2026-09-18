@@ -18,7 +18,6 @@ const { authService } = vi.hoisted(() => ({
         register: vi.fn(),
         setAccessToken: vi.fn(),
         setRefreshToken: vi.fn(),
-        updateUser: vi.fn(),
     },
 }));
 

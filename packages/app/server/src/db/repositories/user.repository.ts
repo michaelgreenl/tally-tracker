@@ -128,13 +128,3 @@ export const getUserAuthById = (userId: string) =>
         where: { id: userId },
         select: { id: true, email: true, sessionVersion: true },
     });
-
-export const updateUserInfo = (userId: string, data: Prisma.UserUpdateInput) =>
-    prisma.user
-        .update({
-            where: {
-                id: userId,
-            },
-            data,
-        })
-        .then(() => true);

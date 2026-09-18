@@ -24,7 +24,6 @@ vi.mock('../../src/db/repositories/user.repository', () => ({
     getUserByEmail: vi.fn(),
     getUserById: vi.fn(),
     getUserAuthById: vi.fn(),
-    updateUserInfo: vi.fn(),
     deleteAccount: vi.fn(),
     deleteUser: vi.fn(),
     withLockedUser: vi.fn(),
@@ -131,7 +130,6 @@ describe('Auth Routes', () => {
     describe.each([
         ['post', '/users'],
         ['post', '/users/reset-password'],
-        ['put', '/users'],
     ] as const)('%s %s password requirements', (method, path) => {
         it.each(['Abc12', 'abcdef1', 'Abcdef'])('rejects a password missing a requirement: %s', async (password) => {
             const res = await request(app)[method](path).send({
@@ -359,20 +357,6 @@ describe('Auth Routes', () => {
 
             expect(res.status).toBe(UNAUTHORIZED);
             expect(userRepository.deleteAccount).not.toHaveBeenCalled();
-        });
-    });
-
-    describe('PUT /users', () => {
-        it('should normalize mixed-case email updates before persisting', async () => {
-            vi.mocked(userRepository.updateUserInfo).mockResolvedValue(true);
-
-            const res = await request(app).put('/users').send({ email: 'NewEmail@Example.com' });
-
-            expect(res.status).toBe(OK);
-            expect(userRepository.updateUserInfo).toHaveBeenCalledWith(
-                TEST_USER_ID,
-                expect.objectContaining({ email: 'newemail@example.com' }),
-            );
         });
     });
 });

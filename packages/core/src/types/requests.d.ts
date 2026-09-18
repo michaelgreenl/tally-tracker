@@ -1,5 +1,5 @@
 import { HexColor } from './index';
-import { UserTier, ShareStatusType } from './generated/index.ts';
+import { ShareStatusType } from './generated/index.ts';
 
 export interface AccessTokenPayload {
     id: string;
@@ -37,12 +37,6 @@ export interface EmailOtpRequest extends EmailAddressRequest {
 
 export interface PasswordResetRequest extends EmailOtpRequest {
     password: string;
-}
-
-export interface UpdateUserRequest {
-    email: string;
-    password?: string;
-    tier?: UserTier;
 }
 
 // ***** Counter Requests *****
