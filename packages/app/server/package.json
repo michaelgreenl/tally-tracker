@@ -69,10 +69,7 @@
         "tsup": "^8.5.1",
         "tsx": "^4.21.0",
         "typescript": "^6.0.3",
-        "vitest": "^4.1.9",
+        "vitest": "^4.1.11",
         "zod-prisma-types": "^3.3.10"
-    },
-    "overrides": {
-        "hono": "^4.11.4"
     }
 }
