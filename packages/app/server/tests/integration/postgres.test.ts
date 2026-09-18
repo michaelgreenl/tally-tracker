@@ -66,7 +66,7 @@ describe('PostgreSQL integration', () => {
         expect(await prisma.user.findUniqueOrThrow({ where: { id: account.id }, select })).toEqual(before);
     });
 
-    it('revokes every same-account credential and socket on access-only logout', async () => {
+    it.each(['websocket', 'polling'])('revokes credentials and %s sockets on access-only logout', async (transport) => {
         const account = await sharingAccount('BASIC');
         const other = await sharingAccount('BASIC');
         const remembered = await request(app)
@@ -75,7 +75,7 @@ describe('PostgreSQL integration', () => {
             .expect(200);
         const socket = createSocket(socketUrl, {
             auth: { token: account.authorization.slice(7) },
-            transports: ['websocket'],
+            transports: [transport],
             autoConnect: false,
         });
         try {
