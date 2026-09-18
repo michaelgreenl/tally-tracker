@@ -269,6 +269,30 @@ describe('PostgreSQL integration', () => {
         }
     });
 
+    it('saves the validated metric on create and update, including idempotent retries', async () => {
+        const account = await sharingAccount('BASIC');
+        const key = randomUUID();
+        const create = (metric: string) =>
+            request(app)
+                .post('/counters')
+                .set('Authorization', account.authorization)
+                .set('X-Idempotency-Key', key)
+                .send({ title: 'Water', metric });
+        const created = await create(' '.repeat(81) + 'oz ').expect(201);
+        const id = created.body.data.counter.id;
+        const readMetric = () => prisma.counter.findUniqueOrThrow({ where: { id }, select: { metric: true } });
+        expect(await readMetric()).toEqual({ metric: 'oz' });
+
+        const retry = await create('oz').expect(201);
+        expect(retry.body.data.counter.id).toBe(id);
+        await request(app)
+            .put(`/counters/update/${id}`)
+            .set('Authorization', account.authorization)
+            .send({ metric: ' '.repeat(81) + 'ml ' })
+            .expect(200);
+        expect(await readMetric()).toEqual({ metric: 'ml' });
+    });
+
     it('persists decimal settings and keeps concurrent shared taps exact and idempotent', async () => {
         const owner = await sharingAccount('PREMIUM');
         const member = await sharingAccount('BASIC');
