@@ -14,6 +14,7 @@ import type { AddressInfo } from 'node:net';
 import { digestEmailOtp } from '../../src/services/email-otp.service.js';
 import * as userRepository from '../../src/db/repositories/user.repository.js';
 import jwtUtil from '../../src/util/jwt.util.js';
+import { cleanup } from '../../src/db/cron.js';
 
 let app: Express;
 let prisma: PrismaClient;
@@ -52,6 +53,29 @@ async function sharingAccount(tier: 'BASIC' | 'PREMIUM') {
 }
 
 describe('PostgreSQL integration', () => {
+    it('does not repeat an offline increment after maintenance ages its receipt', async () => {
+        const account = await sharingAccount('BASIC');
+        const created = await request(app)
+            .post('/counters')
+            .set('Authorization', account.authorization)
+            .send({ title: 'Offline counter' })
+            .expect(201);
+        const counterId = created.body.data.counter.id;
+        const key = randomUUID();
+        const increment = () =>
+            request(app)
+                .put(`/counters/increment/${counterId}`)
+                .set('Authorization', account.authorization)
+                .set('X-Idempotency-Key', key)
+                .send({ amount: 1 })
+                .expect(200);
+        await increment();
+        await prisma.idempotencyLog.update({ where: { key }, data: { createdAt: new Date('2020-01-01') } });
+        await cleanup();
+        await increment();
+        expect((await prisma.counter.findUniqueOrThrow({ where: { id: counterId } })).count.toNumber()).toBe(1);
+    });
+
     it('does not expose a credential or tier update through an ordinary session', async () => {
         const account = await sharingAccount('BASIC');
         const select = { email: true, password: true, emailVerifiedAt: true, tier: true } as const;
