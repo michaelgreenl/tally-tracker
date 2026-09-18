@@ -126,21 +126,29 @@ describe('Expo full-stack counter journey', () => {
         cy.wait('@loginUser').its('response.statusCode').should('eq', OK);
         cy.wait('@getCounters').its('response.statusCode').should('eq', OK);
 
-        let refreshAvailable = false;
+        let refreshPhase = 'before-reload';
         cy.intercept('POST', '**/users/refresh', (request) => {
-            request.alias = refreshAvailable ? 'refreshSession' : 'refreshUnavailable';
-            if (refreshAvailable) request.continue();
+            // Do not observe requests that the old document can cancel during navigation.
+            if (refreshPhase !== 'before-reload') {
+                request.alias = refreshPhase === 'available' ? 'refreshSession' : 'refreshUnavailable';
+            }
+            if (refreshPhase === 'available') request.continue();
             else request.reply({ statusCode: 503, body: { success: false } });
         });
         cy.clearCookie('access_token');
-        cy.reload();
+        cy.visit('/home', {
+            onBeforeLoad() {
+                refreshPhase = 'unavailable';
+            },
+        });
         cy.wait('@refreshUnavailable').its('response.statusCode').should('eq', 503);
         cy.get('[data-testid="home-settings-link"]').click();
         cy.get('[data-testid="settings-logout"]').should('be.visible');
-        cy.then(() => {
-            refreshAvailable = true;
+        cy.visit('/home', {
+            onBeforeLoad() {
+                refreshPhase = 'available';
+            },
         });
-        cy.visit('/home');
         cy.wait('@refreshSession').then(({ request, response }) => {
             expect(request.headers.cookie).to.include('refresh_token=');
             expect(response?.statusCode).to.eq(OK);

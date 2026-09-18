@@ -72,10 +72,12 @@ describe('Counter sync recovery', () => {
             expect(queue.map((item: { type: string }) => item.type)).to.deep.equal(['CREATE', 'INCREMENT']);
         });
 
-        cy.then(() => {
-            available = true;
+        cy.visit('/home', {
+            // Restore the API only after the old document can no longer start a retry.
+            onBeforeLoad() {
+                available = true;
+            },
         });
-        cy.reload();
         cy.wait('@created').its('response.statusCode').should('eq', 201);
         cy.get('[data-testid="home-sync-synced-icon"]').should('be.visible');
         cy.request('GET', '/counters').then(({ body }) => {
