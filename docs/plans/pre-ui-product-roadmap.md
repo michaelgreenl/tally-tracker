@@ -1,15 +1,17 @@
 # Pre-Release Product Roadmap
 
-This plan ends when Tally is publicly available on the App Store and Google Play.
+This plan ends when Tally is publicly available on the iOS App Store.
 
 That release is the checkpoint for starting the broader product roadmap.
+
+Google Play publication is deferred. Keep Android support and Google sign-in; neither requires an Android store launch.
 
 ## Release Definition
 
 The first public release is complete when:
 
-- Apple and Google approve the app.
-- Users can install the app from both stores.
+- Apple approves the app.
+- Users can install the app from the App Store.
 - Production authentication, counters, synchronization, legal links, and account deletion work.
 - OAuth, purchases, restoration, and premium access work.
 - Production errors reach Sentry.
@@ -23,6 +25,7 @@ The first public release is complete when:
 - Monthly, yearly, and lifetime purchases unlock the same premium entitlement.
 - OAuth, payments, entitlements, and the upgrade UI block release.
 - Password recovery blocks release. Email verification can ship with it.
+- Apple and Google sign-in remain required for the iOS release.
 
 ## Product Foundation
 
@@ -116,7 +119,9 @@ Replace the placeholder after entitlement behavior is reliable:
 
 ## Store Publication
 
-Start account enrollment and tester recruitment now. They can run beside product work.
+Start Apple account enrollment alongside OAuth work.
+
+Only iOS publication blocks this release. Android-specific store, billing, testing, and submission tasks below are deferred. Keep shared code and Android build support intact. Recheck Google's requirements if Play publication resumes.
 
 ### 7. Developer Accounts and App Records
 
@@ -224,11 +229,13 @@ Do not add broad test coverage here. Add tests only for real contracts and disco
 
 ## Immediate Next Work
 
-1. Start Apple and Google account enrollment.
-2. Confirm whether the Google 12-tester rule applies.
-3. Add Apple and Google OAuth.
-4. Add premium entitlements, purchases, restoration, and the upgrade UI.
-5. Replace starter assets and prepare the EAS production configuration.
+1. Merge the verified security repairs into `main` and check the deployed API.
+2. Complete Apple Developer enrollment and configure Apple and Google OAuth.
+3. Connect App Store products to RevenueCat and verify purchase and restoration flows.
+4. Prepare signed iOS builds, production checks, and TestFlight testing.
+5. Complete App Store metadata and submit the release.
+
+Billing, restoration, the upgrade UI, and app assets are implemented. Real-store and signed-release verification remain required.
 
 ## Suggested Branch Slices
 
