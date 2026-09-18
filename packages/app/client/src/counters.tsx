@@ -206,7 +206,7 @@ function AccountCounters({ children }: PropsWithChildren) {
             } catch (error: unknown) {
                 if (error instanceof SessionChangedError) return;
                 if (active) setSyncError(true);
-                console.warn('Counter initialization failed', error);
+                console.warn('Counter initialization failed');
             } finally {
                 if (active) {
                     setLoading(false);

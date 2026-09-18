@@ -18,6 +18,6 @@ const cleanup = async () => {
         console.log(`[Maintenance] Deleted ${tokenCount} expired refresh tokens.`);
     } catch (error) {
         captureServerError(error, { source: 'maintenance.cleanup' });
-        console.error('[Maintenance] Cleanup failed:', error);
+        console.error('[Maintenance] Cleanup failed.');
     }
 };

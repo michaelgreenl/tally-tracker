@@ -64,7 +64,7 @@ export const SyncManager = {
             } catch (error: unknown) {
                 if (error instanceof SessionChangedError) return;
                 onStatusChange?.('error');
-                console.warn('Counter sync failed', error);
+                console.warn('Counter sync failed');
             } finally {
                 activeSync = null;
                 this.syncRequested = false;

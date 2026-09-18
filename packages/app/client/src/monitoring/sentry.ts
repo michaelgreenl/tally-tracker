@@ -1,7 +1,6 @@
 import * as Sentry from '@sentry/react-native';
 
 const DISABLED_VALUE = 'false';
-const SENSITIVE_HEADERS = new Set(['authorization', 'cookie', 'set-cookie', 'x-api-key']);
 
 const sanitizeUrl = (url: string | undefined): string | undefined => {
     if (!url) return url;
@@ -10,27 +9,19 @@ const sanitizeUrl = (url: string | undefined): string | undefined => {
         const parsed = new URL(url, 'http://localhost');
         return `${parsed.origin}${parsed.pathname}`;
     } catch {
-        return url.split('?')[0];
+        return undefined;
     }
 };
 
-const sanitizeHeaders = (headers: Record<string, string> | undefined): Record<string, string> | undefined => {
-    if (!headers) return headers;
-
-    return Object.fromEntries(Object.entries(headers).filter(([key]) => !SENSITIVE_HEADERS.has(key.toLowerCase())));
-};
-
-export const sanitizeEvent = <T extends Sentry.Event>(event: T): T => {
-    if (!event.request) return event;
-
-    event.request = {
-        ...event.request,
-        cookies: undefined,
-        headers: sanitizeHeaders(event.request.headers),
-        query_string: undefined,
-        url: sanitizeUrl(event.request.url),
-    };
-
+const sanitizeEvent = <T extends Sentry.Event>(event: T): T => {
+    // Error messages, bodies, extras, and breadcrumbs can contain credentials or counter content.
+    event.request = event.request ? { method: event.request.method, url: sanitizeUrl(event.request.url) } : undefined;
+    event.extra = undefined;
+    event.breadcrumbs = undefined;
+    event.message = undefined;
+    event.logentry = undefined;
+    event.user = undefined;
+    for (const exception of event.exception?.values ?? []) exception.value = undefined;
     return event;
 };
 
@@ -48,6 +39,7 @@ export const initSentry = () => {
         sendDefaultPii: false,
         attachStacktrace: true,
         enableCaptureFailedRequests: false,
+        beforeBreadcrumb: () => null,
         beforeSend: sanitizeEvent,
     });
 };
