@@ -3,8 +3,7 @@ import { io } from 'socket.io-client';
 
 import { API_URL } from './api';
 import { AuthService } from './services/auth.service';
-
-import type { ClientCounter } from '@tally/core/client';
+import { getSessionScope } from './services/session-scope';
 
 const socket = io(API_URL || undefined, {
     autoConnect: false,
@@ -12,24 +11,45 @@ const socket = io(API_URL || undefined, {
     transports: Platform.OS === 'web' && __DEV__ ? ['polling'] : ['websocket', 'polling'],
     withCredentials: true,
     auth: async (callback) => {
+        const scope = getSessionScope();
         const token = Platform.OS === 'web' ? null : await AuthService.getAccessToken();
-        callback(token ? { token } : {});
+        if (scope !== getSessionScope()) return;
+        callback({ userId: scope.userId, ...(token ? { token } : {}) });
     },
 });
 
 export const connectSocket = () => {
-    if (!socket.connected && !socket.active) socket.connect();
+    if (!socket.connected && !socket.active) {
+        const scope = getSessionScope();
+        scope.signal.addEventListener('abort', disconnectSocket, { once: true });
+        socket.once('disconnect', () => scope.signal.removeEventListener('abort', disconnectSocket));
+        socket.connect();
+    }
 };
 
 export const disconnectSocket = () => {
     if (socket.connected || socket.active) socket.disconnect();
 };
 
-export const subscribeToCounterUpdates = (listener: (counter: ClientCounter) => void, onConnect: () => void) => {
+socket.on('disconnect', (reason) => {
+    if (reason !== 'io server disconnect') return;
+    const scope = getSessionScope();
+    if (!scope.userId) return;
+    // Expiry requires fresh credentials; revocation ends the local session instead.
+    void AuthService.checkAuth()
+        .then(() => {
+            if (scope === getSessionScope()) connectSocket();
+        })
+        .catch(() => undefined);
+});
+
+export const subscribeToCounterUpdates = (listener: () => void, onConnect: () => void) => {
     socket.on('counter-update', listener);
-    socket.on('connect', onConnect);
+    socket.on('counters-changed', listener);
+    socket.on('session-ready', onConnect);
     return () => {
         socket.off('counter-update', listener);
-        socket.off('connect', onConnect);
+        socket.off('counters-changed', listener);
+        socket.off('session-ready', onConnect);
     };
 };

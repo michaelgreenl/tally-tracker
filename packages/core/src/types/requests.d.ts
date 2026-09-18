@@ -1,5 +1,5 @@
 import { HexColor } from './index';
-import { UserTier, ShareStatusType } from './generated/index.ts';
+import { ShareStatusType } from './generated/index.ts';
 
 export interface AccessTokenPayload {
     id: string;
@@ -11,7 +11,7 @@ export interface AccessTokenPayload {
 declare global {
     namespace Express {
         interface Request {
-            user?: AccessTokenPayload;
+            user?: AccessTokenPayload & { emailVerifiedAt: Date | null };
         }
     }
 }
@@ -39,12 +39,6 @@ export interface PasswordResetRequest extends EmailOtpRequest {
     password: string;
 }
 
-export interface UpdateUserRequest {
-    email: string;
-    password?: string;
-    tier?: UserTier;
-}
-
 // ***** Counter Requests *****
 export interface CreateCounterRequest {
     id?: string;
@@ -60,10 +54,6 @@ export interface UpdateCounterRequest {
     color?: HexColor;
     metric?: string | null;
     increment?: number;
-}
-
-export interface SetCounterCountRequest {
-    count: number;
 }
 
 export interface IncrementCounterRequest {

@@ -1,16 +1,20 @@
 import dotenv from 'dotenv';
+import { createServer } from 'http';
+import { validateEnvironment } from './config/environment.js';
+import { initSentry } from './monitoring/sentry.js';
+
 dotenv.config({
     path: `.env.${process.env.NODE_ENV || 'development'}`,
 });
-
-import { createServer } from 'http';
-import { startCleanupJob } from './db/cron.js';
-import { initSentry } from './monitoring/sentry.js';
-import initializeIO from './socket/index.js';
-
+validateEnvironment();
 initSentry();
 
-const { default: app } = await import('./app.js');
+// Load modules that capture secrets or create database clients only after validation.
+const [{ default: app }, { startCleanupJob }, { default: initializeIO }] = await Promise.all([
+    import('./app.js'),
+    import('./db/cron.js'),
+    import('./socket/index.js'),
+]);
 const httpServer = createServer(app);
 const io = initializeIO(httpServer);
 

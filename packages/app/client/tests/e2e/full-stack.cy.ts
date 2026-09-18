@@ -1,6 +1,6 @@
 /// <reference types="cypress" />
 
-const PASSWORD = 'Password123';
+const PASSWORD = 'New-password123';
 const OK = 200;
 const CREATED = 201;
 
@@ -33,7 +33,7 @@ describe('Expo full-stack counter journey', () => {
 
         cy.intercept('POST', '**/users/login').as('loginUser');
         cy.intercept('GET', '**/counters').as('getCounters');
-        cy.get('[data-testid="auth-email"]').type(email);
+        cy.get('[data-testid="auth-email"]').should('have.value', email);
         cy.get('[data-testid="auth-password"]').type(PASSWORD);
         cy.get('[data-testid="auth-submit"]').click();
 
@@ -100,11 +100,24 @@ describe('Expo full-stack counter journey', () => {
             cy.get(`[data-testid="counter-${counterId}-metric"]`).should('have.text', '16oz water bottle');
         });
 
-        cy.intercept('POST', '**/users/logout').as('logoutUser');
+        let finishLogout!: () => void;
+        const logoutResponse = new Cypress.Promise<void>((resolve) => {
+            finishLogout = resolve;
+        });
+        cy.intercept('POST', '**/users/logout', (request) => logoutResponse.then(() => request.continue())).as(
+            'logoutUser',
+        );
         cy.get('[data-testid="home-settings-link"]').click();
         cy.get('[data-testid="settings-logout"]').click();
-        cy.wait('@logoutUser').its('response.statusCode').should('eq', OK);
+        cy.get('[data-testid="logout-cancel"]').click();
+        cy.location('pathname').should('eq', '/settings');
+        cy.get('@logoutUser.all').should('have.length', 0);
+        cy.get('[data-testid="settings-logout"]').click();
+        cy.get('[data-testid="logout-confirm-submit"]').click();
         cy.location('pathname').should('eq', '/login');
+        cy.window().should((win) => expect(win.localStorage.getItem('auth_user_profile')).to.be.null);
+        cy.then(() => finishLogout());
+        cy.wait('@logoutUser').its('response.statusCode').should('eq', OK);
 
         cy.get('[data-testid="auth-email"]').type(email);
         cy.get('[data-testid="auth-password"]').type(PASSWORD);
@@ -113,21 +126,29 @@ describe('Expo full-stack counter journey', () => {
         cy.wait('@loginUser').its('response.statusCode').should('eq', OK);
         cy.wait('@getCounters').its('response.statusCode').should('eq', OK);
 
-        let refreshAvailable = false;
+        let refreshPhase = 'before-reload';
         cy.intercept('POST', '**/users/refresh', (request) => {
-            request.alias = refreshAvailable ? 'refreshSession' : 'refreshUnavailable';
-            if (refreshAvailable) request.continue();
+            // Do not observe requests that the old document can cancel during navigation.
+            if (refreshPhase !== 'before-reload') {
+                request.alias = refreshPhase === 'available' ? 'refreshSession' : 'refreshUnavailable';
+            }
+            if (refreshPhase === 'available') request.continue();
             else request.reply({ statusCode: 503, body: { success: false } });
         });
         cy.clearCookie('access_token');
-        cy.reload();
+        cy.visit('/home', {
+            onBeforeLoad() {
+                refreshPhase = 'unavailable';
+            },
+        });
         cy.wait('@refreshUnavailable').its('response.statusCode').should('eq', 503);
         cy.get('[data-testid="home-settings-link"]').click();
         cy.get('[data-testid="settings-logout"]').should('be.visible');
-        cy.then(() => {
-            refreshAvailable = true;
+        cy.visit('/home', {
+            onBeforeLoad() {
+                refreshPhase = 'available';
+            },
         });
-        cy.visit('/home');
         cy.wait('@refreshSession').then(({ request, response }) => {
             expect(request.headers.cookie).to.include('refresh_token=');
             expect(response?.statusCode).to.eq(OK);
@@ -163,5 +184,6 @@ describe('Expo full-stack counter journey', () => {
         cy.wait('@verifyEmail').its('request.body').should('deep.equal', { email, code: '123456' });
         cy.get('[data-testid="email-auth-login"]').click();
         cy.location('pathname').should('eq', '/login');
+        cy.get('[data-testid="auth-email"]').should('have.value', email);
     });
 });

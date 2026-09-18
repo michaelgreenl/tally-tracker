@@ -18,11 +18,11 @@ export const issue = (userId: string, purpose: EmailOtpPurpose, digest: string, 
     });
 };
 
-const consume = async (
+const verifyCode = async (
     userId: string,
     purpose: EmailOtpPurpose,
     digest: string,
-    onConsume: (tx: Prisma.TransactionClient, now: Date) => Promise<unknown>,
+    onConsume?: (tx: Prisma.TransactionClient, now: Date) => Promise<unknown>,
 ) =>
     prisma.$transaction(async (tx) => {
         const now = new Date();
@@ -33,13 +33,14 @@ const consume = async (
             expiresAt: { gt: now },
             attempts: { lt: MAX_ATTEMPTS },
         } as const;
-        const consumed = await tx.emailOtp.updateMany({
+        const verified = await tx.emailOtp.updateMany({
             where: { ...activeCode, digest },
-            data: { consumedAt: now },
+            // Check under a row lock, but keep reset codes usable until the password is saved.
+            data: { consumedAt: onConsume ? now : null },
         });
 
-        if (consumed.count === 1) {
-            await onConsume(tx, now);
+        if (verified.count === 1) {
+            await onConsume?.(tx, now);
             return true;
         }
 
@@ -51,12 +52,14 @@ const consume = async (
     });
 
 export const verifyEmail = (userId: string, digest: string) =>
-    consume(userId, 'EMAIL_VERIFICATION', digest, (tx, now) =>
+    verifyCode(userId, 'EMAIL_VERIFICATION', digest, (tx, now) =>
         tx.user.update({
             where: { id: userId },
             data: { emailVerifiedAt: now },
         }),
     );
+
+export const verifyPasswordResetCode = (userId: string, digest: string) => verifyCode(userId, 'PASSWORD_RESET', digest);
 
 export const resetPassword = async (
     userId: string,
@@ -65,7 +68,7 @@ export const resetPassword = async (
     reusesPassword: boolean,
 ): Promise<PasswordResetResult> => {
     try {
-        const reset = await consume(userId, 'PASSWORD_RESET', digest, async (tx) => {
+        const reset = await verifyCode(userId, 'PASSWORD_RESET', digest, async (tx) => {
             if (reusesPassword) throw new ReusedPasswordError();
 
             await tx.user.update({

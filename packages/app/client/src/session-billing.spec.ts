@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 import { SessionProvider, useSession } from './session';
+import { changeSession, getSessionScope, writeSession } from './services/session-scope';
 
 import type { ClientUser } from '@tally/core/client';
 import type { Root } from 'react-dom/client';
@@ -20,6 +21,8 @@ const { auth, billing, apiKey, appState, router } = vi.hoisted(() => ({
         logout: vi.fn(),
         setAccessToken: vi.fn(),
         setRefreshToken: vi.fn(),
+        waitForLogout: vi.fn(),
+        saveLogin: vi.fn(),
     },
     billing: { sync: vi.fn(), subscribe: vi.fn() },
     apiKey: vi.fn(),
@@ -50,6 +53,7 @@ function Probe() {
 }
 
 beforeEach(async () => {
+    changeSession();
     vi.resetAllMocks();
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     apiKey.mockReturnValue('');
@@ -72,12 +76,12 @@ it('applies verified Premium access and later removes it after server revocation
         await session.refreshPurchases();
     });
     expect(session.isPremium).toBe(true);
-    expect(auth.cacheUser).toHaveBeenLastCalledWith(premium);
+    expect(auth.cacheUser).toHaveBeenLastCalledWith(premium, getSessionScope());
     await act(async () => {
         await session.refreshPurchases();
     });
     expect(session.isPremium).toBe(false);
-    expect(auth.cacheUser).toHaveBeenLastCalledWith(basic);
+    expect(auth.cacheUser).toHaveBeenLastCalledWith(basic, getSessionScope());
 });
 
 it('does not grant access when server verification fails', async () => {
@@ -140,24 +144,69 @@ it('does not apply an old account’s verification after logout and another logi
     expect(auth.cacheUser).not.toHaveBeenCalled();
 });
 
-it('repairs the profile cache if logout happens while verification is writing it', async () => {
+it('rejects stale profile writes while logout clears the cache in order', async () => {
     let finishCache!: () => void;
+    let cached: ClientUser | null = basic;
     auth.checkAuth.mockResolvedValueOnce({ success: true, data: { user: premium } });
-    auth.cacheUser.mockReturnValueOnce(
-        new Promise<void>((resolve) => {
-            finishCache = resolve;
+    auth.cacheUser.mockImplementationOnce((user, scope) =>
+        writeSession(scope, async () => {
+            await new Promise<void>((resolve) => {
+                finishCache = resolve;
+            });
+            cached = user;
         }),
     );
+    let logout!: Promise<void>;
+    auth.logout.mockImplementation((scope) => {
+        logout = writeSession(scope, async () => {
+            cached = null;
+        });
+        return logout;
+    });
     const refresh = session.refreshPurchases();
     const rejected = expect(refresh).rejects.toThrow();
-    await vi.waitFor(() => expect(auth.cacheUser).toHaveBeenCalledWith(premium));
+    await vi.waitFor(() => expect(finishCache).toBeTypeOf('function'));
     await act(async () => {
         await session.logout();
     });
     await act(async () => {
         finishCache();
         await rejected;
+        await logout;
     });
     expect(session.user).toBeNull();
-    expect(auth.cacheUser).toHaveBeenLastCalledWith(null);
+    expect(cached).toBeNull();
+});
+
+it('leaves private UI immediately while server logout is pending and reports a failed revocation', async () => {
+    let fail!: (error: Error) => void;
+    auth.logout.mockReturnValueOnce(
+        new Promise((_resolve, reject) => {
+            fail = reject;
+        }),
+    );
+    await act(async () => {
+        await session.logout();
+    });
+    expect(session.isAuthenticated).toBe(false);
+    expect(router.replace).toHaveBeenCalledWith('/login');
+    await act(async () => fail(new Error('Offline')));
+    expect(session.notice).not.toBe('');
+});
+
+it('returns to a usable guest session if a login cannot persist its credentials', async () => {
+    await act(async () => {
+        await session.logout();
+    });
+    const previousId = session.sessionId;
+    auth.login.mockResolvedValue({ success: true, data: { user: basic } });
+    auth.saveLogin.mockRejectedValueOnce(new Error('Storage full'));
+    await act(async () => {
+        expect((await session.login({ email: basic.email, password: 'Password1' })).success).toBe(false);
+    });
+    expect(session.user).toBeNull();
+    expect(session.sessionId).not.toBe(previousId);
+    expect(session.sessionId).toBe(getSessionScope().id);
+    expect(getSessionScope().signal.aborted).toBe(false);
+    expect(auth.clearLocalAuth).toHaveBeenCalledWith(getSessionScope());
 });

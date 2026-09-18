@@ -4,15 +4,17 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { AppState, Platform } from 'react-native';
 
 import { ApiError, getErrorMessage, setUnauthorizedHandler } from './api';
-import { AuthService } from './services/auth.service';
+import { AuthService, USER_KEY } from './services/auth.service';
 import { billingApiKey, BillingService } from './services/billing.service';
+import { assertSession, changeSession, getSessionScope, SessionChangedError } from './services/session-scope';
 
-import type { AuthRequest, ClientUser, UpdateUserRequest } from '@tally/core/client';
+import type { AuthRequest, ClientUser } from '@tally/core/client';
 import type { PropsWithChildren } from 'react';
 
 type ActionResult = { success: true } | { success: false; message: string };
 
 type SessionContextValue = {
+    sessionId: number;
     user: ClientUser | null;
     ready: boolean;
     isAuthenticated: boolean;
@@ -21,8 +23,10 @@ type SessionContextValue = {
     register: (request: AuthRequest) => Promise<ActionResult>;
     logout: () => Promise<ActionResult>;
     deleteAccount: () => Promise<ActionResult>;
-    updateUser: (request: UpdateUserRequest) => Promise<ActionResult>;
+    refreshUser: () => Promise<ClientUser>;
     refreshPurchases: () => Promise<ClientUser>;
+    notice: string;
+    dismissNotice: () => void;
 };
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -30,16 +34,20 @@ const ok = (): ActionResult => ({ success: true });
 const fail = (message: string): ActionResult => ({ success: false, message });
 
 export async function restoreSession(): Promise<ClientUser | null> {
+    const scope = getSessionScope();
     let cachedUser: ClientUser | null;
 
     try {
         cachedUser = await AuthService.getCachedUser();
-    } catch {
-        await AuthService.clearLocalAuth();
+        assertSession(scope);
+    } catch (error) {
+        if (error instanceof SessionChangedError) throw error;
+        await AuthService.clearLocalAuth(scope);
         return null;
     }
 
     if (!cachedUser) return null;
+    scope.userId = cachedUser.id;
 
     if (Platform.OS !== 'web') {
         let accessToken: string | null;
@@ -51,11 +59,13 @@ export async function restoreSession(): Promise<ClientUser | null> {
                 AuthService.getRefreshToken(),
             ]);
         } catch {
+            assertSession(scope);
             return null;
         }
 
+        assertSession(scope);
         if (!accessToken && !refreshToken) {
-            await AuthService.clearLocalAuth();
+            await AuthService.clearLocalAuth(scope);
             return null;
         }
     }
@@ -64,24 +74,30 @@ export async function restoreSession(): Promise<ClientUser | null> {
         const response = await AuthService.checkAuth();
         const verifiedUser = response.data?.user;
 
-        if (response.success && verifiedUser) {
-            await AuthService.cacheUser(verifiedUser);
+        if (response.success && verifiedUser && verifiedUser.id === cachedUser.id) {
+            await AuthService.cacheUser(verifiedUser, scope);
             return verifiedUser;
         }
+        await AuthService.clearLocalAuth(scope);
+        return null;
     } catch (error: unknown) {
+        if (error instanceof SessionChangedError) throw error;
         if (error instanceof ApiError && error.status === UNAUTHORIZED) {
-            await AuthService.clearLocalAuth();
+            await AuthService.clearLocalAuth(scope);
             return null;
         }
     }
 
+    assertSession(scope);
     return cachedUser;
 }
 
 export function SessionProvider({ children }: PropsWithChildren) {
     const router = useRouter();
+    const [sessionId, setSessionId] = useState(getSessionScope().id);
     const [user, updateUserState] = useState<ClientUser | null>(null);
     const [ready, setReady] = useState(false);
+    const [notice, setNotice] = useState('');
     const userRef = useRef<ClientUser | null>(null);
     const setUser = useCallback((value: ClientUser | null) => {
         userRef.current = value;
@@ -89,27 +105,34 @@ export function SessionProvider({ children }: PropsWithChildren) {
     }, []);
 
     const clearSession = useCallback(async () => {
+        const scope = changeSession();
+        setSessionId(scope.id);
         setUser(null);
-        await AuthService.clearLocalAuth();
+        await AuthService.clearLocalAuth(scope);
     }, [setUser]);
 
-    const refreshPurchases = useCallback(async () => {
+    const refreshUser = useCallback(async () => {
+        const scope = getSessionScope();
         const userId = userRef.current?.id;
-        if (!userId) throw new Error('Sign in to verify purchases.');
-        await BillingService.sync();
+        if (!userId) throw new Error('Sign in to continue.');
         const response = await AuthService.checkAuth();
         const verifiedUser = response.data?.user;
         if (!response.success || !verifiedUser || verifiedUser.id !== userId || userRef.current?.id !== userId) {
-            throw new Error('The account changed. Sign in again to verify purchases.');
+            throw new Error('The account changed. Sign in again.');
         }
-        await AuthService.cacheUser(verifiedUser);
-        if (userRef.current?.id !== userId) {
-            await AuthService.cacheUser(userRef.current);
-            throw new Error('The account changed. Sign in again to verify purchases.');
-        }
+        await AuthService.cacheUser(verifiedUser, scope);
+        assertSession(scope);
         setUser(verifiedUser);
         return verifiedUser;
     }, [setUser]);
+
+    const refreshPurchases = useCallback(async () => {
+        const scope = getSessionScope();
+        if (!scope.userId) throw new Error('Sign in to verify purchases.');
+        await BillingService.sync();
+        assertSession(scope);
+        return refreshUser();
+    }, [refreshUser]);
 
     useEffect(() => {
         if (!user?.id || !billingApiKey()) return;
@@ -154,13 +177,14 @@ export function SessionProvider({ children }: PropsWithChildren) {
 
     useEffect(() => {
         let active = true;
+        const scope = getSessionScope();
 
         void restoreSession()
             .then((restoredUser) => {
-                if (active) setUser(restoredUser);
+                if (active && scope === getSessionScope()) setUser(restoredUser);
             })
             .catch(() => {
-                if (active) setUser(null);
+                if (active && scope === getSessionScope()) setUser(null);
             })
             .finally(() => {
                 if (active) setReady(true);
@@ -171,8 +195,29 @@ export function SessionProvider({ children }: PropsWithChildren) {
         };
     }, [setUser]);
 
+    useEffect(() => {
+        if (Platform.OS !== 'web') return;
+        const changed = (event: StorageEvent) => {
+            if (event.key !== null && event.key !== USER_KEY) return;
+            // Cookies are shared between tabs. Stop work under the previous tab's identity.
+            const scope = changeSession();
+            setSessionId(scope.id);
+            setUser(null);
+            void restoreSession()
+                .then((restored) => {
+                    if (scope === getSessionScope()) setUser(restored);
+                })
+                .catch(() => undefined);
+        };
+        window.addEventListener('storage', changed);
+        return () => window.removeEventListener('storage', changed);
+    }, [setUser]);
+
     async function login(request: AuthRequest): Promise<ActionResult> {
         try {
+            await AuthService.waitForLogout();
+            const scope = getSessionScope();
+            setNotice('');
             const response = await AuthService.login({
                 ...request,
                 rememberMe: Platform.OS === 'web' ? request.rememberMe : true,
@@ -181,10 +226,16 @@ export function SessionProvider({ children }: PropsWithChildren) {
 
             if (!response.success || !authenticatedUser) return fail(response.message || 'Login Failed');
 
-            const writes = [AuthService.cacheUser(authenticatedUser)];
-            if (response.data?.accessToken) writes.push(AuthService.setAccessToken(response.data.accessToken));
-            if (response.data?.refreshToken) writes.push(AuthService.setRefreshToken(response.data.refreshToken));
-            await Promise.all(writes);
+            assertSession(scope);
+            const nextScope = changeSession(authenticatedUser.id);
+            try {
+                await AuthService.saveLogin(response.data!, nextScope);
+            } catch (error) {
+                if (nextScope === getSessionScope()) await clearSession();
+                throw error;
+            }
+            assertSession(nextScope);
+            setSessionId(nextScope.id);
             setUser(authenticatedUser);
             return ok();
         } catch (error: unknown) {
@@ -204,55 +255,45 @@ export function SessionProvider({ children }: PropsWithChildren) {
     }
 
     async function logout(): Promise<ActionResult> {
-        try {
-            await AuthService.logout();
-        } catch (error: unknown) {
-            console.warn('Server logout failed', error);
-        } finally {
-            await clearSession();
-            router.replace('/login');
-        }
-
+        if (!userRef.current) return ok();
+        const userId = userRef.current.id;
+        const scope = changeSession();
+        setSessionId(scope.id);
+        setUser(null);
+        setNotice('');
+        router.replace('/login');
+        void Promise.resolve(AuthService.logout(scope, userId)).catch((error: unknown) => {
+            if (scope === getSessionScope()) setNotice(getErrorMessage(error, 'Could not finish logging out.'));
+        });
         return ok();
     }
 
     async function deleteAccount(): Promise<ActionResult> {
+        const scope = getSessionScope();
+        const userId = userRef.current?.id;
+        if (!userId) return fail('Sign in to delete your account.');
         try {
             const response = await AuthService.deleteAccount();
             if (!response.success) return fail(response.message || 'Failed to delete account');
-
-            await clearSession();
+            assertSession(scope);
+            const nextScope = changeSession();
+            setSessionId(nextScope.id);
+            setUser(null);
+            setNotice('');
             router.replace('/login');
+            await AuthService.clearDeletedAccount(userId, nextScope).catch(() => {
+                if (nextScope === getSessionScope()) setNotice('Account deleted. Could not clear all device data.');
+            });
             return ok();
         } catch (error: unknown) {
             return fail(getErrorMessage(error, 'Failed to delete account'));
         }
     }
 
-    async function updateUser(request: UpdateUserRequest): Promise<ActionResult> {
-        if (!user) return fail('No authenticated user');
-
-        try {
-            const response = await AuthService.updateUser(request);
-            if (!response.success) return fail(response.message || 'Failed to update user');
-
-            const { password: _, ...updates } = request;
-            const updatedUser = {
-                ...user,
-                ...updates,
-                emailVerified: request.email === user.email ? user.emailVerified : false,
-            };
-            await AuthService.cacheUser(updatedUser);
-            setUser(updatedUser);
-            return ok();
-        } catch (error: unknown) {
-            return fail(getErrorMessage(error, 'Failed to update user'));
-        }
-    }
-
     return (
         <SessionContext.Provider
             value={{
+                sessionId,
                 user,
                 ready,
                 isAuthenticated: Boolean(user),
@@ -261,8 +302,10 @@ export function SessionProvider({ children }: PropsWithChildren) {
                 register,
                 logout,
                 deleteAccount,
-                updateUser,
+                refreshUser,
                 refreshPurchases,
+                notice,
+                dismissNotice: () => setNotice(''),
             }}
         >
             {children}

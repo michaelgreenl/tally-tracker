@@ -76,6 +76,8 @@ BASIC BASIC
     String user_id 
     DateTime expires_at 
     DateTime created_at 
+    DateTime rotated_at "nullable"
+    String replacement_id "nullable"
     }
   
 
@@ -88,6 +90,12 @@ BASIC BASIC
     DateTime expires_at
     DateTime consumed_at "nullable"
     DateTime created_at
+    }
+
+  "login_rate_limits" {
+    String key "PK"
+    Int hits
+    DateTime reset_at
     }
 
   "users" {

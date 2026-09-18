@@ -2,8 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CounterService } from './counter.service';
 import apiFetch from '../api';
+import { changeSession } from './session-scope';
 
 import type { ClientCounter, HexColor } from '@tally/core/client';
+
+beforeEach(() => changeSession('user-1'));
 
 const { addCommand, processQueue, getQueue } = vi.hoisted(() => ({
     addCommand: vi.fn(),
@@ -84,6 +87,6 @@ describe('CounterService.share', () => {
         finishSync();
 
         await expect(sharing).resolves.toEqual(response);
-        expect(apiFetch).toHaveBeenCalledWith('/counters/counter-1/share', { method: 'POST' });
+        expect(apiFetch).toHaveBeenCalledWith('/counters/counter-1/share', expect.objectContaining({ method: 'POST' }));
     });
 });

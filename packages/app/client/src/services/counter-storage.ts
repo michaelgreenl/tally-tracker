@@ -21,6 +21,19 @@ export const CounterStorage = {
         return AsyncStorage.removeItem(COUNTERS_KEY);
     },
 
+    async removeAccount(userId: string) {
+        try {
+            const counters = await this.getAll();
+            await this.save(
+                counters.filter(
+                    (counter) => counter.userId !== userId && !counter.shares?.some((share) => share.userId === userId),
+                ),
+            );
+        } finally {
+            await AsyncStorage.removeItem(`${COUNTERS_KEY}_order_${userId}`);
+        }
+    },
+
     async getOrder(userId: string): Promise<string[]> {
         const value = await AsyncStorage.getItem(`${COUNTERS_KEY}_order_${userId}`);
         const ids: unknown = value ? JSON.parse(value) : [];

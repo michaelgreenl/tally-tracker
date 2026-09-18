@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { COUNTER_TITLE_MAX_LENGTH } from '@tally/core/client';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -117,6 +118,7 @@ export function CounterForm({ visible, counter, onCancel, onDone }: CounterFormP
                     <FormField
                         editable={!loading}
                         label='Name'
+                        maxLength={COUNTER_TITLE_MAX_LENGTH}
                         onChangeText={setTitle}
                         onSubmitEditing={() => void submit()}
                         placeholder='What are you counting?'

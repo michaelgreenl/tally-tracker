@@ -76,7 +76,7 @@ const prismaMock = vi.hoisted(() => {
 
 vi.mock('../../src/middleware/auth.middleware', () => ({
     jwt: (req: Request, res: Response, next: NextFunction) => {
-        req.user = { id: TEST_USER_ID, email: 'test@test.com', sessionVersion: 0 };
+        req.user = { id: TEST_USER_ID, email: 'test@test.com', emailVerifiedAt: new Date(), sessionVersion: 0 };
         next();
     },
 }));
@@ -91,7 +91,6 @@ vi.mock('../../src/db/repositories/counter.repository', () => ({
     getByIdOrShare: vi.fn(),
     remove: vi.fn(),
     put: vi.fn(),
-    setCount: vi.fn(),
     increment: vi.fn(),
     getParticipants: vi.fn(),
     join: vi.fn(),
@@ -310,6 +309,7 @@ describe('Counter Routes', () => {
                 .send({ title: 'Retried Title' });
 
             expect(first.status).toBe(SERVER_ERROR);
+            expect(first.body).toEqual({ success: false, message: 'Something went wrong. Please try again later.' });
             expect(second.status).toBe(OK);
             expect(counterRepository.put).toHaveBeenCalledTimes(2);
             expect(second.body.data.counter.title).toBe('Retried Title');
@@ -335,41 +335,6 @@ describe('Counter Routes', () => {
             expect(second.status).toBe(OK);
             expect(counterRepository.put).toHaveBeenCalledTimes(1);
             expect(second.body.data.counter.title).toBe('Saved Title');
-        });
-    });
-
-    describe('PUT /counters/:counterId/count', () => {
-        it.each([0, -1])('should accept %i as an absolute personal counter count', async (count) => {
-            const counter = buildCounter({ count });
-            vi.mocked(counterRepository.setCount).mockResolvedValue(counter);
-
-            const res = await request(app).put(`/counters/${TEST_COUNTER_ID}/count`).send({ count });
-
-            expect(res.status).toBe(OK);
-            expect(counterRepository.setCount).toHaveBeenCalledWith(
-                {
-                    counterId: TEST_COUNTER_ID,
-                    userId: TEST_USER_ID,
-                    count,
-                },
-                expect.anything(),
-            );
-            expect(res.body.data.counter.count).toBe(count);
-        });
-
-        it('should reject requests without a count', async () => {
-            const res = await request(app).put(`/counters/${TEST_COUNTER_ID}/count`).send({});
-
-            expect(res.status).toBe(UNPROCESSABLE_ENTITY);
-            expect(counterRepository.setCount).not.toHaveBeenCalled();
-        });
-
-        it('should return 404 when the counter is not an owned personal counter', async () => {
-            vi.mocked(counterRepository.setCount).mockResolvedValue(null);
-
-            const res = await request(app).put(`/counters/${TEST_COUNTER_ID}/count`).send({ count: 0 });
-
-            expect(res.status).toBe(NOT_FOUND);
         });
     });
 });

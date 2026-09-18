@@ -4,6 +4,17 @@ import type { User } from '@prisma/client';
 
 type DbClient = typeof prisma | Prisma.TransactionClient;
 
+// Login, refresh, logout, and socket admission share this lock and session version.
+export const withLockedUser = <T>(
+    userId: string,
+    action: (user: User | null, tx: Prisma.TransactionClient) => Promise<T>,
+) =>
+    prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId}::uuid FOR UPDATE`;
+        const user = withCurrentTier(await tx.user.findUnique({ where: { id: userId } }));
+        return action(user, tx);
+    });
+
 const userSelectSchema = {
     id: true,
     email: true,
@@ -47,15 +58,6 @@ export const deleteAccount = async (userId: string) =>
             deleted: users.count > 0,
             idempotencyLogsDeleted: idempotencyLogs.count,
         };
-    });
-
-export const deleteUser = deleteAccount;
-
-export const getAllUsers = async ({ limit, offset }: { limit: number; offset: number }) =>
-    prisma.user.findMany({
-        take: limit,
-        skip: offset,
-        select: userSelectSchema,
     });
 
 export const getUserById = (userId: string) =>
@@ -115,15 +117,5 @@ export const updateBillingEntitlement = (
 export const getUserAuthById = (userId: string) =>
     prisma.user.findUnique({
         where: { id: userId },
-        select: { id: true, email: true, sessionVersion: true },
+        select: { id: true, email: true, sessionVersion: true, emailVerifiedAt: true },
     });
-
-export const updateUserInfo = (userId: string, data: Prisma.UserUpdateInput) =>
-    prisma.user
-        .update({
-            where: {
-                id: userId,
-            },
-            data,
-        })
-        .then(() => true);

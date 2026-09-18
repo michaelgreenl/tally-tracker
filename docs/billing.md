@@ -2,7 +2,7 @@
 
 ## Current scope
 
-The native upgrade screen loads RevenueCat's current offering and localized prices. Signed-in users can purchase or restore. The server verifies Premium access before the client changes its account state.
+The native upgrade screen loads RevenueCat's current offering and localized prices. Verified, signed-in users can purchase. Signed-in users can restore without email verification. The server verifies Premium access before the client changes its account state.
 
 Guests and web users can preview plans, but cannot buy or restore from that screen. Web users retain Premium access through their Tally account. Native Premium users can open the store management URL when RevenueCat supplies one. Lifetime purchases do not need subscription cancellation.
 
@@ -55,11 +55,15 @@ The API returns success only after the refresh completes. A failed lookup return
 ## Access rules
 
 - Use the Tally account UUID as the RevenueCat App User ID. Require sign-in before purchase or restoration.
+- Before checkout, `GET /billing/eligibility` checks the current account's email verification. The client checks the returned account ID before opening checkout.
+- Email verification preserves the selected plan. Restoration and `POST /billing/sync` do not require verification.
 - After purchase or restoration, call `POST /billing/sync` with the existing Tally authentication. Send no body.
 - The server fetches RevenueCat's customer record. It does not accept a client-supplied account ID, tier, or receipt as proof.
 - The response contains the verified tier. The client must refresh its account profile before changing Premium controls.
 - Cancellation retains access through the paid period or active billing grace period.
 - Expiration, refunds, and transfers use the current RevenueCat entitlement state, not the notification's event name.
+- Losing Premium preserves existing joined counters and invites. Basic limits apply only to new joins.
+- Starting sharing requires verified Premium access. Owners and accepted members can forward an established counter's link without Premium.
 - Older snapshots cannot overwrite newer verified state. Repeated notifications can safely refresh the same account.
 - Failed lookups preserve the last verified state. The server still rejects expired grants and disabled sandbox grants.
 - Lifetime access has no expiration date. A later verified revocation removes it.

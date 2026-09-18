@@ -17,6 +17,7 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
         }),
     },
 }));
+vi.mock('expo-crypto', () => ({ randomUUID: () => crypto.randomUUID() }));
 
 const command = (id: string): MutationCommand => ({
     id,

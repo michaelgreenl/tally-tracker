@@ -1,10 +1,16 @@
 import { z } from 'zod';
 
-import { HexColorSchema, counterValueSchema, counterIncrementSchema, counterMetricSchema } from '@tally/core';
+import {
+    HexColorSchema,
+    counterTitleSchema,
+    counterValueSchema,
+    counterIncrementSchema,
+    counterMetricSchema,
+} from '@tally/core';
 
 const createCounterBaseSchema = z.strictObject({
     id: z.string().uuid('Invalid UUID').optional(),
-    title: z.string().min(1, 'Title is required').max(50, 'Title is too long'),
+    title: counterTitleSchema,
     count: counterValueSchema.default(0).optional(),
     color: HexColorSchema.optional(),
     metric: counterMetricSchema.optional(),
@@ -32,19 +38,10 @@ export const updateCounterSchema = z.object({
         counterId: z.string().uuid('Invalid Counter ID'),
     }),
     body: z.strictObject({
-        title: z.string().min(1).max(50).optional(),
+        title: counterTitleSchema.optional(),
         color: HexColorSchema.optional().or(z.literal(null)),
         metric: counterMetricSchema.optional(),
         increment: counterIncrementSchema.optional(),
-    }),
-});
-
-export const setCounterCountSchema = z.object({
-    params: z.object({
-        counterId: z.string().uuid('Invalid Counter ID'),
-    }),
-    body: z.strictObject({
-        count: counterValueSchema,
     }),
 });
 

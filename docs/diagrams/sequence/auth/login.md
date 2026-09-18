@@ -39,21 +39,23 @@ sequenceDiagram
         API-->>Client: 404 or 401
         Client-->>Store: ApiError
     else Valid Credentials
+        API->>DB: Lock user and recheck password hash and session version
         API->>API: Generate access token
 
         alt rememberMe true or native login
             API->>DB: Store refresh token record
             API-->>Client: 200 { user, accessToken, refreshToken } + Set-Cookie
             Client-->>Store: Auth response
-            Store->>Storage: Cache user profile
             Store->>Storage: Store native tokens when present
+            Store->>Storage: Cache user profile after token writes finish
         else rememberMe false on web
-            API-->>Client: 200 { user, accessToken } + Set-Cookie(access)
+            API-->>Client: 200 { user, accessToken } + Set-Cookie(access), clear old refresh cookie
             Client-->>Store: Auth response
             Store->>Storage: Cache user profile
         end
 
         Store->>Socket: connectSocket()
+        Socket-->>Store: session-ready after authenticated room admission
         Store->>Sync: processQueue()
     end
     deactivate API

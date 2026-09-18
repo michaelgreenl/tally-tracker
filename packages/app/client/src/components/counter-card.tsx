@@ -1,5 +1,6 @@
 import * as Clipboard from 'expo-clipboard';
 import { createURL } from 'expo-linking';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import Animated, {
@@ -44,13 +45,20 @@ export function CounterCard({
     reordering,
     onReorder,
 }: CounterCardProps) {
-    const { isPremium } = useSession();
-    const { shareCounter } = useCounters();
+    const { isPremium, user } = useSession();
+    const router = useRouter();
+    const { shareCounter, failedCounterIds } = useCounters();
     const [sharing, setSharing] = useState(false);
     const increment = counter.increment ?? 1;
+    const alreadyShared = Boolean(counter.inviteCode && counter.shares?.some((share) => share.status === 'ACCEPTED'));
+    const canShare = isPremium || alreadyShared;
 
     async function share() {
-        if (!isPremium || sharing) return;
+        if (!canShare || sharing) return;
+        if (!alreadyShared && !user?.emailVerified) {
+            router.push({ pathname: '/verify-email', params: { email: user?.email, returnTo: '/home' } });
+            return;
+        }
         setSharing(true);
         onNotice('');
         try {
@@ -114,7 +122,8 @@ export function CounterCard({
                             <CounterMenu
                                 counterId={counter.id}
                                 title={counter.title}
-                                isPremium={isPremium}
+                                canShare={canShare}
+                                isOwner={counter.userId === (user?.id ?? 'guest')}
                                 busy={sharing}
                                 canReorder={canReorder}
                                 onAction={(action) => {
@@ -175,6 +184,20 @@ export function CounterCard({
                                 <Text style={styles.incrementText}>± {increment}</Text>
                             </Pressable>
                         </View>
+                        {failedCounterIds.has(counter.id) && (
+                            <Pressable
+                                accessibilityRole='button'
+                                accessibilityLabel={`Edit ${counter.title} to resolve its sync error`}
+                                onPress={() => onEdit(counter)}
+                                style={({ pressed }) => [styles.syncRecovery, pressed && styles.incrementPressed]}
+                                testID={`counter-${counter.id}-sync-error`}
+                            >
+                                <Text accessibilityLiveRegion='polite' style={styles.syncError}>
+                                    Not synced
+                                </Text>
+                                <Text style={styles.incrementText}>Edit</Text>
+                            </Pressable>
+                        )}
                     </Animated.View>
                 )}
             </Animated.View>
@@ -202,6 +225,15 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
     },
     controls: { gap: 18 },
+    syncRecovery: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 12,
+        minHeight: 44,
+        borderRadius: 8,
+    },
+    syncError: { color: colors.danger, fontSize: 14 },
     header: {
         flexDirection: 'row',
         alignItems: 'center',

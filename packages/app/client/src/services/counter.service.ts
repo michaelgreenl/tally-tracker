@@ -1,24 +1,29 @@
 import * as Crypto from 'expo-crypto';
 
 import apiFetch from '../api';
-import { AuthService } from './auth.service';
+import { assertSession, getSessionScope } from './session-scope';
+import type { SessionScope } from './session-scope';
 import { CounterStorage } from './counter-storage';
 import { SyncManager } from './sync-manager';
 import { SyncQueue } from './sync-queue';
 
 import type { ClientCounter, CounterResponse, JoinCounterRequest, UpdateCounterRequest } from '@tally/core/client';
 
-const queuedUserId = async () => {
-    const userId = (await AuthService.getCachedUser())?.id;
+const queuedUserId = (scope: SessionScope) => {
+    assertSession(scope);
+    const userId = scope.userId;
     if (!userId) throw new Error('Cannot queue a mutation without an authenticated user');
     return userId;
 };
 
-const command = async (input: Omit<Parameters<typeof SyncQueue.add>[0], 'id' | 'queuedByUserId'>) => {
+const command = async (
+    input: Omit<Parameters<typeof SyncQueue.add>[0], 'id' | 'queuedByUserId'>,
+    scope: SessionScope,
+) => {
     await SyncQueue.add({
         ...input,
         id: Crypto.randomUUID(),
-        queuedByUserId: await queuedUserId(),
+        queuedByUserId: queuedUserId(scope),
     });
     void SyncManager.processQueue();
 };
@@ -30,40 +35,46 @@ export const CounterService = {
     getOrder: CounterStorage.getOrder,
     persistOrder: CounterStorage.saveOrder,
 
-    async fetchRemote() {
-        const response = await apiFetch<CounterResponse>('/counters', { method: 'GET' });
+    async fetchRemote(sessionScope = getSessionScope()) {
+        const response = await apiFetch<CounterResponse>('/counters', { method: 'GET', sessionScope });
         return response.success ? response.data?.counters || [] : null;
     },
 
-    create(counter: ClientCounter) {
-        return command({
-            type: 'CREATE',
-            entityId: counter.id,
-            payload: {
-                id: counter.id,
-                title: counter.title,
-                color: counter.color,
-                count: counter.count,
-                metric: counter.metric,
-                increment: counter.increment,
+    create(counter: ClientCounter, scope = getSessionScope()) {
+        return command(
+            {
+                type: 'CREATE',
+                entityId: counter.id,
+                payload: {
+                    id: counter.id,
+                    title: counter.title,
+                    color: counter.color,
+                    count: counter.count,
+                    metric: counter.metric,
+                    increment: counter.increment,
+                },
             },
-        });
+            scope,
+        );
     },
 
-    update(counterId: string, payload: UpdateCounterRequest) {
-        return command({ type: 'UPDATE', entityId: counterId, payload });
+    update(counterId: string, payload: UpdateCounterRequest, scope = getSessionScope()) {
+        return command({ type: 'UPDATE', entityId: counterId, payload }, scope);
     },
 
-    increment(counter: ClientCounter, amount: number) {
-        return command({
-            type: 'INCREMENT',
-            entityId: counter.id,
-            payload: { amount },
-        });
+    increment(counter: ClientCounter, amount: number, scope = getSessionScope()) {
+        return command(
+            {
+                type: 'INCREMENT',
+                entityId: counter.id,
+                payload: { amount },
+            },
+            scope,
+        );
     },
 
-    async delete(counter: ClientCounter) {
-        const userId = await queuedUserId();
+    async delete(counter: ClientCounter, scope = getSessionScope()) {
+        const userId = queuedUserId(scope);
         await SyncQueue.add({
             id: Crypto.randomUUID(),
             queuedByUserId: userId,
@@ -74,24 +85,25 @@ export const CounterService = {
         void SyncManager.processQueue();
     },
 
-    async share(counterId: string) {
-        const userId = await queuedUserId();
+    async share(counterId: string, scope = getSessionScope()) {
+        const userId = queuedUserId(scope);
         await SyncManager.processQueue();
         const pending = await SyncQueue.get();
         if (pending.some((item) => item.entityId === counterId && item.queuedByUserId === userId)) {
             throw new Error('Wait for this counter to sync, then try sharing again.');
         }
-        return apiFetch<CounterResponse>(`/counters/${counterId}/share`, { method: 'POST' });
+        return apiFetch<CounterResponse>(`/counters/${counterId}/share`, { method: 'POST', sessionScope: scope });
     },
 
-    join(inviteCode: string) {
+    join(inviteCode: string, scope = getSessionScope()) {
         return apiFetch<CounterResponse, JoinCounterRequest>('/counters/join', {
             method: 'POST',
             body: { inviteCode },
+            sessionScope: scope,
         });
     },
 
-    async consolidate(counters: ClientCounter[]) {
-        for (const counter of counters) await this.create(counter);
+    async consolidate(counters: ClientCounter[], scope = getSessionScope()) {
+        for (const counter of counters) await this.create(counter, scope);
     },
 };

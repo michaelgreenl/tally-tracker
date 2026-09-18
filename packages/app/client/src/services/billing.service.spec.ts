@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
-import apiFetch from '../api';
+import apiFetch, { ApiError } from '../api';
+import { changeSession, SessionChangedError } from './session-scope';
 import { billingApiKey, BillingService, purchaseNotice } from './billing.service';
 
 import type { PurchasesPackage } from 'react-native-purchases';
@@ -23,12 +24,14 @@ const { platform, sdk } = vi.hoisted(() => ({
 
 vi.mock('react-native', () => ({ Platform: platform }));
 vi.mock('react-native-purchases', () => ({ default: sdk }));
-vi.mock('../api', () => ({ default: vi.fn() }));
+vi.mock('../api', async (original) => ({ ...(await original<typeof import('../api')>()), default: vi.fn() }));
 
 const annual = { identifier: '$rc_annual', product: { priceString: '€10,00' } } as PurchasesPackage;
 
 beforeEach(() => {
     vi.resetAllMocks();
+    changeSession('account-a');
+    vi.mocked(apiFetch).mockResolvedValue({ success: true, data: { userId: 'account-a' } });
     vi.stubGlobal('__DEV__', true);
     vi.stubEnv('EXPO_PUBLIC_REVENUECAT_TEST_API_KEY', 'test_example');
     vi.stubEnv('EXPO_PUBLIC_REVENUECAT_IOS_API_KEY', '');
@@ -99,6 +102,41 @@ it('does not switch SDK identity during checkout and releases the queue after a 
     await restore;
     expect(sdk.logIn).toHaveBeenCalledWith('account-b');
     expect(sdk.logIn.mock.invocationCallOrder[0]).toBeLessThan(sdk.restorePurchases.mock.invocationCallOrder[0]);
+});
+
+it.each([new ApiError('Unverified', 403), new TypeError('Network unavailable')])(
+    'does not open checkout when server eligibility fails: %s',
+    async (error) => {
+        vi.mocked(apiFetch).mockRejectedValueOnce(error);
+        await expect(BillingService.purchase('account-a', annual)).rejects.toBe(error);
+        expect(sdk.purchasePackage).not.toHaveBeenCalled();
+        await BillingService.restore('account-a');
+        expect(sdk.restorePurchases).toHaveBeenCalledOnce();
+        expect(apiFetch).toHaveBeenCalledTimes(1);
+    },
+);
+
+it('does not charge after the account changes during eligibility verification', async () => {
+    let eligible!: (value: unknown) => void;
+    vi.mocked(apiFetch).mockImplementationOnce(
+        () =>
+            new Promise((resolve) => {
+                eligible = resolve;
+            }),
+    );
+    const purchase = BillingService.purchase('account-a', annual);
+    const rejected = expect(purchase).rejects.toBeInstanceOf(SessionChangedError);
+    await vi.waitFor(() => expect(apiFetch).toHaveBeenCalledOnce());
+    changeSession('account-b');
+    eligible({ success: true, data: { userId: 'account-a' } });
+    await rejected;
+    expect(sdk.purchasePackage).not.toHaveBeenCalled();
+});
+
+it('does not charge against an eligibility response for a different account', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce({ success: true, data: { userId: 'account-b' } });
+    await expect(BillingService.purchase('account-a', annual)).rejects.toThrow();
+    expect(sdk.purchasePackage).not.toHaveBeenCalled();
 });
 
 it('sends no client entitlement proof and rejects failed server verification', async () => {

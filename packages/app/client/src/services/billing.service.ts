@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 
-import apiFetch from '../api';
+import apiFetch, { ApiError } from '../api';
+import { assertSession, getSessionScope, SessionChangedError } from './session-scope';
 
 import type { CustomerInfo, PurchasesPackage } from 'react-native-purchases';
 
@@ -51,7 +52,18 @@ export const BillingService = {
         });
     },
     purchase(userId: string, product: PurchasesPackage) {
-        return withCustomer(userId, (purchases) => purchases.purchasePackage(product));
+        const scope = getSessionScope();
+        return withCustomer(userId, async (purchases) => {
+            assertSession(scope);
+            if (scope.userId !== userId) throw new SessionChangedError();
+            const result = await apiFetch<{ success: boolean; data?: { userId: string } }>('/billing/eligibility', {
+                sessionScope: scope,
+            });
+            assertSession(scope);
+            if (!result.success || result.data?.userId !== userId)
+                throw new Error('Could not confirm purchase eligibility.');
+            return purchases.purchasePackage(product);
+        });
     },
     restore(userId: string) {
         return withCustomer(userId, (purchases) => purchases.restorePurchases());
@@ -69,6 +81,7 @@ export const BillingService = {
 };
 
 export function purchaseNotice(error: unknown, fallback = 'Purchase failed. Try again.'): string | null {
+    if (error instanceof ApiError && error.status === 403) return 'Verify your email to continue.';
     if (typeof error === 'object' && error !== null) {
         if ('userCancelled' in error && error.userCancelled === true) return null;
         if ('code' in error) {

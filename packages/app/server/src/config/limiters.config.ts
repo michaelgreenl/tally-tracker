@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import rateLimit from 'express-rate-limit';
-import slowDown from 'express-slow-down';
+import { loginRateLimitStore } from '../db/login-rate-limit.store.js';
 
 import { Request } from 'express';
 
@@ -24,12 +24,23 @@ export const emailAuthLimiter = rateLimit({
     skip: (_req: Request) => process.env.NODE_ENV !== 'production',
 });
 
-export const speedLimiter = slowDown({
+const loginOptions = {
     windowMs: 15 * 60 * 1000,
-    delayAfter: 1500,
-    delayMs: (used, req) => {
-        const delayAfter = req.slowDown.limit;
-        return (used - delayAfter) * 500;
-    },
-    skip,
+    message: { success: false, message: 'Too many sign-in attempts. Try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: (_req: Request) => process.env.NODE_ENV !== 'production',
+};
+
+export const loginIpLimiter = rateLimit({
+    ...loginOptions,
+    limit: 30,
+    store: loginRateLimitStore('login-ip'),
+});
+
+export const loginAccountLimiter = rateLimit({
+    ...loginOptions,
+    limit: 10,
+    keyGenerator: (req) => req.body.email,
+    store: loginRateLimitStore('login-account'),
 });

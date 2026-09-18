@@ -37,6 +37,7 @@ export default function SettingsScreen() {
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [deleteLoading, setDeleteLoading] = useState(false);
     const [deleteError, setDeleteError] = useState('');
+    const [logoutOpen, setLogoutOpen] = useState(false);
 
     async function deleteAccount() {
         setDeleteLoading(true);
@@ -79,7 +80,7 @@ export default function SettingsScreen() {
                                     <Row label='Tier' value={session.isPremium ? 'Premium' : 'Basic'} />
                                     <Pressable
                                         accessibilityRole='button'
-                                        onPress={() => void session.logout()}
+                                        onPress={() => setLogoutOpen(true)}
                                         style={({ pressed }) => [styles.actionRow, pressed && styles.rowPressed]}
                                         testID='settings-logout'
                                     >
@@ -173,6 +174,36 @@ export default function SettingsScreen() {
                         </Section>
                     </View>
                 </ScrollView>
+
+                <Dialog
+                    visible={logoutOpen}
+                    onRequestClose={() => setLogoutOpen(false)}
+                    testID='logout-confirm'
+                    title='Log out?'
+                    description='This logs you out on all devices. Unsynced changes stay on this device for your next login.'
+                >
+                    <View style={styles.modalActions}>
+                        <Pressable
+                            accessibilityRole='button'
+                            onPress={() => setLogoutOpen(false)}
+                            style={styles.secondaryButton}
+                            testID='logout-cancel'
+                        >
+                            <Text style={styles.secondaryButtonText}>Cancel</Text>
+                        </Pressable>
+                        <Pressable
+                            accessibilityRole='button'
+                            onPress={() => {
+                                setLogoutOpen(false);
+                                void session.logout();
+                            }}
+                            style={styles.primaryButton}
+                            testID='logout-confirm-submit'
+                        >
+                            <Text style={styles.primaryButtonText}>Log out</Text>
+                        </Pressable>
+                    </View>
+                </Dialog>
 
                 <Dialog
                     onRequestClose={() => {

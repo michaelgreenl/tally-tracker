@@ -13,7 +13,7 @@ import {
 
 vi.mock('../../src/middleware/auth.middleware', () => ({
     jwt: (req: Request, res: Response, next: NextFunction) => {
-        req.user = { id: TEST_USER_ID, email: 'test@test.com', sessionVersion: 0 };
+        req.user = { id: TEST_USER_ID, email: 'test@test.com', emailVerifiedAt: new Date(), sessionVersion: 0 };
         next();
     },
 }));
@@ -36,12 +36,19 @@ vi.mock('../../src/db/repositories/user.repository', () => ({
     getUserTierById: vi.fn(),
 }));
 
+vi.mock('../../src/db/prisma', () => ({
+    default: {
+        $transaction: (action: (tx: unknown) => Promise<unknown>) => action({ $queryRaw: vi.fn() }),
+    },
+}));
+
 import * as counterRepo from '../../src/db/repositories/counter.repository.js';
 import * as userRepo from '../../src/db/repositories/user.repository.js';
 
 describe('Sharing Routes', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        vi.mocked(counterRepo.getParticipants).mockResolvedValue([TEST_OTHER_USER_ID, TEST_USER_ID]);
         app.set('io', { to: () => ({ emit: vi.fn() }) });
     });
 

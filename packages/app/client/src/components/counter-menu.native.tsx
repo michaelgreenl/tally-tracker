@@ -5,7 +5,16 @@ import { Pressable } from 'react-native';
 import type { CounterMenuProps } from './counter-menu';
 import type { MenuComponentRef } from '@expo/ui/community/menu';
 
-export function CounterMenu({ counterId, title, isPremium, busy, canReorder, onAction, children }: CounterMenuProps) {
+export function CounterMenu({
+    counterId,
+    title,
+    canShare,
+    isOwner,
+    busy,
+    canReorder,
+    onAction,
+    children,
+}: CounterMenuProps) {
     const menu = useRef<MenuComponentRef>(null);
     return (
         <MenuView
@@ -16,11 +25,11 @@ export function CounterMenu({ counterId, title, isPremium, busy, canReorder, onA
                 { id: 'edit', title: 'Edit' },
                 {
                     id: 'share',
-                    title: !isPremium ? 'Share (Premium)' : busy ? 'Sharing…' : 'Share',
-                    attributes: { disabled: !isPremium || busy },
+                    title: !canShare ? 'Share (Premium)' : busy ? 'Sharing…' : 'Share',
+                    attributes: { disabled: !canShare || busy },
                 },
                 { id: 'reorder', title: 'Reorder', attributes: { disabled: !canReorder } },
-                { id: 'delete', title: 'Delete', attributes: { destructive: true } },
+                { id: 'delete', title: isOwner ? 'Delete' : 'Leave', attributes: { destructive: true } },
             ]}
             onPressAction={({ nativeEvent: { event } }) => {
                 if (event === 'edit' || event === 'share' || event === 'delete' || event === 'reorder') onAction(event);

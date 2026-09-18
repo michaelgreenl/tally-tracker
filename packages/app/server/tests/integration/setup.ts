@@ -7,6 +7,7 @@ const { default: prisma } = await import('../../src/db/prisma.js');
 
 beforeEach(async () => {
     await prisma.$transaction([
+        prisma.loginRateLimit.deleteMany(),
         prisma.counterShare.deleteMany(),
         prisma.refreshToken.deleteMany(),
         prisma.counter.deleteMany(),

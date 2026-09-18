@@ -17,7 +17,7 @@ describe('Counter sync recovery', () => {
     beforeEach(() => {
         cy.clearCookies();
         cy.clearLocalStorage();
-        const credentials = { email: `sync-${crypto.randomUUID()}@example.com`, password: 'Password123' };
+        const credentials = { email: `sync-${crypto.randomUUID()}@example.com`, password: 'New-password123' };
         cy.request('POST', '/users', credentials);
         cy.request('POST', '/users/login', credentials).then(({ body }) => {
             user = body.data.user;
@@ -45,7 +45,7 @@ describe('Counter sync recovery', () => {
         cy.get('[data-testid="home-sync-synced-icon"]').should('be.visible');
     });
 
-    it('keeps rejected writes through reload and syncs them once the API recovers', () => {
+    it('repairs a rejected creation after cache loss without losing or duplicating queued taps', () => {
         let available = false;
         let counterId = '';
         cy.intercept('POST', '**/counters', (request) => {
@@ -62,7 +62,11 @@ describe('Counter sync recovery', () => {
             cy.get(`[data-testid="counter-${counterId}-increase"]`).click();
         });
         cy.get('[data-testid="home-sync-error-icon"]').should('be.visible');
-        cy.reload();
+        cy.visit('/home', {
+            onBeforeLoad(win) {
+                win.localStorage.removeItem('app_counters');
+            },
+        });
         cy.get('[data-testid="home-sync-error-icon"]').should('be.visible');
         cy.then(() => {
             cy.get(`[data-testid="counter-${counterId}-count"]`).should('have.text', '1');
@@ -73,14 +77,25 @@ describe('Counter sync recovery', () => {
         });
 
         cy.then(() => {
+            cy.get(`[data-testid="counter-${counterId}-sync-error"]`).should('be.visible');
+            cy.viewport(390, 844);
+            cy.get(`[data-testid="counter-${counterId}-sync-error"]`).click();
+        });
+        cy.get('[data-testid="counter-title"]').clear().type('Water corrected');
+        cy.then(() => {
             available = true;
         });
-        cy.reload();
+        cy.get('[data-testid="counter-form-submit"]').click();
         cy.wait('@created').its('response.statusCode').should('eq', 201);
         cy.get('[data-testid="home-sync-synced-icon"]').should('be.visible');
         cy.request('GET', '/counters').then(({ body }) => {
             expect(body.data.counters).to.have.length(1);
-            expect(body.data.counters[0]).to.include({ id: counterId, count: 1, metric: '16oz bottle' });
+            expect(body.data.counters[0]).to.include({
+                id: counterId,
+                count: 1,
+                metric: '16oz bottle',
+                title: 'Water corrected',
+            });
         });
         cy.window().should((win) => {
             expect(JSON.parse(win.localStorage.getItem('app_sync_queue') || '[]')).to.deep.equal([]);
@@ -93,7 +108,7 @@ describe('Counter sync recovery', () => {
         });
     });
 
-    it('receives a counter created in another session without reloading', () => {
+    it('receives counter creation, edits, and deletion from another session without reloading', () => {
         cy.request('POST', '/counters', { title: 'From phone', metric: 'bottle', increment: 0.5, count: 2 }).then(
             ({ body }) => {
                 const counter: ClientCounter = body.data.counter;
@@ -102,6 +117,8 @@ describe('Counter sync recovery', () => {
                 cy.request('PUT', `/counters/update/${counter.id}`, { title: 'Renamed on phone', metric: 'cup' });
                 cy.get(`[data-testid="counter-${counter.id}-title"]`).should('have.text', 'Renamed on phone');
                 cy.get(`[data-testid="counter-${counter.id}-metric"]`).should('have.text', 'cup');
+                cy.request('DELETE', `/counters/${counter.id}`);
+                cy.get(`[data-testid="counter-${counter.id}-count"]`).should('not.exist');
             },
         );
     });

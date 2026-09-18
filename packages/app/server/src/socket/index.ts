@@ -19,11 +19,13 @@ const INVALID_TOKEN_ERROR = 'Invalid token';
 
 type SocketAuthPayload = {
     token?: unknown;
+    userId?: unknown;
 };
 
 type VerifiedToken = {
     id?: unknown;
     sessionVersion?: unknown;
+    exp?: unknown;
 };
 
 const getHeaderValue = (value: string | string[] | undefined) => {
@@ -47,27 +49,29 @@ const getBearerToken = (authorizationHeader: string | undefined) => {
 };
 
 const getAuthToken = (socket: Socket) => {
-    const cookieToken = getCookieToken(getHeaderValue(socket.handshake.headers.cookie));
-    if (cookieToken) return cookieToken;
-
+    const auth = socket.handshake.auth as SocketAuthPayload | undefined;
+    if (typeof auth?.token === 'string' && auth.token) return auth.token;
     const bearerToken = getBearerToken(getHeaderValue(socket.handshake.headers.authorization));
     if (bearerToken) return bearerToken;
-
-    const auth = socket.handshake.auth as SocketAuthPayload | undefined;
-    return typeof auth?.token === 'string' && auth.token ? auth.token : undefined;
+    return getCookieToken(getHeaderValue(socket.handshake.headers.cookie));
 };
 
 const getVerifiedUserId = async (token: string) => {
     const decoded = jwtUtil.verify(token) as VerifiedToken;
 
-    if (typeof decoded.id !== 'string' || !decoded.id || typeof decoded.sessionVersion !== 'number') {
+    if (
+        typeof decoded.id !== 'string' ||
+        !decoded.id ||
+        typeof decoded.sessionVersion !== 'number' ||
+        typeof decoded.exp !== 'number'
+    ) {
         throw new Error(INVALID_TOKEN_ERROR);
     }
 
     const user = await userRepository.getUserAuthById(decoded.id);
     if (!user || user.sessionVersion !== decoded.sessionVersion) throw new Error(INVALID_TOKEN_ERROR);
 
-    return decoded.id;
+    return { userId: decoded.id, sessionVersion: decoded.sessionVersion, expiresAt: decoded.exp * 1000 };
 };
 
 const authenticateSocket = async (socket: Socket, next: (error?: Error) => void) => {
@@ -78,7 +82,10 @@ const authenticateSocket = async (socket: Socket, next: (error?: Error) => void)
     }
 
     try {
-        socket.data.userId = await getVerifiedUserId(token);
+        const verified = await getVerifiedUserId(token);
+        const expectedUserId = (socket.handshake.auth as SocketAuthPayload)?.userId;
+        if (expectedUserId && expectedUserId !== verified.userId) throw new Error(INVALID_TOKEN_ERROR);
+        Object.assign(socket.data, verified);
         return next();
     } catch {
         return next(new Error(INVALID_TOKEN_ERROR));
@@ -93,15 +100,26 @@ const initializeIO = (httpServer: HttpServer) => {
     io.use(authenticateSocket);
 
     io.on('connection', (socket) => {
-        console.log('Client connected:', socket.id);
-
         const userId = socket.data.userId as string;
-        console.log(`Socket ${socket.id} joining room ${userId}`);
-        socket.join(userId);
-
-        socket.on('disconnect', () => {
-            console.log('Client disconnected:', socket.id);
-        });
+        // Room admission and revocation use the same lock; a late handshake cannot rejoin after logout.
+        void userRepository
+            .withLockedUser(userId, async (user) => {
+                if (
+                    !socket.connected ||
+                    !user ||
+                    user.sessionVersion !== socket.data.sessionVersion ||
+                    socket.data.expiresAt <= Date.now()
+                ) {
+                    socket.disconnect(true);
+                    return;
+                }
+                await socket.join(userId);
+                socket.emit('session-ready');
+                const expiry = setTimeout(() => socket.disconnect(true), socket.data.expiresAt - Date.now());
+                expiry.unref();
+                socket.once('disconnect', () => clearTimeout(expiry));
+            })
+            .catch(() => socket.disconnect(true));
     });
 
     return io;

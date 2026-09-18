@@ -12,6 +12,9 @@ import type { Server } from 'socket.io';
 import type { AddressInfo } from 'node:net';
 
 import { digestEmailOtp } from '../../src/services/email-otp.service.js';
+import * as userRepository from '../../src/db/repositories/user.repository.js';
+import jwtUtil from '../../src/util/jwt.util.js';
+import { cleanup } from '../../src/db/cron.js';
 
 let app: Express;
 let prisma: PrismaClient;
@@ -45,11 +48,479 @@ async function sharingAccount(tier: 'BASIC' | 'PREMIUM') {
     await request(app).post('/users').send({ email, password }).expect(201);
     const login = await request(app).post('/users/login').send({ email, password }).expect(200);
     const { user, accessToken } = login.body.data;
-    await prisma.user.update({ where: { id: user.id }, data: { tier } });
-    return { id: user.id as string, authorization: `Bearer ${accessToken}` };
+    await prisma.user.update({ where: { id: user.id }, data: { tier, emailVerifiedAt: new Date() } });
+    return { id: user.id as string, email, password, authorization: `Bearer ${accessToken}` };
 }
 
 describe('PostgreSQL integration', () => {
+    it('requires fresh email verification for checkout and sharing, but not personal counters', async () => {
+        const account = await sharingAccount('PREMIUM');
+        const owner = await sharingAccount('PREMIUM');
+        await prisma.user.update({ where: { id: account.id }, data: { emailVerifiedAt: null } });
+        const invitation = await prisma.counter.create({
+            data: { title: 'Invitation', userId: owner.id, type: 'SHARED', inviteCode: randomUUID() },
+        });
+        const counterId = randomUUID();
+        await request(app)
+            .post('/counters')
+            .set('Authorization', account.authorization)
+            .send({ id: counterId, title: 'Personal' })
+            .expect(201);
+        await request(app)
+            .put(`/counters/increment/${counterId}`)
+            .set('Authorization', account.authorization)
+            .send({ amount: 1 })
+            .expect(200);
+
+        const share = () =>
+            request(app).post(`/counters/${counterId}/share`).set('Authorization', account.authorization);
+        const join = () =>
+            request(app)
+                .post('/counters/join')
+                .set('Authorization', account.authorization)
+                .send({ inviteCode: invitation.inviteCode });
+        const eligibility = () => request(app).get('/billing/eligibility').set('Authorization', account.authorization);
+        await share().expect(403);
+        await join().expect(403);
+        await eligibility().expect(403);
+        expect((await prisma.counter.findUniqueOrThrow({ where: { id: counterId } })).inviteCode).toBeNull();
+        expect(await prisma.counterShare.count({ where: { userId: account.id } })).toBe(0);
+
+        await expect
+            .poll(() => prisma.emailOtp.count({ where: { userId: account.id, purpose: 'EMAIL_VERIFICATION' } }))
+            .toBe(1);
+        await prisma.emailOtp.update({
+            where: { userId_purpose: { userId: account.id, purpose: 'EMAIL_VERIFICATION' } },
+            data: {
+                digest: digestEmailOtp(account.id, 'EMAIL_VERIFICATION', '123456'),
+                expiresAt: new Date(Date.now() + 60_000),
+            },
+        });
+        await request(app).post('/users/verify-email').send({ email: account.email, code: '123456' }).expect(200);
+        // The same access token now works: the decision comes from the database, not a stale token claim.
+        await share().expect(200);
+        await join().expect(201);
+        const eligible = await eligibility().expect(200);
+        expect(eligible.body.data.userId).toBe(account.id);
+    });
+
+    it.each([`A1${'a'.repeat(70)}`, `Ab1${'é'.repeat(34)}z`])(
+        'accepts 72 UTF-8 password bytes but never truncates extra input: %s',
+        async (password) => {
+            const email = `password-length.${randomUUID()}@example.com`;
+            await request(app).post('/users').send({ email, password }).expect(201);
+            await request(app).post('/users/login').send({ email, password }).expect(200);
+            await request(app)
+                .post('/users/login')
+                .send({ email, password: `${password}x` })
+                .expect(422);
+            const rejectedEmail = `overlong.${randomUUID()}@example.com`;
+            await request(app)
+                .post('/users')
+                .send({ email: rejectedEmail, password: `${password}x` })
+                .expect(422);
+            expect(await prisma.user.findUnique({ where: { email: rejectedEmail } })).toBeNull();
+        },
+    );
+
+    it('notifies other devices when shared membership or a counter is removed', async () => {
+        const owner = await sharingAccount('PREMIUM');
+        const member = await sharingAccount('BASIC');
+        const counter = await prisma.counter.create({
+            data: { title: 'Shared counter', userId: owner.id, type: 'SHARED', inviteCode: randomUUID() },
+        });
+        const join = () =>
+            request(app)
+                .post('/counters/join')
+                .set('Authorization', member.authorization)
+                .send({ inviteCode: counter.inviteCode })
+                .expect(201);
+        const joined = await join();
+        expect(joined.body.data.counter.shares).toEqual([
+            expect.objectContaining({ userId: member.id, status: 'ACCEPTED' }),
+        ]);
+        const sockets = [owner, member].map((account) =>
+            createSocket(socketUrl, {
+                auth: { token: account.authorization.slice(7) },
+                transports: ['websocket'],
+                autoConnect: false,
+            }),
+        );
+        try {
+            const ready = sockets.map((socket) => {
+                const arrived = vi.fn();
+                socket.once('session-ready', arrived);
+                socket.connect();
+                return arrived;
+            });
+            await vi.waitFor(() => ready.forEach((arrived) => expect(arrived).toHaveBeenCalled()));
+            const left = sockets.map((socket) => {
+                const arrived = vi.fn();
+                socket.once('counters-changed', arrived);
+                return arrived;
+            });
+            await request(app)
+                .put(`/counters/remove-shared/${counter.id}`)
+                .set('Authorization', member.authorization)
+                .expect(200);
+            await vi.waitFor(() => left.forEach((arrived) => expect(arrived).toHaveBeenCalled()));
+            const afterLeave = await request(app)
+                .get('/counters')
+                .set('Authorization', member.authorization)
+                .expect(200);
+            expect(afterLeave.body.data.counters).toEqual([]);
+            await request(app)
+                .put(`/counters/increment/${counter.id}`)
+                .set('Authorization', member.authorization)
+                .send({ amount: 1 })
+                .expect(404);
+            expect(await prisma.counter.findUnique({ where: { id: counter.id } })).toMatchObject({ userId: owner.id });
+
+            const rejoined = sockets.map((socket) => {
+                const arrived = vi.fn();
+                socket.once('counters-changed', arrived);
+                return arrived;
+            });
+            await join();
+            await vi.waitFor(() => rejoined.forEach((arrived) => expect(arrived).toHaveBeenCalled()));
+            await request(app).delete(`/counters/${counter.id}`).set('Authorization', member.authorization).expect(404);
+            const deleted = sockets.map((socket) => {
+                const arrived = vi.fn();
+                socket.once('counters-changed', arrived);
+                return arrived;
+            });
+            await request(app).delete(`/counters/${counter.id}`).set('Authorization', owner.authorization).expect(200);
+            await vi.waitFor(() => deleted.forEach((arrived) => expect(arrived).toHaveBeenCalled()));
+            for (const account of [owner, member]) {
+                const snapshot = await request(app)
+                    .get('/counters')
+                    .set('Authorization', account.authorization)
+                    .expect(200);
+                expect(snapshot.body.data.counters).toEqual([]);
+            }
+            expect(await prisma.counterShare.count({ where: { counterId: counter.id } })).toBe(0);
+            await request(app)
+                .post('/counters/join')
+                .set('Authorization', member.authorization)
+                .send({ inviteCode: counter.inviteCode })
+                .expect(404);
+        } finally {
+            sockets.forEach((socket) => socket.disconnect());
+        }
+    });
+
+    it.each([false, true])('enforces the Basic join limit under concurrency (idempotency key: %s)', async (keyed) => {
+        const owner = await sharingAccount('PREMIUM');
+        const member = await sharingAccount('BASIC');
+        const counters = await Promise.all(
+            [0, 1].map(() =>
+                prisma.counter.create({
+                    data: { title: 'Shared counter', userId: owner.id, type: 'SHARED', inviteCode: randomUUID() },
+                }),
+            ),
+        );
+        let release!: () => void;
+        let locked!: () => void;
+        const barrier = new Promise<void>((resolve) => {
+            release = resolve;
+        });
+        const ready = new Promise<void>((resolve) => {
+            locked = resolve;
+        });
+        // Hold writes, not reads: both old requests can pass the quota before either inserts.
+        const lock = prisma.$transaction(async (tx) => {
+            await tx.$executeRaw`LOCK TABLE counter_shares IN SHARE MODE`;
+            locked();
+            await barrier;
+        });
+        await Promise.race([ready, lock]);
+        const joining = counters.map((counter) => {
+            const attempt = request(app).post('/counters/join').set('Authorization', member.authorization);
+            if (keyed) attempt.set('X-Idempotency-Key', randomUUID());
+            return attempt.send({ inviteCode: counter.inviteCode }).then((response) => response);
+        });
+        try {
+            await vi.waitFor(async () => {
+                const waiting = await prisma.$queryRaw<Array<{ count: number }>>`
+                    SELECT count(*)::int AS count FROM pg_stat_activity
+                    WHERE datname = current_database() AND wait_event_type = 'Lock'
+                `;
+                expect(waiting[0].count).toBe(2);
+            });
+        } finally {
+            release();
+            await Promise.allSettled([lock, ...joining]);
+        }
+        await lock;
+        const responses = await Promise.all(joining);
+        expect(responses.map((response) => response.status).sort()).toEqual([201, 403]);
+        expect(await prisma.counterShare.count({ where: { userId: member.id, status: 'ACCEPTED' } })).toBe(1);
+    });
+
+    it('does not repeat an offline increment after maintenance ages its receipt', async () => {
+        const account = await sharingAccount('BASIC');
+        const created = await request(app)
+            .post('/counters')
+            .set('Authorization', account.authorization)
+            .send({ title: 'Offline counter' })
+            .expect(201);
+        const counterId = created.body.data.counter.id;
+        const key = randomUUID();
+        const increment = () =>
+            request(app)
+                .put(`/counters/increment/${counterId}`)
+                .set('Authorization', account.authorization)
+                .set('X-Idempotency-Key', key)
+                .send({ amount: 1 })
+                .expect(200);
+        await increment();
+        await prisma.idempotencyLog.update({ where: { key }, data: { createdAt: new Date('2020-01-01') } });
+        await cleanup();
+        await increment();
+        expect((await prisma.counter.findUniqueOrThrow({ where: { id: counterId } })).count.toNumber()).toBe(1);
+    });
+
+    it('does not expose a credential or tier update through an ordinary session', async () => {
+        const account = await sharingAccount('BASIC');
+        const select = { email: true, password: true, emailVerifiedAt: true, tier: true } as const;
+        const before = await prisma.user.findUniqueOrThrow({ where: { id: account.id }, select });
+
+        await request(app)
+            .put('/users')
+            .set('Authorization', account.authorization)
+            .send({ email: 'changed@example.com', password: 'Changed-password1', tier: 'PREMIUM' })
+            .expect(404);
+
+        expect(await prisma.user.findUniqueOrThrow({ where: { id: account.id }, select })).toEqual(before);
+    });
+
+    it.each(['websocket', 'polling'])('revokes credentials and %s sockets on access-only logout', async (transport) => {
+        const account = await sharingAccount('BASIC');
+        const other = await sharingAccount('BASIC');
+        const remembered = await request(app)
+            .post('/users/login')
+            .send({ email: account.email, password: account.password, rememberMe: true })
+            .expect(200);
+        const socket = createSocket(socketUrl, {
+            auth: { token: account.authorization.slice(7) },
+            transports: [transport],
+            autoConnect: false,
+        });
+        try {
+            const connected = new Promise<void>((resolve) => socket.once('session-ready', resolve));
+            socket.connect();
+            await connected;
+            await vi.waitFor(async () => expect(await io.in(account.id).fetchSockets()).toHaveLength(1));
+            await request(app).post('/users/logout').set('Authorization', account.authorization).expect(200);
+            await request(app).get('/users/check-auth').set('Authorization', account.authorization).expect(401);
+            await request(app)
+                .get('/users/check-auth')
+                .set('Authorization', `Bearer ${remembered.body.data.accessToken}`)
+                .expect(401);
+            await request(app)
+                .post('/users/refresh')
+                .send({ refreshToken: remembered.body.data.refreshToken })
+                .expect(401);
+            await vi.waitFor(() => expect(socket.connected).toBe(false));
+            const stillSignedIn = await request(app)
+                .get('/users/check-auth')
+                .set('Authorization', other.authorization)
+                .expect(200);
+            expect(stillSignedIn.body.data.user.id).toBe(other.id);
+        } finally {
+            socket.disconnect();
+        }
+    });
+
+    it('clears the previous remembered account when another browser account logs in without Remember me', async () => {
+        const a = await sharingAccount('BASIC');
+        const b = await sharingAccount('BASIC');
+        const browser = request.agent(app);
+        await browser.post('/users/login').send({ email: a.email, password: a.password, rememberMe: true }).expect(200);
+        await browser
+            .post('/users/login')
+            .send({ email: b.email, password: b.password, rememberMe: false })
+            .expect(200);
+        await browser.post('/users/refresh').send({}).expect(401);
+        const current = await browser.get('/users/check-auth').expect(200);
+        expect(current.body.data.user.id).toBe(b.id);
+    });
+
+    it('never admits a socket whose handshake finished before logout but whose room admission finishes afterward', async () => {
+        const account = await sharingAccount('BASIC');
+        const originalLock = userRepository.withLockedUser;
+        let release!: () => void;
+        let entered!: () => void;
+        const arrived = new Promise<void>((resolve) => {
+            entered = resolve;
+        });
+        const barrier = new Promise<void>((resolve) => {
+            release = resolve;
+        });
+        const lock = vi.spyOn(userRepository, 'withLockedUser').mockImplementationOnce(async (id, action) => {
+            entered();
+            await barrier;
+            return originalLock(id, action);
+        });
+        const socket = createSocket(socketUrl, {
+            auth: { token: account.authorization.slice(7) },
+            transports: ['websocket'],
+            autoConnect: false,
+        });
+        const ready = vi.fn();
+        socket.on('session-ready', ready);
+        const disconnected = new Promise<void>((resolve) => socket.once('disconnect', () => resolve()));
+        try {
+            socket.connect();
+            await arrived;
+            lock.mockRestore();
+            await request(app).post('/users/logout').set('Authorization', account.authorization).expect(200);
+            release();
+            await disconnected;
+            expect(ready).not.toHaveBeenCalled();
+            expect(await io.in(account.id).fetchSockets()).toHaveLength(0);
+        } finally {
+            lock.mockRestore();
+            release();
+            socket.disconnect();
+        }
+    });
+
+    it('replays only the direct refresh successor briefly and revokes it through the original token', async () => {
+        const account = await sharingAccount('BASIC');
+        const login = await request(app)
+            .post('/users/login')
+            .send({ email: account.email, password: account.password, rememberMe: true })
+            .expect(200);
+        const original = login.body.data.refreshToken;
+        const refresh = (token: string) => request(app).post('/users/refresh').send({ refreshToken: token });
+        const expired = await prisma.refreshToken.create({ data: { userId: account.id, expiresAt: new Date(0) } });
+        await refresh(expired.id).expect(401);
+        const [first, retry] = await Promise.all([refresh(original).expect(200), refresh(original).expect(200)]);
+        expect(retry.body.data.refreshToken).toBe(first.body.data.refreshToken);
+        expect(
+            await prisma.refreshToken.count({
+                where: { userId: account.id, rotatedAt: null, expiresAt: { gt: new Date() } },
+            }),
+        ).toBe(1);
+        await prisma.refreshToken.update({
+            where: { id: original },
+            data: { rotatedAt: new Date(Date.now() - 31_000) },
+        });
+        await refresh(original).expect(401);
+        await request(app).post('/users/logout').send({ refreshToken: original }).expect(200);
+        await refresh(first.body.data.refreshToken).expect(401);
+        await request(app)
+            .get('/users/check-auth')
+            .set('Authorization', `Bearer ${first.body.data.accessToken}`)
+            .expect(401);
+        expect(await prisma.refreshToken.count({ where: { userId: account.id } })).toBe(0);
+    });
+
+    it('does not issue a refresh credential when logout wins the user lock', async () => {
+        const account = await sharingAccount('BASIC');
+        const login = await request(app)
+            .post('/users/login')
+            .send({ email: account.email, password: account.password, rememberMe: true })
+            .expect(200);
+        const originalLock = userRepository.withLockedUser;
+        let release!: () => void;
+        let entered!: () => void;
+        const arrived = new Promise<void>((resolve) => {
+            entered = resolve;
+        });
+        const barrier = new Promise<void>((resolve) => {
+            release = resolve;
+        });
+        const lock = vi.spyOn(userRepository, 'withLockedUser').mockImplementationOnce(async (id, action) => {
+            entered();
+            await barrier;
+            return originalLock(id, action);
+        });
+        const refreshing = request(app)
+            .post('/users/refresh')
+            .send({ refreshToken: login.body.data.refreshToken })
+            .then((response) => response);
+        try {
+            await arrived;
+            lock.mockRestore();
+            await request(app).post('/users/logout').set('Authorization', account.authorization).expect(200);
+            release();
+            expect((await refreshing).status).toBe(401);
+            expect(await prisma.refreshToken.count({ where: { userId: account.id } })).toBe(0);
+        } finally {
+            lock.mockRestore();
+            release();
+            await refreshing;
+        }
+    });
+
+    it('rejects stale browser account identity without changing data or cookies', async () => {
+        const a = await sharingAccount('BASIC');
+        const b = await sharingAccount('BASIC');
+        const cookie = `access_token=${b.authorization.slice(7)}`;
+        const mismatch = await request(app)
+            .post('/counters')
+            .set('Cookie', cookie)
+            .set('X-Account-Id', a.id)
+            .send({ title: 'Wrong account' })
+            .expect(401);
+        expect(mismatch.headers['set-cookie']).toBeUndefined();
+        const logout = await request(app)
+            .post('/users/logout')
+            .set('Cookie', cookie)
+            .set('X-Account-Id', a.id)
+            .expect(401);
+        expect(logout.headers['set-cookie']).toBeUndefined();
+        expect(await prisma.counter.count({ where: { userId: b.id } })).toBe(0);
+        await request(app).get('/users/check-auth').set('Authorization', b.authorization).expect(200);
+        const native = await request(app)
+            .get('/users/check-auth')
+            .set('Cookie', cookie)
+            .set('Authorization', a.authorization)
+            .set('X-Account-Id', a.id)
+            .expect(200);
+        expect(native.body.data.user.id).toBe(a.id);
+    });
+
+    it('disconnects an authenticated socket when its access token expires', async () => {
+        const account = await sharingAccount('BASIC');
+        const token = jwtUtil.sign({ id: account.id, email: account.email, sessionVersion: 0 }, '2s');
+        const socket = createSocket(socketUrl, { auth: { token }, transports: ['websocket'], autoConnect: false });
+        try {
+            const connected = new Promise<void>((resolve) => socket.once('session-ready', resolve));
+            socket.connect();
+            await connected;
+            await vi.waitFor(() => expect(socket.connected).toBe(false), { timeout: 3000 });
+        } finally {
+            socket.disconnect();
+        }
+    });
+
+    it('saves the validated metric on create and update, including idempotent retries', async () => {
+        const account = await sharingAccount('BASIC');
+        const key = randomUUID();
+        const create = (metric: string) =>
+            request(app)
+                .post('/counters')
+                .set('Authorization', account.authorization)
+                .set('X-Idempotency-Key', key)
+                .send({ title: 'Water', metric });
+        const created = await create(' '.repeat(81) + 'oz ').expect(201);
+        const id = created.body.data.counter.id;
+        const readMetric = () => prisma.counter.findUniqueOrThrow({ where: { id }, select: { metric: true } });
+        expect(await readMetric()).toEqual({ metric: 'oz' });
+
+        const retry = await create('oz').expect(201);
+        expect(retry.body.data.counter.id).toBe(id);
+        await request(app)
+            .put(`/counters/update/${id}`)
+            .set('Authorization', account.authorization)
+            .send({ metric: ' '.repeat(81) + 'ml ' })
+            .expect(200);
+        expect(await readMetric()).toEqual({ metric: 'ml' });
+    });
+
     it('persists decimal settings and keeps concurrent shared taps exact and idempotent', async () => {
         const owner = await sharingAccount('PREMIUM');
         const member = await sharingAccount('BASIC');
@@ -188,9 +659,71 @@ describe('PostgreSQL integration', () => {
             type: 'SHARED',
             inviteCode,
         });
+    });
 
-        await prisma.user.update({ where: { id: owner.id }, data: { tier: 'BASIC' } });
-        await share().expect(403);
+    it('lets Basic participants forward an established invite, but not outsiders or former participants', async () => {
+        const owner = await sharingAccount('BASIC');
+        const member = await sharingAccount('BASIC');
+        const outsider = await sharingAccount('PREMIUM');
+        const counter = await prisma.counter.create({
+            data: { title: 'Established counter', userId: owner.id, type: 'SHARED', inviteCode: randomUUID() },
+        });
+        const share = (authorization: string) =>
+            request(app).post(`/counters/${counter.id}/share`).set('Authorization', authorization);
+        await share(owner.authorization).expect(403);
+        await request(app)
+            .post('/counters/join')
+            .set('Authorization', member.authorization)
+            .send({ inviteCode: counter.inviteCode })
+            .expect(201);
+        // Forwarding an established link has no new tier or email-verification requirement.
+        await prisma.user.updateMany({ where: { id: { in: [owner.id, member.id] } }, data: { emailVerifiedAt: null } });
+        for (const account of [owner, member]) {
+            const forwarded = await share(account.authorization).expect(200);
+            expect(forwarded.body.data.counter.inviteCode).toBe(counter.inviteCode);
+        }
+        await share(outsider.authorization).expect(404);
+        await request(app)
+            .put(`/counters/remove-shared/${counter.id}`)
+            .set('Authorization', member.authorization)
+            .expect(200);
+        await share(member.authorization).expect(404);
+        await share(owner.authorization).expect(403);
+    });
+
+    it('keeps joined counters usable after Premium expires and limits only new joins', async () => {
+        const owner = await sharingAccount('PREMIUM');
+        const member = await sharingAccount('PREMIUM');
+        const counters = await Promise.all(
+            [1, 2, 3].map((number) =>
+                prisma.counter.create({
+                    data: { title: `Counter ${number}`, userId: owner.id, type: 'SHARED', inviteCode: randomUUID() },
+                }),
+            ),
+        );
+        const join = (inviteCode: string) =>
+            request(app).post('/counters/join').set('Authorization', member.authorization).send({ inviteCode });
+        for (const counter of counters.slice(0, 2)) await join(counter.inviteCode!).expect(201);
+        await prisma.user.update({
+            where: { id: member.id },
+            data: { premiumExpiresAt: new Date(Date.now() - 60_000) },
+        });
+        await join(counters[2].inviteCode!).expect(403);
+        for (const counter of counters.slice(0, 2)) {
+            await join(counter.inviteCode!).expect(200);
+            await request(app)
+                .put(`/counters/increment/${counter.id}`)
+                .set('Authorization', member.authorization)
+                .send({ amount: 1 })
+                .expect(200);
+        }
+        const snapshot = await request(app).get('/counters').set('Authorization', member.authorization).expect(200);
+        expect(snapshot.body.data.counters.map((counter: ClientCounter) => [counter.id, counter.count]).sort()).toEqual(
+            counters
+                .slice(0, 2)
+                .map((counter) => [counter.id, 1])
+                .sort(),
+        );
     });
 
     it('normalizes mixed-case email registration and login while rejecting a case-insensitive duplicate', async () => {
@@ -270,12 +803,24 @@ describe('PostgreSQL integration', () => {
             },
         });
 
+        await request(app).post('/users/reset-password/verify').send({ email, code: resetCode }).expect(200);
+        const checkedCode = await prisma.emailOtp.findUniqueOrThrow({
+            where: { userId_purpose: { userId: user.id, purpose: 'PASSWORD_RESET' } },
+        });
+        expect(checkedCode.consumedAt).toBeNull();
+
         const reset = await request(app).post('/users/reset-password').send({
             email,
             code: resetCode,
             password: newPassword,
         });
         expect(reset.status).toBe(200);
+
+        await request(app).post('/users/reset-password/verify').send({ email, code: resetCode }).expect(422);
+        await request(app)
+            .post('/users/reset-password')
+            .send({ email, code: resetCode, password: 'Another-password1' })
+            .expect(422);
 
         const oldAccess = await request(app).get('/counters').set('Authorization', `Bearer ${accessToken}`);
         const oldRefresh = await request(app).post('/users/refresh').send({ refreshToken });
@@ -321,6 +866,35 @@ describe('PostgreSQL integration', () => {
         const newLogin = await request(app).post('/users/login').send({ email, password: newPassword });
         expect(oldLogin.status).toBe(401);
         expect(newLogin.status).toBe(200);
+    });
+
+    it('shares reset-code attempt limits between verification and saving, and rejects expired codes', async () => {
+        const email = `reset-attempts.${randomUUID()}@example.com`;
+        const password = 'Integration-password1';
+        const code = '123456';
+        await request(app).post('/users').send({ email, password }).expect(201);
+        const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+        const where = { userId_purpose: { userId: user.id, purpose: 'PASSWORD_RESET' as const } };
+        await prisma.emailOtp.create({
+            data: {
+                userId: user.id,
+                purpose: 'PASSWORD_RESET',
+                digest: digestEmailOtp(user.id, 'PASSWORD_RESET', code),
+                expiresAt: new Date(Date.now() - 1_000),
+            },
+        });
+        await request(app).post('/users/reset-password/verify').send({ email, code }).expect(422);
+        await prisma.emailOtp.update({ where, data: { expiresAt: new Date(Date.now() + 60_000) } });
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+            await request(app)
+                .post(attempt % 2 === 0 ? '/users/reset-password/verify' : '/users/reset-password')
+                .send({ email, code: '000000', password: 'New-password123' })
+                .expect(422);
+        }
+        await request(app).post('/users/reset-password/verify').send({ email, code }).expect(422);
+        await request(app).post('/users/reset-password').send({ email, code, password: 'New-password123' }).expect(422);
+        expect((await prisma.emailOtp.findUniqueOrThrow({ where })).attempts).toBe(5);
+        await request(app).post('/users/login').send({ email, password }).expect(200);
     });
 
     it('locks an email code after five incorrect attempts', async () => {
@@ -457,7 +1031,8 @@ describe('PostgreSQL integration', () => {
         const ownerAccessToken = ownerLogin.body.data.accessToken;
         const memberAccessToken = memberLogin.body.data.accessToken;
 
-        await prisma.user.update({ where: { id: owner.id }, data: { tier: 'PREMIUM' } });
+        await prisma.user.update({ where: { id: owner.id }, data: { tier: 'PREMIUM', emailVerifiedAt: new Date() } });
+        await prisma.user.update({ where: { id: member.id }, data: { emailVerifiedAt: new Date() } });
 
         const createShared = await ownerAgent
             .post('/counters')

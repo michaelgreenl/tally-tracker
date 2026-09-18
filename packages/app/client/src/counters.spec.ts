@@ -1,11 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-    hasJoinedSharedCounter,
-    isGuestCounterLimitReached,
-    orderCounters,
-    reconcileAuthenticatedCounters,
-} from './counters';
+import { isGuestCounterLimitReached, orderCounters, reconcileAuthenticatedCounters } from './counters';
 
 import type { ClientCounter, HexColor } from '@tally/core/client';
 
@@ -42,7 +37,7 @@ it('reorders current records without restoring deleted counters or losing new co
 });
 
 describe('authenticated counter reconciliation', () => {
-    it('keeps eligible local data, migrates guests, and lets remote data win duplicates', () => {
+    it('removes stale local records after a server snapshot, but keeps guests for upload', () => {
         const remote = { ...counter('duplicate', 'PERSONAL', 'user-1'), count: 7 };
         const accepted = {
             ...counter('accepted', 'SHARED', 'owner'),
@@ -66,8 +61,13 @@ describe('authenticated counter reconciliation', () => {
 
         const result = reconcileAuthenticatedCounters(local, [remote], 'user-1');
 
-        expect(result.counters).toEqual([remote, counter('guest', 'PERSONAL', 'user-1'), accepted]);
+        expect(result.counters).toEqual([remote, counter('guest', 'PERSONAL', 'user-1')]);
         expect(result.guestCounters).toEqual([counter('guest', 'PERSONAL', 'user-1')]);
+        expect(reconcileAuthenticatedCounters(local, null, 'user-1').counters).toEqual([
+            counter('guest', 'PERSONAL', 'user-1'),
+            counter('duplicate', 'PERSONAL', 'user-1'),
+            accepted,
+        ]);
     });
 
     it('reports a failed sync when no remote snapshot is available', () => {
@@ -83,13 +83,6 @@ describe('authenticated counter reconciliation', () => {
         ];
 
         expect(reconcileAuthenticatedCounters([local], remote, 'user-1', pending).counters).toEqual([local]);
-    });
-});
-
-describe('hasJoinedSharedCounter', () => {
-    it('counts joined shared counters but not shared counters owned by the user', () => {
-        expect(hasJoinedSharedCounter([counter('owned', 'SHARED', 'user-1')], 'user-1')).toBe(false);
-        expect(hasJoinedSharedCounter([counter('joined', 'SHARED', 'owner')], 'user-1')).toBe(true);
     });
 });
 

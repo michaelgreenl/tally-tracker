@@ -33,7 +33,7 @@ export const expressCorsOpts = {
     credentials: true,
     origin: corsOrigin,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'X-Requested-With', 'X-Idempotency-Key', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'X-Requested-With', 'X-Idempotency-Key', 'X-Account-Id', 'Authorization'],
 };
 
 export const socketCorsOpts = {

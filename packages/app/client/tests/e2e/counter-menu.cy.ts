@@ -102,4 +102,96 @@ describe('Counter actions', () => {
         );
         cy.get('[data-testid="snackbar"]').should('be.visible');
     });
+
+    for (const isOwner of [true, false]) {
+        it(`lets a Basic ${isOwner ? 'owner delete' : 'member leave'} an established counter after confirmation`, () => {
+            const ownerId = crypto.randomUUID();
+            const memberId = crypto.randomUUID();
+            const counter = {
+                id: crypto.randomUUID(),
+                userId: ownerId,
+                title: 'Shared water',
+                count: 3,
+                metric: null,
+                increment: 1,
+                type: 'SHARED',
+                inviteCode: crypto.randomUUID(),
+                color: '#000000',
+                shares: [{ userId: memberId, status: 'ACCEPTED' }],
+            };
+            let removed = false;
+            cy.intercept('POST', '**/users/login', {
+                body: {
+                    success: true,
+                    data: {
+                        user: {
+                            id: isOwner ? ownerId : memberId,
+                            email: 'basic@example.com',
+                            tier: 'BASIC',
+                            emailVerified: false,
+                        },
+                    },
+                },
+            });
+            cy.intercept('GET', '**/counters', (req) => {
+                req.reply({ success: true, data: { counters: removed ? [] : [counter] } });
+            });
+            cy.intercept('POST', `**/counters/${counter.id}/share`, {
+                body: { success: true, data: { counter } },
+            }).as('forward');
+            cy.intercept(
+                isOwner ? 'DELETE' : 'PUT',
+                isOwner ? `**/counters/${counter.id}` : `**/counters/remove-shared/${counter.id}`,
+                (req) => {
+                    removed = true;
+                    req.reply({ success: true });
+                },
+            ).as('remove');
+            cy.visit('/login', {
+                onBeforeLoad(win) {
+                    cy.stub(win.navigator.clipboard, 'writeText').as('clipboard').resolves();
+                },
+            });
+            cy.get('[data-testid="auth-email"]').type('basic@example.com');
+            cy.get('[data-testid="auth-password"]').type('Password123');
+            cy.get('[data-testid="auth-submit"]').click();
+            cy.get(`[data-testid="counter-${counter.id}-menu"]`).click();
+            cy.get(`[data-testid="counter-${counter.id}-share"]`).should('be.enabled').click();
+            cy.wait('@forward');
+            cy.get('@clipboard').should(
+                'have.been.calledOnceWithExactly',
+                `${Cypress.config('baseUrl')}/join?code=${counter.inviteCode}`,
+            );
+            cy.get('[data-testid="snackbar-dismiss"]').click();
+            cy.get(`[data-testid="counter-${counter.id}-menu"]`).click();
+            cy.get(`[data-testid="counter-${counter.id}-delete"]`).click();
+            cy.get('[data-testid="counter-remove-confirm"]').should('be.visible');
+            let changedDuringDismissal = false;
+            let observer: MutationObserver;
+            cy.get('[data-testid="counter-remove-confirm"]').then(($dialog) => {
+                const dialog = $dialog[0];
+                const original = dialog.textContent;
+                observer = new dialog.ownerDocument.defaultView!.MutationObserver(() => {
+                    if (dialog.textContent !== original) changedDuringDismissal = true;
+                });
+                observer.observe(dialog, { subtree: true, characterData: true, childList: true });
+            });
+            cy.get('[data-testid="counter-remove-cancel"]').click();
+            cy.get('[data-testid="counter-remove-confirm"]')
+                .should('not.exist')
+                .then(() => {
+                    observer.disconnect();
+                    expect(changedDuringDismissal, 'dialog content stays stable during its exit animation').to.equal(
+                        false,
+                    );
+                });
+            cy.get('@remove.all').should('have.length', 0);
+            cy.get(`[data-testid="counter-${counter.id}-menu"]`).click();
+            cy.get(`[data-testid="counter-${counter.id}-delete"]`).click();
+            cy.get('[data-testid="counter-remove-submit"]').click();
+            cy.wait('@remove');
+            cy.get(`[data-testid="counter-${counter.id}"]`).should('not.exist');
+            cy.get('[data-testid="counter-remove-confirm"]').should('not.exist');
+        });
+    }
 });

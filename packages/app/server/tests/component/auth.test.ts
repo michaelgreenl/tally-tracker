@@ -1,10 +1,12 @@
-import { OK, CREATED, OK_NO_CONTENT, UNAUTHORIZED, NOT_FOUND, UNPROCESSABLE_ENTITY } from '@tally/core';
+import { OK, CREATED, OK_NO_CONTENT, UNAUTHORIZED, UNPROCESSABLE_ENTITY, SERVER_ERROR } from '@tally/core';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
+import bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 import type { Request, Response, NextFunction } from 'express';
+import type { Prisma } from '@prisma/client';
 import app from '../../src/app.js';
-import { buildUser, buildClientUser } from '../fixtures/user.fixture.js';
+import { buildUser } from '../fixtures/user.fixture.js';
 import { buildRefreshToken, TEST_USER_ID, TEST_REFRESH_TOKEN_ID } from '../fixtures/counter.fixture.js';
 
 vi.mock('../../src/middleware/auth.middleware', () => ({
@@ -13,7 +15,7 @@ vi.mock('../../src/middleware/auth.middleware', () => ({
             return res.status(401).json({ success: false, message: 'Invalid token' });
         }
 
-        req.user = { id: TEST_USER_ID, email: 'test@test.com', sessionVersion: 0 };
+        req.user = { id: TEST_USER_ID, email: 'test@test.com', emailVerifiedAt: null, sessionVersion: 0 };
         next();
     },
 }));
@@ -23,9 +25,8 @@ vi.mock('../../src/db/repositories/user.repository', () => ({
     getUserByEmail: vi.fn(),
     getUserById: vi.fn(),
     getUserAuthById: vi.fn(),
-    updateUserInfo: vi.fn(),
     deleteAccount: vi.fn(),
-    deleteUser: vi.fn(),
+    withLockedUser: vi.fn(),
 }));
 
 vi.mock('../../src/db/repositories/email-otp.repository', () => ({
@@ -44,6 +45,8 @@ vi.mock('../../src/db/repositories/token.repository', () => ({
     get: vi.fn(),
     remove: vi.fn(),
     removeAllForUser: vi.fn(),
+    rotate: vi.fn(),
+    revokeSession: vi.fn(),
 }));
 
 import * as userRepository from '../../src/db/repositories/user.repository.js';
@@ -55,9 +58,17 @@ describe('Auth Routes', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         vi.mocked(issueEmailOtp).mockResolvedValue();
+        vi.mocked(userRepository.withLockedUser).mockImplementation(async (_id, action) =>
+            action(buildUser(), {
+                refreshToken: { create: tokenRepository.create },
+            } as unknown as Prisma.TransactionClient),
+        );
+        vi.mocked(tokenRepository.rotate).mockResolvedValue(null);
+        vi.mocked(tokenRepository.revokeSession).mockResolvedValue(null);
     });
 
     afterEach(() => {
+        vi.restoreAllMocks();
         vi.unstubAllEnvs();
     });
 
@@ -96,7 +107,7 @@ describe('Auth Routes', () => {
 
             const res = await request(app).post('/users').send({
                 email: 'new@test.com',
-                password: 'Abcde1',
+                password: 'New-password123',
             });
 
             expect(res.status).toBe(CREATED);
@@ -110,7 +121,7 @@ describe('Auth Routes', () => {
 
         it('should reject registration without email', async () => {
             const res = await request(app).post('/users').send({
-                password: 'Abcde1',
+                password: 'New-password123',
             });
 
             expect(res.status).toBe(UNPROCESSABLE_ENTITY);
@@ -120,9 +131,15 @@ describe('Auth Routes', () => {
     describe.each([
         ['post', '/users'],
         ['post', '/users/reset-password'],
-        ['put', '/users'],
     ] as const)('%s %s password requirements', (method, path) => {
-        it.each(['Abc12', 'abcdef1', 'Abcdef'])('rejects a password missing a requirement: %s', async (password) => {
+        it.each([
+            `A1${'a'.repeat(12)}`,
+            `A1${'😀'.repeat(7)}`,
+            'abcdefghijklmno1',
+            'Abcdefghijklmnop',
+            `Ab1${'a'.repeat(70)}`,
+            `Ab1${'é'.repeat(35)}`,
+        ])('rejects an invalid new password: %s', async (password) => {
             const res = await request(app)[method](path).send({
                 email: 'test@test.com',
                 code: '123456',
@@ -137,6 +154,20 @@ describe('Auth Routes', () => {
     });
 
     describe('POST /users/login', () => {
+        it('keeps internal login failures out of the response and console output', async () => {
+            const secret = 'database-password-fixture';
+            const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+            vi.mocked(userRepository.getUserByEmail).mockRejectedValueOnce(new Error(`Database failure: ${secret}`));
+
+            const res = await request(app)
+                .post('/users/login')
+                .send({ email: 'test@test.com', password: 'Password123' });
+
+            expect(res.status).toBe(SERVER_ERROR);
+            expect(res.body).toEqual({ success: false, message: 'Something went wrong. Please try again later.' });
+            expect(log.mock.calls.flat().join(' ')).not.toContain(secret);
+        });
+
         it('should login with valid email and return tokens', async () => {
             vi.mocked(userRepository.getUserByEmail).mockResolvedValue(buildUser());
             vi.mocked(tokenRepository.create).mockResolvedValue(buildRefreshToken());
@@ -187,26 +218,24 @@ describe('Auth Routes', () => {
             expect(cookieStr).toContain('refresh_token');
         });
 
-        it('should return 404 for unknown email', async () => {
+        it('uses the same public error for unknown email and wrong password', async () => {
             vi.mocked(userRepository.getUserByEmail).mockResolvedValue(null);
-
-            const res = await request(app).post('/users/login').send({
+            const compare = vi.spyOn(bcrypt, 'compare');
+            const unknown = await request(app).post('/users/login').send({
                 email: 'unknown@test.com',
-                password: 'password123',
+                password: 'wrongpassword',
             });
-
-            expect(res.status).toBe(NOT_FOUND);
-        });
-
-        it('should return 401 for wrong password', async () => {
+            expect(compare).toHaveBeenCalledOnce();
             vi.mocked(userRepository.getUserByEmail).mockResolvedValue(buildUser());
-
-            const res = await request(app).post('/users/login').send({
+            const wrong = await request(app).post('/users/login').send({
                 email: 'test@test.com',
                 password: 'wrongpassword',
             });
-
-            expect(res.status).toBe(UNAUTHORIZED);
+            expect(unknown.status).toBe(UNAUTHORIZED);
+            expect(wrong.status).toBe(UNAUTHORIZED);
+            expect(unknown.body).toEqual(wrong.body);
+            expect(unknown.headers['set-cookie']).toBeUndefined();
+            expect(wrong.headers['set-cookie']).toBeUndefined();
         });
     });
 
@@ -216,41 +245,18 @@ describe('Auth Routes', () => {
         it('should rotate tokens with valid refresh token', async () => {
             const oldToken = buildRefreshToken();
             const newToken = buildRefreshToken({ id: NEW_REFRESH_TOKEN_ID });
-            const refreshedUser = {
-                id: buildClientUser().id,
-                email: buildClientUser().email,
-                sessionVersion: 0,
-            } satisfies NonNullable<Awaited<ReturnType<typeof userRepository.getUserAuthById>>>;
-
-            vi.mocked(tokenRepository.get).mockResolvedValue(oldToken);
-            vi.mocked(tokenRepository.remove).mockResolvedValue(oldToken);
-            vi.mocked(tokenRepository.create).mockResolvedValue(newToken);
-            vi.mocked(userRepository.getUserAuthById).mockResolvedValue(refreshedUser);
+            vi.mocked(tokenRepository.rotate).mockResolvedValue({ user: buildUser(), token: newToken });
 
             const res = await request(app).post('/users/refresh').send({ refreshToken: TEST_REFRESH_TOKEN_ID });
 
             expect(res.status).toBe(OK);
             expect(res.body.data.accessToken).toBeDefined();
             expect(res.body.data.refreshToken).toBe(NEW_REFRESH_TOKEN_ID);
-            expect(tokenRepository.remove).toHaveBeenCalledWith(TEST_REFRESH_TOKEN_ID);
+            expect(tokenRepository.rotate).toHaveBeenCalledWith(oldToken.id, expect.any(Date), undefined);
         });
 
-        it('should return 401 for expired refresh token', async () => {
-            const expiredToken = buildRefreshToken({
-                expiresAt: new Date('2020-01-01'),
-            });
-
-            vi.mocked(tokenRepository.get).mockResolvedValue(expiredToken);
-            vi.mocked(tokenRepository.remove).mockResolvedValue(expiredToken);
-
-            const res = await request(app).post('/users/refresh').send({ refreshToken: TEST_REFRESH_TOKEN_ID });
-
-            expect(res.status).toBe(UNAUTHORIZED);
-            expect(tokenRepository.remove).toHaveBeenCalledWith(TEST_REFRESH_TOKEN_ID);
-        });
-
-        it('should return 401 for unknown refresh token', async () => {
-            vi.mocked(tokenRepository.get).mockResolvedValue(null);
+        it('should return 401 when the refresh credential is rejected', async () => {
+            vi.mocked(tokenRepository.rotate).mockResolvedValue(null);
 
             const res = await request(app).post('/users/refresh').send({ refreshToken: TEST_REFRESH_TOKEN_ID });
 
@@ -293,36 +299,19 @@ describe('Auth Routes', () => {
 
     describe('POST /users/logout', () => {
         it('should clear tokens and cookies', async () => {
-            const token = buildRefreshToken();
-            const removedTokens = {
-                count: 1,
-            } satisfies Awaited<ReturnType<typeof tokenRepository.removeAllForUser>>;
-
-            vi.mocked(tokenRepository.get).mockResolvedValue(token);
-            vi.mocked(tokenRepository.removeAllForUser).mockResolvedValue(removedTokens);
-
             const res = await request(app)
                 .post('/users/logout')
                 .set('Cookie', `refresh_token=${TEST_REFRESH_TOKEN_ID}`);
 
             expect(res.status).toBe(OK);
-            expect(tokenRepository.removeAllForUser).toHaveBeenCalledWith(TEST_USER_ID);
+            expect(tokenRepository.revokeSession).toHaveBeenCalledWith(null, TEST_REFRESH_TOKEN_ID, undefined);
         });
 
         it('should clear tokens using a refresh token in the request body', async () => {
-            const token = buildRefreshToken();
-            const removedTokens = {
-                count: 1,
-            } satisfies Awaited<ReturnType<typeof tokenRepository.removeAllForUser>>;
-
-            vi.mocked(tokenRepository.get).mockResolvedValue(token);
-            vi.mocked(tokenRepository.removeAllForUser).mockResolvedValue(removedTokens);
-
             const res = await request(app).post('/users/logout').send({ refreshToken: TEST_REFRESH_TOKEN_ID });
 
             expect(res.status).toBe(OK);
-            expect(tokenRepository.get).toHaveBeenCalledWith(TEST_REFRESH_TOKEN_ID);
-            expect(tokenRepository.removeAllForUser).toHaveBeenCalledWith(TEST_USER_ID);
+            expect(tokenRepository.revokeSession).toHaveBeenCalledWith(null, TEST_REFRESH_TOKEN_ID, undefined);
         });
 
         it('should succeed even without a refresh token cookie', async () => {
@@ -388,20 +377,6 @@ describe('Auth Routes', () => {
 
             expect(res.status).toBe(UNAUTHORIZED);
             expect(userRepository.deleteAccount).not.toHaveBeenCalled();
-        });
-    });
-
-    describe('PUT /users', () => {
-        it('should normalize mixed-case email updates before persisting', async () => {
-            vi.mocked(userRepository.updateUserInfo).mockResolvedValue(true);
-
-            const res = await request(app).put('/users').send({ email: 'NewEmail@Example.com' });
-
-            expect(res.status).toBe(OK);
-            expect(userRepository.updateUserInfo).toHaveBeenCalledWith(
-                TEST_USER_ID,
-                expect.objectContaining({ email: 'newemail@example.com' }),
-            );
         });
     });
 });

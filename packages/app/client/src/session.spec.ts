@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiError } from './api';
 import { restoreSession } from './session';
+import { changeSession, getSessionScope } from './services/session-scope';
 
 const { authService } = vi.hoisted(() => ({
     authService: {
@@ -17,7 +18,6 @@ const { authService } = vi.hoisted(() => ({
         register: vi.fn(),
         setAccessToken: vi.fn(),
         setRefreshToken: vi.fn(),
-        updateUser: vi.fn(),
     },
 }));
 
@@ -27,6 +27,7 @@ vi.mock('./services/auth.service', () => ({ AuthService: authService }));
 
 describe('restoreSession', () => {
     beforeEach(() => {
+        changeSession();
         for (const mock of Object.values(authService)) mock.mockReset();
         authService.getCachedUser.mockResolvedValue({ id: 'user-1', email: 'user@example.com', tier: 'BASIC' });
         authService.getAccessToken.mockResolvedValue(null);
@@ -60,7 +61,7 @@ describe('restoreSession', () => {
         authService.checkAuth.mockResolvedValue({ success: true, data: { user: verifiedUser } });
 
         await expect(restoreSession()).resolves.toEqual(verifiedUser);
-        expect(authService.cacheUser).toHaveBeenCalledWith(verifiedUser);
+        expect(authService.cacheUser).toHaveBeenCalledWith(verifiedUser, getSessionScope());
     });
 
     it('clears a cached session rejected by the server', async () => {

@@ -99,11 +99,12 @@ export const runIdempotentMutation = async <TBody>(
     req: Request,
     mutation: MutationHandler<TBody>,
 ): Promise<IdempotentResult<TBody | ApiResponse<null>>> => {
+    // Offline retries have no deadline. Keep receipts until account deletion, not a daily expiry.
     const key = req.headers['x-idempotency-key'];
     const userId = req.user?.id;
 
     if (typeof key !== 'string' || !userId) {
-        const response = await mutation(prisma);
+        const response = await prisma.$transaction(mutation);
         return { ...response, replayed: false };
     }
 

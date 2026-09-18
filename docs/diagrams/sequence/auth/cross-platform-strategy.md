@@ -35,11 +35,11 @@ sequenceDiagram
         Client->>Client: Add Header: "Authorization: Bearer ey..."
         Note right of Client: Native apps use explicit headers.
     else isNative is FALSE (Web)
-        Client->>Client: Do NOT add Header
+        Client->>Client: Do not add an Authorization header
         Note right of Client: The browser attaches HttpOnly cookies.
     end
 
-    Client->>API: Send Request
+    Client->>API: Send request with X-Account-Id for the current account
 
     activate API
     API->>API: Middleware Check
@@ -58,3 +58,17 @@ sequenceDiagram
     end
     deactivate API
 ```
+
+The account header is a consistency check, not an authentication credential.
+Changing accounts aborts old requests and stops old queue work. Local writes finish before new-session writes begin.
+
+Web login, refresh, logout, and account deletion share a Web Lock across tabs.
+The lock covers each HTTP response, not refresh retries. This requires a secure browser context with Web Locks support.
+Use HTTPS in production. Localhost also supports this check; plain HTTP on a LAN may not.
+
+Logout requires confirmation and immediately closes the private UI. Queued changes keep their original account owner.
+The server increments the account session version, removes its refresh tokens, and disconnects its old sockets.
+This ends all account sessions. A failed remote logout does not block local sign-out; the client reports incomplete revocation.
+
+Confirmed account deletion removes that account's local counters, pending commands, and saved order.
+Cleanup waits for started writes and preserves another account's credentials. Failed server deletion leaves local work unchanged.

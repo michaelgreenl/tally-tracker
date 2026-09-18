@@ -11,7 +11,7 @@ import type { Root } from 'react-dom/client';
 const { billing, session } = vi.hoisted(() => ({
     billing: { load: vi.fn(), purchase: vi.fn(), restore: vi.fn() },
     session: {
-        user: { id: 'account-a', tier: 'BASIC' },
+        user: { id: 'account-a', tier: 'BASIC', emailVerified: true },
         isAuthenticated: true,
         isPremium: false,
         refreshPurchases: vi.fn(),
@@ -22,7 +22,11 @@ const { billing, session } = vi.hoisted(() => ({
 vi.mock('react-native', () => vi.importActual<typeof import('react-native')>('react-native-web'));
 vi.mock('react-native-svg', () => ({ default: 'svg', Path: 'path' }));
 vi.mock('react-native-safe-area-context', async () => ({ SafeAreaView: (await import('react-native')).View }));
-vi.mock('expo-router', () => ({ useRouter: () => ({}), Link: ({ children }: { children: unknown }) => children }));
+vi.mock('expo-router', () => ({
+    useRouter: () => ({}),
+    useLocalSearchParams: () => ({}),
+    Link: ({ children }: { children: unknown }) => children,
+}));
 vi.mock('expo-router/head', () => ({ default: () => null }));
 vi.mock('./components/auth-form.module.css', () => ({ unstable_styles: {} }));
 vi.mock('./components/snackbar', () => ({ Snackbar: () => null }));
@@ -41,6 +45,7 @@ beforeEach(async () => {
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     session.isPremium = false;
     session.user.tier = 'BASIC';
+    session.user.emailVerified = true;
     billing.load.mockResolvedValue({
         packages: { yearly: { product: { priceString: '$10.00' } } },
         hasSubscription: false,
@@ -76,6 +81,21 @@ it('keeps checkout available after a failed restore but blocks duplicate purchas
     expect(purchase.disabled).toBe(true);
     await act(async () => purchase.click());
     expect(billing.purchase).toHaveBeenCalledTimes(1);
+});
+
+it('requires verified email for checkout while leaving restoration available', async () => {
+    session.user.emailVerified = false;
+    await act(async () => root.render(createElement(UpgradeScreen)));
+    const purchase = container.querySelector<HTMLButtonElement>('[data-testid="upgrade-purchase"]')!;
+    const restore = container.querySelector<HTMLButtonElement>('[data-testid="upgrade-restore"]')!;
+    await act(async () => purchase.click());
+    expect(purchase.disabled).toBe(true);
+    expect(billing.purchase).not.toHaveBeenCalled();
+    await act(async () => restore.click());
+    expect(billing.restore).toHaveBeenCalledWith('account-a');
+    session.user.emailVerified = true;
+    await act(async () => root.render(createElement(UpgradeScreen)));
+    expect(purchase.disabled).toBe(false);
 });
 
 it.each([
