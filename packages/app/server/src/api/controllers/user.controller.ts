@@ -17,6 +17,7 @@ import type { Request, Response } from 'express';
 import type { AuthResponse, ClientUser } from '@tally/core';
 import type { AuthRequest, RefreshRequest } from '@tally/core';
 import type { User } from '@prisma/client';
+import type { Server } from 'socket.io';
 
 const REFRESH_TOKEN_TTL = 30 * 24 * 60 * 60 * 1000; // 30d
 
@@ -129,27 +130,32 @@ export const login = async (
             return res.status(UNAUTHORIZED).json({ success: false, message: 'Incorrect password.' });
         }
 
-        const clientUser = toClientUser(user);
-
-        const accessToken = jwt.sign(
-            { id: user.id, email: user.email, sessionVersion: user.sessionVersion },
-            rememberMe ? '60m' : '1d',
-        );
-
-        let refreshToken: string | undefined;
+        const credentials = await userRepository.withLockedUser(user.id, async (current, tx) => {
+            if (!current || current.password !== user.password || current.sessionVersion !== user.sessionVersion)
+                return null;
+            const accessToken = jwt.sign(
+                { id: current.id, email: current.email, sessionVersion: current.sessionVersion },
+                rememberMe ? '60m' : '1d',
+            );
+            const token = rememberMe
+                ? await tx.refreshToken.create({
+                      data: { userId: user.id, expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL) },
+                  })
+                : null;
+            return { user: toClientUser(current), accessToken, refreshToken: token?.id };
+        });
+        if (!credentials) return res.status(UNAUTHORIZED).json({ success: false, message: 'Please sign in again.' });
+        const { accessToken, refreshToken } = credentials;
 
         if (rememberMe) {
-            const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL);
-            const tokenRecord = await tokenRepository.create({ userId: user.id, expiresAt });
-            refreshToken = tokenRecord.id;
-
             res.cookie('access_token', accessToken, shortAccessCookieConfig);
             res.cookie('refresh_token', refreshToken, refreshCookieConfig);
         } else {
             res.cookie('access_token', accessToken, accessCookieConfig);
+            res.clearCookie('refresh_token', clearCookieConfig);
         }
 
-        res.json({ success: true, data: { user: clientUser, accessToken, refreshToken } });
+        res.json({ success: true, data: credentials });
     } catch (error: unknown) {
         captureServerError(error, { req, source: 'user.login' });
         console.error('User Controller Error: ', error);
@@ -167,30 +173,22 @@ export const refresh = async (
 ) => {
     try {
         // Web sends refresh token via cookie, native sends it in the body
-        const refreshTokenId = req.cookies?.refresh_token || req.body?.refreshToken;
+        const refreshTokenId = req.body?.refreshToken || req.cookies?.refresh_token;
 
         if (!refreshTokenId) {
             return res.status(UNAUTHORIZED).json({ success: false, message: 'No refresh token provided' });
         }
 
-        const tokenRecord = await tokenRepository.get(refreshTokenId);
-
-        if (!tokenRecord || tokenRecord.expiresAt < new Date()) {
-            if (tokenRecord) await tokenRepository.remove(tokenRecord.id);
+        const rotated = await tokenRepository.rotate(
+            refreshTokenId,
+            new Date(Date.now() + REFRESH_TOKEN_TTL),
+            req.get('X-Account-Id'),
+        );
+        if (!rotated) {
             return res.status(UNAUTHORIZED).json({ success: false, message: 'Invalid or expired refresh token' });
         }
 
-        const user = await userRepository.getUserAuthById(tokenRecord.userId);
-        if (!user) {
-            await tokenRepository.remove(tokenRecord.id);
-            return res.status(NOT_FOUND).json({ success: false, message: 'User not found' });
-        }
-
-        // Rotate: invalidate old token, issue new one with fresh expiry
-        await tokenRepository.remove(tokenRecord.id);
-        const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL);
-        const newTokenRecord = await tokenRepository.create({ userId: tokenRecord.userId, expiresAt });
-
+        const { user, token: newTokenRecord } = rotated;
         const accessToken = jwt.sign({ id: user.id, email: user.email, sessionVersion: user.sessionVersion });
 
         res.cookie('access_token', accessToken, shortAccessCookieConfig);
@@ -210,16 +208,34 @@ export const refresh = async (
     }
 };
 
-// Uses the refresh token (not access token) to identify the user,
-// so logout works even when the access token is expired.
+// Accept either credential. Non-remembered web sessions have no refresh cookie.
 export const logout = async (req: Request, res: Response<AuthResponse>) => {
     try {
-        const refreshTokenId = req.cookies?.refresh_token || req.body?.refreshToken;
-
-        if (refreshTokenId) {
-            const tokenRecord = await tokenRepository.get(refreshTokenId);
-            if (tokenRecord) {
-                await tokenRepository.removeAllForUser(tokenRecord.userId);
+        const refreshTokenId = req.body?.refreshToken || req.cookies?.refresh_token;
+        const token = req.headers.authorization?.startsWith('Bearer ')
+            ? req.headers.authorization.slice(7)
+            : req.cookies?.access_token;
+        let access: { id: string; sessionVersion: number } | null = null;
+        if (token) {
+            try {
+                const decoded = jwt.verify(token);
+                if (
+                    typeof decoded !== 'string' &&
+                    typeof decoded.id === 'string' &&
+                    typeof decoded.sessionVersion === 'number'
+                ) {
+                    access = { id: decoded.id, sessionVersion: decoded.sessionVersion };
+                }
+            } catch {
+                /* A valid refresh token can still revoke an expired access session. */
+            }
+        }
+        const revoked = await tokenRepository.revokeSession(access, refreshTokenId, req.get('X-Account-Id'));
+        const io = req.app.get('io') as Server | undefined;
+        if (revoked && io) {
+            const sockets = await io.in(revoked.userId).fetchSockets();
+            for (const socket of sockets) {
+                if (socket.data.sessionVersion < revoked.sessionVersion) socket.disconnect(true);
             }
         }
 
@@ -228,11 +244,14 @@ export const logout = async (req: Request, res: Response<AuthResponse>) => {
 
         res.json({ success: true });
     } catch (error: unknown) {
+        if (error instanceof Error && 'status' in error && error.status === UNAUTHORIZED) {
+            return res.status(UNAUTHORIZED).json({ success: false, message: 'Account changed' });
+        }
         captureServerError(error, { req, source: 'user.logout' });
         console.error('User Controller Error: ', error);
         res.status(SERVER_ERROR).json({
             success: false,
-            message: 'Server error: ' + getErrorMessage(error),
+            message: 'Could not finish logging out. Please try again.',
         });
     }
 };

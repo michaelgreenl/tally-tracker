@@ -2,6 +2,7 @@ import { OK, UNAUTHORIZED } from '@tally/core/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import apiFetch, { ApiError, REQUEST_FAILED_MESSAGE, setUnauthorizedHandler } from './api';
+import { changeSession, SessionChangedError, writeSession } from './services/session-scope';
 
 const { fetchMock, tokens, tokenStorage } = vi.hoisted(() => ({
     fetchMock: vi.fn(),
@@ -26,11 +27,13 @@ const jsonResponse = (body: unknown, status = OK) =>
 
 describe('apiFetch', () => {
     beforeEach(() => {
+        changeSession();
         vi.useRealTimers();
         tokens.clear();
         tokens.set('access', 'expired-access-token');
         tokens.set('refresh', 'stored-refresh-token');
         fetchMock.mockReset();
+        for (const mock of Object.values(tokenStorage)) mock.mockReset();
         vi.stubGlobal('fetch', fetchMock);
         tokenStorage.getAccessToken.mockImplementation(async () => tokens.get('access') ?? null);
         tokenStorage.getRefreshToken.mockImplementation(async () => tokens.get('refresh') ?? null);
@@ -52,7 +55,7 @@ describe('apiFetch', () => {
             expect.stringContaining('/counters'),
             expect.objectContaining({
                 body: '{"title":"Walks"}',
-                credentials: 'include',
+                credentials: 'omit',
                 headers: {
                     Authorization: 'Bearer expired-access-token',
                     'Content-Type': 'application/json',
@@ -60,6 +63,31 @@ describe('apiFetch', () => {
                 method: 'POST',
             }),
         );
+    });
+
+    it('does not sign out the new account when an old refresh-token read completes empty', async () => {
+        changeSession('account-a');
+        const unauthorized = vi.fn();
+        const clearHandler = setUnauthorizedHandler(unauthorized);
+        let finish!: (value: null) => void;
+        tokenStorage.getRefreshToken.mockImplementationOnce(
+            () =>
+                new Promise((resolve) => {
+                    finish = resolve;
+                }),
+        );
+        fetchMock.mockResolvedValueOnce(jsonResponse({}, UNAUTHORIZED));
+        const pending = apiFetch('/counters');
+        const rejected = expect(pending).rejects.toBeInstanceOf(SessionChangedError);
+        try {
+            await vi.waitFor(() => expect(finish).toBeTypeOf('function'));
+            changeSession('account-b');
+            finish(null);
+            await rejected;
+            expect(unauthorized).not.toHaveBeenCalled();
+        } finally {
+            clearHandler();
+        }
     });
 
     it('returns an empty result for a successful no-content response', async () => {
@@ -126,6 +154,53 @@ describe('apiFetch', () => {
 
         await expect(Promise.all(requests)).resolves.toEqual([{ success: true }, { success: true }]);
         expect(refreshCalls).toBe(1);
+    });
+
+    it('does not let an old refresh replace the next account or retry its request', async () => {
+        changeSession('account-a');
+        let finish!: (response: Response) => void;
+        fetchMock.mockResolvedValueOnce(jsonResponse({}, 401)).mockImplementationOnce(
+            () =>
+                new Promise<Response>((resolve) => {
+                    finish = resolve;
+                }),
+        );
+        const pending = expect(apiFetch('/counters')).rejects.toBeInstanceOf(SessionChangedError);
+        await vi.waitFor(() => expect(finish).toBeTypeOf('function'));
+        const next = changeSession('account-b');
+        await writeSession(next, async () => {
+            tokens.set('access', 'b-access');
+            tokens.set('refresh', 'b-refresh');
+        });
+        finish(jsonResponse({ success: true, data: { accessToken: 'a-access', refreshToken: 'a-refresh' } }));
+        await pending;
+        expect(tokens).toEqual(
+            new Map([
+                ['access', 'b-access'],
+                ['refresh', 'b-refresh'],
+            ]),
+        );
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('ignores a late unauthorized response after another account logs in', async () => {
+        const unauthorized = vi.fn();
+        const remove = setUnauthorizedHandler(unauthorized);
+        let finish!: (response: Response) => void;
+        fetchMock.mockImplementationOnce(
+            () =>
+                new Promise<Response>((resolve) => {
+                    finish = resolve;
+                }),
+        );
+        const pending = expect(apiFetch('/counters')).rejects.toBeInstanceOf(SessionChangedError);
+        await vi.waitFor(() => expect(finish).toBeTypeOf('function'));
+        changeSession('account-b');
+        finish(jsonResponse({}, 401));
+        await pending;
+        expect(unauthorized).not.toHaveBeenCalled();
+        expect(fetchMock).toHaveBeenCalledOnce();
+        remove();
     });
 
     it('reports an unauthorized response after refresh fails', async () => {

@@ -39,23 +39,23 @@ sequenceDiagram
     end
 
     activate API
-    API->>DB: Lookup refresh token
+    API->>DB: Lock the user and re-read the refresh token
 
     alt Token Valid
         DB-->>API: Token record found, not expired
         API->>API: Generate new access token
         API->>API: Generate new refresh token (rotation)
-        API->>DB: Invalidate old refresh token
-        API->>DB: Store new refresh token
+        API->>DB: Store replacement and mark old token rotated in one transaction
+        Note over API, DB: A retry within 30 seconds returns the same active replacement.
 
         alt isNative
             API-->>Client: 200 { accessToken, refreshToken }
-            Client->>Storage: Store both tokens
+            Client->>Storage: Store both tokens within the current session write queue
         else Web
             API-->>Client: 200 + Set-Cookie (access + refresh)
         end
 
-        Client->>API: Retry original request with new access token
+        Client->>API: Retry only if the original session is still current
         API-->>Client: 200 OK
         Client-->>App: Return response transparently
 
@@ -66,3 +66,7 @@ sequenceDiagram
     end
     deactivate API
 ```
+
+Expired tokens cannot refresh a session. A rotated token cannot create a second replacement.
+The server keeps rotated records until expiry so logout can still identify and revoke the account.
+Temporary server failures preserve the local session and queued changes.

@@ -12,6 +12,9 @@ import type { Socket as ClientSocket } from 'socket.io-client';
 
 vi.mock('../../db/repositories/user.repository', () => ({
     getUserAuthById: vi.fn(async (id: string) => ({ id, email: `${id}@example.com`, sessionVersion: 0 })),
+    withLockedUser: vi.fn(async (id: string, action: (user: { id: string; sessionVersion: number }) => Promise<void>) =>
+        action({ id, sessionVersion: 0 }),
+    ),
 }));
 
 const AUDIENCE = 'reaction-client';

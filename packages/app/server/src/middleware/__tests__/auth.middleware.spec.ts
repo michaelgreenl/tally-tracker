@@ -20,6 +20,7 @@ const mockReq = (overrides = {}) =>
     ({
         cookies: {},
         headers: {},
+        get: vi.fn(),
         ...overrides,
     }) as unknown as Request;
 
@@ -73,7 +74,7 @@ describe('Auth Middleware', () => {
         expect(mockNext).toHaveBeenCalled();
     });
 
-    it('should prefer cookie over header when both exist', async () => {
+    it('should prefer an explicit Bearer token over a stale cookie', async () => {
         vi.mocked(jwtUtil.verify).mockReturnValue({ id: 'user-123', sessionVersion: 0 });
         vi.mocked(userRepository.getUserAuthById).mockResolvedValue({
             id: 'user-123',
@@ -88,7 +89,7 @@ describe('Auth Middleware', () => {
 
         await jwt(req, res, mockNext);
 
-        expect(jwtUtil.verify).toHaveBeenCalledWith('cookie-token');
+        expect(jwtUtil.verify).toHaveBeenCalledWith('header-token');
     });
 
     it.each([
@@ -134,6 +135,17 @@ describe('Auth Middleware', () => {
         await jwt(req, res, mockNext);
 
         expect(res.status).toHaveBeenCalledWith(401);
+        expect(mockNext).not.toHaveBeenCalled();
+    });
+
+    it('reports a database outage without rejecting valid credentials', async () => {
+        vi.mocked(jwtUtil.verify).mockReturnValue({ id: 'user-123', sessionVersion: 0 });
+        vi.mocked(userRepository.getUserAuthById).mockRejectedValue(new Error('Database unavailable'));
+        const res = mockRes();
+
+        await jwt(mockReq({ cookies: { access_token: 'valid-token' } }), res, mockNext);
+
+        expect(res.status).toHaveBeenCalledWith(500);
         expect(mockNext).not.toHaveBeenCalled();
     });
 });

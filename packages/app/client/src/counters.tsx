@@ -7,6 +7,7 @@ import { ApiError, getErrorMessage, REQUEST_FAILED_MESSAGE } from './api';
 import { CounterService } from './services/counter.service';
 import { SyncManager } from './services/sync-manager';
 import { SyncQueue } from './services/sync-queue';
+import { assertSession, getSessionScope, SessionChangedError, writeSession } from './services/session-scope';
 import { connectSocket, disconnectSocket, subscribeToCounterUpdates } from './socket';
 import { useSession } from './session';
 
@@ -91,7 +92,13 @@ export const reconcileAuthenticatedCounters = (
 };
 
 export function CounterProvider({ children }: PropsWithChildren) {
+    const { sessionId } = useSession();
+    return <AccountCounters key={sessionId}>{children}</AccountCounters>;
+}
+
+function AccountCounters({ children }: PropsWithChildren) {
     const session = useSession();
+    const [scope] = useState(getSessionScope);
     const [counters, setCounters] = useState<ClientCounter[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -99,7 +106,6 @@ export function CounterProvider({ children }: PropsWithChildren) {
     const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
     const [refreshKey, setRefreshKey] = useState(0);
     const countersRef = useRef<ClientCounter[]>([]);
-    const previousUserId = useRef<string | null>(null);
 
     function refreshCounters() {
         if (loading || refreshing) return;
@@ -107,11 +113,15 @@ export function CounterProvider({ children }: PropsWithChildren) {
         setRefreshKey((key) => key + 1);
     }
 
-    const replaceCounters = useCallback(async (next: ClientCounter[]) => {
-        countersRef.current = next;
-        setCounters(next);
-        await CounterService.persist(next);
-    }, []);
+    const replaceCounters = useCallback(
+        async (next: ClientCounter[]) => {
+            assertSession(scope);
+            countersRef.current = next;
+            setCounters(next);
+            await writeSession(scope, () => CounterService.persist(next));
+        },
+        [scope],
+    );
 
     const applyRemoteUpdate = useCallback(
         async (updatedCounter: ClientCounter) => {
@@ -128,7 +138,11 @@ export function CounterProvider({ children }: PropsWithChildren) {
     useEffect(() => {
         SyncManager.init(setSyncStatus);
         const refresh = () => setRefreshKey((key) => key + 1);
-        const unsubscribe = subscribeToCounterUpdates((counter) => void applyRemoteUpdate(counter), refresh);
+        const unsubscribe = subscribeToCounterUpdates((counter) => {
+            void applyRemoteUpdate(counter).catch((error: unknown) => {
+                if (!(error instanceof SessionChangedError)) setSyncError(true);
+            });
+        }, refresh);
         const appState = AppState.addEventListener('change', (state) => {
             if (state === 'active') refresh();
         });
@@ -145,8 +159,6 @@ export function CounterProvider({ children }: PropsWithChildren) {
         if (!session.ready) return;
 
         const userId = session.user?.id || null;
-        const priorUserId = previousUserId.current;
-        previousUserId.current = userId;
         let active = true;
 
         void (async () => {
@@ -157,8 +169,6 @@ export function CounterProvider({ children }: PropsWithChildren) {
                 const order = await CounterService.getOrder(userId || 'guest');
                 if (!userId) {
                     disconnectSocket();
-                    if (priorUserId) await CounterService.clearLocal();
-
                     const localCounters = (await CounterService.getAllLocal()).filter(
                         (counter) => counter.userId === 'guest',
                     );
@@ -171,7 +181,7 @@ export function CounterProvider({ children }: PropsWithChildren) {
 
                 let remoteCounters: ClientCounter[] | null = null;
                 try {
-                    remoteCounters = await CounterService.fetchRemote();
+                    remoteCounters = await CounterService.fetchRemote(scope);
                 } catch {
                     // Keep the local snapshot available while offline.
                 }
@@ -185,12 +195,16 @@ export function CounterProvider({ children }: PropsWithChildren) {
                 );
 
                 if (!active) return;
+                assertSession(scope);
                 setSyncError(reconciled.syncError);
                 await replaceCounters(orderCounters(reconciled.counters, order));
-                if (reconciled.guestCounters.length) await CounterService.consolidate(reconciled.guestCounters);
+                assertSession(scope);
+                if (reconciled.guestCounters.length) await CounterService.consolidate(reconciled.guestCounters, scope);
+                assertSession(scope);
                 connectSocket();
                 await SyncManager.processQueue();
             } catch (error: unknown) {
+                if (error instanceof SessionChangedError) return;
                 if (active) setSyncError(true);
                 console.warn('Counter initialization failed', error);
             } finally {
@@ -204,7 +218,7 @@ export function CounterProvider({ children }: PropsWithChildren) {
         return () => {
             active = false;
         };
-    }, [replaceCounters, session.ready, session.user?.id, refreshKey]);
+    }, [replaceCounters, session.ready, session.user?.id, refreshKey, scope]);
 
     async function createCounter(title: string, color: HexColor, metric = ''): Promise<ActionResult> {
         const cleanTitle = title.trim();
@@ -227,8 +241,10 @@ export function CounterProvider({ children }: PropsWithChildren) {
         };
 
         try {
-            await replaceCounters([...countersRef.current, counter]);
-            if (session.isAuthenticated) await CounterService.create(counter);
+            await Promise.all([
+                replaceCounters([...countersRef.current, counter]),
+                session.isAuthenticated ? CounterService.create(counter, scope) : undefined,
+            ]);
             return ok();
         } catch (error: unknown) {
             return fail(getErrorMessage(error, 'Failed to create counter'));
@@ -258,8 +274,10 @@ export function CounterProvider({ children }: PropsWithChildren) {
         if (!counterValueSchema.safeParse(count).success) return fail('This change exceeds the counter limit.');
         const updated = { ...counter, count };
         try {
-            await replaceCounters(countersRef.current.map((item) => (item.id === counterId ? updated : item)));
-            if (session.isAuthenticated) await CounterService.increment(updated, amount);
+            await Promise.all([
+                replaceCounters(countersRef.current.map((item) => (item.id === counterId ? updated : item))),
+                session.isAuthenticated ? CounterService.increment(updated, amount, scope) : undefined,
+            ]);
             return ok();
         } catch (error: unknown) {
             return fail(getErrorMessage(error, 'Failed to update counter'));
@@ -285,12 +303,14 @@ export function CounterProvider({ children }: PropsWithChildren) {
         };
 
         try {
-            await replaceCounters(
-                countersRef.current.map((counter) =>
-                    counter.id === counterId ? { ...counter, ...cleanUpdates } : counter,
+            await Promise.all([
+                replaceCounters(
+                    countersRef.current.map((counter) =>
+                        counter.id === counterId ? { ...counter, ...cleanUpdates } : counter,
+                    ),
                 ),
-            );
-            if (session.isAuthenticated) await CounterService.update(counterId, cleanUpdates);
+                session.isAuthenticated ? CounterService.update(counterId, cleanUpdates, scope) : undefined,
+            ]);
             return ok();
         } catch (error: unknown) {
             return fail(getErrorMessage(error, 'Failed to update counter'));
@@ -299,8 +319,10 @@ export function CounterProvider({ children }: PropsWithChildren) {
 
     async function deleteCounter(counter: ClientCounter): Promise<ActionResult> {
         try {
-            await replaceCounters(countersRef.current.filter((item) => item.id !== counter.id));
-            if (session.isAuthenticated) await CounterService.delete(counter);
+            await Promise.all([
+                replaceCounters(countersRef.current.filter((item) => item.id !== counter.id)),
+                session.isAuthenticated ? CounterService.delete(counter, scope) : undefined,
+            ]);
             return ok();
         } catch (error: unknown) {
             return fail(getErrorMessage(error, 'Failed to delete counter'));
@@ -310,7 +332,7 @@ export function CounterProvider({ children }: PropsWithChildren) {
     async function shareCounter(counterId: string) {
         if (!session.isPremium) return { success: false as const, message: 'Sharing requires premium access.' };
         try {
-            const response = await CounterService.share(counterId);
+            const response = await CounterService.share(counterId, scope);
             const inviteCode = response.data?.counter?.inviteCode;
             if (!response.success || !inviteCode) {
                 return { success: false as const, message: REQUEST_FAILED_MESSAGE };
@@ -335,6 +357,7 @@ export function CounterProvider({ children }: PropsWithChildren) {
         try {
             if (countersRef.current.length === 0) {
                 const localCounters = await CounterService.getAllLocal();
+                assertSession(scope);
                 countersRef.current = localCounters;
                 setCounters(localCounters);
             }
@@ -344,7 +367,7 @@ export function CounterProvider({ children }: PropsWithChildren) {
                 return fail(BASIC_JOIN_LIMIT_MESSAGE);
             }
 
-            const response = await CounterService.join(code);
+            const response = await CounterService.join(code, scope);
             const counter = response.data?.counter;
             if (!response.success || !counter) return fail(response.message || 'Failed to join counter');
             if (!countersRef.current.some((item) => item.id === counter.id)) {

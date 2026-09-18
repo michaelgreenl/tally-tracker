@@ -2,12 +2,16 @@ import { OK_NO_CONTENT, REQUEST_TIMEOUT, SERVER_ERROR, UNAUTHORIZED } from '@tal
 import { Platform } from 'react-native';
 
 import { tokenStorage } from './services/token-storage';
+import { assertSession, getSessionScope, SessionChangedError, writeSession } from './services/session-scope';
+import type { SessionScope } from './services/session-scope';
 
 import type { AuthResponse } from '@tally/core/client';
 
 export interface ApiRequestOptions<T = unknown> extends Omit<RequestInit, 'body'> {
     body?: T;
     requiresAuth?: boolean;
+    // Logout uses captured credentials after the local session has ended.
+    sessionScope?: SessionScope | null;
 }
 
 export const REQUEST_FAILED_MESSAGE = 'Something went wrong. Please try again later.';
@@ -32,7 +36,7 @@ const isNative = Platform.OS !== 'web';
 const defaultLocal = Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
 export const API_URL = !isNative && __DEV__ ? '' : process.env.EXPO_PUBLIC_API_URL || defaultLocal;
 
-let refreshPromise: Promise<boolean> | null = null;
+let refreshRequest: { scope: SessionScope; promise: Promise<boolean> } | null = null;
 let unauthorizedHandler: (() => void | Promise<void>) | undefined;
 
 export const setUnauthorizedHandler = (handler: () => void | Promise<void>) => {
@@ -42,7 +46,7 @@ export const setUnauthorizedHandler = (handler: () => void | Promise<void>) => {
     };
 };
 
-async function executeRefresh(): Promise<boolean> {
+async function executeRefresh(scope: SessionScope): Promise<boolean> {
     try {
         const refreshToken = isNative ? await tokenStorage.getRefreshToken() : null;
         if (isNative && !refreshToken) return false;
@@ -50,6 +54,8 @@ async function executeRefresh(): Promise<boolean> {
         const result = await apiFetch<AuthResponse>('/users/refresh', {
             method: 'POST',
             requiresAuth: false,
+            sessionScope: scope,
+            headers: scope.userId ? { 'X-Account-Id': scope.userId } : {},
             body: refreshToken ? { refreshToken } : undefined,
         });
 
@@ -57,36 +63,64 @@ async function executeRefresh(): Promise<boolean> {
 
         if (isNative) {
             if (!result.data?.accessToken || !result.data.refreshToken) throw new Error('Missing refreshed tokens');
-            await Promise.all([
-                tokenStorage.setAccessToken(result.data.accessToken),
-                tokenStorage.setRefreshToken(result.data.refreshToken),
-            ]);
+            const { accessToken, refreshToken } = result.data;
+            await writeSession(scope, async () => {
+                await tokenStorage.setAccessToken(accessToken);
+                await tokenStorage.setRefreshToken(refreshToken);
+            });
         }
 
         return true;
     } catch (error: unknown) {
+        assertSession(scope);
         if (error instanceof ApiError && error.status === UNAUTHORIZED) return false;
         // Keep the session and queued mutations when refresh is temporarily unavailable.
         throw new ApiError('Session refresh unavailable. Please try again.', SERVER_ERROR, error);
     }
 }
 
-async function attemptRefresh(): Promise<boolean> {
-    if (!refreshPromise) {
-        refreshPromise = executeRefresh().finally(() => {
-            refreshPromise = null;
-        });
+async function attemptRefresh(scope: SessionScope): Promise<boolean> {
+    assertSession(scope);
+    if (!refreshRequest || refreshRequest.scope !== scope) {
+        const promise = executeRefresh(scope);
+        refreshRequest = { scope, promise };
+        void promise
+            .finally(() => {
+                if (refreshRequest?.promise === promise) refreshRequest = null;
+            })
+            .catch(() => undefined);
     }
 
-    return refreshPromise;
+    return refreshRequest.promise;
 }
 
 async function apiFetch<ResT = unknown, ReqT = unknown>(
     endpoint: string,
     options: ApiRequestOptions<ReqT> = {},
     isRetry = false,
+    hasAuthLock = false,
 ): Promise<ResT> {
-    const { body, headers = {}, requiresAuth = true, ...restOptions } = options;
+    const {
+        body,
+        headers = {},
+        requiresAuth = true,
+        sessionScope = getSessionScope(),
+        signal,
+        ...restOptions
+    } = options;
+    if (sessionScope) assertSession(sessionScope);
+    // Tabs share cookies. Finish each cookie-changing response before another tab signs in.
+    if (
+        !isNative &&
+        !hasAuthLock &&
+        ['/users/login', '/users/refresh', '/users/logout'].includes(endpoint) &&
+        typeof navigator !== 'undefined' &&
+        navigator.locks
+    ) {
+        return navigator.locks.request('tally-auth', () =>
+            apiFetch<ResT, ReqT>(endpoint, { ...options, sessionScope }, isRetry, true),
+        );
+    }
     const isFormData = body instanceof FormData;
     const requestHeaders: Record<string, string> = { ...(headers as Record<string, string>) };
 
@@ -96,25 +130,41 @@ async function apiFetch<ResT = unknown, ReqT = unknown>(
         const accessToken = await tokenStorage.getAccessToken();
         if (accessToken) requestHeaders.Authorization = `Bearer ${accessToken}`;
     }
+    if (requiresAuth && sessionScope?.userId) requestHeaders['X-Account-Id'] = sessionScope.userId;
 
+    if (sessionScope) assertSession(sessionScope);
     const controller = new AbortController();
+    const abort = () => controller.abort();
+    sessionScope?.signal.addEventListener('abort', abort);
+    signal?.addEventListener('abort', abort);
+    if (signal?.aborted) controller.abort();
     const timeout = setTimeout(() => controller.abort(), 10_000);
 
     try {
         const response = await fetch(`${API_URL}${endpoint}`, {
-            credentials: 'include',
+            credentials: isNative ? 'omit' : 'include',
             ...restOptions,
             headers: requestHeaders,
             body: isFormData ? body : body ? JSON.stringify(body) : undefined,
             signal: controller.signal,
         });
+        if (sessionScope) assertSession(sessionScope);
 
         if (!response.ok) {
-            if (requiresAuth && response.status === UNAUTHORIZED && !isRetry && (await attemptRefresh())) {
-                return apiFetch<ResT, ReqT>(endpoint, options, true);
+            if (
+                requiresAuth &&
+                sessionScope &&
+                response.status === UNAUTHORIZED &&
+                !isRetry &&
+                (await attemptRefresh(sessionScope))
+            ) {
+                return apiFetch<ResT, ReqT>(endpoint, { ...options, sessionScope }, true);
             }
 
-            if (requiresAuth && response.status === UNAUTHORIZED) await unauthorizedHandler?.();
+            if (requiresAuth && response.status === UNAUTHORIZED) {
+                if (sessionScope) assertSession(sessionScope);
+                await unauthorizedHandler?.();
+            }
 
             const errorData: unknown = await response.json().catch(() => null);
             const message =
@@ -131,8 +181,12 @@ async function apiFetch<ResT = unknown, ReqT = unknown>(
         }
 
         if (response.status === OK_NO_CONTENT) return {} as ResT;
-        return (await response.json()) as ResT;
+        const result = (await response.json()) as ResT;
+        if (sessionScope) assertSession(sessionScope);
+        return result;
     } catch (error: unknown) {
+        if (sessionScope) assertSession(sessionScope);
+        if (error instanceof SessionChangedError) throw error;
         if (typeof error === 'object' && error !== null && 'name' in error && error.name === 'AbortError') {
             throw new ApiError('Network timeout', REQUEST_TIMEOUT);
         }
@@ -141,6 +195,8 @@ async function apiFetch<ResT = unknown, ReqT = unknown>(
         throw new ApiError(REQUEST_FAILED_MESSAGE, 0, error);
     } finally {
         clearTimeout(timeout);
+        sessionScope?.signal.removeEventListener('abort', abort);
+        signal?.removeEventListener('abort', abort);
     }
 }
 

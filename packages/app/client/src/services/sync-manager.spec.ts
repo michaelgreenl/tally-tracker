@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiError } from '../api';
 import { SyncManager } from './sync-manager';
+import { changeSession, SessionChangedError } from './session-scope';
 
 import type { MutationCommand } from './sync-queue';
 import type { SyncStatus } from './sync-manager';
@@ -40,6 +41,7 @@ const command = (id: string, type: MutationCommand['type'] = 'CREATE'): Mutation
 
 describe('SyncManager', () => {
     beforeEach(() => {
+        changeSession('user-1');
         SyncManager.dispose();
         SyncManager.syncRequested = false;
         apiFetch.mockReset();
@@ -68,6 +70,47 @@ describe('SyncManager', () => {
         await expect(SyncManager.processQueuePass()).resolves.toBe(true);
         expect(apiFetch).not.toHaveBeenCalled();
         expect(syncQueue.remove).not.toHaveBeenCalled();
+    });
+
+    it('cannot send a command owned by a different session', async () => {
+        await expect(
+            SyncManager.executeCommand({ ...command('other'), queuedByUserId: 'user-2' }),
+        ).rejects.toBeInstanceOf(SessionChangedError);
+        expect(apiFetch).not.toHaveBeenCalled();
+    });
+
+    it('does not leave the guest screen loading while an old account finishes syncing', async () => {
+        syncQueue.get.mockResolvedValue([command('pending')]);
+        let finish!: () => void;
+        apiFetch.mockReturnValueOnce(
+            new Promise<void>((resolve) => {
+                finish = resolve;
+            }),
+        );
+        const pending = SyncManager.processQueue();
+        await vi.waitFor(() => expect(apiFetch).toHaveBeenCalledOnce());
+        changeSession();
+        const guestStatus = vi.fn();
+        SyncManager.init(guestStatus);
+        finish();
+        await pending;
+        expect(guestStatus).toHaveBeenLastCalledWith('idle');
+        expect(guestStatus).not.toHaveBeenCalledWith('syncing');
+    });
+
+    it('stops an old account’s queued writes after an account switch', async () => {
+        const queue = [command('first'), command('second')];
+        syncQueue.get.mockResolvedValue(queue);
+        apiFetch.mockImplementationOnce(async () => {
+            changeSession('user-2');
+            authService.getCachedUser.mockResolvedValue({ id: 'user-2' });
+            return { success: true };
+        });
+        await expect(SyncManager.processQueuePass()).rejects.toBeInstanceOf(SessionChangedError);
+        expect(apiFetch).toHaveBeenCalledOnce();
+        expect(syncQueue.remove).not.toHaveBeenCalled();
+        await SyncManager.processQueuePass();
+        expect(apiFetch).toHaveBeenCalledOnce();
     });
 
     it('reports syncing only while this account has queued writes', async () => {
@@ -152,7 +195,7 @@ describe('SyncManager', () => {
             endpoint,
             expect.objectContaining({
                 method,
-                headers: { 'X-Idempotency-Key': 'command' },
+                headers: { 'X-Idempotency-Key': 'command', 'X-Account-Id': 'user-1' },
             }),
         );
     });

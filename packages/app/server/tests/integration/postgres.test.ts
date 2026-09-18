@@ -12,6 +12,8 @@ import type { Server } from 'socket.io';
 import type { AddressInfo } from 'node:net';
 
 import { digestEmailOtp } from '../../src/services/email-otp.service.js';
+import * as userRepository from '../../src/db/repositories/user.repository.js';
+import jwtUtil from '../../src/util/jwt.util.js';
 
 let app: Express;
 let prisma: PrismaClient;
@@ -46,10 +48,213 @@ async function sharingAccount(tier: 'BASIC' | 'PREMIUM') {
     const login = await request(app).post('/users/login').send({ email, password }).expect(200);
     const { user, accessToken } = login.body.data;
     await prisma.user.update({ where: { id: user.id }, data: { tier } });
-    return { id: user.id as string, authorization: `Bearer ${accessToken}` };
+    return { id: user.id as string, email, password, authorization: `Bearer ${accessToken}` };
 }
 
 describe('PostgreSQL integration', () => {
+    it('revokes every same-account credential and socket on access-only logout', async () => {
+        const account = await sharingAccount('BASIC');
+        const other = await sharingAccount('BASIC');
+        const remembered = await request(app)
+            .post('/users/login')
+            .send({ email: account.email, password: account.password, rememberMe: true })
+            .expect(200);
+        const socket = createSocket(socketUrl, {
+            auth: { token: account.authorization.slice(7) },
+            transports: ['websocket'],
+            autoConnect: false,
+        });
+        try {
+            const connected = new Promise<void>((resolve) => socket.once('session-ready', resolve));
+            socket.connect();
+            await connected;
+            await vi.waitFor(async () => expect(await io.in(account.id).fetchSockets()).toHaveLength(1));
+            await request(app).post('/users/logout').set('Authorization', account.authorization).expect(200);
+            await request(app).get('/users/check-auth').set('Authorization', account.authorization).expect(401);
+            await request(app)
+                .get('/users/check-auth')
+                .set('Authorization', `Bearer ${remembered.body.data.accessToken}`)
+                .expect(401);
+            await request(app)
+                .post('/users/refresh')
+                .send({ refreshToken: remembered.body.data.refreshToken })
+                .expect(401);
+            await vi.waitFor(() => expect(socket.connected).toBe(false));
+            const stillSignedIn = await request(app)
+                .get('/users/check-auth')
+                .set('Authorization', other.authorization)
+                .expect(200);
+            expect(stillSignedIn.body.data.user.id).toBe(other.id);
+        } finally {
+            socket.disconnect();
+        }
+    });
+
+    it('clears the previous remembered account when another browser account logs in without Remember me', async () => {
+        const a = await sharingAccount('BASIC');
+        const b = await sharingAccount('BASIC');
+        const browser = request.agent(app);
+        await browser.post('/users/login').send({ email: a.email, password: a.password, rememberMe: true }).expect(200);
+        await browser
+            .post('/users/login')
+            .send({ email: b.email, password: b.password, rememberMe: false })
+            .expect(200);
+        await browser.post('/users/refresh').send({}).expect(401);
+        const current = await browser.get('/users/check-auth').expect(200);
+        expect(current.body.data.user.id).toBe(b.id);
+    });
+
+    it('never admits a socket whose handshake finished before logout but whose room admission finishes afterward', async () => {
+        const account = await sharingAccount('BASIC');
+        const originalLock = userRepository.withLockedUser;
+        let release!: () => void;
+        let entered!: () => void;
+        const arrived = new Promise<void>((resolve) => {
+            entered = resolve;
+        });
+        const barrier = new Promise<void>((resolve) => {
+            release = resolve;
+        });
+        const lock = vi.spyOn(userRepository, 'withLockedUser').mockImplementationOnce(async (id, action) => {
+            entered();
+            await barrier;
+            return originalLock(id, action);
+        });
+        const socket = createSocket(socketUrl, {
+            auth: { token: account.authorization.slice(7) },
+            transports: ['websocket'],
+            autoConnect: false,
+        });
+        const ready = vi.fn();
+        socket.on('session-ready', ready);
+        const disconnected = new Promise<void>((resolve) => socket.once('disconnect', () => resolve()));
+        try {
+            socket.connect();
+            await arrived;
+            lock.mockRestore();
+            await request(app).post('/users/logout').set('Authorization', account.authorization).expect(200);
+            release();
+            await disconnected;
+            expect(ready).not.toHaveBeenCalled();
+            expect(await io.in(account.id).fetchSockets()).toHaveLength(0);
+        } finally {
+            lock.mockRestore();
+            release();
+            socket.disconnect();
+        }
+    });
+
+    it('replays only the direct refresh successor briefly and revokes it through the original token', async () => {
+        const account = await sharingAccount('BASIC');
+        const login = await request(app)
+            .post('/users/login')
+            .send({ email: account.email, password: account.password, rememberMe: true })
+            .expect(200);
+        const original = login.body.data.refreshToken;
+        const refresh = (token: string) => request(app).post('/users/refresh').send({ refreshToken: token });
+        const expired = await prisma.refreshToken.create({ data: { userId: account.id, expiresAt: new Date(0) } });
+        await refresh(expired.id).expect(401);
+        const [first, retry] = await Promise.all([refresh(original).expect(200), refresh(original).expect(200)]);
+        expect(retry.body.data.refreshToken).toBe(first.body.data.refreshToken);
+        expect(
+            await prisma.refreshToken.count({
+                where: { userId: account.id, rotatedAt: null, expiresAt: { gt: new Date() } },
+            }),
+        ).toBe(1);
+        await prisma.refreshToken.update({
+            where: { id: original },
+            data: { rotatedAt: new Date(Date.now() - 31_000) },
+        });
+        await refresh(original).expect(401);
+        await request(app).post('/users/logout').send({ refreshToken: original }).expect(200);
+        await refresh(first.body.data.refreshToken).expect(401);
+        await request(app)
+            .get('/users/check-auth')
+            .set('Authorization', `Bearer ${first.body.data.accessToken}`)
+            .expect(401);
+        expect(await prisma.refreshToken.count({ where: { userId: account.id } })).toBe(0);
+    });
+
+    it('does not issue a refresh credential when logout wins the user lock', async () => {
+        const account = await sharingAccount('BASIC');
+        const login = await request(app)
+            .post('/users/login')
+            .send({ email: account.email, password: account.password, rememberMe: true })
+            .expect(200);
+        const originalLock = userRepository.withLockedUser;
+        let release!: () => void;
+        let entered!: () => void;
+        const arrived = new Promise<void>((resolve) => {
+            entered = resolve;
+        });
+        const barrier = new Promise<void>((resolve) => {
+            release = resolve;
+        });
+        const lock = vi.spyOn(userRepository, 'withLockedUser').mockImplementationOnce(async (id, action) => {
+            entered();
+            await barrier;
+            return originalLock(id, action);
+        });
+        const refreshing = request(app)
+            .post('/users/refresh')
+            .send({ refreshToken: login.body.data.refreshToken })
+            .then((response) => response);
+        try {
+            await arrived;
+            lock.mockRestore();
+            await request(app).post('/users/logout').set('Authorization', account.authorization).expect(200);
+            release();
+            expect((await refreshing).status).toBe(401);
+            expect(await prisma.refreshToken.count({ where: { userId: account.id } })).toBe(0);
+        } finally {
+            lock.mockRestore();
+            release();
+            await refreshing;
+        }
+    });
+
+    it('rejects stale browser account identity without changing data or cookies', async () => {
+        const a = await sharingAccount('BASIC');
+        const b = await sharingAccount('BASIC');
+        const cookie = `access_token=${b.authorization.slice(7)}`;
+        const mismatch = await request(app)
+            .post('/counters')
+            .set('Cookie', cookie)
+            .set('X-Account-Id', a.id)
+            .send({ title: 'Wrong account' })
+            .expect(401);
+        expect(mismatch.headers['set-cookie']).toBeUndefined();
+        const logout = await request(app)
+            .post('/users/logout')
+            .set('Cookie', cookie)
+            .set('X-Account-Id', a.id)
+            .expect(401);
+        expect(logout.headers['set-cookie']).toBeUndefined();
+        expect(await prisma.counter.count({ where: { userId: b.id } })).toBe(0);
+        await request(app).get('/users/check-auth').set('Authorization', b.authorization).expect(200);
+        const native = await request(app)
+            .get('/users/check-auth')
+            .set('Cookie', cookie)
+            .set('Authorization', a.authorization)
+            .set('X-Account-Id', a.id)
+            .expect(200);
+        expect(native.body.data.user.id).toBe(a.id);
+    });
+
+    it('disconnects an authenticated socket when its access token expires', async () => {
+        const account = await sharingAccount('BASIC');
+        const token = jwtUtil.sign({ id: account.id, email: account.email, sessionVersion: 0 }, '2s');
+        const socket = createSocket(socketUrl, { auth: { token }, transports: ['websocket'], autoConnect: false });
+        try {
+            const connected = new Promise<void>((resolve) => socket.once('session-ready', resolve));
+            socket.connect();
+            await connected;
+            await vi.waitFor(() => expect(socket.connected).toBe(false), { timeout: 3000 });
+        } finally {
+            socket.disconnect();
+        }
+    });
+
     it('persists decimal settings and keeps concurrent shared taps exact and idempotent', async () => {
         const owner = await sharingAccount('PREMIUM');
         const member = await sharingAccount('BASIC');

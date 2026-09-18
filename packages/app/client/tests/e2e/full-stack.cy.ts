@@ -100,11 +100,24 @@ describe('Expo full-stack counter journey', () => {
             cy.get(`[data-testid="counter-${counterId}-metric"]`).should('have.text', '16oz water bottle');
         });
 
-        cy.intercept('POST', '**/users/logout').as('logoutUser');
+        let finishLogout!: () => void;
+        const logoutResponse = new Cypress.Promise<void>((resolve) => {
+            finishLogout = resolve;
+        });
+        cy.intercept('POST', '**/users/logout', (request) => logoutResponse.then(() => request.continue())).as(
+            'logoutUser',
+        );
         cy.get('[data-testid="home-settings-link"]').click();
         cy.get('[data-testid="settings-logout"]').click();
-        cy.wait('@logoutUser').its('response.statusCode').should('eq', OK);
+        cy.get('[data-testid="logout-cancel"]').click();
+        cy.location('pathname').should('eq', '/settings');
+        cy.get('@logoutUser.all').should('have.length', 0);
+        cy.get('[data-testid="settings-logout"]').click();
+        cy.get('[data-testid="logout-confirm-submit"]').click();
         cy.location('pathname').should('eq', '/login');
+        cy.window().should((win) => expect(win.localStorage.getItem('auth_user_profile')).to.be.null);
+        cy.then(() => finishLogout());
+        cy.wait('@logoutUser').its('response.statusCode').should('eq', OK);
 
         cy.get('[data-testid="auth-email"]').type(email);
         cy.get('[data-testid="auth-password"]').type(PASSWORD);

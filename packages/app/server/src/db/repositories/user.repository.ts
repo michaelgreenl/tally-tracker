@@ -4,6 +4,17 @@ import type { User } from '@prisma/client';
 
 type DbClient = typeof prisma | Prisma.TransactionClient;
 
+// Login, refresh, logout, and socket admission share this lock and session version.
+export const withLockedUser = <T>(
+    userId: string,
+    action: (user: User | null, tx: Prisma.TransactionClient) => Promise<T>,
+) =>
+    prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId}::uuid FOR UPDATE`;
+        const user = withCurrentTier(await tx.user.findUnique({ where: { id: userId } }));
+        return action(user, tx);
+    });
+
 const userSelectSchema = {
     id: true,
     email: true,

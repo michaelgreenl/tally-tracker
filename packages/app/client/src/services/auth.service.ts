@@ -2,6 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import apiFetch from '../api';
 import { tokenStorage } from './token-storage';
+import { assertSession, getSessionScope, writeSession } from './session-scope';
+import type { SessionScope } from './session-scope';
 
 import type {
     AuthRequest,
@@ -14,17 +16,20 @@ import type {
     UpdateUserRequest,
 } from '@tally/core/client';
 
-const USER_KEY = 'auth_user_profile';
+export const USER_KEY = 'auth_user_profile';
+let pendingLogout: Promise<unknown> = Promise.resolve();
 
 export const AuthService = {
+    waitForLogout: () => pendingLogout,
     async getCachedUser(): Promise<ClientUser | null> {
         const value = await AsyncStorage.getItem(USER_KEY);
         return value ? (JSON.parse(value) as ClientUser) : null;
     },
 
-    async cacheUser(user: ClientUser | null) {
-        if (user) return AsyncStorage.setItem(USER_KEY, JSON.stringify(user));
-        return AsyncStorage.removeItem(USER_KEY);
+    cacheUser(user: ClientUser | null, scope = getSessionScope()) {
+        return writeSession(scope, () =>
+            user ? AsyncStorage.setItem(USER_KEY, JSON.stringify(user)) : AsyncStorage.removeItem(USER_KEY),
+        );
     },
 
     getAccessToken: tokenStorage.getAccessToken,
@@ -32,26 +37,76 @@ export const AuthService = {
     getRefreshToken: tokenStorage.getRefreshToken,
     setRefreshToken: tokenStorage.setRefreshToken,
 
-    async clearLocalAuth() {
-        await Promise.all([AsyncStorage.removeItem(USER_KEY), tokenStorage.clear()]);
+    clearLocalAuth(scope = getSessionScope()) {
+        return writeSession(scope, async () => {
+            try {
+                await AsyncStorage.removeItem(USER_KEY);
+            } finally {
+                await tokenStorage.clear();
+            }
+        });
+    },
+
+    saveLogin(data: NonNullable<AuthResponse['data']>, scope: SessionScope) {
+        return writeSession(scope, async () => {
+            await tokenStorage.clear();
+            if (data.accessToken) await tokenStorage.setAccessToken(data.accessToken);
+            if (data.refreshToken) await tokenStorage.setRefreshToken(data.refreshToken);
+            await AsyncStorage.setItem(USER_KEY, JSON.stringify(data.user));
+        });
     },
 
     checkAuth() {
         return apiFetch<AuthResponse>('/users/check-auth', { method: 'GET' });
     },
 
-    login(data: AuthRequest) {
+    async login(data: AuthRequest) {
+        const scope = getSessionScope();
+        // A late logout response must not clear the next login's cookies.
+        await pendingLogout;
+        assertSession(scope);
         return apiFetch<AuthResponse, AuthRequest>('/users/login', {
             method: 'POST',
             body: data,
             requiresAuth: false,
+            sessionScope: scope,
         });
     },
 
-    async logout() {
-        const refreshToken = await tokenStorage.getRefreshToken();
-        const body: RefreshRequest | undefined = refreshToken ? { refreshToken } : undefined;
-        return apiFetch<AuthResponse, RefreshRequest>('/users/logout', { method: 'POST', body });
+    logout(scope = getSessionScope(), userId: string | null = null) {
+        const result = (async () => {
+            const [access, refresh] = await Promise.allSettled([
+                tokenStorage.getAccessToken(),
+                tokenStorage.getRefreshToken(),
+            ]);
+            let localFailed = false;
+            try {
+                await this.clearLocalAuth(scope);
+            } catch {
+                localFailed = true;
+            }
+            const accessToken = access.status === 'fulfilled' ? access.value : null;
+            const refreshToken = refresh.status === 'fulfilled' ? refresh.value : null;
+            const body: RefreshRequest | undefined = refreshToken ? { refreshToken } : undefined;
+            // Remote revocation must still run if local storage fails.
+            const response = await apiFetch<AuthResponse, RefreshRequest>('/users/logout', {
+                method: 'POST',
+                body,
+                requiresAuth: false,
+                sessionScope: null,
+                headers: {
+                    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+                    ...(userId ? { 'X-Account-Id': userId } : {}),
+                },
+            }).catch(() => null);
+            if (localFailed) throw new Error('Could not clear this device. Restart and try again.');
+            if (!response?.success || access.status === 'rejected' || refresh.status === 'rejected') {
+                throw new Error('Signed out here. Other devices may still be signed in.');
+            }
+            return response;
+        })();
+        pendingLogout = result.catch(() => undefined);
+        return result;
     },
 
     deleteAccount() {

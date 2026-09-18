@@ -58,6 +58,8 @@ export const buildShare = (overrides: Partial<CounterShare> = {}): CounterShare 
 export const buildRefreshToken = (overrides: Partial<RefreshToken> = {}): RefreshToken => ({
     id: TEST_REFRESH_TOKEN_ID,
     userId: TEST_USER_ID,
+    rotatedAt: null,
+    replacementId: null,
     expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     createdAt: new Date('2026-01-01'),
     ...overrides,

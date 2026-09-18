@@ -76,6 +76,8 @@ BASIC BASIC
     String user_id 
     DateTime expires_at 
     DateTime created_at 
+    DateTime rotated_at "nullable"
+    String replacement_id "nullable"
     }
   
 

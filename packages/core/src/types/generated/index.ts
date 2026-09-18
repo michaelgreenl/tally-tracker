@@ -126,7 +126,14 @@ export const IdempotencyLogScalarFieldEnumSchema = z.enum([
     'updatedAt',
 ]);
 
-export const RefreshTokenScalarFieldEnumSchema = z.enum(['id', 'userId', 'expiresAt', 'createdAt']);
+export const RefreshTokenScalarFieldEnumSchema = z.enum([
+    'id',
+    'userId',
+    'expiresAt',
+    'createdAt',
+    'rotatedAt',
+    'replacementId',
+]);
 
 export const EmailOtpScalarFieldEnumSchema = z.enum([
     'id',
@@ -264,6 +271,8 @@ export const RefreshTokenSchema = z.object({
     userId: z.string(),
     expiresAt: z.coerce.date(),
     createdAt: z.coerce.date(),
+    rotatedAt: z.coerce.date().nullable(),
+    replacementId: z.string().nullable(),
 });
 
 export type RefreshToken = z.infer<typeof RefreshTokenSchema>;
@@ -426,6 +435,8 @@ export const RefreshTokenSelectSchema: z.ZodType<Prisma.RefreshTokenSelect> = z
         userId: z.boolean().optional(),
         expiresAt: z.boolean().optional(),
         createdAt: z.boolean().optional(),
+        rotatedAt: z.boolean().optional(),
+        replacementId: z.boolean().optional(),
         user: z.union([z.boolean(), z.lazy(() => UserArgsSchema)]).optional(),
     })
     .strict();
@@ -1026,6 +1037,14 @@ export const RefreshTokenWhereInputSchema: z.ZodType<Prisma.RefreshTokenWhereInp
     userId: z.union([z.lazy(() => UuidFilterSchema), z.string()]).optional(),
     expiresAt: z.union([z.lazy(() => DateTimeFilterSchema), z.coerce.date()]).optional(),
     createdAt: z.union([z.lazy(() => DateTimeFilterSchema), z.coerce.date()]).optional(),
+    rotatedAt: z
+        .union([z.lazy(() => DateTimeNullableFilterSchema), z.coerce.date()])
+        .optional()
+        .nullable(),
+    replacementId: z
+        .union([z.lazy(() => StringNullableFilterSchema), z.string()])
+        .optional()
+        .nullable(),
     user: z.union([z.lazy(() => UserScalarRelationFilterSchema), z.lazy(() => UserWhereInputSchema)]).optional(),
 });
 
@@ -1035,6 +1054,8 @@ export const RefreshTokenOrderByWithRelationInputSchema: z.ZodType<Prisma.Refres
         userId: z.lazy(() => SortOrderSchema).optional(),
         expiresAt: z.lazy(() => SortOrderSchema).optional(),
         createdAt: z.lazy(() => SortOrderSchema).optional(),
+        rotatedAt: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
+        replacementId: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
         user: z.lazy(() => UserOrderByWithRelationInputSchema).optional(),
     });
 
@@ -1058,6 +1079,14 @@ export const RefreshTokenWhereUniqueInputSchema: z.ZodType<Prisma.RefreshTokenWh
             userId: z.union([z.lazy(() => UuidFilterSchema), z.string()]).optional(),
             expiresAt: z.union([z.lazy(() => DateTimeFilterSchema), z.coerce.date()]).optional(),
             createdAt: z.union([z.lazy(() => DateTimeFilterSchema), z.coerce.date()]).optional(),
+            rotatedAt: z
+                .union([z.lazy(() => DateTimeNullableFilterSchema), z.coerce.date()])
+                .optional()
+                .nullable(),
+            replacementId: z
+                .union([z.lazy(() => StringNullableFilterSchema), z.string()])
+                .optional()
+                .nullable(),
             user: z
                 .union([z.lazy(() => UserScalarRelationFilterSchema), z.lazy(() => UserWhereInputSchema)])
                 .optional(),
@@ -1070,6 +1099,8 @@ export const RefreshTokenOrderByWithAggregationInputSchema: z.ZodType<Prisma.Ref
         userId: z.lazy(() => SortOrderSchema).optional(),
         expiresAt: z.lazy(() => SortOrderSchema).optional(),
         createdAt: z.lazy(() => SortOrderSchema).optional(),
+        rotatedAt: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
+        replacementId: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
         _count: z.lazy(() => RefreshTokenCountOrderByAggregateInputSchema).optional(),
         _max: z.lazy(() => RefreshTokenMaxOrderByAggregateInputSchema).optional(),
         _min: z.lazy(() => RefreshTokenMinOrderByAggregateInputSchema).optional(),
@@ -1097,6 +1128,14 @@ export const RefreshTokenScalarWhereWithAggregatesInputSchema: z.ZodType<Prisma.
         userId: z.union([z.lazy(() => UuidWithAggregatesFilterSchema), z.string()]).optional(),
         expiresAt: z.union([z.lazy(() => DateTimeWithAggregatesFilterSchema), z.coerce.date()]).optional(),
         createdAt: z.union([z.lazy(() => DateTimeWithAggregatesFilterSchema), z.coerce.date()]).optional(),
+        rotatedAt: z
+            .union([z.lazy(() => DateTimeNullableWithAggregatesFilterSchema), z.coerce.date()])
+            .optional()
+            .nullable(),
+        replacementId: z
+            .union([z.lazy(() => StringNullableWithAggregatesFilterSchema), z.string()])
+            .optional()
+            .nullable(),
     });
 
 export const EmailOtpWhereInputSchema: z.ZodType<Prisma.EmailOtpWhereInput> = z.strictObject({
@@ -1855,6 +1894,8 @@ export const RefreshTokenCreateInputSchema: z.ZodType<Prisma.RefreshTokenCreateI
     id: z.uuid().optional(),
     expiresAt: z.coerce.date(),
     createdAt: z.coerce.date().optional(),
+    rotatedAt: z.coerce.date().optional().nullable(),
+    replacementId: z.string().optional().nullable(),
     user: z.lazy(() => UserCreateNestedOneWithoutRefreshTokensInputSchema),
 });
 
@@ -1864,12 +1905,22 @@ export const RefreshTokenUncheckedCreateInputSchema: z.ZodType<Prisma.RefreshTok
         userId: z.string(),
         expiresAt: z.coerce.date(),
         createdAt: z.coerce.date().optional(),
+        rotatedAt: z.coerce.date().optional().nullable(),
+        replacementId: z.string().optional().nullable(),
     });
 
 export const RefreshTokenUpdateInputSchema: z.ZodType<Prisma.RefreshTokenUpdateInput> = z.strictObject({
     id: z.union([z.uuid(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
     expiresAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
     createdAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
+    rotatedAt: z
+        .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
+    replacementId: z
+        .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
     user: z.lazy(() => UserUpdateOneRequiredWithoutRefreshTokensNestedInputSchema).optional(),
 });
 
@@ -1879,6 +1930,14 @@ export const RefreshTokenUncheckedUpdateInputSchema: z.ZodType<Prisma.RefreshTok
         userId: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
         expiresAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
         createdAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
+        rotatedAt: z
+            .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        replacementId: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
     });
 
 export const RefreshTokenCreateManyInputSchema: z.ZodType<Prisma.RefreshTokenCreateManyInput> = z.strictObject({
@@ -1886,6 +1945,8 @@ export const RefreshTokenCreateManyInputSchema: z.ZodType<Prisma.RefreshTokenCre
     userId: z.string(),
     expiresAt: z.coerce.date(),
     createdAt: z.coerce.date().optional(),
+    rotatedAt: z.coerce.date().optional().nullable(),
+    replacementId: z.string().optional().nullable(),
 });
 
 export const RefreshTokenUpdateManyMutationInputSchema: z.ZodType<Prisma.RefreshTokenUpdateManyMutationInput> =
@@ -1893,6 +1954,14 @@ export const RefreshTokenUpdateManyMutationInputSchema: z.ZodType<Prisma.Refresh
         id: z.union([z.uuid(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
         expiresAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
         createdAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
+        rotatedAt: z
+            .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        replacementId: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
     });
 
 export const RefreshTokenUncheckedUpdateManyInputSchema: z.ZodType<Prisma.RefreshTokenUncheckedUpdateManyInput> =
@@ -1901,6 +1970,14 @@ export const RefreshTokenUncheckedUpdateManyInputSchema: z.ZodType<Prisma.Refres
         userId: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
         expiresAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
         createdAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
+        rotatedAt: z
+            .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        replacementId: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
     });
 
 export const EmailOtpCreateInputSchema: z.ZodType<Prisma.EmailOtpCreateInput> = z.strictObject({
@@ -2744,12 +2821,28 @@ export const JsonNullableWithAggregatesFilterSchema: z.ZodType<Prisma.JsonNullab
         _max: z.lazy(() => NestedJsonNullableFilterSchema).optional(),
     });
 
+export const DateTimeNullableFilterSchema: z.ZodType<Prisma.DateTimeNullableFilter> = z.strictObject({
+    equals: z.coerce.date().optional().nullable(),
+    in: z.coerce.date().array().optional().nullable(),
+    notIn: z.coerce.date().array().optional().nullable(),
+    lt: z.coerce.date().optional(),
+    lte: z.coerce.date().optional(),
+    gt: z.coerce.date().optional(),
+    gte: z.coerce.date().optional(),
+    not: z
+        .union([z.coerce.date(), z.lazy(() => NestedDateTimeNullableFilterSchema)])
+        .optional()
+        .nullable(),
+});
+
 export const RefreshTokenCountOrderByAggregateInputSchema: z.ZodType<Prisma.RefreshTokenCountOrderByAggregateInput> =
     z.strictObject({
         id: z.lazy(() => SortOrderSchema).optional(),
         userId: z.lazy(() => SortOrderSchema).optional(),
         expiresAt: z.lazy(() => SortOrderSchema).optional(),
         createdAt: z.lazy(() => SortOrderSchema).optional(),
+        rotatedAt: z.lazy(() => SortOrderSchema).optional(),
+        replacementId: z.lazy(() => SortOrderSchema).optional(),
     });
 
 export const RefreshTokenMaxOrderByAggregateInputSchema: z.ZodType<Prisma.RefreshTokenMaxOrderByAggregateInput> =
@@ -2758,6 +2851,8 @@ export const RefreshTokenMaxOrderByAggregateInputSchema: z.ZodType<Prisma.Refres
         userId: z.lazy(() => SortOrderSchema).optional(),
         expiresAt: z.lazy(() => SortOrderSchema).optional(),
         createdAt: z.lazy(() => SortOrderSchema).optional(),
+        rotatedAt: z.lazy(() => SortOrderSchema).optional(),
+        replacementId: z.lazy(() => SortOrderSchema).optional(),
     });
 
 export const RefreshTokenMinOrderByAggregateInputSchema: z.ZodType<Prisma.RefreshTokenMinOrderByAggregateInput> =
@@ -2766,6 +2861,26 @@ export const RefreshTokenMinOrderByAggregateInputSchema: z.ZodType<Prisma.Refres
         userId: z.lazy(() => SortOrderSchema).optional(),
         expiresAt: z.lazy(() => SortOrderSchema).optional(),
         createdAt: z.lazy(() => SortOrderSchema).optional(),
+        rotatedAt: z.lazy(() => SortOrderSchema).optional(),
+        replacementId: z.lazy(() => SortOrderSchema).optional(),
+    });
+
+export const DateTimeNullableWithAggregatesFilterSchema: z.ZodType<Prisma.DateTimeNullableWithAggregatesFilter> =
+    z.strictObject({
+        equals: z.coerce.date().optional().nullable(),
+        in: z.coerce.date().array().optional().nullable(),
+        notIn: z.coerce.date().array().optional().nullable(),
+        lt: z.coerce.date().optional(),
+        lte: z.coerce.date().optional(),
+        gt: z.coerce.date().optional(),
+        gte: z.coerce.date().optional(),
+        not: z
+            .union([z.coerce.date(), z.lazy(() => NestedDateTimeNullableWithAggregatesFilterSchema)])
+            .optional()
+            .nullable(),
+        _count: z.lazy(() => NestedIntNullableFilterSchema).optional(),
+        _min: z.lazy(() => NestedDateTimeNullableFilterSchema).optional(),
+        _max: z.lazy(() => NestedDateTimeNullableFilterSchema).optional(),
     });
 
 export const EnumEmailOtpPurposeFilterSchema: z.ZodType<Prisma.EnumEmailOtpPurposeFilter> = z.strictObject({
@@ -2790,20 +2905,6 @@ export const IntFilterSchema: z.ZodType<Prisma.IntFilter> = z.strictObject({
     gt: z.number().optional(),
     gte: z.number().optional(),
     not: z.union([z.number(), z.lazy(() => NestedIntFilterSchema)]).optional(),
-});
-
-export const DateTimeNullableFilterSchema: z.ZodType<Prisma.DateTimeNullableFilter> = z.strictObject({
-    equals: z.coerce.date().optional().nullable(),
-    in: z.coerce.date().array().optional().nullable(),
-    notIn: z.coerce.date().array().optional().nullable(),
-    lt: z.coerce.date().optional(),
-    lte: z.coerce.date().optional(),
-    gt: z.coerce.date().optional(),
-    gte: z.coerce.date().optional(),
-    not: z
-        .union([z.coerce.date(), z.lazy(() => NestedDateTimeNullableFilterSchema)])
-        .optional()
-        .nullable(),
 });
 
 export const EmailOtpUserIdPurposeCompoundUniqueInputSchema: z.ZodType<Prisma.EmailOtpUserIdPurposeCompoundUniqueInput> =
@@ -2895,24 +2996,6 @@ export const IntWithAggregatesFilterSchema: z.ZodType<Prisma.IntWithAggregatesFi
     _min: z.lazy(() => NestedIntFilterSchema).optional(),
     _max: z.lazy(() => NestedIntFilterSchema).optional(),
 });
-
-export const DateTimeNullableWithAggregatesFilterSchema: z.ZodType<Prisma.DateTimeNullableWithAggregatesFilter> =
-    z.strictObject({
-        equals: z.coerce.date().optional().nullable(),
-        in: z.coerce.date().array().optional().nullable(),
-        notIn: z.coerce.date().array().optional().nullable(),
-        lt: z.coerce.date().optional(),
-        lte: z.coerce.date().optional(),
-        gt: z.coerce.date().optional(),
-        gte: z.coerce.date().optional(),
-        not: z
-            .union([z.coerce.date(), z.lazy(() => NestedDateTimeNullableWithAggregatesFilterSchema)])
-            .optional()
-            .nullable(),
-        _count: z.lazy(() => NestedIntNullableFilterSchema).optional(),
-        _min: z.lazy(() => NestedDateTimeNullableFilterSchema).optional(),
-        _max: z.lazy(() => NestedDateTimeNullableFilterSchema).optional(),
-    });
 
 export const EnumUserTierFilterSchema: z.ZodType<Prisma.EnumUserTierFilter> = z.strictObject({
     equals: z.lazy(() => UserTierSchema).optional(),
@@ -3397,6 +3480,11 @@ export const UserCreateNestedOneWithoutRefreshTokensInputSchema: z.ZodType<Prism
         connect: z.lazy(() => UserWhereUniqueInputSchema).optional(),
     });
 
+export const NullableDateTimeFieldUpdateOperationsInputSchema: z.ZodType<Prisma.NullableDateTimeFieldUpdateOperationsInput> =
+    z.strictObject({
+        set: z.coerce.date().optional().nullable(),
+    });
+
 export const UserUpdateOneRequiredWithoutRefreshTokensNestedInputSchema: z.ZodType<Prisma.UserUpdateOneRequiredWithoutRefreshTokensNestedInput> =
     z.strictObject({
         create: z
@@ -3441,11 +3529,6 @@ export const IntFieldUpdateOperationsInputSchema: z.ZodType<Prisma.IntFieldUpdat
     multiply: z.number().optional(),
     divide: z.number().optional(),
 });
-
-export const NullableDateTimeFieldUpdateOperationsInputSchema: z.ZodType<Prisma.NullableDateTimeFieldUpdateOperationsInput> =
-    z.strictObject({
-        set: z.coerce.date().optional().nullable(),
-    });
 
 export const UserUpdateOneRequiredWithoutEmailOtpsNestedInputSchema: z.ZodType<Prisma.UserUpdateOneRequiredWithoutEmailOtpsNestedInput> =
     z.strictObject({
@@ -4567,19 +4650,6 @@ export const NestedJsonNullableFilterSchema: z.ZodType<Prisma.NestedJsonNullable
     not: InputJsonValueSchema.optional(),
 });
 
-export const NestedEnumEmailOtpPurposeFilterSchema: z.ZodType<Prisma.NestedEnumEmailOtpPurposeFilter> = z.strictObject({
-    equals: z.lazy(() => EmailOtpPurposeSchema).optional(),
-    in: z
-        .lazy(() => EmailOtpPurposeSchema)
-        .array()
-        .optional(),
-    notIn: z
-        .lazy(() => EmailOtpPurposeSchema)
-        .array()
-        .optional(),
-    not: z.union([z.lazy(() => EmailOtpPurposeSchema), z.lazy(() => NestedEnumEmailOtpPurposeFilterSchema)]).optional(),
-});
-
 export const NestedDateTimeNullableFilterSchema: z.ZodType<Prisma.NestedDateTimeNullableFilter> = z.strictObject({
     equals: z.coerce.date().optional().nullable(),
     in: z.coerce.date().array().optional().nullable(),
@@ -4592,6 +4662,37 @@ export const NestedDateTimeNullableFilterSchema: z.ZodType<Prisma.NestedDateTime
         .union([z.coerce.date(), z.lazy(() => NestedDateTimeNullableFilterSchema)])
         .optional()
         .nullable(),
+});
+
+export const NestedDateTimeNullableWithAggregatesFilterSchema: z.ZodType<Prisma.NestedDateTimeNullableWithAggregatesFilter> =
+    z.strictObject({
+        equals: z.coerce.date().optional().nullable(),
+        in: z.coerce.date().array().optional().nullable(),
+        notIn: z.coerce.date().array().optional().nullable(),
+        lt: z.coerce.date().optional(),
+        lte: z.coerce.date().optional(),
+        gt: z.coerce.date().optional(),
+        gte: z.coerce.date().optional(),
+        not: z
+            .union([z.coerce.date(), z.lazy(() => NestedDateTimeNullableWithAggregatesFilterSchema)])
+            .optional()
+            .nullable(),
+        _count: z.lazy(() => NestedIntNullableFilterSchema).optional(),
+        _min: z.lazy(() => NestedDateTimeNullableFilterSchema).optional(),
+        _max: z.lazy(() => NestedDateTimeNullableFilterSchema).optional(),
+    });
+
+export const NestedEnumEmailOtpPurposeFilterSchema: z.ZodType<Prisma.NestedEnumEmailOtpPurposeFilter> = z.strictObject({
+    equals: z.lazy(() => EmailOtpPurposeSchema).optional(),
+    in: z
+        .lazy(() => EmailOtpPurposeSchema)
+        .array()
+        .optional(),
+    notIn: z
+        .lazy(() => EmailOtpPurposeSchema)
+        .array()
+        .optional(),
+    not: z.union([z.lazy(() => EmailOtpPurposeSchema), z.lazy(() => NestedEnumEmailOtpPurposeFilterSchema)]).optional(),
 });
 
 export const NestedEnumEmailOtpPurposeWithAggregatesFilterSchema: z.ZodType<Prisma.NestedEnumEmailOtpPurposeWithAggregatesFilter> =
@@ -4642,24 +4743,6 @@ export const NestedFloatFilterSchema: z.ZodType<Prisma.NestedFloatFilter> = z.st
     gte: z.number().optional(),
     not: z.union([z.number(), z.lazy(() => NestedFloatFilterSchema)]).optional(),
 });
-
-export const NestedDateTimeNullableWithAggregatesFilterSchema: z.ZodType<Prisma.NestedDateTimeNullableWithAggregatesFilter> =
-    z.strictObject({
-        equals: z.coerce.date().optional().nullable(),
-        in: z.coerce.date().array().optional().nullable(),
-        notIn: z.coerce.date().array().optional().nullable(),
-        lt: z.coerce.date().optional(),
-        lte: z.coerce.date().optional(),
-        gt: z.coerce.date().optional(),
-        gte: z.coerce.date().optional(),
-        not: z
-            .union([z.coerce.date(), z.lazy(() => NestedDateTimeNullableWithAggregatesFilterSchema)])
-            .optional()
-            .nullable(),
-        _count: z.lazy(() => NestedIntNullableFilterSchema).optional(),
-        _min: z.lazy(() => NestedDateTimeNullableFilterSchema).optional(),
-        _max: z.lazy(() => NestedDateTimeNullableFilterSchema).optional(),
-    });
 
 export const NestedEnumUserTierFilterSchema: z.ZodType<Prisma.NestedEnumUserTierFilter> = z.strictObject({
     equals: z.lazy(() => UserTierSchema).optional(),
@@ -5566,6 +5649,8 @@ export const RefreshTokenCreateWithoutUserInputSchema: z.ZodType<Prisma.RefreshT
         id: z.uuid().optional(),
         expiresAt: z.coerce.date(),
         createdAt: z.coerce.date().optional(),
+        rotatedAt: z.coerce.date().optional().nullable(),
+        replacementId: z.string().optional().nullable(),
     });
 
 export const RefreshTokenUncheckedCreateWithoutUserInputSchema: z.ZodType<Prisma.RefreshTokenUncheckedCreateWithoutUserInput> =
@@ -5573,6 +5658,8 @@ export const RefreshTokenUncheckedCreateWithoutUserInputSchema: z.ZodType<Prisma
         id: z.uuid().optional(),
         expiresAt: z.coerce.date(),
         createdAt: z.coerce.date().optional(),
+        rotatedAt: z.coerce.date().optional().nullable(),
+        replacementId: z.string().optional().nullable(),
     });
 
 export const RefreshTokenCreateOrConnectWithoutUserInputSchema: z.ZodType<Prisma.RefreshTokenCreateOrConnectWithoutUserInput> =
@@ -5805,6 +5892,14 @@ export const RefreshTokenScalarWhereInputSchema: z.ZodType<Prisma.RefreshTokenSc
     userId: z.union([z.lazy(() => UuidFilterSchema), z.string()]).optional(),
     expiresAt: z.union([z.lazy(() => DateTimeFilterSchema), z.coerce.date()]).optional(),
     createdAt: z.union([z.lazy(() => DateTimeFilterSchema), z.coerce.date()]).optional(),
+    rotatedAt: z
+        .union([z.lazy(() => DateTimeNullableFilterSchema), z.coerce.date()])
+        .optional()
+        .nullable(),
+    replacementId: z
+        .union([z.lazy(() => StringNullableFilterSchema), z.string()])
+        .optional()
+        .nullable(),
 });
 
 export const EmailOtpUpsertWithWhereUniqueWithoutUserInputSchema: z.ZodType<Prisma.EmailOtpUpsertWithWhereUniqueWithoutUserInput> =
@@ -5935,6 +6030,8 @@ export const RefreshTokenCreateManyUserInputSchema: z.ZodType<Prisma.RefreshToke
     id: z.uuid().optional(),
     expiresAt: z.coerce.date(),
     createdAt: z.coerce.date().optional(),
+    rotatedAt: z.coerce.date().optional().nullable(),
+    replacementId: z.string().optional().nullable(),
 });
 
 export const EmailOtpCreateManyUserInputSchema: z.ZodType<Prisma.EmailOtpCreateManyUserInput> = z.strictObject({
@@ -6139,6 +6236,14 @@ export const RefreshTokenUpdateWithoutUserInputSchema: z.ZodType<Prisma.RefreshT
         id: z.union([z.uuid(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
         expiresAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
         createdAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
+        rotatedAt: z
+            .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        replacementId: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
     });
 
 export const RefreshTokenUncheckedUpdateWithoutUserInputSchema: z.ZodType<Prisma.RefreshTokenUncheckedUpdateWithoutUserInput> =
@@ -6146,6 +6251,14 @@ export const RefreshTokenUncheckedUpdateWithoutUserInputSchema: z.ZodType<Prisma
         id: z.union([z.uuid(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
         expiresAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
         createdAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
+        rotatedAt: z
+            .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        replacementId: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
     });
 
 export const RefreshTokenUncheckedUpdateManyWithoutUserInputSchema: z.ZodType<Prisma.RefreshTokenUncheckedUpdateManyWithoutUserInput> =
@@ -6153,6 +6266,14 @@ export const RefreshTokenUncheckedUpdateManyWithoutUserInputSchema: z.ZodType<Pr
         id: z.union([z.uuid(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
         expiresAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
         createdAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
+        rotatedAt: z
+            .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        replacementId: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
     });
 
 export const EmailOtpUpdateWithoutUserInputSchema: z.ZodType<Prisma.EmailOtpUpdateWithoutUserInput> = z.strictObject({

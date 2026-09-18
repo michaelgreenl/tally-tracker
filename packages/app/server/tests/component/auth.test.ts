@@ -3,8 +3,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
 import { randomUUID } from 'crypto';
 import type { Request, Response, NextFunction } from 'express';
+import type { Prisma } from '@prisma/client';
 import app from '../../src/app.js';
-import { buildUser, buildClientUser } from '../fixtures/user.fixture.js';
+import { buildUser } from '../fixtures/user.fixture.js';
 import { buildRefreshToken, TEST_USER_ID, TEST_REFRESH_TOKEN_ID } from '../fixtures/counter.fixture.js';
 
 vi.mock('../../src/middleware/auth.middleware', () => ({
@@ -26,6 +27,7 @@ vi.mock('../../src/db/repositories/user.repository', () => ({
     updateUserInfo: vi.fn(),
     deleteAccount: vi.fn(),
     deleteUser: vi.fn(),
+    withLockedUser: vi.fn(),
 }));
 
 vi.mock('../../src/db/repositories/email-otp.repository', () => ({
@@ -44,6 +46,8 @@ vi.mock('../../src/db/repositories/token.repository', () => ({
     get: vi.fn(),
     remove: vi.fn(),
     removeAllForUser: vi.fn(),
+    rotate: vi.fn(),
+    revokeSession: vi.fn(),
 }));
 
 import * as userRepository from '../../src/db/repositories/user.repository.js';
@@ -55,6 +59,13 @@ describe('Auth Routes', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         vi.mocked(issueEmailOtp).mockResolvedValue();
+        vi.mocked(userRepository.withLockedUser).mockImplementation(async (_id, action) =>
+            action(buildUser(), {
+                refreshToken: { create: tokenRepository.create },
+            } as unknown as Prisma.TransactionClient),
+        );
+        vi.mocked(tokenRepository.rotate).mockResolvedValue(null);
+        vi.mocked(tokenRepository.revokeSession).mockResolvedValue(null);
     });
 
     afterEach(() => {
@@ -216,41 +227,18 @@ describe('Auth Routes', () => {
         it('should rotate tokens with valid refresh token', async () => {
             const oldToken = buildRefreshToken();
             const newToken = buildRefreshToken({ id: NEW_REFRESH_TOKEN_ID });
-            const refreshedUser = {
-                id: buildClientUser().id,
-                email: buildClientUser().email,
-                sessionVersion: 0,
-            } satisfies NonNullable<Awaited<ReturnType<typeof userRepository.getUserAuthById>>>;
-
-            vi.mocked(tokenRepository.get).mockResolvedValue(oldToken);
-            vi.mocked(tokenRepository.remove).mockResolvedValue(oldToken);
-            vi.mocked(tokenRepository.create).mockResolvedValue(newToken);
-            vi.mocked(userRepository.getUserAuthById).mockResolvedValue(refreshedUser);
+            vi.mocked(tokenRepository.rotate).mockResolvedValue({ user: buildUser(), token: newToken });
 
             const res = await request(app).post('/users/refresh').send({ refreshToken: TEST_REFRESH_TOKEN_ID });
 
             expect(res.status).toBe(OK);
             expect(res.body.data.accessToken).toBeDefined();
             expect(res.body.data.refreshToken).toBe(NEW_REFRESH_TOKEN_ID);
-            expect(tokenRepository.remove).toHaveBeenCalledWith(TEST_REFRESH_TOKEN_ID);
+            expect(tokenRepository.rotate).toHaveBeenCalledWith(oldToken.id, expect.any(Date), undefined);
         });
 
-        it('should return 401 for expired refresh token', async () => {
-            const expiredToken = buildRefreshToken({
-                expiresAt: new Date('2020-01-01'),
-            });
-
-            vi.mocked(tokenRepository.get).mockResolvedValue(expiredToken);
-            vi.mocked(tokenRepository.remove).mockResolvedValue(expiredToken);
-
-            const res = await request(app).post('/users/refresh').send({ refreshToken: TEST_REFRESH_TOKEN_ID });
-
-            expect(res.status).toBe(UNAUTHORIZED);
-            expect(tokenRepository.remove).toHaveBeenCalledWith(TEST_REFRESH_TOKEN_ID);
-        });
-
-        it('should return 401 for unknown refresh token', async () => {
-            vi.mocked(tokenRepository.get).mockResolvedValue(null);
+        it('should return 401 when the refresh credential is rejected', async () => {
+            vi.mocked(tokenRepository.rotate).mockResolvedValue(null);
 
             const res = await request(app).post('/users/refresh').send({ refreshToken: TEST_REFRESH_TOKEN_ID });
 
@@ -293,36 +281,19 @@ describe('Auth Routes', () => {
 
     describe('POST /users/logout', () => {
         it('should clear tokens and cookies', async () => {
-            const token = buildRefreshToken();
-            const removedTokens = {
-                count: 1,
-            } satisfies Awaited<ReturnType<typeof tokenRepository.removeAllForUser>>;
-
-            vi.mocked(tokenRepository.get).mockResolvedValue(token);
-            vi.mocked(tokenRepository.removeAllForUser).mockResolvedValue(removedTokens);
-
             const res = await request(app)
                 .post('/users/logout')
                 .set('Cookie', `refresh_token=${TEST_REFRESH_TOKEN_ID}`);
 
             expect(res.status).toBe(OK);
-            expect(tokenRepository.removeAllForUser).toHaveBeenCalledWith(TEST_USER_ID);
+            expect(tokenRepository.revokeSession).toHaveBeenCalledWith(null, TEST_REFRESH_TOKEN_ID, undefined);
         });
 
         it('should clear tokens using a refresh token in the request body', async () => {
-            const token = buildRefreshToken();
-            const removedTokens = {
-                count: 1,
-            } satisfies Awaited<ReturnType<typeof tokenRepository.removeAllForUser>>;
-
-            vi.mocked(tokenRepository.get).mockResolvedValue(token);
-            vi.mocked(tokenRepository.removeAllForUser).mockResolvedValue(removedTokens);
-
             const res = await request(app).post('/users/logout').send({ refreshToken: TEST_REFRESH_TOKEN_ID });
 
             expect(res.status).toBe(OK);
-            expect(tokenRepository.get).toHaveBeenCalledWith(TEST_REFRESH_TOKEN_ID);
-            expect(tokenRepository.removeAllForUser).toHaveBeenCalledWith(TEST_USER_ID);
+            expect(tokenRepository.revokeSession).toHaveBeenCalledWith(null, TEST_REFRESH_TOKEN_ID, undefined);
         });
 
         it('should succeed even without a refresh token cookie', async () => {
