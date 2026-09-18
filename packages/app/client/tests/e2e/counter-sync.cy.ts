@@ -1,6 +1,6 @@
 /// <reference types="cypress" />
 
-import type { ClientCounter, ClientUser } from '@tally/core/client';
+import type { ClientCounter, ClientUser } from '@tally/core/client' with { 'resolution-mode': 'import' };
 
 function openAccount(user: ClientUser) {
     cy.visit('/home', {
