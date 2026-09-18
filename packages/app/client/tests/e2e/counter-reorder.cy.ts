@@ -262,17 +262,21 @@ describe('Counter order', () => {
                         eventConstructor: 'MouseEvent',
                         clientY: start.top + 30,
                     });
-                    // Use small pointer steps through the drag-activation and edge-scroll zones.
-                    for (let step = 1; step <= 32; step++) {
-                        cy.wrap($row).trigger('pointermove', {
-                            ...pointer,
-                            clientY: start.top + 30 + ((end - start.top - 30) * step) / 32,
-                            force: true,
-                        });
-                        cy.window().then(
-                            (win) => new Cypress.Promise<void>((resolve) => win.requestAnimationFrame(() => resolve())),
-                        );
-                    }
+                    cy.window().then(async (win) => {
+                        const startedAt = win.performance.now();
+                        for (let step = 1; step <= 32; step++) {
+                            const event = new win.PointerEvent('pointermove', {
+                                ...pointer,
+                                bubbles: true,
+                                cancelable: true,
+                                clientY: start.top + 30 + ((end - start.top - 30) * step) / 32,
+                            });
+                            // Model continuous input; CI delays must not reset the gesture's velocity.
+                            Object.defineProperty(event, 'timeStamp', { value: startedAt + step * 16 });
+                            $row[0].dispatchEvent(event);
+                            await new Cypress.Promise<void>((resolve) => win.requestAnimationFrame(() => resolve()));
+                        }
+                    });
                     cy.wrap($list).should(($scroll) => expect($scroll[0].scrollTop).to.be.greaterThan(300));
                     cy.wrap($row).trigger('pointerup', { ...pointer, buttons: 0, clientY: end, force: true });
                     cy.wrap($row).trigger('mouseup', {
