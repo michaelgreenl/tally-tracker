@@ -50,10 +50,12 @@ export function CounterCard({
     const { shareCounter, failedCounterIds } = useCounters();
     const [sharing, setSharing] = useState(false);
     const increment = counter.increment ?? 1;
+    const alreadyShared = Boolean(counter.inviteCode && counter.shares?.some((share) => share.status === 'ACCEPTED'));
+    const canShare = isPremium || alreadyShared;
 
     async function share() {
-        if (!isPremium || sharing) return;
-        if (!user?.emailVerified) {
+        if (!canShare || sharing) return;
+        if (!alreadyShared && !user?.emailVerified) {
             router.push({ pathname: '/verify-email', params: { email: user?.email, returnTo: '/home' } });
             return;
         }
@@ -120,7 +122,8 @@ export function CounterCard({
                             <CounterMenu
                                 counterId={counter.id}
                                 title={counter.title}
-                                isPremium={isPremium}
+                                canShare={canShare}
+                                isOwner={counter.userId === (user?.id ?? 'guest')}
                                 busy={sharing}
                                 canReorder={canReorder}
                                 onAction={(action) => {

@@ -43,7 +43,7 @@ vi.mock('expo-network', () => ({
 }));
 vi.mock('react-native', () => ({ AppState: { addEventListener: () => ({ remove() {} }) } }));
 vi.mock('./session', () => ({
-    useSession: () => ({ ready: true, user: { id: 'account' }, isAuthenticated: true }),
+    useSession: () => ({ ready: true, user: { id: 'account', tier: 'BASIC' }, isAuthenticated: true }),
 }));
 vi.mock('./services/auth.service', () => ({ AuthService: { getCachedUser: async () => ({ id: 'account' }) } }));
 vi.mock('./api', () => ({ default: bridge.fetch, ApiError: bridge.ApiError, getErrorMessage: () => 'Failed' }));
@@ -99,6 +99,17 @@ beforeEach(async () => {
 afterEach(async () => {
     await act(async () => root.unmount());
     vi.unstubAllGlobals();
+});
+
+it('checks an existing invite with the server instead of rejecting it from a cached Basic quota', async () => {
+    const joined = { ...initial, userId: 'owner', type: 'SHARED' as const, inviteCode: 'existing-invite' };
+    remote = [joined];
+    await act(async () => bridge.update());
+    bridge.fetch.mockResolvedValueOnce({ success: true, data: { counter: joined } });
+    await act(async () => {
+        expect(await state.joinCounter(joined.inviteCode)).toEqual({ success: true });
+    });
+    expect(state.counters).toEqual([joined]);
 });
 
 it('keeps a pending tap through an old socket event, then fetches the acknowledged server value', async () => {

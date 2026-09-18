@@ -51,7 +51,6 @@ type CounterContextValue = {
 
 export const GUEST_COUNTER_CAP = 3;
 export const GUEST_COUNTER_LIMIT_MESSAGE = 'Counter limit reached';
-export const BASIC_JOIN_LIMIT_MESSAGE = 'Basic accounts can only join one shared counter.';
 
 const CounterContext = createContext<CounterContextValue | null>(null);
 const ok = (): ActionResult => ({ success: true });
@@ -60,9 +59,6 @@ const isGuestEligible = (counter: ClientCounter) => counter.type !== 'SHARED';
 
 export const isGuestCounterLimitReached = (counters: readonly ClientCounter[]) =>
     counters.filter(isGuestEligible).length >= GUEST_COUNTER_CAP;
-
-export const hasJoinedSharedCounter = (counters: readonly ClientCounter[], userId: string) =>
-    counters.some((counter) => counter.type === 'SHARED' && counter.userId !== userId);
 
 export function orderCounters(counters: readonly ClientCounter[], ids: readonly string[]) {
     const positions = new Map(ids.map((id, index) => [id, index]));
@@ -416,7 +412,6 @@ function AccountCounters({ children }: PropsWithChildren) {
     }
 
     async function shareCounter(counterId: string) {
-        if (!session.isPremium) return { success: false as const, message: 'Sharing requires premium access.' };
         try {
             const response = await CounterService.share(counterId, scope);
             const inviteCode = response.data?.counter?.inviteCode;
@@ -446,11 +441,6 @@ function AccountCounters({ children }: PropsWithChildren) {
                 assertSession(scope);
                 countersRef.current = localCounters;
                 setCounters(localCounters);
-            }
-
-            const userId = session.user?.id;
-            if (session.user?.tier === 'BASIC' && userId && hasJoinedSharedCounter(countersRef.current, userId)) {
-                return fail(BASIC_JOIN_LIMIT_MESSAGE);
             }
 
             const response = await CounterService.join(code, scope);

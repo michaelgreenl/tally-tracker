@@ -1,11 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-    hasJoinedSharedCounter,
-    isGuestCounterLimitReached,
-    orderCounters,
-    reconcileAuthenticatedCounters,
-} from './counters';
+import { isGuestCounterLimitReached, orderCounters, reconcileAuthenticatedCounters } from './counters';
 
 import type { ClientCounter, HexColor } from '@tally/core/client';
 
@@ -88,13 +83,6 @@ describe('authenticated counter reconciliation', () => {
         ];
 
         expect(reconcileAuthenticatedCounters([local], remote, 'user-1', pending).counters).toEqual([local]);
-    });
-});
-
-describe('hasJoinedSharedCounter', () => {
-    it('counts joined shared counters but not shared counters owned by the user', () => {
-        expect(hasJoinedSharedCounter([counter('owned', 'SHARED', 'user-1')], 'user-1')).toBe(false);
-        expect(hasJoinedSharedCounter([counter('joined', 'SHARED', 'owner')], 'user-1')).toBe(true);
     });
 });
 

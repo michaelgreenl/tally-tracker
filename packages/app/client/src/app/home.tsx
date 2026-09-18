@@ -35,6 +35,10 @@ export default function HomeScreen() {
     const [reorderDraft, setReorderDraft] = useState<string[] | null>(null);
     const [savingOrder, setSavingOrder] = useState(false);
     const [pulling, setPulling] = useState(false);
+    const [counterToRemove, setCounterToRemove] = useState<ClientCounter | null>(null);
+    const [removeOpen, setRemoveOpen] = useState(false);
+    const [removing, setRemoving] = useState(false);
+    const ownsCounterToRemove = counterToRemove?.userId === session.user?.id;
     const reordering = reorderDraft !== null;
 
     function openCreateForm() {
@@ -71,6 +75,15 @@ export default function HomeScreen() {
 
     async function incrementCounter(id: string, amount: number) {
         const result = await counterState.incrementCounter(id, amount);
+        if (!result.success) setNotice(result.message);
+    }
+
+    async function removeCounter(counter: ClientCounter) {
+        if (removing) return;
+        setRemoving(true);
+        const result = await counterState.deleteCounter(counter);
+        setRemoving(false);
+        setRemoveOpen(false);
         if (!result.success) setNotice(result.message);
     }
 
@@ -167,7 +180,12 @@ export default function HomeScreen() {
                         <CounterCard
                             key={counter.id}
                             counter={counter}
-                            onDelete={(item) => void counterState.deleteCounter(item)}
+                            onDelete={(item) => {
+                                if (item.type === 'SHARED') {
+                                    setCounterToRemove(item);
+                                    setRemoveOpen(true);
+                                } else void removeCounter(item);
+                            }}
                             onEdit={(item) => {
                                 setCounterToEdit(item);
                                 setFormOpen(true);
@@ -216,6 +234,43 @@ export default function HomeScreen() {
                 {incrementToEdit && (
                     <CounterIncrementDialog counter={incrementToEdit} onClose={() => setIncrementToEdit(null)} />
                 )}
+
+                <Dialog
+                    visible={removeOpen}
+                    onRequestClose={() => {
+                        if (!removing) setRemoveOpen(false);
+                    }}
+                    testID='counter-remove-confirm'
+                    title={ownsCounterToRemove ? 'Delete for everyone?' : 'Leave counter?'}
+                    description={
+                        ownsCounterToRemove
+                            ? `“${counterToRemove?.title}” will be deleted for everyone. Its share link will stop working.`
+                            : `“${counterToRemove?.title}” will leave your list. Others will keep their access.`
+                    }
+                >
+                    <View style={styles.modalActions}>
+                        <Pressable
+                            accessibilityRole='button'
+                            disabled={removing}
+                            onPress={() => setRemoveOpen(false)}
+                            style={styles.modalSecondary}
+                            testID='counter-remove-cancel'
+                        >
+                            <Text style={styles.modalSecondaryText}>Cancel</Text>
+                        </Pressable>
+                        <Pressable
+                            accessibilityRole='button'
+                            disabled={removing}
+                            onPress={() => counterToRemove && void removeCounter(counterToRemove)}
+                            style={[styles.modalPrimary, styles.modalDestructive, removing && styles.disabled]}
+                            testID='counter-remove-submit'
+                        >
+                            <Text style={styles.modalPrimaryText}>
+                                {removing ? 'Removing…' : ownsCounterToRemove ? 'Delete' : 'Leave'}
+                            </Text>
+                        </Pressable>
+                    </View>
+                </Dialog>
 
                 <Dialog
                     onRequestClose={() => setGuestLimitOpen(false)}
@@ -366,4 +421,6 @@ const styles = StyleSheet.create({
         color: colors.onPrimary,
         fontWeight: '700',
     },
+    modalDestructive: { backgroundColor: colors.dangerButton },
+    disabled: { opacity: 0.65 },
 });

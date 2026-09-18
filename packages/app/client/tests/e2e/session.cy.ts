@@ -87,9 +87,19 @@ it('refreshes expired access before deleting an account without holding its own 
         });
     });
     cy.get('[data-testid="settings-delete-account"]').should('be.visible');
-    cy.setCookie('access_token', 'expired-fixture-token');
     cy.intercept('POST', '**/users/refresh').as('refresh');
-    cy.intercept('DELETE', '**/users').as('deletion');
+    let firstDeletion = true;
+    cy.intercept('DELETE', '**/users', (request) => {
+        // Expire this request only; background sync must not refresh the fixture before deletion starts.
+        if (firstDeletion) {
+            firstDeletion = false;
+            request.headers.cookie = String(request.headers.cookie).replace(
+                /(^|;\s*)access_token=[^;]*/,
+                '$1access_token=expired-fixture-token',
+            );
+        }
+        request.continue();
+    }).as('deletion');
     cy.get('[data-testid="settings-delete-account"]').click();
     cy.get('[data-testid="delete-account-confirm-submit"]').click();
     cy.wait('@deletion').its('response.statusCode').should('eq', 401);

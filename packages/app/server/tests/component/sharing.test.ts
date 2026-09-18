@@ -48,6 +48,7 @@ import * as userRepo from '../../src/db/repositories/user.repository.js';
 describe('Sharing Routes', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        vi.mocked(counterRepo.getParticipants).mockResolvedValue([TEST_OTHER_USER_ID, TEST_USER_ID]);
         app.set('io', { to: () => ({ emit: vi.fn() }) });
     });
 

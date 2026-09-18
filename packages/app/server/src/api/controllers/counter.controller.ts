@@ -62,13 +62,30 @@ export const share = async (req: Request, res: Response<CounterResponse>) => {
         const userId = req.user?.id;
         if (!userId) return { status: BAD_REQUEST, body: { success: false, message: 'Invalid userId' } };
 
+        const input = { counterId: req.params.counterId as string, userId };
+        const existing = await counterRepository.getByIdOrShare(input, tx);
+        if (!existing) return { status: NOT_FOUND, body: { success: false, message: 'Counter not found' } };
+        const participants = await counterRepository.getParticipants(existing.id, tx);
+        if (existing.inviteCode && participants.length > 1) {
+            return { status: OK, body: { success: true, data: { counter: existing } } };
+        }
+        if (!req.user?.emailVerifiedAt) {
+            return {
+                status: FORBIDDEN,
+                body: {
+                    success: false,
+                    code: 'EMAIL_VERIFICATION_REQUIRED',
+                    message: 'Verify your email to continue.',
+                },
+            };
+        }
         const user = await userRepository.getUserTierById(userId, tx);
         if (!user) return { status: NOT_FOUND, body: { success: false, message: 'User not found' } };
         if (user.tier !== 'PREMIUM') {
             return { status: FORBIDDEN, body: { success: false, message: 'Sharing requires premium access.' } };
         }
 
-        const counter = await counterRepository.share({ counterId: req.params.counterId as string, userId }, tx);
+        const counter = await counterRepository.share(input, tx);
         if (!counter) return { status: NOT_FOUND, body: { success: false, message: 'Counter not found' } };
         return { status: OK, body: { success: true, data: { counter } } };
     });
@@ -224,6 +241,7 @@ export const join = async (
     req: Request<Record<string, never>, CounterResponse, JoinCounterRequest>,
     res: Response<CounterResponse>,
 ) => {
+    let participants: string[] = [];
     const result = await runIdempotentMutation<CounterResponse>(req, async (tx) => {
         const userId = req.user?.id;
         const { inviteCode } = req.body;
@@ -279,6 +297,7 @@ export const join = async (
         const membership = !share
             ? await counterRepository.createShare(shareUpdates, tx)
             : await counterRepository.updateShare(shareUpdates, tx);
+        participants = await counterRepository.getParticipants(counter.id, tx);
 
         return {
             status: CREATED,
@@ -296,7 +315,7 @@ export const join = async (
     });
 
     if (!result.replayed && result.status === CREATED) {
-        req.app.get('io').to(req.user!.id).emit('counters-changed');
+        participants.forEach((id) => req.app.get('io').to(id).emit('counters-changed'));
     }
     return sendMutationResponse(res, result);
 };
@@ -305,6 +324,7 @@ export const removeShare = async (
     req: Request<{ counterId: string }, CounterResponse, UpdateShareRequest>,
     res: Response,
 ) => {
+    let participants: string[] = [];
     const result = await runIdempotentMutation(req, async (tx) => {
         const userId = req.user?.id;
         const counterId = req.params.counterId as string;
@@ -323,6 +343,7 @@ export const removeShare = async (
             return { status: CONFLICT, body: { success: false, message: 'User owns this counter' } };
         }
 
+        participants = await counterRepository.getParticipants(counter.id, tx);
         await counterRepository.updateShare(
             {
                 counterId: counter.id,
@@ -342,7 +363,7 @@ export const removeShare = async (
     });
 
     if (!result.replayed && result.status === OK) {
-        req.app.get('io').to(req.user!.id).emit('counters-changed');
+        participants.forEach((id) => req.app.get('io').to(id).emit('counters-changed'));
     }
     return sendMutationResponse(res, result);
 };

@@ -154,23 +154,36 @@ describe('PostgreSQL integration', () => {
                 return arrived;
             });
             await vi.waitFor(() => ready.forEach((arrived) => expect(arrived).toHaveBeenCalled()));
-            const left = vi.fn();
-            sockets[1].once('counters-changed', left);
+            const left = sockets.map((socket) => {
+                const arrived = vi.fn();
+                socket.once('counters-changed', arrived);
+                return arrived;
+            });
             await request(app)
                 .put(`/counters/remove-shared/${counter.id}`)
                 .set('Authorization', member.authorization)
                 .expect(200);
-            await vi.waitFor(() => expect(left).toHaveBeenCalled());
+            await vi.waitFor(() => left.forEach((arrived) => expect(arrived).toHaveBeenCalled()));
             const afterLeave = await request(app)
                 .get('/counters')
                 .set('Authorization', member.authorization)
                 .expect(200);
             expect(afterLeave.body.data.counters).toEqual([]);
+            await request(app)
+                .put(`/counters/increment/${counter.id}`)
+                .set('Authorization', member.authorization)
+                .send({ amount: 1 })
+                .expect(404);
+            expect(await prisma.counter.findUnique({ where: { id: counter.id } })).toMatchObject({ userId: owner.id });
 
-            const rejoined = vi.fn();
-            sockets[1].once('counters-changed', rejoined);
+            const rejoined = sockets.map((socket) => {
+                const arrived = vi.fn();
+                socket.once('counters-changed', arrived);
+                return arrived;
+            });
             await join();
-            await vi.waitFor(() => expect(rejoined).toHaveBeenCalled());
+            await vi.waitFor(() => rejoined.forEach((arrived) => expect(arrived).toHaveBeenCalled()));
+            await request(app).delete(`/counters/${counter.id}`).set('Authorization', member.authorization).expect(404);
             const deleted = sockets.map((socket) => {
                 const arrived = vi.fn();
                 socket.once('counters-changed', arrived);
@@ -185,6 +198,12 @@ describe('PostgreSQL integration', () => {
                     .expect(200);
                 expect(snapshot.body.data.counters).toEqual([]);
             }
+            expect(await prisma.counterShare.count({ where: { counterId: counter.id } })).toBe(0);
+            await request(app)
+                .post('/counters/join')
+                .set('Authorization', member.authorization)
+                .send({ inviteCode: counter.inviteCode })
+                .expect(404);
         } finally {
             sockets.forEach((socket) => socket.disconnect());
         }
@@ -640,9 +659,71 @@ describe('PostgreSQL integration', () => {
             type: 'SHARED',
             inviteCode,
         });
+    });
 
-        await prisma.user.update({ where: { id: owner.id }, data: { tier: 'BASIC' } });
-        await share().expect(403);
+    it('lets Basic participants forward an established invite, but not outsiders or former participants', async () => {
+        const owner = await sharingAccount('BASIC');
+        const member = await sharingAccount('BASIC');
+        const outsider = await sharingAccount('PREMIUM');
+        const counter = await prisma.counter.create({
+            data: { title: 'Established counter', userId: owner.id, type: 'SHARED', inviteCode: randomUUID() },
+        });
+        const share = (authorization: string) =>
+            request(app).post(`/counters/${counter.id}/share`).set('Authorization', authorization);
+        await share(owner.authorization).expect(403);
+        await request(app)
+            .post('/counters/join')
+            .set('Authorization', member.authorization)
+            .send({ inviteCode: counter.inviteCode })
+            .expect(201);
+        // Forwarding an established link has no new tier or email-verification requirement.
+        await prisma.user.updateMany({ where: { id: { in: [owner.id, member.id] } }, data: { emailVerifiedAt: null } });
+        for (const account of [owner, member]) {
+            const forwarded = await share(account.authorization).expect(200);
+            expect(forwarded.body.data.counter.inviteCode).toBe(counter.inviteCode);
+        }
+        await share(outsider.authorization).expect(404);
+        await request(app)
+            .put(`/counters/remove-shared/${counter.id}`)
+            .set('Authorization', member.authorization)
+            .expect(200);
+        await share(member.authorization).expect(404);
+        await share(owner.authorization).expect(403);
+    });
+
+    it('keeps joined counters usable after Premium expires and limits only new joins', async () => {
+        const owner = await sharingAccount('PREMIUM');
+        const member = await sharingAccount('PREMIUM');
+        const counters = await Promise.all(
+            [1, 2, 3].map((number) =>
+                prisma.counter.create({
+                    data: { title: `Counter ${number}`, userId: owner.id, type: 'SHARED', inviteCode: randomUUID() },
+                }),
+            ),
+        );
+        const join = (inviteCode: string) =>
+            request(app).post('/counters/join').set('Authorization', member.authorization).send({ inviteCode });
+        for (const counter of counters.slice(0, 2)) await join(counter.inviteCode!).expect(201);
+        await prisma.user.update({
+            where: { id: member.id },
+            data: { premiumExpiresAt: new Date(Date.now() - 60_000) },
+        });
+        await join(counters[2].inviteCode!).expect(403);
+        for (const counter of counters.slice(0, 2)) {
+            await join(counter.inviteCode!).expect(200);
+            await request(app)
+                .put(`/counters/increment/${counter.id}`)
+                .set('Authorization', member.authorization)
+                .send({ amount: 1 })
+                .expect(200);
+        }
+        const snapshot = await request(app).get('/counters').set('Authorization', member.authorization).expect(200);
+        expect(snapshot.body.data.counters.map((counter: ClientCounter) => [counter.id, counter.count]).sort()).toEqual(
+            counters
+                .slice(0, 2)
+                .map((counter) => [counter.id, 1])
+                .sort(),
+        );
     });
 
     it('normalizes mixed-case email registration and login while rejecting a case-insensitive duplicate', async () => {

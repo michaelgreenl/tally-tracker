@@ -33,7 +33,7 @@ router.put('/update/:counterId', validate(updateCounterSchema), put);
 
 router.put('/increment/:counterId', validate(incrementCounterSchema), increment);
 router.post('/join', verifiedEmail, validate(joinCounterSchema), join);
-router.post('/:counterId/share', verifiedEmail, validate(getCounterSchema), share);
+router.post('/:counterId/share', validate(getCounterSchema), share);
 router.put('/remove-shared/:counterId', validate(updateShareSchema), removeShare);
 
 export default router;

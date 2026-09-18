@@ -8,22 +8,32 @@ import type { CSSProperties, PropsWithChildren } from 'react';
 export type CounterMenuProps = PropsWithChildren<{
     counterId: string;
     title: string;
-    isPremium: boolean;
+    canShare: boolean;
+    isOwner: boolean;
     busy: boolean;
     canReorder: boolean;
     onAction: (action: 'edit' | 'share' | 'delete' | 'reorder') => void;
 }>;
 
-export function CounterMenu({ counterId, title, isPremium, busy, canReorder, onAction, children }: CounterMenuProps) {
+export function CounterMenu({
+    counterId,
+    title,
+    canShare,
+    isOwner,
+    busy,
+    canReorder,
+    onAction,
+    children,
+}: CounterMenuProps) {
     const id = useId();
     const popover = useRef<HTMLDivElement>(null);
     const trigger = useRef<HTMLButtonElement>(null);
-    const shareLabel = !isPremium ? 'Share (Premium)' : busy ? 'Sharing…' : 'Share';
+    const shareLabel = !canShare ? 'Share (Premium)' : busy ? 'Sharing…' : 'Share';
     const actions = [
         { id: 'edit', label: 'Edit', run: () => onAction('edit'), disabled: false },
-        { id: 'share', label: shareLabel, run: () => onAction('share'), disabled: !isPremium || busy },
+        { id: 'share', label: shareLabel, run: () => onAction('share'), disabled: !canShare || busy },
         { id: 'reorder', label: 'Reorder', run: () => onAction('reorder'), disabled: !canReorder },
-        { id: 'delete', label: 'Delete', run: () => onAction('delete'), disabled: false },
+        { id: 'delete', label: isOwner ? 'Delete' : 'Leave', run: () => onAction('delete'), disabled: false },
     ];
 
     return (
