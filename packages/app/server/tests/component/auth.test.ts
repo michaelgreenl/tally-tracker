@@ -1,4 +1,4 @@
-import { OK, CREATED, OK_NO_CONTENT, UNAUTHORIZED, NOT_FOUND, UNPROCESSABLE_ENTITY } from '@tally/core';
+import { OK, CREATED, OK_NO_CONTENT, UNAUTHORIZED, NOT_FOUND, UNPROCESSABLE_ENTITY, SERVER_ERROR } from '@tally/core';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
 import { randomUUID } from 'crypto';
@@ -68,6 +68,7 @@ describe('Auth Routes', () => {
     });
 
     afterEach(() => {
+        vi.restoreAllMocks();
         vi.unstubAllEnvs();
     });
 
@@ -146,6 +147,20 @@ describe('Auth Routes', () => {
     });
 
     describe('POST /users/login', () => {
+        it('keeps internal login failures out of the response and console output', async () => {
+            const secret = 'database-password-fixture';
+            const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+            vi.mocked(userRepository.getUserByEmail).mockRejectedValueOnce(new Error(`Database failure: ${secret}`));
+
+            const res = await request(app)
+                .post('/users/login')
+                .send({ email: 'test@test.com', password: 'Password123' });
+
+            expect(res.status).toBe(SERVER_ERROR);
+            expect(res.body).toEqual({ success: false, message: 'Something went wrong. Please try again later.' });
+            expect(log.mock.calls.flat().join(' ')).not.toContain(secret);
+        });
+
         it('should login with valid email and return tokens', async () => {
             vi.mocked(userRepository.getUserByEmail).mockResolvedValue(buildUser());
             vi.mocked(tokenRepository.create).mockResolvedValue(buildRefreshToken());

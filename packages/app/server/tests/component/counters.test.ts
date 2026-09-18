@@ -310,6 +310,7 @@ describe('Counter Routes', () => {
                 .send({ title: 'Retried Title' });
 
             expect(first.status).toBe(SERVER_ERROR);
+            expect(first.body).toEqual({ success: false, message: 'Something went wrong. Please try again later.' });
             expect(second.status).toBe(OK);
             expect(counterRepository.put).toHaveBeenCalledTimes(2);
             expect(second.body.data.counter.title).toBe('Retried Title');

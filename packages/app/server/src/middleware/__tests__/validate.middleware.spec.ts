@@ -3,6 +3,7 @@ import request from 'supertest';
 import { expect, it } from 'vitest';
 import { z } from 'zod';
 import { validate } from '../validate.middleware.js';
+import { errorHandler } from '../errorHandler.middleware.js';
 
 it('passes parsed values to the route without changing other requests', async () => {
     const app = express();
@@ -29,4 +30,25 @@ it('passes parsed values to the route without changing other requests', async ()
 
     const raw = await request(app).post('/raw/counter?limit=2').send({ name: ' Unchanged ' }).expect(200);
     expect(raw.body).toEqual({ body: { name: ' Unchanged ' }, params: { id: 'counter' }, query: { limit: '2' } });
+});
+
+it('forwards unexpected schema failures without exposing an invalid status or internal message', async () => {
+    const app = express();
+    const failure = Object.assign(new Error('Private schema failure'), { status: 401.5 });
+    const schema = z.object({
+        body: z.unknown().transform(() => {
+            throw failure;
+        }),
+    });
+    app.post('/', validate(schema));
+    let reported: unknown;
+    const observe: express.ErrorRequestHandler = (error, _req, _res, next) => {
+        reported = error;
+        next(error);
+    };
+    app.use(observe, errorHandler);
+
+    const response = await request(app).post('/').expect(500);
+    expect(reported).toBe(failure);
+    expect(response.body).toEqual({ success: false, message: 'Something went wrong. Please try again later.' });
 });

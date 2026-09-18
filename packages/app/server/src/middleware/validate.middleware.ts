@@ -1,4 +1,4 @@
-import { UNPROCESSABLE_ENTITY, SERVER_ERROR } from '@tally/core';
+import { UNPROCESSABLE_ENTITY } from '@tally/core';
 import { Request, Response, NextFunction } from 'express';
 import { ZodType, ZodError, ZodIssue } from 'zod';
 
@@ -33,6 +33,6 @@ export const validate =
                 });
             }
 
-            return res.status(SERVER_ERROR).json({ success: false, message: 'Internal Server Error' });
+            return next(error);
         }
     };
