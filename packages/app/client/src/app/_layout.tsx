@@ -43,11 +43,11 @@ function Navigator() {
                 <Stack.Screen name='join' options={{ title: 'Tally | Join' }} />
                 <Stack.Screen name='settings' options={{ title: 'Tally | Settings' }} />
                 <Stack.Screen name='upgrade' options={{ title: 'Tally | Upgrade' }} />
+                <Stack.Screen name='verify-email' options={{ title: 'Tally | Verify Email' }} />
                 <Stack.Screen name='legal/[document]' />
                 <Stack.Protected guard={!session.isAuthenticated}>
                     <Stack.Screen name='login' options={{ title: 'Tally | Login' }} />
                     <Stack.Screen name='register' options={{ title: 'Tally | Register' }} />
-                    <Stack.Screen name='verify-email' options={{ title: 'Tally | Verify Email' }} />
                     <Stack.Screen name='forgot-password' options={{ title: 'Tally | Reset Password' }} />
                 </Stack.Protected>
             </Stack>

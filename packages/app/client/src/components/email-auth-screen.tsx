@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../colors';
 import { getErrorMessage } from '../api';
 import { AuthService } from '../services/auth.service';
+import { useSession } from '../session';
 import { FormField, styles } from './auth-form';
 
 type EmailAuthScreenProps = {
@@ -31,14 +32,24 @@ const getEmailParameter = (email: string | string[] | undefined) =>
 
 export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
     const router = useRouter();
-    const params = useLocalSearchParams<{ email?: string | string[]; inviteCode?: string | string[] }>();
+    const params = useLocalSearchParams<{
+        email?: string | string[];
+        inviteCode?: string | string[];
+        returnTo?: string;
+        plan?: string;
+    }>();
+    const session = useSession();
     const inviteCode = typeof params.inviteCode === 'string' ? params.inviteCode : undefined;
     const isVerification = mode === 'verify';
+    const resumeSession = isVerification && session.isAuthenticated;
+    const returnTo =
+        params.returnTo === '/upgrade' ? { pathname: '/upgrade' as const, params: { plan: params.plan } } : '/home';
     const codeInputRef = useRef<TextInput>(null);
     const passwordInputRef = useRef<TextInput>(null);
     const confirmPasswordInputRef = useRef<TextInput>(null);
-    const [email, setEmail] = useState(() => getEmailParameter(params.email));
-    const [step, setStep] = useState<Step>(isVerification ? 'code' : 'email');
+    const [enteredEmail, setEmail] = useState(() => getEmailParameter(params.email));
+    const email = resumeSession ? session.user!.email : enteredEmail;
+    const [step, setStep] = useState<Step>(isVerification && !params.returnTo ? 'code' : 'email');
     const [code, setCode] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -130,9 +141,22 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
         setStatusMessage('');
     }
 
-    function primaryAction() {
+    async function primaryAction() {
+        if (loading) return;
         if (complete) {
-            router.replace({ pathname: '/login', params: { email, inviteCode } });
+            if (resumeSession) {
+                setLoading(true);
+                setErrorMessage('');
+                try {
+                    const user = await session.refreshUser();
+                    if (!user.emailVerified) throw new Error('Verify your account email to continue.');
+                    router.replace(inviteCode ? { pathname: '/join', params: { code: inviteCode } } : returnTo);
+                } catch (error) {
+                    setErrorMessage(getErrorMessage(error, 'Could not refresh your account. Try again.'));
+                } finally {
+                    setLoading(false);
+                }
+            } else router.replace({ pathname: '/login', params: { email, inviteCode } });
             return;
         }
 
@@ -158,9 +182,11 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
         complete: {
             title: isVerification ? 'Email Verified' : 'Password Reset',
             description: isVerification
-                ? 'Email verified. You can now log in.'
+                ? resumeSession
+                    ? 'Your email is verified.'
+                    : 'Email verified. You can now log in.'
                 : 'Password updated. You can now log in.',
-            action: 'Continue to Login',
+            action: resumeSession ? 'Continue' : 'Continue to Login',
         },
     }[step];
 
@@ -192,7 +218,7 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
                                 <FormField
                                     autoCapitalize='none'
                                     autoComplete='email'
-                                    editable={!loading}
+                                    editable={!loading && !resumeSession}
                                     keyboardType='email-address'
                                     label='Email Address'
                                     onChangeText={setEmail}
@@ -261,7 +287,7 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
                                 </View>
                             )}
 
-                            {!complete && Boolean(errorMessage) && (
+                            {Boolean(errorMessage) && (
                                 <View
                                     accessibilityLiveRegion='polite'
                                     accessibilityRole='alert'
@@ -275,7 +301,7 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
                             <Pressable
                                 accessibilityRole='button'
                                 disabled={loading}
-                                onPress={primaryAction}
+                                onPress={() => void primaryAction()}
                                 style={({ pressed }) => [
                                     styles.primaryButton,
                                     pressed && styles.primaryButtonPressed,
@@ -308,16 +334,18 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
                                     >
                                         <Text style={styles.link}>Resend code</Text>
                                     </Pressable>
-                                    <Pressable
-                                        accessibilityRole='button'
-                                        disabled={loading}
-                                        hitSlop={8}
-                                        onPress={() => changeStep('email')}
-                                        style={({ pressed }) => pressed && styles.linkPressed}
-                                        testID='email-auth-change-email'
-                                    >
-                                        <Text style={styles.link}>Use a different email</Text>
-                                    </Pressable>
+                                    {!resumeSession && (
+                                        <Pressable
+                                            accessibilityRole='button'
+                                            disabled={loading}
+                                            hitSlop={8}
+                                            onPress={() => changeStep('email')}
+                                            style={({ pressed }) => pressed && styles.linkPressed}
+                                            testID='email-auth-change-email'
+                                        >
+                                            <Text style={styles.link}>Use a different email</Text>
+                                        </Pressable>
+                                    )}
                                 </View>
                             )}
 
@@ -338,14 +366,23 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
 
                             {!complete && (
                                 <View style={styles.footer}>
-                                    <Link href={{ pathname: '/login', params: { email, inviteCode } }} asChild>
+                                    <Link
+                                        href={
+                                            resumeSession
+                                                ? returnTo
+                                                : { pathname: '/login', params: { email, inviteCode } }
+                                        }
+                                        asChild
+                                    >
                                         <Pressable
                                             accessibilityRole='link'
                                             hitSlop={8}
                                             style={({ pressed }) => pressed && styles.linkPressed}
                                             testID='email-auth-login'
                                         >
-                                            <Text style={styles.link}>Back to login</Text>
+                                            <Text style={styles.link}>
+                                                {resumeSession ? 'Cancel' : 'Back to login'}
+                                            </Text>
                                         </Pressable>
                                     </Link>
                                 </View>

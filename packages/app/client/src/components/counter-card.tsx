@@ -1,5 +1,6 @@
 import * as Clipboard from 'expo-clipboard';
 import { createURL } from 'expo-linking';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import Animated, {
@@ -44,13 +45,18 @@ export function CounterCard({
     reordering,
     onReorder,
 }: CounterCardProps) {
-    const { isPremium } = useSession();
+    const { isPremium, user } = useSession();
+    const router = useRouter();
     const { shareCounter, failedCounterIds } = useCounters();
     const [sharing, setSharing] = useState(false);
     const increment = counter.increment ?? 1;
 
     async function share() {
         if (!isPremium || sharing) return;
+        if (!user?.emailVerified) {
+            router.push({ pathname: '/verify-email', params: { email: user?.email, returnTo: '/home' } });
+            return;
+        }
         setSharing(true);
         onNotice('');
         try {

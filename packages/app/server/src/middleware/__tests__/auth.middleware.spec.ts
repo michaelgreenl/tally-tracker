@@ -43,6 +43,7 @@ describe('Auth Middleware', () => {
         vi.mocked(userRepository.getUserAuthById).mockResolvedValue({
             id: 'user-123',
             email: 'test@example.com',
+            emailVerifiedAt: null,
             sessionVersion: 0,
         });
         const req = mockReq({ cookies: { access_token: 'valid-token' } });
@@ -51,7 +52,12 @@ describe('Auth Middleware', () => {
         await jwt(req, res, mockNext);
 
         expect(jwtUtil.verify).toHaveBeenCalledWith('valid-token');
-        expect(req.user).toEqual({ id: 'user-123', email: 'test@example.com', sessionVersion: 0 });
+        expect(req.user).toEqual({
+            id: 'user-123',
+            email: 'test@example.com',
+            emailVerifiedAt: null,
+            sessionVersion: 0,
+        });
         expect(mockNext).toHaveBeenCalled();
     });
 
@@ -60,6 +66,7 @@ describe('Auth Middleware', () => {
         vi.mocked(userRepository.getUserAuthById).mockResolvedValue({
             id: 'user-123',
             email: 'test@example.com',
+            emailVerifiedAt: null,
             sessionVersion: 0,
         });
         const req = mockReq({
@@ -70,7 +77,12 @@ describe('Auth Middleware', () => {
         await jwt(req, res, mockNext);
 
         expect(jwtUtil.verify).toHaveBeenCalledWith('valid-token');
-        expect(req.user).toEqual({ id: 'user-123', email: 'test@example.com', sessionVersion: 0 });
+        expect(req.user).toEqual({
+            id: 'user-123',
+            email: 'test@example.com',
+            emailVerifiedAt: null,
+            sessionVersion: 0,
+        });
         expect(mockNext).toHaveBeenCalled();
     });
 
@@ -79,6 +91,7 @@ describe('Auth Middleware', () => {
         vi.mocked(userRepository.getUserAuthById).mockResolvedValue({
             id: 'user-123',
             email: 'test@example.com',
+            emailVerifiedAt: null,
             sessionVersion: 0,
         });
         const req = mockReq({
@@ -127,6 +140,7 @@ describe('Auth Middleware', () => {
         vi.mocked(userRepository.getUserAuthById).mockResolvedValue({
             id: 'user-123',
             email: 'test@example.com',
+            emailVerifiedAt: null,
             sessionVersion: 1,
         });
         const req = mockReq({ cookies: { access_token: 'old-token' } });

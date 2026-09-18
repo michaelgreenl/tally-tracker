@@ -31,12 +31,19 @@ export default function JoinScreen() {
                 router.replace({ pathname: '/login', params: { inviteCode: code } });
                 return;
             }
+            if (!session.user?.emailVerified) {
+                router.replace({
+                    pathname: '/verify-email',
+                    params: { email: session.user?.email, inviteCode: code, returnTo: '/home' },
+                });
+                return;
+            }
 
             const result = await counters.joinCounter(code);
             Alert.alert(result.success ? 'Counter accepted!' : `Failed to join: ${result.message}`);
             router.replace('/home');
         })();
-    }, [counters, params.code, router, session.isAuthenticated]);
+    }, [counters, params.code, router, session.isAuthenticated, session.user]);
 
     return (
         <>

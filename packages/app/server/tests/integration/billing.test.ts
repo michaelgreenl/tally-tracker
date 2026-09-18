@@ -23,7 +23,7 @@ afterEach(() => {
 
 async function account() {
     const user = await prisma.user.create({
-        data: { email: `${randomUUID()}@example.invalid`, password: 'test-only' },
+        data: { email: `${randomUUID()}@example.invalid`, password: 'test-only', emailVerifiedAt: new Date() },
     });
     const authorization = `Bearer ${jwt.sign({ id: user.id, email: user.email, sessionVersion: user.sessionVersion })}`;
     const counter = await prisma.counter.create({ data: { title: 'Billing access check', userId: user.id } });
@@ -39,6 +39,7 @@ const notify = (event: Record<string, unknown>) =>
 describe('RevenueCat billing integration', () => {
     it('grants access after verification, keeps access after cancellation, and removes it after refund', async () => {
         const { user, authorization, counter } = await account();
+        await prisma.user.update({ where: { id: user.id }, data: { emailVerifiedAt: null } });
         const customer = buildRevenueCatCustomer();
         const upstream = vi.fn().mockResolvedValue(Response.json(customer));
         vi.stubGlobal('fetch', upstream);
@@ -49,6 +50,9 @@ describe('RevenueCat billing integration', () => {
             tier: 'PREMIUM',
             premiumExpiresAt: new Date(customer.subscriber.entitlements.premium.expires_date!),
         });
+        // Restoring paid access works before email verification; sharing still requires it.
+        await request(app).post(`/counters/${counter.id}/share`).set('Authorization', authorization).expect(403);
+        await prisma.user.update({ where: { id: user.id }, data: { emailVerifiedAt: new Date() } });
         await request(app).post(`/counters/${counter.id}/share`).set('Authorization', authorization).expect(200);
 
         upstream.mockResolvedValue(

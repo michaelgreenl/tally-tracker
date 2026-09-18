@@ -126,5 +126,5 @@ export const updateBillingEntitlement = (
 export const getUserAuthById = (userId: string) =>
     prisma.user.findUnique({
         where: { id: userId },
-        select: { id: true, email: true, sessionVersion: true },
+        select: { id: true, email: true, sessionVersion: true, emailVerifiedAt: true },
     });

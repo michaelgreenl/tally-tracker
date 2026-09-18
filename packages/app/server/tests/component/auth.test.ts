@@ -15,7 +15,7 @@ vi.mock('../../src/middleware/auth.middleware', () => ({
             return res.status(401).json({ success: false, message: 'Invalid token' });
         }
 
-        req.user = { id: TEST_USER_ID, email: 'test@test.com', sessionVersion: 0 };
+        req.user = { id: TEST_USER_ID, email: 'test@test.com', emailVerifiedAt: null, sessionVersion: 0 };
         next();
     },
 }));

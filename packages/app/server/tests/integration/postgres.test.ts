@@ -48,11 +48,62 @@ async function sharingAccount(tier: 'BASIC' | 'PREMIUM') {
     await request(app).post('/users').send({ email, password }).expect(201);
     const login = await request(app).post('/users/login').send({ email, password }).expect(200);
     const { user, accessToken } = login.body.data;
-    await prisma.user.update({ where: { id: user.id }, data: { tier } });
+    await prisma.user.update({ where: { id: user.id }, data: { tier, emailVerifiedAt: new Date() } });
     return { id: user.id as string, email, password, authorization: `Bearer ${accessToken}` };
 }
 
 describe('PostgreSQL integration', () => {
+    it('requires fresh email verification for checkout and sharing, but not personal counters', async () => {
+        const account = await sharingAccount('PREMIUM');
+        const owner = await sharingAccount('PREMIUM');
+        await prisma.user.update({ where: { id: account.id }, data: { emailVerifiedAt: null } });
+        const invitation = await prisma.counter.create({
+            data: { title: 'Invitation', userId: owner.id, type: 'SHARED', inviteCode: randomUUID() },
+        });
+        const counterId = randomUUID();
+        await request(app)
+            .post('/counters')
+            .set('Authorization', account.authorization)
+            .send({ id: counterId, title: 'Personal' })
+            .expect(201);
+        await request(app)
+            .put(`/counters/increment/${counterId}`)
+            .set('Authorization', account.authorization)
+            .send({ amount: 1 })
+            .expect(200);
+
+        const share = () =>
+            request(app).post(`/counters/${counterId}/share`).set('Authorization', account.authorization);
+        const join = () =>
+            request(app)
+                .post('/counters/join')
+                .set('Authorization', account.authorization)
+                .send({ inviteCode: invitation.inviteCode });
+        const eligibility = () => request(app).get('/billing/eligibility').set('Authorization', account.authorization);
+        await share().expect(403);
+        await join().expect(403);
+        await eligibility().expect(403);
+        expect((await prisma.counter.findUniqueOrThrow({ where: { id: counterId } })).inviteCode).toBeNull();
+        expect(await prisma.counterShare.count({ where: { userId: account.id } })).toBe(0);
+
+        await expect
+            .poll(() => prisma.emailOtp.count({ where: { userId: account.id, purpose: 'EMAIL_VERIFICATION' } }))
+            .toBe(1);
+        await prisma.emailOtp.update({
+            where: { userId_purpose: { userId: account.id, purpose: 'EMAIL_VERIFICATION' } },
+            data: {
+                digest: digestEmailOtp(account.id, 'EMAIL_VERIFICATION', '123456'),
+                expiresAt: new Date(Date.now() + 60_000),
+            },
+        });
+        await request(app).post('/users/verify-email').send({ email: account.email, code: '123456' }).expect(200);
+        // The same access token now works: the decision comes from the database, not a stale token claim.
+        await share().expect(200);
+        await join().expect(201);
+        const eligible = await eligibility().expect(200);
+        expect(eligible.body.data.userId).toBe(account.id);
+    });
+
     it.each([`A1${'a'.repeat(70)}`, `Ab1${'é'.repeat(34)}z`])(
         'accepts 72 UTF-8 password bytes but never truncates extra input: %s',
         async (password) => {
@@ -899,7 +950,8 @@ describe('PostgreSQL integration', () => {
         const ownerAccessToken = ownerLogin.body.data.accessToken;
         const memberAccessToken = memberLogin.body.data.accessToken;
 
-        await prisma.user.update({ where: { id: owner.id }, data: { tier: 'PREMIUM' } });
+        await prisma.user.update({ where: { id: owner.id }, data: { tier: 'PREMIUM', emailVerifiedAt: new Date() } });
+        await prisma.user.update({ where: { id: member.id }, data: { emailVerifiedAt: new Date() } });
 
         const createShared = await ownerAgent
             .post('/counters')

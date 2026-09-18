@@ -11,7 +11,7 @@ export interface AccessTokenPayload {
 declare global {
     namespace Express {
         interface Request {
-            user?: AccessTokenPayload;
+            user?: AccessTokenPayload & { emailVerifiedAt: Date | null };
         }
     }
 }

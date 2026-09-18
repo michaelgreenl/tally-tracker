@@ -76,7 +76,7 @@ const prismaMock = vi.hoisted(() => {
 
 vi.mock('../../src/middleware/auth.middleware', () => ({
     jwt: (req: Request, res: Response, next: NextFunction) => {
-        req.user = { id: TEST_USER_ID, email: 'test@test.com', sessionVersion: 0 };
+        req.user = { id: TEST_USER_ID, email: 'test@test.com', emailVerifiedAt: new Date(), sessionVersion: 0 };
         next();
     },
 }));

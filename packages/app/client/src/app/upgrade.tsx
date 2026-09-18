@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -27,7 +27,8 @@ export default function UpgradeScreen() {
 
 function UpgradeContent({ session }: { session: ReturnType<typeof useSession> }) {
     const router = useRouter();
-    const [selectedPlan, setSelectedPlan] = useState<(typeof plans)[number]>(plans[1]);
+    const params = useLocalSearchParams<{ plan?: string }>();
+    const [selectedPlan, setSelectedPlan] = useState(() => plans.find((plan) => plan.id === params.plan) ?? plans[1]);
     const [store, setStore] = useState<Awaited<ReturnType<typeof BillingService.load>> | null>(null);
     const [loadError, setLoadError] = useState(false);
     const [retry, setRetry] = useState(0);
@@ -47,7 +48,8 @@ function UpgradeContent({ session }: { session: ReturnType<typeof useSession> })
     const available = Boolean(apiKey);
     const canLoad = available && Boolean(userId);
     const product = canLoad ? store?.packages[selectedPlan.id] : null;
-    const purchaseDisabled = !product || Boolean(busy) || needsRestore;
+    const needsVerification = Boolean(session.user && !session.user.emailVerified);
+    const purchaseDisabled = !product || Boolean(busy) || needsRestore || needsVerification;
     const managementURL = store?.managementURL?.startsWith('https://') ? store.managementURL : null;
 
     useEffect(() => {
@@ -233,6 +235,22 @@ function UpgradeContent({ session }: { session: ReturnType<typeof useSession> })
                         )}
 
                         <View style={styles.actions}>
+                            {needsVerification && (
+                                <AuthLink
+                                    href={{
+                                        pathname: '/verify-email',
+                                        params: {
+                                            email: session.user!.email,
+                                            returnTo: '/upgrade',
+                                            plan: selectedPlan.id,
+                                        },
+                                    }}
+                                    style={styles.restoreButton}
+                                    testID='upgrade-verify-email'
+                                >
+                                    Verify email to continue
+                                </AuthLink>
+                            )}
                             {!session.isPremium && (
                                 <Pressable
                                     accessibilityRole='button'

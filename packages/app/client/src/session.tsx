@@ -23,6 +23,7 @@ type SessionContextValue = {
     register: (request: AuthRequest) => Promise<ActionResult>;
     logout: () => Promise<ActionResult>;
     deleteAccount: () => Promise<ActionResult>;
+    refreshUser: () => Promise<ClientUser>;
     refreshPurchases: () => Promise<ClientUser>;
     notice: string;
     dismissNotice: () => void;
@@ -110,22 +111,28 @@ export function SessionProvider({ children }: PropsWithChildren) {
         await AuthService.clearLocalAuth(scope);
     }, [setUser]);
 
-    const refreshPurchases = useCallback(async () => {
+    const refreshUser = useCallback(async () => {
         const scope = getSessionScope();
         const userId = userRef.current?.id;
-        if (!userId) throw new Error('Sign in to verify purchases.');
-        await BillingService.sync();
-        assertSession(scope);
+        if (!userId) throw new Error('Sign in to continue.');
         const response = await AuthService.checkAuth();
         const verifiedUser = response.data?.user;
         if (!response.success || !verifiedUser || verifiedUser.id !== userId || userRef.current?.id !== userId) {
-            throw new Error('The account changed. Sign in again to verify purchases.');
+            throw new Error('The account changed. Sign in again.');
         }
         await AuthService.cacheUser(verifiedUser, scope);
         assertSession(scope);
         setUser(verifiedUser);
         return verifiedUser;
     }, [setUser]);
+
+    const refreshPurchases = useCallback(async () => {
+        const scope = getSessionScope();
+        if (!scope.userId) throw new Error('Sign in to verify purchases.');
+        await BillingService.sync();
+        assertSession(scope);
+        return refreshUser();
+    }, [refreshUser]);
 
     useEffect(() => {
         if (!user?.id || !billingApiKey()) return;
@@ -286,6 +293,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
                 register,
                 logout,
                 deleteAccount,
+                refreshUser,
                 refreshPurchases,
                 notice,
                 dismissNotice: () => setNotice(''),
