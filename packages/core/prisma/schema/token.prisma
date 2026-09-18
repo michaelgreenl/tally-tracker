@@ -32,3 +32,12 @@ model EmailOtp {
     @@index([expiresAt])
     @@map("email_otps")
 }
+
+model LoginRateLimit {
+    key     String   @id
+    hits    Int
+    resetAt DateTime @map("reset_at") @db.Timestamptz(3)
+
+    @@index([resetAt])
+    @@map("login_rate_limits")
+}

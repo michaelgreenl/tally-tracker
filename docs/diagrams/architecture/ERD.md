@@ -92,6 +92,12 @@ BASIC BASIC
     DateTime created_at
     }
 
+  "login_rate_limits" {
+    String key "PK"
+    Int hits
+    DateTime reset_at
+    }
+
   "users" {
     String id "PK"
     String email 

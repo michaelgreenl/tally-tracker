@@ -2,7 +2,7 @@ import express from 'express';
 import { post, remove, login, logout, checkAuth, refresh } from '../controllers/user.controller.js';
 import { jwt } from '../../middleware/auth.middleware.js';
 import { validate } from '../../middleware/validate.middleware.js';
-import { emailAuthLimiter } from '../../config/limiters.config.js';
+import { emailAuthLimiter, loginAccountLimiter, loginIpLimiter } from '../../config/limiters.config.js';
 import {
     requestEmailVerification,
     requestPasswordReset,
@@ -25,7 +25,7 @@ const router = express.Router();
 router.get('/check-auth', jwt, checkAuth);
 router.post('/', emailAuthLimiter, validate(createUserSchema), post);
 router.delete('/', jwt, remove);
-router.post('/login', validate(loginSchema), login);
+router.post('/login', loginIpLimiter, validate(loginSchema), loginAccountLimiter, login);
 router.post('/logout', validate(logoutSchema), logout);
 router.post('/refresh', validate(refreshSchema), refresh);
 router.post('/verify-email/request', emailAuthLimiter, validate(emailAddressSchema), requestEmailVerification);

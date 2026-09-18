@@ -53,6 +53,25 @@ async function sharingAccount(tier: 'BASIC' | 'PREMIUM') {
 }
 
 describe('PostgreSQL integration', () => {
+    it.each([`A1${'a'.repeat(70)}`, `Ab1${'é'.repeat(34)}z`])(
+        'accepts 72 UTF-8 password bytes but never truncates extra input: %s',
+        async (password) => {
+            const email = `password-length.${randomUUID()}@example.com`;
+            await request(app).post('/users').send({ email, password }).expect(201);
+            await request(app).post('/users/login').send({ email, password }).expect(200);
+            await request(app)
+                .post('/users/login')
+                .send({ email, password: `${password}x` })
+                .expect(422);
+            const rejectedEmail = `overlong.${randomUUID()}@example.com`;
+            await request(app)
+                .post('/users')
+                .send({ email: rejectedEmail, password: `${password}x` })
+                .expect(422);
+            expect(await prisma.user.findUnique({ where: { email: rejectedEmail } })).toBeNull();
+        },
+    );
+
     it('notifies other devices when shared membership or a counter is removed', async () => {
         const owner = await sharingAccount('PREMIUM');
         const member = await sharingAccount('BASIC');
@@ -737,11 +756,11 @@ describe('PostgreSQL integration', () => {
         for (let attempt = 0; attempt < 5; attempt += 1) {
             await request(app)
                 .post(attempt % 2 === 0 ? '/users/reset-password/verify' : '/users/reset-password')
-                .send({ email, code: '000000', password: 'New-password1' })
+                .send({ email, code: '000000', password: 'New-password123' })
                 .expect(422);
         }
         await request(app).post('/users/reset-password/verify').send({ email, code }).expect(422);
-        await request(app).post('/users/reset-password').send({ email, code, password: 'New-password1' }).expect(422);
+        await request(app).post('/users/reset-password').send({ email, code, password: 'New-password123' }).expect(422);
         expect((await prisma.emailOtp.findUniqueOrThrow({ where })).attempts).toBe(5);
         await request(app).post('/users/login').send({ email, password }).expect(200);
     });

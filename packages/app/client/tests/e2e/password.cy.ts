@@ -30,7 +30,7 @@ describe('New password requirements', () => {
                 cy.wait('@verifyCode');
             }
 
-            for (const password of ['Abc12', 'abcdef1', 'Abcdef']) {
+            for (const password of ['Abc12', 'abcdefghijklmno1', 'Abcdefghijklmnop', `Ab1${'é'.repeat(35)}`]) {
                 cy.get(`[data-testid="${prefix}-password"]`).clear().type(password);
                 cy.get(`[data-testid="${prefix}-confirm-password"]`).clear().type(password);
                 cy.get(`[data-testid="${prefix}-submit"]`).click();
@@ -38,14 +38,14 @@ describe('New password requirements', () => {
                 cy.get('@submitPassword.all').should('have.length', 0);
             }
 
-            cy.get(`[data-testid="${prefix}-password"]`).clear().type('Abcde1');
-            cy.get(`[data-testid="${prefix}-confirm-password"]`).clear().type('Abcde1');
+            cy.get(`[data-testid="${prefix}-password"]`).clear().type('New-password123');
+            cy.get(`[data-testid="${prefix}-confirm-password"]`).clear().type('New-password123');
             cy.get(`[data-testid="${prefix}-submit"]`).click();
             cy.wait('@submitPassword')
                 .its('request.body')
                 .should('deep.equal', {
                     email,
-                    password: 'Abcde1',
+                    password: 'New-password123',
                     ...(!isRegister && { code: '123456' }),
                 });
             if (isRegister) cy.location('pathname').should('eq', '/verify-email');
@@ -91,12 +91,12 @@ describe('Password recovery', () => {
         cy.wait('@verifyCode').its('request.body').should('deep.equal', { email, code: '123456' });
         cy.get('[data-testid="email-auth-code"]').should('not.exist');
         cy.get('[data-testid="email-auth-email"]').should('not.exist');
-        cy.get('[data-testid="email-auth-password"]').type('New-password1');
-        cy.get('[data-testid="email-auth-confirm-password"]').type('New-password1');
+        cy.get('[data-testid="email-auth-password"]').type('New-password123');
+        cy.get('[data-testid="email-auth-confirm-password"]').type('New-password123');
         cy.get('[data-testid="email-auth-submit"]').click();
         cy.wait('@resetPassword')
             .its('request.body')
-            .should('deep.equal', { email, code: '123456', password: 'New-password1' });
+            .should('deep.equal', { email, code: '123456', password: 'New-password123' });
 
         cy.get('[data-testid="email-auth-login"]').click();
         cy.location('pathname').should('eq', '/login');

@@ -5,7 +5,7 @@ it('finishes an old logout before a second browser context installs another acco
     cy.clearLocalStorage();
     const credentials = (name: string) => ({
         email: `${name}-${crypto.randomUUID()}@example.com`,
-        password: 'Password123',
+        password: 'New-password123',
     });
     const a = credentials('logout-a');
     const b = credentials('login-b');

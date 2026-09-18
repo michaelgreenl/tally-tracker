@@ -1,5 +1,6 @@
 import * as tokenRepository from './repositories/token.repository.js';
 import { captureServerError } from '../monitoring/sentry.js';
+import prisma from './prisma.js';
 
 export const startCleanupJob = () => {
     cleanup();
@@ -12,6 +13,7 @@ export const cleanup = async () => {
 
         const tokenCount = await tokenRepository.deleteExpired();
         console.log(`[Maintenance] Deleted ${tokenCount} expired refresh tokens.`);
+        await prisma.loginRateLimit.deleteMany({ where: { resetAt: { lte: new Date() } } });
     } catch (error) {
         captureServerError(error, { source: 'maintenance.cleanup' });
         console.error('[Maintenance] Cleanup failed.');

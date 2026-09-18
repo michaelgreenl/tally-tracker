@@ -20,6 +20,8 @@ import type { User } from '@prisma/client';
 import type { Server } from 'socket.io';
 
 const REFRESH_TOKEN_TTL = 30 * 24 * 60 * 60 * 1000; // 30d
+// Unknown accounts still pay the same bcrypt cost as an incorrect password.
+const DUMMY_PASSWORD_HASH = '$2b$10$RbpR42/g2.4KJVi2faLOcuooync48POnkHFq1Qy9GeiMfSNU1xyaa';
 
 const toClientUser = (user: Pick<User, 'id' | 'email' | 'tier' | 'emailVerifiedAt'>): ClientUser => ({
     id: user.id,
@@ -92,16 +94,9 @@ export const login = async (
     const sanitizedEmail = sanitizeEmail(email);
     const user = await userRepository.getUserByEmail(sanitizedEmail);
 
-    if (!user) {
-        return res.status(NOT_FOUND).json({
-            success: false,
-            message: 'No account found with those credentials.',
-        });
-    }
-
-    const match = await bcrypt.compare(password, user.password);
-    if (!match) {
-        return res.status(UNAUTHORIZED).json({ success: false, message: 'Incorrect password.' });
+    const match = await bcrypt.compare(password, user?.password ?? DUMMY_PASSWORD_HASH);
+    if (!user || !match) {
+        return res.status(UNAUTHORIZED).json({ success: false, message: 'Email or password is incorrect.' });
     }
 
     const credentials = await userRepository.withLockedUser(user.id, async (current, tx) => {

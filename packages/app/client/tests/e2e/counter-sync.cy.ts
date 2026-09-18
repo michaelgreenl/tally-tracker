@@ -17,7 +17,7 @@ describe('Counter sync recovery', () => {
     beforeEach(() => {
         cy.clearCookies();
         cy.clearLocalStorage();
-        const credentials = { email: `sync-${crypto.randomUUID()}@example.com`, password: 'Password123' };
+        const credentials = { email: `sync-${crypto.randomUUID()}@example.com`, password: 'New-password123' };
         cy.request('POST', '/users', credentials);
         cy.request('POST', '/users/login', credentials).then(({ body }) => {
             user = body.data.user;

@@ -40,8 +40,8 @@ describe('Shared counter invitations', () => {
                     cy.get('[data-testid="auth-switch-mode"]').click();
                     cy.location('pathname').should('eq', '/register');
                     cy.get('[data-testid="auth-email"]').filter(':visible').type('recipient@example.com');
-                    cy.get('[data-testid="auth-password"]').filter(':visible').type('Password123');
-                    cy.get('[data-testid="auth-confirm-password"]').type('Password123');
+                    cy.get('[data-testid="auth-password"]').filter(':visible').type('New-password123');
+                    cy.get('[data-testid="auth-confirm-password"]').type('New-password123');
                     cy.get('[data-testid="auth-submit"]').filter(':visible').click();
                     cy.get('[data-testid="email-auth-code"]').type('123456');
                     cy.get('[data-testid="email-auth-submit"]').click();
@@ -55,8 +55,8 @@ describe('Shared counter invitations', () => {
                     cy.get('[data-testid="email-auth-request"]').click();
                     cy.get('[data-testid="email-auth-code"]').type('123456');
                     cy.get('[data-testid="email-auth-submit"]').click();
-                    cy.get('[data-testid="email-auth-password"]').type('Password123');
-                    cy.get('[data-testid="email-auth-confirm-password"]').type('Password123');
+                    cy.get('[data-testid="email-auth-password"]').type('New-password123');
+                    cy.get('[data-testid="email-auth-confirm-password"]').type('New-password123');
                     cy.get('[data-testid="email-auth-submit"]').click();
                     cy.get('[data-testid="email-auth-login"]').click();
                 }
@@ -78,7 +78,7 @@ describe('Shared counter invitations', () => {
                 cy.intercept('POST', '**/users/login', {
                     body: { success: true, data: { user } },
                 });
-                cy.get('[data-testid="auth-password"]').clear().type('Password123');
+                cy.get('[data-testid="auth-password"]').clear().type('New-password123');
                 cy.get('[data-testid="auth-submit"]').click();
             }
             cy.wait('@join').its('request.body').should('deep.equal', { inviteCode });

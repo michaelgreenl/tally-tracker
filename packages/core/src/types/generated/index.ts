@@ -146,6 +146,8 @@ export const EmailOtpScalarFieldEnumSchema = z.enum([
     'createdAt',
 ]);
 
+export const LoginRateLimitScalarFieldEnumSchema = z.enum(['key', 'hits', 'resetAt']);
+
 export const UserScalarFieldEnumSchema = z.enum([
     'id',
     'email',
@@ -293,6 +295,18 @@ export const EmailOtpSchema = z.object({
 });
 
 export type EmailOtp = z.infer<typeof EmailOtpSchema>;
+
+/////////////////////////////////////////
+// LOGIN RATE LIMIT SCHEMA
+/////////////////////////////////////////
+
+export const LoginRateLimitSchema = z.object({
+    key: z.string(),
+    hits: z.number().int(),
+    resetAt: z.coerce.date(),
+});
+
+export type LoginRateLimit = z.infer<typeof LoginRateLimitSchema>;
 
 /////////////////////////////////////////
 // USER SCHEMA
@@ -468,6 +482,17 @@ export const EmailOtpSelectSchema: z.ZodType<Prisma.EmailOtpSelect> = z
         consumedAt: z.boolean().optional(),
         createdAt: z.boolean().optional(),
         user: z.union([z.boolean(), z.lazy(() => UserArgsSchema)]).optional(),
+    })
+    .strict();
+
+// LOGIN RATE LIMIT
+//------------------------------------------------------
+
+export const LoginRateLimitSelectSchema: z.ZodType<Prisma.LoginRateLimitSelect> = z
+    .object({
+        key: z.boolean().optional(),
+        hits: z.boolean().optional(),
+        resetAt: z.boolean().optional(),
     })
     .strict();
 
@@ -1265,6 +1290,92 @@ export const EmailOtpScalarWhereWithAggregatesInputSchema: z.ZodType<Prisma.Emai
             .optional()
             .nullable(),
         createdAt: z.union([z.lazy(() => DateTimeWithAggregatesFilterSchema), z.coerce.date()]).optional(),
+    });
+
+export const LoginRateLimitWhereInputSchema: z.ZodType<Prisma.LoginRateLimitWhereInput> = z.strictObject({
+    AND: z
+        .union([z.lazy(() => LoginRateLimitWhereInputSchema), z.lazy(() => LoginRateLimitWhereInputSchema).array()])
+        .optional(),
+    OR: z
+        .lazy(() => LoginRateLimitWhereInputSchema)
+        .array()
+        .optional(),
+    NOT: z
+        .union([z.lazy(() => LoginRateLimitWhereInputSchema), z.lazy(() => LoginRateLimitWhereInputSchema).array()])
+        .optional(),
+    key: z.union([z.lazy(() => StringFilterSchema), z.string()]).optional(),
+    hits: z.union([z.lazy(() => IntFilterSchema), z.number()]).optional(),
+    resetAt: z.union([z.lazy(() => DateTimeFilterSchema), z.coerce.date()]).optional(),
+});
+
+export const LoginRateLimitOrderByWithRelationInputSchema: z.ZodType<Prisma.LoginRateLimitOrderByWithRelationInput> =
+    z.strictObject({
+        key: z.lazy(() => SortOrderSchema).optional(),
+        hits: z.lazy(() => SortOrderSchema).optional(),
+        resetAt: z.lazy(() => SortOrderSchema).optional(),
+    });
+
+export const LoginRateLimitWhereUniqueInputSchema: z.ZodType<Prisma.LoginRateLimitWhereUniqueInput> = z
+    .object({
+        key: z.string(),
+    })
+    .and(
+        z.strictObject({
+            key: z.string().optional(),
+            AND: z
+                .union([
+                    z.lazy(() => LoginRateLimitWhereInputSchema),
+                    z.lazy(() => LoginRateLimitWhereInputSchema).array(),
+                ])
+                .optional(),
+            OR: z
+                .lazy(() => LoginRateLimitWhereInputSchema)
+                .array()
+                .optional(),
+            NOT: z
+                .union([
+                    z.lazy(() => LoginRateLimitWhereInputSchema),
+                    z.lazy(() => LoginRateLimitWhereInputSchema).array(),
+                ])
+                .optional(),
+            hits: z.union([z.lazy(() => IntFilterSchema), z.number().int()]).optional(),
+            resetAt: z.union([z.lazy(() => DateTimeFilterSchema), z.coerce.date()]).optional(),
+        }),
+    );
+
+export const LoginRateLimitOrderByWithAggregationInputSchema: z.ZodType<Prisma.LoginRateLimitOrderByWithAggregationInput> =
+    z.strictObject({
+        key: z.lazy(() => SortOrderSchema).optional(),
+        hits: z.lazy(() => SortOrderSchema).optional(),
+        resetAt: z.lazy(() => SortOrderSchema).optional(),
+        _count: z.lazy(() => LoginRateLimitCountOrderByAggregateInputSchema).optional(),
+        _avg: z.lazy(() => LoginRateLimitAvgOrderByAggregateInputSchema).optional(),
+        _max: z.lazy(() => LoginRateLimitMaxOrderByAggregateInputSchema).optional(),
+        _min: z.lazy(() => LoginRateLimitMinOrderByAggregateInputSchema).optional(),
+        _sum: z.lazy(() => LoginRateLimitSumOrderByAggregateInputSchema).optional(),
+    });
+
+export const LoginRateLimitScalarWhereWithAggregatesInputSchema: z.ZodType<Prisma.LoginRateLimitScalarWhereWithAggregatesInput> =
+    z.strictObject({
+        AND: z
+            .union([
+                z.lazy(() => LoginRateLimitScalarWhereWithAggregatesInputSchema),
+                z.lazy(() => LoginRateLimitScalarWhereWithAggregatesInputSchema).array(),
+            ])
+            .optional(),
+        OR: z
+            .lazy(() => LoginRateLimitScalarWhereWithAggregatesInputSchema)
+            .array()
+            .optional(),
+        NOT: z
+            .union([
+                z.lazy(() => LoginRateLimitScalarWhereWithAggregatesInputSchema),
+                z.lazy(() => LoginRateLimitScalarWhereWithAggregatesInputSchema).array(),
+            ])
+            .optional(),
+        key: z.union([z.lazy(() => StringWithAggregatesFilterSchema), z.string()]).optional(),
+        hits: z.union([z.lazy(() => IntWithAggregatesFilterSchema), z.number()]).optional(),
+        resetAt: z.union([z.lazy(() => DateTimeWithAggregatesFilterSchema), z.coerce.date()]).optional(),
     });
 
 export const UserWhereInputSchema: z.ZodType<Prisma.UserWhereInput> = z.strictObject({
@@ -2078,6 +2189,52 @@ export const EmailOtpUncheckedUpdateManyInputSchema: z.ZodType<Prisma.EmailOtpUn
             .optional()
             .nullable(),
         createdAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
+    });
+
+export const LoginRateLimitCreateInputSchema: z.ZodType<Prisma.LoginRateLimitCreateInput> = z.strictObject({
+    key: z.string(),
+    hits: z.number().int(),
+    resetAt: z.coerce.date(),
+});
+
+export const LoginRateLimitUncheckedCreateInputSchema: z.ZodType<Prisma.LoginRateLimitUncheckedCreateInput> =
+    z.strictObject({
+        key: z.string(),
+        hits: z.number().int(),
+        resetAt: z.coerce.date(),
+    });
+
+export const LoginRateLimitUpdateInputSchema: z.ZodType<Prisma.LoginRateLimitUpdateInput> = z.strictObject({
+    key: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+    hits: z.union([z.number().int(), z.lazy(() => IntFieldUpdateOperationsInputSchema)]).optional(),
+    resetAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
+});
+
+export const LoginRateLimitUncheckedUpdateInputSchema: z.ZodType<Prisma.LoginRateLimitUncheckedUpdateInput> =
+    z.strictObject({
+        key: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+        hits: z.union([z.number().int(), z.lazy(() => IntFieldUpdateOperationsInputSchema)]).optional(),
+        resetAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
+    });
+
+export const LoginRateLimitCreateManyInputSchema: z.ZodType<Prisma.LoginRateLimitCreateManyInput> = z.strictObject({
+    key: z.string(),
+    hits: z.number().int(),
+    resetAt: z.coerce.date(),
+});
+
+export const LoginRateLimitUpdateManyMutationInputSchema: z.ZodType<Prisma.LoginRateLimitUpdateManyMutationInput> =
+    z.strictObject({
+        key: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+        hits: z.union([z.number().int(), z.lazy(() => IntFieldUpdateOperationsInputSchema)]).optional(),
+        resetAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
+    });
+
+export const LoginRateLimitUncheckedUpdateManyInputSchema: z.ZodType<Prisma.LoginRateLimitUncheckedUpdateManyInput> =
+    z.strictObject({
+        key: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+        hits: z.union([z.number().int(), z.lazy(() => IntFieldUpdateOperationsInputSchema)]).optional(),
+        resetAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
     });
 
 export const UserCreateInputSchema: z.ZodType<Prisma.UserCreateInput> = z.strictObject({
@@ -2996,6 +3153,37 @@ export const IntWithAggregatesFilterSchema: z.ZodType<Prisma.IntWithAggregatesFi
     _min: z.lazy(() => NestedIntFilterSchema).optional(),
     _max: z.lazy(() => NestedIntFilterSchema).optional(),
 });
+
+export const LoginRateLimitCountOrderByAggregateInputSchema: z.ZodType<Prisma.LoginRateLimitCountOrderByAggregateInput> =
+    z.strictObject({
+        key: z.lazy(() => SortOrderSchema).optional(),
+        hits: z.lazy(() => SortOrderSchema).optional(),
+        resetAt: z.lazy(() => SortOrderSchema).optional(),
+    });
+
+export const LoginRateLimitAvgOrderByAggregateInputSchema: z.ZodType<Prisma.LoginRateLimitAvgOrderByAggregateInput> =
+    z.strictObject({
+        hits: z.lazy(() => SortOrderSchema).optional(),
+    });
+
+export const LoginRateLimitMaxOrderByAggregateInputSchema: z.ZodType<Prisma.LoginRateLimitMaxOrderByAggregateInput> =
+    z.strictObject({
+        key: z.lazy(() => SortOrderSchema).optional(),
+        hits: z.lazy(() => SortOrderSchema).optional(),
+        resetAt: z.lazy(() => SortOrderSchema).optional(),
+    });
+
+export const LoginRateLimitMinOrderByAggregateInputSchema: z.ZodType<Prisma.LoginRateLimitMinOrderByAggregateInput> =
+    z.strictObject({
+        key: z.lazy(() => SortOrderSchema).optional(),
+        hits: z.lazy(() => SortOrderSchema).optional(),
+        resetAt: z.lazy(() => SortOrderSchema).optional(),
+    });
+
+export const LoginRateLimitSumOrderByAggregateInputSchema: z.ZodType<Prisma.LoginRateLimitSumOrderByAggregateInput> =
+    z.strictObject({
+        hits: z.lazy(() => SortOrderSchema).optional(),
+    });
 
 export const EnumUserTierFilterSchema: z.ZodType<Prisma.EnumUserTierFilter> = z.strictObject({
     equals: z.lazy(() => UserTierSchema).optional(),
@@ -6773,6 +6961,96 @@ export const EmailOtpFindUniqueOrThrowArgsSchema: z.ZodType<Prisma.EmailOtpFindU
     })
     .strict();
 
+export const LoginRateLimitFindFirstArgsSchema: z.ZodType<Prisma.LoginRateLimitFindFirstArgs> = z
+    .object({
+        select: LoginRateLimitSelectSchema.optional(),
+        where: LoginRateLimitWhereInputSchema.optional(),
+        orderBy: z
+            .union([LoginRateLimitOrderByWithRelationInputSchema.array(), LoginRateLimitOrderByWithRelationInputSchema])
+            .optional(),
+        cursor: LoginRateLimitWhereUniqueInputSchema.optional(),
+        take: z.number().optional(),
+        skip: z.number().optional(),
+        distinct: z
+            .union([LoginRateLimitScalarFieldEnumSchema, LoginRateLimitScalarFieldEnumSchema.array()])
+            .optional(),
+    })
+    .strict();
+
+export const LoginRateLimitFindFirstOrThrowArgsSchema: z.ZodType<Prisma.LoginRateLimitFindFirstOrThrowArgs> = z
+    .object({
+        select: LoginRateLimitSelectSchema.optional(),
+        where: LoginRateLimitWhereInputSchema.optional(),
+        orderBy: z
+            .union([LoginRateLimitOrderByWithRelationInputSchema.array(), LoginRateLimitOrderByWithRelationInputSchema])
+            .optional(),
+        cursor: LoginRateLimitWhereUniqueInputSchema.optional(),
+        take: z.number().optional(),
+        skip: z.number().optional(),
+        distinct: z
+            .union([LoginRateLimitScalarFieldEnumSchema, LoginRateLimitScalarFieldEnumSchema.array()])
+            .optional(),
+    })
+    .strict();
+
+export const LoginRateLimitFindManyArgsSchema: z.ZodType<Prisma.LoginRateLimitFindManyArgs> = z
+    .object({
+        select: LoginRateLimitSelectSchema.optional(),
+        where: LoginRateLimitWhereInputSchema.optional(),
+        orderBy: z
+            .union([LoginRateLimitOrderByWithRelationInputSchema.array(), LoginRateLimitOrderByWithRelationInputSchema])
+            .optional(),
+        cursor: LoginRateLimitWhereUniqueInputSchema.optional(),
+        take: z.number().optional(),
+        skip: z.number().optional(),
+        distinct: z
+            .union([LoginRateLimitScalarFieldEnumSchema, LoginRateLimitScalarFieldEnumSchema.array()])
+            .optional(),
+    })
+    .strict();
+
+export const LoginRateLimitAggregateArgsSchema: z.ZodType<Prisma.LoginRateLimitAggregateArgs> = z
+    .object({
+        where: LoginRateLimitWhereInputSchema.optional(),
+        orderBy: z
+            .union([LoginRateLimitOrderByWithRelationInputSchema.array(), LoginRateLimitOrderByWithRelationInputSchema])
+            .optional(),
+        cursor: LoginRateLimitWhereUniqueInputSchema.optional(),
+        take: z.number().optional(),
+        skip: z.number().optional(),
+    })
+    .strict();
+
+export const LoginRateLimitGroupByArgsSchema: z.ZodType<Prisma.LoginRateLimitGroupByArgs> = z
+    .object({
+        where: LoginRateLimitWhereInputSchema.optional(),
+        orderBy: z
+            .union([
+                LoginRateLimitOrderByWithAggregationInputSchema.array(),
+                LoginRateLimitOrderByWithAggregationInputSchema,
+            ])
+            .optional(),
+        by: LoginRateLimitScalarFieldEnumSchema.array(),
+        having: LoginRateLimitScalarWhereWithAggregatesInputSchema.optional(),
+        take: z.number().optional(),
+        skip: z.number().optional(),
+    })
+    .strict();
+
+export const LoginRateLimitFindUniqueArgsSchema: z.ZodType<Prisma.LoginRateLimitFindUniqueArgs> = z
+    .object({
+        select: LoginRateLimitSelectSchema.optional(),
+        where: LoginRateLimitWhereUniqueInputSchema,
+    })
+    .strict();
+
+export const LoginRateLimitFindUniqueOrThrowArgsSchema: z.ZodType<Prisma.LoginRateLimitFindUniqueOrThrowArgs> = z
+    .object({
+        select: LoginRateLimitSelectSchema.optional(),
+        where: LoginRateLimitWhereUniqueInputSchema,
+    })
+    .strict();
+
 export const UserFindFirstArgsSchema: z.ZodType<Prisma.UserFindFirstArgs> = z
     .object({
         select: UserSelectSchema.optional(),
@@ -7203,6 +7481,74 @@ export const EmailOtpUpdateManyAndReturnArgsSchema: z.ZodType<Prisma.EmailOtpUpd
 export const EmailOtpDeleteManyArgsSchema: z.ZodType<Prisma.EmailOtpDeleteManyArgs> = z
     .object({
         where: EmailOtpWhereInputSchema.optional(),
+        limit: z.number().optional(),
+    })
+    .strict();
+
+export const LoginRateLimitCreateArgsSchema: z.ZodType<Prisma.LoginRateLimitCreateArgs> = z
+    .object({
+        select: LoginRateLimitSelectSchema.optional(),
+        data: z.union([LoginRateLimitCreateInputSchema, LoginRateLimitUncheckedCreateInputSchema]),
+    })
+    .strict();
+
+export const LoginRateLimitUpsertArgsSchema: z.ZodType<Prisma.LoginRateLimitUpsertArgs> = z
+    .object({
+        select: LoginRateLimitSelectSchema.optional(),
+        where: LoginRateLimitWhereUniqueInputSchema,
+        create: z.union([LoginRateLimitCreateInputSchema, LoginRateLimitUncheckedCreateInputSchema]),
+        update: z.union([LoginRateLimitUpdateInputSchema, LoginRateLimitUncheckedUpdateInputSchema]),
+    })
+    .strict();
+
+export const LoginRateLimitCreateManyArgsSchema: z.ZodType<Prisma.LoginRateLimitCreateManyArgs> = z
+    .object({
+        data: z.union([LoginRateLimitCreateManyInputSchema, LoginRateLimitCreateManyInputSchema.array()]),
+        skipDuplicates: z.boolean().optional(),
+    })
+    .strict();
+
+export const LoginRateLimitCreateManyAndReturnArgsSchema: z.ZodType<Prisma.LoginRateLimitCreateManyAndReturnArgs> = z
+    .object({
+        data: z.union([LoginRateLimitCreateManyInputSchema, LoginRateLimitCreateManyInputSchema.array()]),
+        skipDuplicates: z.boolean().optional(),
+    })
+    .strict();
+
+export const LoginRateLimitDeleteArgsSchema: z.ZodType<Prisma.LoginRateLimitDeleteArgs> = z
+    .object({
+        select: LoginRateLimitSelectSchema.optional(),
+        where: LoginRateLimitWhereUniqueInputSchema,
+    })
+    .strict();
+
+export const LoginRateLimitUpdateArgsSchema: z.ZodType<Prisma.LoginRateLimitUpdateArgs> = z
+    .object({
+        select: LoginRateLimitSelectSchema.optional(),
+        data: z.union([LoginRateLimitUpdateInputSchema, LoginRateLimitUncheckedUpdateInputSchema]),
+        where: LoginRateLimitWhereUniqueInputSchema,
+    })
+    .strict();
+
+export const LoginRateLimitUpdateManyArgsSchema: z.ZodType<Prisma.LoginRateLimitUpdateManyArgs> = z
+    .object({
+        data: z.union([LoginRateLimitUpdateManyMutationInputSchema, LoginRateLimitUncheckedUpdateManyInputSchema]),
+        where: LoginRateLimitWhereInputSchema.optional(),
+        limit: z.number().optional(),
+    })
+    .strict();
+
+export const LoginRateLimitUpdateManyAndReturnArgsSchema: z.ZodType<Prisma.LoginRateLimitUpdateManyAndReturnArgs> = z
+    .object({
+        data: z.union([LoginRateLimitUpdateManyMutationInputSchema, LoginRateLimitUncheckedUpdateManyInputSchema]),
+        where: LoginRateLimitWhereInputSchema.optional(),
+        limit: z.number().optional(),
+    })
+    .strict();
+
+export const LoginRateLimitDeleteManyArgsSchema: z.ZodType<Prisma.LoginRateLimitDeleteManyArgs> = z
+    .object({
+        where: LoginRateLimitWhereInputSchema.optional(),
         limit: z.number().optional(),
     })
     .strict();

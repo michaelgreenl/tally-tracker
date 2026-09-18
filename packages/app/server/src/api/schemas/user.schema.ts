@@ -1,4 +1,4 @@
-import { passwordSchema } from '@tally/core';
+import { loginPasswordSchema, passwordSchema } from '@tally/core';
 import { z } from 'zod';
 
 export const createUserSchema = z.object({
@@ -14,16 +14,11 @@ export const createUserSchema = z.object({
 });
 
 export const loginSchema = z.object({
-    body: z
-        .object({
-            email: z.string().email().optional(),
-            password: z.string(),
-            rememberMe: z.boolean().optional(),
-        })
-        .refine((data) => data.email, {
-            message: 'Email is required to login',
-            path: ['email'],
-        }),
+    body: z.object({
+        email: z.string().trim().toLowerCase().email(),
+        password: loginPasswordSchema,
+        rememberMe: z.boolean().optional(),
+    }),
 });
 
 const refreshTokenBodySchema = z.object({

@@ -1,6 +1,7 @@
-import { OK, CREATED, OK_NO_CONTENT, UNAUTHORIZED, NOT_FOUND, UNPROCESSABLE_ENTITY, SERVER_ERROR } from '@tally/core';
+import { OK, CREATED, OK_NO_CONTENT, UNAUTHORIZED, UNPROCESSABLE_ENTITY, SERVER_ERROR } from '@tally/core';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
+import bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 import type { Request, Response, NextFunction } from 'express';
 import type { Prisma } from '@prisma/client';
@@ -107,7 +108,7 @@ describe('Auth Routes', () => {
 
             const res = await request(app).post('/users').send({
                 email: 'new@test.com',
-                password: 'Abcde1',
+                password: 'New-password123',
             });
 
             expect(res.status).toBe(CREATED);
@@ -121,7 +122,7 @@ describe('Auth Routes', () => {
 
         it('should reject registration without email', async () => {
             const res = await request(app).post('/users').send({
-                password: 'Abcde1',
+                password: 'New-password123',
             });
 
             expect(res.status).toBe(UNPROCESSABLE_ENTITY);
@@ -132,7 +133,14 @@ describe('Auth Routes', () => {
         ['post', '/users'],
         ['post', '/users/reset-password'],
     ] as const)('%s %s password requirements', (method, path) => {
-        it.each(['Abc12', 'abcdef1', 'Abcdef'])('rejects a password missing a requirement: %s', async (password) => {
+        it.each([
+            `A1${'a'.repeat(12)}`,
+            `A1${'😀'.repeat(7)}`,
+            'abcdefghijklmno1',
+            'Abcdefghijklmnop',
+            `Ab1${'a'.repeat(70)}`,
+            `Ab1${'é'.repeat(35)}`,
+        ])('rejects an invalid new password: %s', async (password) => {
             const res = await request(app)[method](path).send({
                 email: 'test@test.com',
                 code: '123456',
@@ -211,26 +219,24 @@ describe('Auth Routes', () => {
             expect(cookieStr).toContain('refresh_token');
         });
 
-        it('should return 404 for unknown email', async () => {
+        it('uses the same public error for unknown email and wrong password', async () => {
             vi.mocked(userRepository.getUserByEmail).mockResolvedValue(null);
-
-            const res = await request(app).post('/users/login').send({
+            const compare = vi.spyOn(bcrypt, 'compare');
+            const unknown = await request(app).post('/users/login').send({
                 email: 'unknown@test.com',
-                password: 'password123',
+                password: 'wrongpassword',
             });
-
-            expect(res.status).toBe(NOT_FOUND);
-        });
-
-        it('should return 401 for wrong password', async () => {
+            expect(compare).toHaveBeenCalledOnce();
             vi.mocked(userRepository.getUserByEmail).mockResolvedValue(buildUser());
-
-            const res = await request(app).post('/users/login').send({
+            const wrong = await request(app).post('/users/login').send({
                 email: 'test@test.com',
                 password: 'wrongpassword',
             });
-
-            expect(res.status).toBe(UNAUTHORIZED);
+            expect(unknown.status).toBe(UNAUTHORIZED);
+            expect(wrong.status).toBe(UNAUTHORIZED);
+            expect(unknown.body).toEqual(wrong.body);
+            expect(unknown.headers['set-cookie']).toBeUndefined();
+            expect(wrong.headers['set-cookie']).toBeUndefined();
         });
     });
 
