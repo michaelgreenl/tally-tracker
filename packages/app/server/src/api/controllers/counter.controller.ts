@@ -257,6 +257,8 @@ export const join = async (
             return { status: BAD_REQUEST, body: { success: false, message: 'Invalid userId or inviteCode' } };
         }
 
+        // Serialize this account's quota check and membership write, including requests without retry keys.
+        await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId}::uuid FOR NO KEY UPDATE`;
         const counter = await counterRepository.join(inviteCode, tx);
 
         if (!counter || counter.type !== 'SHARED') {

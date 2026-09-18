@@ -36,6 +36,12 @@ vi.mock('../../src/db/repositories/user.repository', () => ({
     getUserTierById: vi.fn(),
 }));
 
+vi.mock('../../src/db/prisma', () => ({
+    default: {
+        $transaction: (action: (tx: unknown) => Promise<unknown>) => action({ $queryRaw: vi.fn() }),
+    },
+}));
+
 import * as counterRepo from '../../src/db/repositories/counter.repository.js';
 import * as userRepo from '../../src/db/repositories/user.repository.js';
 

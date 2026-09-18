@@ -53,6 +53,54 @@ async function sharingAccount(tier: 'BASIC' | 'PREMIUM') {
 }
 
 describe('PostgreSQL integration', () => {
+    it.each([false, true])('enforces the Basic join limit under concurrency (idempotency key: %s)', async (keyed) => {
+        const owner = await sharingAccount('PREMIUM');
+        const member = await sharingAccount('BASIC');
+        const counters = await Promise.all(
+            [0, 1].map(() =>
+                prisma.counter.create({
+                    data: { title: 'Shared counter', userId: owner.id, type: 'SHARED', inviteCode: randomUUID() },
+                }),
+            ),
+        );
+        let release!: () => void;
+        let locked!: () => void;
+        const barrier = new Promise<void>((resolve) => {
+            release = resolve;
+        });
+        const ready = new Promise<void>((resolve) => {
+            locked = resolve;
+        });
+        // Hold writes, not reads: both old requests can pass the quota before either inserts.
+        const lock = prisma.$transaction(async (tx) => {
+            await tx.$executeRaw`LOCK TABLE counter_shares IN SHARE MODE`;
+            locked();
+            await barrier;
+        });
+        await Promise.race([ready, lock]);
+        const joining = counters.map((counter) => {
+            const attempt = request(app).post('/counters/join').set('Authorization', member.authorization);
+            if (keyed) attempt.set('X-Idempotency-Key', randomUUID());
+            return attempt.send({ inviteCode: counter.inviteCode }).then((response) => response);
+        });
+        try {
+            await vi.waitFor(async () => {
+                const waiting = await prisma.$queryRaw<Array<{ count: number }>>`
+                    SELECT count(*)::int AS count FROM pg_stat_activity
+                    WHERE datname = current_database() AND wait_event_type = 'Lock'
+                `;
+                expect(waiting[0].count).toBe(2);
+            });
+        } finally {
+            release();
+            await Promise.allSettled([lock, ...joining]);
+        }
+        await lock;
+        const responses = await Promise.all(joining);
+        expect(responses.map((response) => response.status).sort()).toEqual([201, 403]);
+        expect(await prisma.counterShare.count({ where: { userId: member.id, status: 'ACCEPTED' } })).toBe(1);
+    });
+
     it('does not repeat an offline increment after maintenance ages its receipt', async () => {
         const account = await sharingAccount('BASIC');
         const created = await request(app)

@@ -104,7 +104,7 @@ export const runIdempotentMutation = async <TBody>(
     const userId = req.user?.id;
 
     if (typeof key !== 'string' || !userId) {
-        const response = await mutation(prisma);
+        const response = await prisma.$transaction(mutation);
         return { ...response, replayed: false };
     }
 
