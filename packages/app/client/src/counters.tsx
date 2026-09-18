@@ -1,5 +1,11 @@
 import * as Crypto from 'expo-crypto';
-import { addCounterAmount, counterValueSchema, counterIncrementSchema, counterMetricSchema } from '@tally/core/client';
+import {
+    addCounterAmount,
+    counterTitleSchema,
+    counterValueSchema,
+    counterIncrementSchema,
+    counterMetricSchema,
+} from '@tally/core/client';
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 
@@ -11,7 +17,13 @@ import { assertSession, getSessionScope, SessionChangedError, writeSession } fro
 import { connectSocket, disconnectSocket, subscribeToCounterUpdates } from './socket';
 import { useSession } from './session';
 
-import type { ClientCounter, HexColor, UpdateCounterRequest } from '@tally/core/client';
+import type {
+    ClientCounter,
+    CreateCounterRequest,
+    HexColor,
+    IncrementCounterRequest,
+    UpdateCounterRequest,
+} from '@tally/core/client';
 import type { PropsWithChildren } from 'react';
 import type { SyncStatus } from './services/sync-manager';
 import type { MutationCommand } from './services/sync-queue';
@@ -23,6 +35,7 @@ type CounterContextValue = {
     loading: boolean;
     refreshing: boolean;
     syncError: boolean;
+    failedCounterIds: ReadonlySet<string>;
     eligibleCount: number;
     refreshCounters: () => void;
     createCounter: (title: string, color: HexColor, metric?: string) => Promise<ActionResult>;
@@ -76,16 +89,47 @@ export const reconcileAuthenticatedCounters = (
         .filter((counter) => counter.userId === 'guest')
         .map((counter) => ({ ...counter, userId }));
     const remoteIds = new Set(availableRemoteCounters.map((counter) => counter.id));
-    const pendingIds = new Set(pending.filter((item) => item.queuedByUserId === userId).map((item) => item.entityId));
+    const commands = pending.filter((item) => item.queuedByUserId === userId);
+    const pendingIds = new Set(commands.map((item) => item.entityId));
+    const removedIds = new Set(
+        commands.filter((item) => item.type === 'DELETE' || item.type === 'REMOVE').map((item) => item.entityId),
+    );
     const localById = new Map(migratedLocal.map((counter) => [counter.id, counter]));
+    const recovered = new Map<string, ClientCounter>();
+    // Logout can clear the display cache. The queue remains the source of unsent creations.
+    for (const command of commands) {
+        if (localById.has(command.entityId) || removedIds.has(command.entityId)) continue;
+        if (command.type === 'CREATE') {
+            const payload = command.payload as CreateCounterRequest;
+            recovered.set(command.entityId, {
+                ...payload,
+                id: command.entityId,
+                userId,
+                type: 'PERSONAL',
+                inviteCode: null,
+                color: payload.color ?? null,
+                count: payload.count ?? 0,
+                metric: payload.metric ?? null,
+                increment: payload.increment ?? 1,
+            });
+        }
+        const counter = recovered.get(command.entityId);
+        if (!counter) continue;
+        if (command.type === 'UPDATE') Object.assign(counter, command.payload);
+        if (command.type === 'INCREMENT')
+            counter.count = addCounterAmount(counter.count, (command.payload as IncrementCounterRequest).amount);
+        if (command.type === 'SET_COUNT') counter.count = (command.payload as { count: number }).count;
+    }
+    for (const counter of recovered.values()) localById.set(counter.id, counter);
 
     return {
         counters: [
-            ...availableRemoteCounters.flatMap((counter) =>
-                pendingIds.has(counter.id) ? localById.get(counter.id) || [] : counter,
-            ),
-            ...migratedLocal.filter(
+            ...availableRemoteCounters
+                .filter((counter) => !removedIds.has(counter.id))
+                .map((counter) => (pendingIds.has(counter.id) ? (localById.get(counter.id) ?? counter) : counter)),
+            ...[...localById.values()].filter(
                 (counter) =>
+                    !removedIds.has(counter.id) &&
                     !remoteIds.has(counter.id) &&
                     (remoteCounters === null ||
                         pendingIds.has(counter.id) ||
@@ -110,6 +154,7 @@ function AccountCounters({ children }: PropsWithChildren) {
     const [refreshing, setRefreshing] = useState(false);
     const [syncError, setSyncError] = useState(false);
     const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
+    const [failedCounterIds, setFailedCounterIds] = useState<ReadonlySet<string>>(new Set());
     const [refreshKey, setRefreshKey] = useState(0);
     const countersRef = useRef<ClientCounter[]>([]);
     const revision = useRef(0);
@@ -164,6 +209,29 @@ function AccountCounters({ children }: PropsWithChildren) {
             SyncManager.dispose();
         };
     }, [requestRefresh]);
+
+    useEffect(() => {
+        if (syncStatus === 'syncing') return;
+        let active = true;
+        void SyncQueue.get()
+            .then((queue) => {
+                if (active && scope === getSessionScope()) {
+                    setFailedCounterIds(
+                        new Set(
+                            queue
+                                .filter((item) => item.queuedByUserId === scope.userId && item.rejected)
+                                .map((item) => item.entityId),
+                        ),
+                    );
+                }
+            })
+            .catch(() => {
+                if (active) setSyncError(true);
+            });
+        return () => {
+            active = false;
+        };
+    }, [scope, syncStatus, refreshKey]);
 
     useEffect(() => {
         if (!session.ready) return;
@@ -237,8 +305,8 @@ function AccountCounters({ children }: PropsWithChildren) {
     }, [replaceCounters, persistMutation, session.ready, session.user?.id, refreshKey, scope]);
 
     async function createCounter(title: string, color: HexColor, metric = ''): Promise<ActionResult> {
-        const cleanTitle = title.trim();
-        if (!cleanTitle) return fail('Counter title is required');
+        const parsedTitle = counterTitleSchema.safeParse(title);
+        if (!parsedTitle.success) return fail(parsedTitle.error.issues[0].message);
         if (!counterMetricSchema.safeParse(metric).success) return fail('Metric must be 80 characters or less.');
         if (!session.isAuthenticated && isGuestCounterLimitReached(countersRef.current)) {
             return fail(GUEST_COUNTER_LIMIT_MESSAGE);
@@ -246,7 +314,7 @@ function AccountCounters({ children }: PropsWithChildren) {
 
         const counter: ClientCounter = {
             id: Crypto.randomUUID(),
-            title: cleanTitle,
+            title: parsedTitle.data,
             color,
             count: 0,
             metric: metric.trim() || null,
@@ -305,7 +373,10 @@ function AccountCounters({ children }: PropsWithChildren) {
         if (!existing) return fail('Counter not found');
 
         const title = updates.title?.trim();
-        if (updates.title !== undefined && !title) return fail('Counter title is required');
+        if (title !== undefined) {
+            const parsedTitle = counterTitleSchema.safeParse(title);
+            if (!parsedTitle.success) return fail(parsedTitle.error.issues[0].message);
+        }
         if (updates.increment !== undefined && !counterIncrementSchema.safeParse(updates.increment).success) {
             return fail('Enter a positive increment with up to 6 decimal places.');
         }
@@ -402,6 +473,7 @@ function AccountCounters({ children }: PropsWithChildren) {
                 loading: loading || syncStatus === 'syncing',
                 refreshing,
                 syncError: syncError || syncStatus === 'error',
+                failedCounterIds,
                 eligibleCount: counters.filter(isGuestEligible).length,
                 refreshCounters,
                 createCounter,

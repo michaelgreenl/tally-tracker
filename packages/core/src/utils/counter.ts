@@ -2,6 +2,12 @@ import { z } from 'zod';
 
 const COUNTER_SCALE = 1_000_000;
 export const COUNTER_MAX = 999_999_999.999999;
+export const COUNTER_TITLE_MAX_LENGTH = 50;
+export const counterTitleSchema = z
+    .string()
+    .trim()
+    .min(1, 'Name is required.')
+    .max(COUNTER_TITLE_MAX_LENGTH, 'Name must be 50 characters or less.');
 
 export const counterValueSchema = z
     .number()

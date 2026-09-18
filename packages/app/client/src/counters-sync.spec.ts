@@ -8,11 +8,20 @@ import { CounterStorage } from './services/counter-storage';
 import { SyncManager } from './services/sync-manager';
 import { SyncQueue } from './services/sync-queue';
 import { changeSession } from './services/session-scope';
+import { ApiError } from './api';
 
 import type { ClientCounter, HexColor } from '@tally/core/client';
 import type { Root } from 'react-dom/client';
 
 const bridge = vi.hoisted(() => ({
+    ApiError: class extends Error {
+        constructor(
+            message: string,
+            public status: number,
+        ) {
+            super(message);
+        }
+    },
     values: new Map<string, string>(),
     setItem: vi.fn(),
     fetch: vi.fn(),
@@ -37,7 +46,7 @@ vi.mock('./session', () => ({
     useSession: () => ({ ready: true, user: { id: 'account' }, isAuthenticated: true }),
 }));
 vi.mock('./services/auth.service', () => ({ AuthService: { getCachedUser: async () => ({ id: 'account' }) } }));
-vi.mock('./api', () => ({ default: bridge.fetch, ApiError: Error, getErrorMessage: () => 'Failed' }));
+vi.mock('./api', () => ({ default: bridge.fetch, ApiError: bridge.ApiError, getErrorMessage: () => 'Failed' }));
 vi.mock('./socket', () => ({
     subscribeToCounterUpdates: (listener: () => void) => {
         bridge.update = listener;
@@ -214,4 +223,114 @@ it('keeps a confirmed join when an earlier snapshot arrives late', async () => {
     await act(async () => finishOldFetch());
     expect(state.counters.map((counter) => counter.id)).toEqual(['water', 'other', 'joined']);
     expect(await CounterStorage.getAll()).toEqual(state.counters);
+});
+
+it.each(['edit', 'delete'] as const)(
+    'recovers a rejected creation after cache loss through %s without blocking other counters',
+    async (recovery) => {
+        await act(async () => root.unmount());
+        await CounterStorage.clear();
+        remote = [];
+        const bad = { ...initial, id: 'failed', title: 'x'.repeat(51), count: 0 };
+        const createPayload = ({ id, title, color, count, metric, increment }: ClientCounter) => ({
+            id,
+            title,
+            color,
+            count,
+            metric,
+            increment,
+        });
+        await SyncQueue.save([
+            { id: 'create', queuedByUserId: 'account', entityId: bad.id, type: 'CREATE', payload: createPayload(bad) },
+            { id: 'tap', queuedByUserId: 'account', entityId: bad.id, type: 'INCREMENT', payload: { amount: 1 } },
+            {
+                id: 'good',
+                queuedByUserId: 'account',
+                entityId: other.id,
+                type: 'CREATE',
+                payload: createPayload(other),
+            },
+            {
+                id: 'foreign',
+                queuedByUserId: 'another-account',
+                entityId: bad.id,
+                type: 'UPDATE',
+                payload: { title: 'Other account' },
+            },
+        ]);
+        bridge.fetch.mockImplementation(async (path, options) => {
+            if (options.method === 'POST') {
+                if (options.body.title.length > 50) throw new ApiError('Name too long', 422);
+                remote.push({
+                    ...structuredClone(options.body),
+                    userId: 'account',
+                    type: 'PERSONAL',
+                    inviteCode: null,
+                });
+            } else if (path.includes('/increment/')) {
+                const counter = remote.find((item) => item.id === path.split('/').at(-1));
+                if (!counter) throw new ApiError('Counter missing', 404);
+                counter.count += options.body.amount;
+            } else if (options.method === 'DELETE') {
+                throw new ApiError('Counter missing', 404);
+            }
+            return { success: true, data: { counters: structuredClone(remote) } };
+        });
+        root = createRoot(document.createElement('div'));
+        await act(async () => root.render(createElement(CounterProvider, null, createElement(Probe))));
+        expect(remote.map((counter) => counter.id)).toEqual([other.id]);
+        expect(state.counters.find((counter) => counter.id === bad.id)?.count).toBe(1);
+        expect(state.failedCounterIds.has(bad.id)).toBe(true);
+
+        await act(async () => {
+            if (recovery === 'edit') await state.updateCounter(bad.id, { title: 'Water' });
+            else await state.deleteCounter(bad);
+            await SyncManager.processQueue();
+        });
+        expect(remote.find((counter) => counter.id === bad.id)).toEqual(
+            recovery === 'edit' ? { ...bad, title: 'Water', count: 1 } : undefined,
+        );
+        expect((await SyncQueue.get()).map((command) => command.id)).toEqual(['foreign']);
+        expect(state.failedCounterIds.size).toBe(0);
+    },
+);
+
+it('drains a healthy creation added while another counter is being rejected', async () => {
+    let reject!: () => void;
+    bridge.fetch.mockImplementation(async (path, options) => {
+        if (options.method === 'POST') {
+            if (options.body.title === 'Rejected') {
+                await new Promise<void>((resolve) => {
+                    reject = resolve;
+                });
+                throw new ApiError('Rejected', 422);
+            }
+            remote.push(options.body);
+        }
+        return { success: true, data: { counters: structuredClone(remote) } };
+    });
+    await act(async () => {
+        await state.createCounter('Rejected', '#000000' as HexColor);
+    });
+    try {
+        await act(async () => {
+            await state.createCounter('Healthy', '#000000' as HexColor);
+        });
+    } finally {
+        await act(async () => {
+            reject();
+            await SyncManager.processQueue();
+        });
+    }
+    expect(remote.some((counter) => counter.title === 'Healthy')).toBe(true);
+    expect((await SyncQueue.get()).map((command) => (command.payload as ClientCounter).title)).toEqual(['Rejected']);
+});
+
+it('rejects an overlong name before changing local storage or the queue', async () => {
+    await act(async () => {
+        expect((await state.createCounter('x'.repeat(51), '#000000' as HexColor)).success).toBe(false);
+        expect((await state.updateCounter(initial.id, { title: 'x'.repeat(51) })).success).toBe(false);
+    });
+    expect(await CounterStorage.getAll()).toEqual([initial, other]);
+    expect(await SyncQueue.get()).toEqual([]);
 });

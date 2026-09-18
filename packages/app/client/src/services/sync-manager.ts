@@ -58,11 +58,12 @@ export const SyncManager = {
         activeSync = (async () => {
             try {
                 let drained: boolean;
+                const attempted = new Set<string>();
                 do {
                     this.syncRequested = false;
-                    drained = await this.processQueuePass();
+                    drained = await this.processQueuePass(attempted);
                     assertSession(scope);
-                } while (drained && this.syncRequested);
+                } while (this.syncRequested);
                 onStatusChange?.(drained ? 'idle' : 'error');
             } catch (error: unknown) {
                 if (error instanceof SessionChangedError) return;
@@ -76,7 +77,7 @@ export const SyncManager = {
         return activeSync;
     },
 
-    async processQueuePass(): Promise<boolean> {
+    async processQueuePass(attempted = new Set<string>()): Promise<boolean> {
         const scope = getSessionScope();
         const queue = await SyncQueue.get();
         if (queue.length === 0) return true;
@@ -92,12 +93,24 @@ export const SyncManager = {
         const status = await Network.getNetworkStateAsync();
         if (status.isConnected === false) return false;
 
-        for (const command of commands) {
+        const blocked = new Map<string, number>();
+        for (const queued of commands) {
+            const removal = queued.type === 'DELETE' || queued.type === 'REMOVE';
+            if (attempted.has(queued.id)) blocked.set(queued.entityId, queued.rejected ?? 0);
+            if (
+                attempted.has(queued.id) ||
+                (blocked.has(queued.entityId) && (!removal || blocked.get(queued.entityId) === 409))
+            )
+                continue;
+            const command = await SyncQueue.prepare(queued.id);
+            if (!command) continue;
+            attempted.add(command.id);
             try {
                 assertSession(scope);
                 await this.executeCommand(command, scope);
                 assertSession(scope);
-                await SyncQueue.remove(command.id);
+                if (removal) await SyncQueue.removeCounter(userId, command.entityId);
+                else await SyncQueue.remove(command.id);
                 assertSession(scope);
                 onAcknowledged?.();
             } catch (error: unknown) {
@@ -105,19 +118,26 @@ export const SyncManager = {
                 const statusCode = error instanceof ApiError ? error.status || 0 : 0;
 
                 // An already-removed counter completes a removal, not a failed write.
-                if (statusCode === NOT_FOUND && (command.type === 'DELETE' || command.type === 'REMOVE')) {
-                    await SyncQueue.remove(command.id);
+                if (statusCode === NOT_FOUND && removal) {
+                    await SyncQueue.removeCounter(userId, command.entityId);
                     assertSession(scope);
                     onAcknowledged?.();
                     continue;
                 }
 
-                // Keep rejected writes until a later retry succeeds. Never report them as synced.
+                if ([400, 403, 404, 409, 422].includes(statusCode)) {
+                    if (await SyncQueue.reject(command.id, statusCode)) this.syncRequested = true;
+                    blocked.set(command.entityId, statusCode);
+                    continue;
+                }
+
+                // Network, authentication, and rate-limit failures stop the pass without changing keys.
+                this.syncRequested = false;
                 return false;
             }
         }
 
-        return true;
+        return !(await SyncQueue.get()).some((command) => command.queuedByUserId === userId);
     },
 
     async executeCommand(command: MutationCommand, sessionScope = getSessionScope()) {

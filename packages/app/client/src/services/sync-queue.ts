@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Crypto from 'expo-crypto';
 
 export type MutationCommand = {
     id: string;
@@ -6,6 +7,7 @@ export type MutationCommand = {
     type: 'CREATE' | 'UPDATE' | 'SET_COUNT' | 'DELETE' | 'INCREMENT' | 'REMOVE';
     entityId: string;
     payload: unknown;
+    rejected?: number;
 };
 
 const QUEUE_KEY = 'app_sync_queue';
@@ -19,6 +21,26 @@ const mutateQueue = async <T>(operation: () => Promise<T>): Promise<T> => {
     );
     return result;
 };
+
+function repairRejectedEdits(queue: MutationCommand[], target: MutationCommand) {
+    const sameCounter = (item: MutationCommand) =>
+        item.queuedByUserId === target.queuedByUserId && item.entityId === target.entityId;
+    const index = queue.findIndex(
+        (item) =>
+            sameCounter(item) &&
+            item.rejected &&
+            item.rejected !== 409 &&
+            (item.type === 'CREATE' || item.type === 'UPDATE'),
+    );
+    if (index < 0) return queue;
+    const edits = queue.slice(index + 1).filter((item) => sameCounter(item) && item.type === 'UPDATE');
+    const latest = edits.at(-1);
+    if (!latest) return queue;
+    // Keep the original create count. Later increments must still run exactly once.
+    const payload = Object.assign({}, queue[index].payload, ...edits.map((item) => item.payload));
+    queue[index] = { ...queue[index], id: latest.id, payload, rejected: undefined };
+    return queue.filter((item) => !edits.includes(item));
+}
 
 export const SyncQueue = {
     async get(): Promise<MutationCommand[]> {
@@ -37,7 +59,42 @@ export const SyncQueue = {
         return mutateQueue(async () => {
             const queue = await this.get();
             queue.push(command);
-            await this.save(queue);
+            await this.save(command.type === 'UPDATE' ? repairRejectedEdits(queue, command) : queue);
+        });
+    },
+
+    prepare(id: string) {
+        return mutateQueue(async () => {
+            const queue = await this.get();
+            const command = queue.find((item) => item.id === id);
+            // A 409 can describe an already-applied operation. Never give it a new identity.
+            if (command?.rejected && command.rejected !== 409) {
+                command.id = Crypto.randomUUID();
+                delete command.rejected;
+                await this.save(queue);
+            }
+            return command;
+        });
+    },
+
+    reject(id: string, status: number) {
+        return mutateQueue(async () => {
+            const queue = await this.get();
+            const command = queue.find((item) => item.id === id);
+            if (command) {
+                command.rejected = status;
+                const repaired = repairRejectedEdits(queue, command);
+                await this.save(repaired);
+                return repaired !== queue;
+            }
+            return false;
+        });
+    },
+
+    removeCounter(userId: string, entityId: string) {
+        return mutateQueue(async () => {
+            const queue = await this.get();
+            await this.save(queue.filter((item) => item.queuedByUserId !== userId || item.entityId !== entityId));
         });
     },
 

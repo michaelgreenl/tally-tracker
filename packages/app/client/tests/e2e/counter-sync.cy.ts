@@ -45,7 +45,7 @@ describe('Counter sync recovery', () => {
         cy.get('[data-testid="home-sync-synced-icon"]').should('be.visible');
     });
 
-    it('keeps rejected writes through reload and syncs them once the API recovers', () => {
+    it('repairs a rejected creation after cache loss without losing or duplicating queued taps', () => {
         let available = false;
         let counterId = '';
         cy.intercept('POST', '**/counters', (request) => {
@@ -62,7 +62,11 @@ describe('Counter sync recovery', () => {
             cy.get(`[data-testid="counter-${counterId}-increase"]`).click();
         });
         cy.get('[data-testid="home-sync-error-icon"]').should('be.visible');
-        cy.reload();
+        cy.visit('/home', {
+            onBeforeLoad(win) {
+                win.localStorage.removeItem('app_counters');
+            },
+        });
         cy.get('[data-testid="home-sync-error-icon"]').should('be.visible');
         cy.then(() => {
             cy.get(`[data-testid="counter-${counterId}-count"]`).should('have.text', '1');
@@ -72,17 +76,26 @@ describe('Counter sync recovery', () => {
             expect(queue.map((item: { type: string }) => item.type)).to.deep.equal(['CREATE', 'INCREMENT']);
         });
 
-        cy.visit('/home', {
-            // Restore the API only after the old document can no longer start a retry.
-            onBeforeLoad() {
-                available = true;
-            },
+        cy.then(() => {
+            cy.get(`[data-testid="counter-${counterId}-sync-error"]`).should('be.visible');
+            cy.viewport(390, 844);
+            cy.get(`[data-testid="counter-${counterId}-sync-error"]`).click();
         });
+        cy.get('[data-testid="counter-title"]').clear().type('Water corrected');
+        cy.then(() => {
+            available = true;
+        });
+        cy.get('[data-testid="counter-form-submit"]').click();
         cy.wait('@created').its('response.statusCode').should('eq', 201);
         cy.get('[data-testid="home-sync-synced-icon"]').should('be.visible');
         cy.request('GET', '/counters').then(({ body }) => {
             expect(body.data.counters).to.have.length(1);
-            expect(body.data.counters[0]).to.include({ id: counterId, count: 1, metric: '16oz bottle' });
+            expect(body.data.counters[0]).to.include({
+                id: counterId,
+                count: 1,
+                metric: '16oz bottle',
+                title: 'Water corrected',
+            });
         });
         cy.window().should((win) => {
             expect(JSON.parse(win.localStorage.getItem('app_sync_queue') || '[]')).to.deep.equal([]);
