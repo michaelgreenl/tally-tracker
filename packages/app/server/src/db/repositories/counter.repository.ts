@@ -165,24 +165,6 @@ export const put = async (
         .then(serializeCounter);
 };
 
-export const setCount = async (
-    { counterId, userId, count }: { counterId: string; userId: string; count: number },
-    db: DbClient = prisma,
-) => {
-    const result = await db.counter.updateMany({
-        where: {
-            id: counterId,
-            userId,
-            type: 'PERSONAL' as CounterType,
-        },
-        data: { count },
-    });
-
-    if (result.count === 0) return null;
-
-    return db.counter.findUnique({ where: { id: counterId } }).then((counter) => counter && serializeCounter(counter));
-};
-
 export const increment = async (
     {
         counterId,

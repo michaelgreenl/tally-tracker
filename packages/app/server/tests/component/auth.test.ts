@@ -26,7 +26,6 @@ vi.mock('../../src/db/repositories/user.repository', () => ({
     getUserById: vi.fn(),
     getUserAuthById: vi.fn(),
     deleteAccount: vi.fn(),
-    deleteUser: vi.fn(),
     withLockedUser: vi.fn(),
 }));
 

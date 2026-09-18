@@ -118,7 +118,6 @@ export const reconcileAuthenticatedCounters = (
         if (command.type === 'UPDATE') Object.assign(counter, command.payload);
         if (command.type === 'INCREMENT')
             counter.count = addCounterAmount(counter.count, (command.payload as IncrementCounterRequest).amount);
-        if (command.type === 'SET_COUNT') counter.count = (command.payload as { count: number }).count;
     }
     for (const counter of recovered.values()) localById.set(counter.id, counter);
 

@@ -12,7 +12,6 @@ import type {
     CounterResponse,
     CreateCounterRequest,
     IncrementCounterRequest,
-    SetCounterCountRequest,
     UpdateCounterRequest,
 } from '@tally/core/client';
 
@@ -157,12 +156,6 @@ export const SyncManager = {
                 return apiFetch<CounterResponse, UpdateCounterRequest>(`/counters/update/${command.entityId}`, {
                     method: 'PUT',
                     body: command.payload as UpdateCounterRequest,
-                    ...options,
-                });
-            case 'SET_COUNT':
-                return apiFetch<CounterResponse, SetCounterCountRequest>(`/counters/${command.entityId}/count`, {
-                    method: 'PUT',
-                    body: command.payload as SetCounterCountRequest,
                     ...options,
                 });
             case 'INCREMENT':

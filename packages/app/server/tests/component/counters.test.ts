@@ -91,7 +91,6 @@ vi.mock('../../src/db/repositories/counter.repository', () => ({
     getByIdOrShare: vi.fn(),
     remove: vi.fn(),
     put: vi.fn(),
-    setCount: vi.fn(),
     increment: vi.fn(),
     getParticipants: vi.fn(),
     join: vi.fn(),
@@ -336,41 +335,6 @@ describe('Counter Routes', () => {
             expect(second.status).toBe(OK);
             expect(counterRepository.put).toHaveBeenCalledTimes(1);
             expect(second.body.data.counter.title).toBe('Saved Title');
-        });
-    });
-
-    describe('PUT /counters/:counterId/count', () => {
-        it.each([0, -1])('should accept %i as an absolute personal counter count', async (count) => {
-            const counter = buildCounter({ count });
-            vi.mocked(counterRepository.setCount).mockResolvedValue(counter);
-
-            const res = await request(app).put(`/counters/${TEST_COUNTER_ID}/count`).send({ count });
-
-            expect(res.status).toBe(OK);
-            expect(counterRepository.setCount).toHaveBeenCalledWith(
-                {
-                    counterId: TEST_COUNTER_ID,
-                    userId: TEST_USER_ID,
-                    count,
-                },
-                expect.anything(),
-            );
-            expect(res.body.data.counter.count).toBe(count);
-        });
-
-        it('should reject requests without a count', async () => {
-            const res = await request(app).put(`/counters/${TEST_COUNTER_ID}/count`).send({});
-
-            expect(res.status).toBe(UNPROCESSABLE_ENTITY);
-            expect(counterRepository.setCount).not.toHaveBeenCalled();
-        });
-
-        it('should return 404 when the counter is not an owned personal counter', async () => {
-            vi.mocked(counterRepository.setCount).mockResolvedValue(null);
-
-            const res = await request(app).put(`/counters/${TEST_COUNTER_ID}/count`).send({ count: 0 });
-
-            expect(res.status).toBe(NOT_FOUND);
         });
     });
 });

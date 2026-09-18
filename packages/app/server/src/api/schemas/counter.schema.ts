@@ -45,15 +45,6 @@ export const updateCounterSchema = z.object({
     }),
 });
 
-export const setCounterCountSchema = z.object({
-    params: z.object({
-        counterId: z.string().uuid('Invalid Counter ID'),
-    }),
-    body: z.strictObject({
-        count: counterValueSchema,
-    }),
-});
-
 export const incrementCounterSchema = z.object({
     params: z.object({
         counterId: z.string().uuid('Invalid Counter ID'),

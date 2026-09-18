@@ -243,7 +243,6 @@ describe('SyncManager', () => {
     it.each([
         ['CREATE', '/counters', 'POST'],
         ['UPDATE', '/counters/update/counter-command', 'PUT'],
-        ['SET_COUNT', '/counters/counter-command/count', 'PUT'],
         ['INCREMENT', '/counters/increment/counter-command', 'PUT'],
         ['DELETE', '/counters/counter-command', 'DELETE'],
         ['REMOVE', '/counters/remove-shared/counter-command', 'PUT'],

@@ -56,10 +56,6 @@ export interface UpdateCounterRequest {
     increment?: number;
 }
 
-export interface SetCounterCountRequest {
-    count: number;
-}
-
 export interface IncrementCounterRequest {
     amount: number;
 }

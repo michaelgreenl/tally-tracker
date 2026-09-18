@@ -60,15 +60,6 @@ export const deleteAccount = async (userId: string) =>
         };
     });
 
-export const deleteUser = deleteAccount;
-
-export const getAllUsers = async ({ limit, offset }: { limit: number; offset: number }) =>
-    prisma.user.findMany({
-        take: limit,
-        skip: offset,
-        select: userSelectSchema,
-    });
-
 export const getUserById = (userId: string) =>
     prisma.user
         .findUnique({

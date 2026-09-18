@@ -4,7 +4,7 @@ import * as Crypto from 'expo-crypto';
 export type MutationCommand = {
     id: string;
     queuedByUserId: string;
-    type: 'CREATE' | 'UPDATE' | 'SET_COUNT' | 'DELETE' | 'INCREMENT' | 'REMOVE';
+    type: 'CREATE' | 'UPDATE' | 'DELETE' | 'INCREMENT' | 'REMOVE';
     entityId: string;
     payload: unknown;
     rejected?: number;

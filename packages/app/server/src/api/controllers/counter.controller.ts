@@ -9,7 +9,6 @@ import type { CounterResponse } from '@tally/core';
 import type {
     CreateCounterRequest,
     UpdateCounterRequest,
-    SetCounterCountRequest,
     IncrementCounterRequest,
     JoinCounterRequest,
     UpdateShareRequest,
@@ -166,38 +165,6 @@ export const put = async (
         const io = req.app.get('io');
         participants.forEach((participantId) => io.to(participantId).emit('counter-update', updatedCounter));
     }
-    return sendMutationResponse(res, result);
-};
-
-export const setCount = async (
-    req: Request<{ counterId: string }, CounterResponse, SetCounterCountRequest>,
-    res: Response<CounterResponse>,
-) => {
-    const result = await runIdempotentMutation<CounterResponse>(req, async (tx) => {
-        const userId = req.user?.id;
-        const counterId = req.params.counterId as string;
-        const { count } = req.body;
-
-        if (!userId) {
-            return { status: BAD_REQUEST, body: { success: false, message: 'Invalid userId' } };
-        }
-
-        const counter = await counterRepository.setCount({ counterId, userId, count }, tx);
-
-        if (!counter) {
-            return { status: NOT_FOUND, body: { success: false, message: 'Counter not found' } };
-        }
-
-        return {
-            status: OK,
-            body: {
-                success: true,
-                message: 'Counter count updated successfully',
-                data: { counter },
-            },
-        };
-    });
-
     return sendMutationResponse(res, result);
 };
 

@@ -1,6 +1,5 @@
 import 'dotenv/config';
 import rateLimit from 'express-rate-limit';
-import slowDown from 'express-slow-down';
 import { loginRateLimitStore } from '../db/login-rate-limit.store.js';
 
 import { Request } from 'express';
@@ -44,14 +43,4 @@ export const loginAccountLimiter = rateLimit({
     limit: 10,
     keyGenerator: (req) => req.body.email,
     store: loginRateLimitStore('login-account'),
-});
-
-export const speedLimiter = slowDown({
-    windowMs: 15 * 60 * 1000,
-    delayAfter: 1500,
-    delayMs: (used, req) => {
-        const delayAfter = req.slowDown.limit;
-        return (used - delayAfter) * 500;
-    },
-    skip,
 });
