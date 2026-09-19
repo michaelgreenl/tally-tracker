@@ -202,9 +202,14 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
                 >
                     <ScrollView
                         contentContainerStyle={styles.scrollContent}
-                        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+                        keyboardDismissMode={Platform.select({
+                            ios: 'interactive',
+                            android: 'on-drag',
+                            default: 'none',
+                        })}
                         keyboardShouldPersistTaps='handled'
                         showsVerticalScrollIndicator={false}
+                        testID='email-auth-scroll'
                     >
                         <View style={styles.card}>
                             <View style={styles.header}>

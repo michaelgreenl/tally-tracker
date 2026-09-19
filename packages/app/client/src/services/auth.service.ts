@@ -10,6 +10,8 @@ import type { SessionScope } from './session-scope';
 import type {
     AuthRequest,
     AuthResponse,
+    GoogleLoginRequest,
+    GoogleAuthResponse,
     ClientUser,
     EmailAddressRequest,
     EmailOtpRequest,
@@ -61,17 +63,20 @@ export const AuthService = {
         return apiFetch<AuthResponse>('/users/check-auth', { method: 'GET' });
     },
 
-    async login(data: AuthRequest) {
+    async login(data: AuthRequest | GoogleLoginRequest) {
         const scope = getSessionScope();
         // A late logout response must not clear the next login's cookies.
         await pendingLogout;
         assertSession(scope);
-        return apiFetch<AuthResponse, AuthRequest>('/users/login', {
-            method: 'POST',
-            body: data,
-            requiresAuth: false,
-            sessionScope: scope,
-        });
+        return apiFetch<GoogleAuthResponse, AuthRequest | GoogleLoginRequest>(
+            'idToken' in data ? '/users/google' : '/users/login',
+            {
+                method: 'POST',
+                body: data,
+                requiresAuth: false,
+                sessionScope: scope,
+            },
+        );
     },
 
     logout(scope = getSessionScope(), userId: string | null = null) {

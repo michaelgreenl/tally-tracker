@@ -4,6 +4,7 @@ import { HexColor } from './index';
 export type ClientUser = Omit<
     User,
     | 'password'
+    | 'googleSubject'
     | 'createdAt'
     | 'updatedAt'
     | 'emailVerifiedAt'

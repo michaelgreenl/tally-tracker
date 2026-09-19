@@ -102,6 +102,33 @@ export const getUserByEmail = (email: string) =>
         })
         .then(withCurrentTier);
 
+export const getUserByGoogleSubject = (googleSubject: string) =>
+    prisma.user.findUnique({ where: { googleSubject } }).then(withCurrentTier);
+
+export const createGoogleUser = (googleSubject: string, email: string, emailVerified: boolean) =>
+    prisma.user.create({
+        data: { googleSubject, email, emailVerifiedAt: emailVerified ? new Date() : null },
+    });
+
+export const linkGoogle = (user: User, googleSubject: string, emailVerified: boolean) =>
+    withLockedUser(user.id, async (current, tx) => {
+        if (
+            !current ||
+            current.password !== user.password ||
+            current.sessionVersion !== user.sessionVersion ||
+            current.email !== user.email ||
+            (current.googleSubject && current.googleSubject !== googleSubject)
+        )
+            return null;
+        return tx.user.update({
+            where: { id: user.id },
+            data: {
+                googleSubject,
+                emailVerifiedAt: current.emailVerifiedAt ?? (emailVerified ? new Date() : null),
+            },
+        });
+    });
+
 export const updateBillingEntitlement = (
     userId: string,
     data: Pick<User, 'tier' | 'premiumExpiresAt' | 'billingSandbox'> & { billingCheckedAt: Date },

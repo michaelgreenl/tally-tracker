@@ -140,7 +140,7 @@ async function apiFetch<ResT = unknown, ReqT = unknown>(
         };
         // Serialize cookie changes across tabs. Release before a 401 can request its own refresh lock.
         const changesCookies =
-            ['/users/login', '/users/refresh', '/users/logout'].includes(endpoint) ||
+            ['/users/login', '/users/google', '/users/refresh', '/users/logout'].includes(endpoint) ||
             (endpoint === '/users' && options.method === 'DELETE');
         const response =
             !isNative && changesCookies && typeof navigator !== 'undefined' && navigator.locks

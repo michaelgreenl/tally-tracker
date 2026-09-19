@@ -6,7 +6,8 @@ enum UserTier {
 model User {
     id               String    @id @default(uuid()) @db.Uuid
     email            String    @unique
-    password         String
+    password         String?
+    googleSubject    String?   @unique @map("google_subject")
     tier             UserTier  @default(BASIC)
     emailVerifiedAt  DateTime? @map("email_verified_at")
     sessionVersion   Int       @default(0) @map("session_version")

@@ -17,22 +17,10 @@ for (const action of ['logout', 'deletion'] as const) {
                 onBeforeLoad: (win) => win.localStorage.setItem('auth_user_profile', JSON.stringify(body.data.user)),
             });
         });
-
-        let finish!: () => void;
-        const delayed = new Cypress.Promise<void>((resolve) => {
-            finish = resolve;
-        });
-        cy.intercept(
-            action === 'logout' ? 'POST' : 'DELETE',
-            action === 'logout' ? '**/users/logout' : '**/users',
-            (request) => delayed.then(() => request.continue()),
-        ).as('endSession');
-        cy.intercept('POST', '**/users/login').as('login');
-        cy.get(`[data-testid="settings-${action === 'logout' ? 'logout' : 'delete-account'}"]`).click();
-        cy.get(`[data-testid="${action === 'logout' ? 'logout' : 'delete-account'}-confirm-submit"]`).click();
-        if (action === 'logout') cy.location('pathname').should('eq', '/login');
+        cy.get(`[data-testid="settings-${action === 'logout' ? 'logout' : 'delete-account'}"]`).should('be.visible');
 
         // A same-origin frame has its own app session, but shares cookies and Web Locks like another tab.
+        // Prepare it before holding the response; app startup is not part of the lock assertion.
         let frame: HTMLIFrameElement;
         cy.window().then((win) => {
             // Model a second context signing in without changing the first context's active session.
@@ -52,6 +40,20 @@ for (const action of ['logout', 'deletion'] as const) {
                 .then(() => cy.wrap(frame.contentDocument!).find(`[data-testid="${id}"]`));
         field('auth-email').type(b.email);
         field('auth-password').type(b.password);
+
+        let finish!: () => void;
+        const delayed = new Cypress.Promise<void>((resolve) => {
+            finish = resolve;
+        });
+        cy.intercept(
+            action === 'logout' ? 'POST' : 'DELETE',
+            action === 'logout' ? '**/users/logout' : '**/users',
+            (request) => delayed.then(() => request.continue()),
+        ).as('endSession');
+        cy.intercept('POST', '**/users/login').as('login');
+        cy.get(`[data-testid="settings-${action === 'logout' ? 'logout' : 'delete-account'}"]`).click();
+        cy.get(`[data-testid="${action === 'logout' ? 'logout' : 'delete-account'}-confirm-submit"]`).click();
+        if (action === 'logout') cy.location('pathname').should('eq', '/login');
         field('auth-submit').click();
         cy.window()
             .then((win) => win.navigator.locks.query())

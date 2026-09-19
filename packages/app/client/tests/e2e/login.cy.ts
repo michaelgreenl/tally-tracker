@@ -59,6 +59,7 @@ describe('Login controls', () => {
             ['auth-switch-mode', '/login'],
             ['auth-forgot-password', '/forgot-password'],
         ]) {
+            cy.get('[data-testid="auth-scroll"]').filter(':visible').scrollTo('bottom');
             cy.get(`[data-testid="${testID}"]`).filter(':visible').should('have.length', 1).click();
             cy.location('pathname').should('eq', pathname);
         }
@@ -77,7 +78,7 @@ describe('Login controls', () => {
         cy.get('[data-testid="auth-password-field"]').then(($field) => {
             const unfocusedBorder = $field.css('border-color');
 
-            cy.get('[data-testid="auth-email"]').focus().should('have.css', 'outline-style', 'none');
+            cy.get('[data-testid="auth-email"]').click().should('have.focus').and('have.css', 'outline-style', 'none');
             cy.get('[data-testid="auth-email"]').should('not.have.css', 'border-color', unfocusedBorder);
             cy.get('[data-testid="auth-email"]').then(($email) => {
                 const focusedBorder = $email.css('border-color');
@@ -90,6 +91,20 @@ describe('Login controls', () => {
                 cy.get('[data-testid="auth-password-field"]').should('have.css', 'border-color', unfocusedBorder);
             });
         });
+    });
+
+    it('keeps the active auth field focused when the browser scrolls', () => {
+        cy.viewport(375, 300);
+        for (const [route, field, scroll] of [
+            ['/login', 'auth-email', 'auth-scroll'],
+            ['/register', 'auth-email', 'auth-scroll'],
+            ['/forgot-password', 'email-auth-email', 'email-auth-scroll'],
+        ]) {
+            cy.visit(route);
+            cy.get(`[data-testid="${field}"]`).focus();
+            cy.get(`[data-testid="${scroll}"]`).scrollTo('bottom', { duration: 200 });
+            cy.get(`[data-testid="${field}"]`).should('have.focus');
+        }
     });
 
     it('submits the current checkbox value on each login attempt', () => {

@@ -23,6 +23,7 @@ import { AuthLink, FormField, styles as formStyles } from './auth-form';
 import { BackButton } from './back-button';
 import { Checkbox } from './checkbox';
 import { TallyBrand } from './tally-brand';
+import { GoogleSignIn } from './google-sign-in';
 
 type AuthScreenProps = {
     mode: 'login' | 'register';
@@ -64,6 +65,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
     }
 
     async function submit() {
+        if (loading) return;
         if (!email.includes('@')) {
             setErrorMessage('Please enter a valid email address.');
             return;
@@ -141,7 +143,11 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                     insets.bottom,
                             },
                         ]}
-                        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+                        keyboardDismissMode={Platform.select({
+                            ios: 'interactive',
+                            android: 'on-drag',
+                            default: 'none',
+                        })}
                         keyboardShouldPersistTaps='handled'
                         showsVerticalScrollIndicator={false}
                         testID='auth-scroll'
@@ -316,6 +322,18 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                     <Text style={styles.primaryButtonText}>{isLogin ? 'Login' : 'Register'}</Text>
                                 )}
                             </Pressable>
+
+                            <GoogleSignIn
+                                disabled={loading}
+                                rememberMe={rememberMe}
+                                onBusyChange={setLoading}
+                                onError={setErrorMessage}
+                                onSuccess={() =>
+                                    router.replace(
+                                        inviteCode ? { pathname: '/join', params: { code: inviteCode } } : '/home',
+                                    )
+                                }
+                            />
 
                             <View style={styles.footer}>
                                 <View style={styles.signupRow}>

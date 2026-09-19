@@ -39,7 +39,10 @@ it('still removes keychain credentials when profile removal fails', async () => 
     expect(apiFetch).toHaveBeenCalledWith('/users/logout', expect.anything());
 });
 
-it('clears local storage before a slow logout and holds the next login until it finishes', async () => {
+it.each([
+    { request: { email: 'next@example.com', password: 'Password1' }, endpoint: '/users/login' },
+    { request: { idToken: 'google-token' }, endpoint: '/users/google' },
+])('holds $endpoint until the old logout finishes, after clearing local storage', async ({ request, endpoint }) => {
     let finish!: () => void;
     vi.mocked(apiFetch).mockImplementationOnce(
         () =>
@@ -50,12 +53,15 @@ it('clears local storage before a slow logout and holds the next login until it 
     const logout = AuthService.logout();
     await vi.waitFor(() => expect(finish).toBeTypeOf('function'));
     expect(tokenStorage.clear).toHaveBeenCalledOnce();
-    const login = AuthService.login({ email: 'next@example.com', password: 'Password1' });
+    const login = AuthService.login(request);
     await Promise.resolve();
     expect(apiFetch).toHaveBeenCalledTimes(1);
     finish();
     await Promise.all([logout, login]);
-    expect(apiFetch).toHaveBeenLastCalledWith('/users/login', expect.anything());
+    expect(apiFetch).toHaveBeenLastCalledWith(
+        endpoint,
+        expect.objectContaining({ body: request, requiresAuth: false }),
+    );
 });
 
 it('does not let a partially failed old credential write finish after a new login', async () => {

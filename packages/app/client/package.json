@@ -5,6 +5,7 @@
     "dependencies": {
         "@expo/ui": "~57.0.14",
         "@react-native-async-storage/async-storage": "2.2.0",
+        "@react-oauth/google": "0.13.5",
         "@sentry/react-native": "~7.11.0",
         "@tally/core": "workspace:*",
         "expo": "~57.0.17",
@@ -22,6 +23,8 @@
         "react-dom": "19.2.3",
         "react-native": "0.86.3",
         "react-native-gesture-handler": "3.2.1",
+        "react-native-nitro-google-signin": "2.3.0",
+        "react-native-nitro-modules": "0.37.1",
         "react-native-purchases": "10.9.1",
         "react-native-reanimated": "4.5.1",
         "react-native-reorderable-list": "0.18.1",
@@ -53,8 +56,8 @@
         "test:unit": "vitest run",
         "test:coverage": "vitest run --coverage",
         "typecheck": "tsc --noEmit",
-        "format": "prettier --write src/ tests/e2e/ app.config.js app.json cypress.config.mjs eslint.config.js metro.config.js package.json tsconfig.json tsconfig.cypress.json",
-        "format:check": "prettier --check src/ tests/e2e/ app.config.js app.json cypress.config.mjs eslint.config.js metro.config.js package.json tsconfig.json tsconfig.cypress.json",
+        "format": "prettier --write src/ tests/e2e/ plugins/ app.config.js app.json cypress.config.mjs eslint.config.js metro.config.js package.json tsconfig.json tsconfig.cypress.json",
+        "format:check": "prettier --check src/ tests/e2e/ plugins/ app.config.js app.json cypress.config.mjs eslint.config.js metro.config.js package.json tsconfig.json tsconfig.cypress.json",
         "lint": "expo lint",
         "lint:all": "bun typecheck && bun format:check && bun lint"
     },

@@ -94,7 +94,7 @@ export const resetPassword = async (
 
         const digest = digestEmailOtp(user.id, 'PASSWORD_RESET', req.body.code);
         const [reusesPassword, password] = await Promise.all([
-            bcrypt.compare(req.body.password, user.password),
+            user.password ? bcrypt.compare(req.body.password, user.password) : false,
             bcrypt.hash(req.body.password, 10),
         ]);
         const reset = await emailOtpRepository.resetPassword(user.id, digest, password, reusesPassword);

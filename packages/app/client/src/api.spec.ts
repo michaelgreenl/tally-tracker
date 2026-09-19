@@ -256,18 +256,21 @@ describe('apiFetch', () => {
         },
     );
 
-    it('returns public login errors without expiring the current session', async () => {
-        const unauthorized = vi.fn();
-        const removeHandler = setUnauthorizedHandler(unauthorized);
-        fetchMock.mockResolvedValue(jsonResponse({ message: 'Incorrect password.' }, UNAUTHORIZED));
+    it.each(['/users/login', '/users/google'])(
+        'returns %s errors without expiring the current session',
+        async (endpoint) => {
+            const unauthorized = vi.fn();
+            const removeHandler = setUnauthorizedHandler(unauthorized);
+            fetchMock.mockResolvedValue(jsonResponse({ message: 'Incorrect password.' }, UNAUTHORIZED));
 
-        await expect(apiFetch('/users/login', { requiresAuth: false })).rejects.toEqual(
-            new ApiError('Incorrect password.', UNAUTHORIZED, { message: 'Incorrect password.' }),
-        );
-        expect(unauthorized).not.toHaveBeenCalled();
-        expect(fetchMock).toHaveBeenCalledOnce();
-        removeHandler();
-    });
+            await expect(apiFetch(endpoint, { requiresAuth: false })).rejects.toEqual(
+                new ApiError('Incorrect password.', UNAUTHORIZED, { message: 'Incorrect password.' }),
+            );
+            expect(unauthorized).not.toHaveBeenCalled();
+            expect(fetchMock).toHaveBeenCalledOnce();
+            removeHandler();
+        },
+    );
 
     it('does not retain an unauthorized callback after its owner removes it', async () => {
         const unauthorized = vi.fn();

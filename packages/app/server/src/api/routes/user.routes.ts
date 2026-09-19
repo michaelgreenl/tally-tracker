@@ -1,6 +1,7 @@
 import express from 'express';
 import { post, remove, login, logout, checkAuth, refresh } from '../controllers/user.controller.js';
 import { jwt } from '../../middleware/auth.middleware.js';
+import { googleLogin, verifyGoogle } from '../controllers/google-auth.controller.js';
 import { validate } from '../../middleware/validate.middleware.js';
 import { emailAuthLimiter, loginAccountLimiter, loginIpLimiter } from '../../config/limiters.config.js';
 import {
@@ -15,6 +16,7 @@ import {
     emailAddressSchema,
     emailOtpSchema,
     loginSchema,
+    googleLoginSchema,
     logoutSchema,
     passwordResetSchema,
     refreshSchema,
@@ -26,6 +28,7 @@ router.get('/check-auth', jwt, checkAuth);
 router.post('/', emailAuthLimiter, validate(createUserSchema), post);
 router.delete('/', jwt, remove);
 router.post('/login', loginIpLimiter, validate(loginSchema), loginAccountLimiter, login);
+router.post('/google', loginIpLimiter, validate(googleLoginSchema), verifyGoogle, loginAccountLimiter, googleLogin);
 router.post('/logout', validate(logoutSchema), logout);
 router.post('/refresh', validate(refreshSchema), refresh);
 router.post('/verify-email/request', emailAuthLimiter, validate(emailAddressSchema), requestEmailVerification);

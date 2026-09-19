@@ -1,0 +1,172 @@
+import { useCallback, useRef, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+
+import { colors } from '../colors';
+import { useSession } from '../session';
+import { assertSession, getSessionScope } from '../services/session-scope';
+import { Dialog } from './dialog';
+import { FormField, styles as formStyles } from './auth-form';
+import { GoogleButton } from './google-button';
+
+export type GoogleButtonProps = {
+    disabled: boolean;
+    onCredential: (idToken: string) => Promise<void>;
+    onError: (message: string) => void;
+    onBusyChange: (busy: boolean) => void;
+};
+
+type Props = {
+    disabled: boolean;
+    rememberMe: boolean;
+    onBusyChange: (busy: boolean) => void;
+    onError: (message: string) => void;
+    onSuccess: () => void;
+};
+
+export function GoogleSignIn({ disabled, rememberMe, onBusyChange, onError, onSuccess }: Props) {
+    const session = useSession();
+    const [linkToken, setLinkToken] = useState('');
+    const [password, setPassword] = useState('');
+    const [linkError, setLinkError] = useState('');
+    const [focused, setFocused] = useState(false);
+    const pending = useRef(false);
+    const active = useRef(true);
+    const scope = useRef(getSessionScope());
+    useFocusEffect(
+        useCallback(() => {
+            active.current = true;
+            setFocused(true);
+            scope.current = getSessionScope();
+            return () => {
+                active.current = false;
+                setFocused(false);
+                setLinkToken('');
+                setPassword('');
+                setLinkError('');
+            };
+        }, []),
+    );
+
+    function closeLink() {
+        if (pending.current) return;
+        setLinkToken('');
+        setPassword('');
+        setLinkError('');
+    }
+
+    async function signIn(idToken: string, existingPassword?: string) {
+        if (pending.current || !active.current || existingPassword === '') return;
+        pending.current = true;
+        onBusyChange(true);
+        onError('');
+        setLinkError('');
+        try {
+            // Ignore a provider callback after another login or logout has changed the account.
+            assertSession(scope.current);
+            const result = await session.login({ idToken, password: existingPassword, rememberMe });
+            if (!active.current) return;
+            if (result.success) {
+                setLinkToken('');
+                setPassword('');
+                onSuccess();
+            } else if (result.code === 'GOOGLE_LINK_REQUIRED') {
+                setLinkToken(idToken);
+            } else if (existingPassword !== undefined) {
+                setLinkError(result.message);
+            } else onError(result.message);
+        } catch {
+            if (active.current) onError('Account changed. Please sign in again.');
+        } finally {
+            pending.current = false;
+            onBusyChange(false);
+        }
+    }
+
+    if (!process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID) return null;
+    return (
+        <View style={styles.section}>
+            <View style={styles.divider}>
+                <View style={styles.line} />
+                <Text style={styles.or}>or</Text>
+                <View style={styles.line} />
+            </View>
+            <View style={styles.button}>
+                {focused && (
+                    <GoogleButton
+                        disabled={disabled || Boolean(linkToken)}
+                        onCredential={signIn}
+                        onError={onError}
+                        onBusyChange={onBusyChange}
+                    />
+                )}
+            </View>
+            {Boolean(linkToken) && (
+                <Dialog
+                    visible
+                    dismissOnBackdropPress
+                    onRequestClose={closeLink}
+                    title='Connect Google'
+                    description='Enter your Tally password to connect this account.'
+                    testID='google-link-dialog'
+                >
+                    <FormField
+                        label='Password'
+                        value={password}
+                        onChangeText={setPassword}
+                        secureTextEntry
+                        autoCapitalize='none'
+                        autoComplete='current-password'
+                        textContentType='password'
+                        editable={!disabled}
+                        returnKeyType='done'
+                        onSubmitEditing={() => void signIn(linkToken, password)}
+                        testID='google-link-password'
+                    />
+                    {Boolean(linkError) && (
+                        <Text accessibilityRole='alert' style={formStyles.errorText}>
+                            {linkError}
+                        </Text>
+                    )}
+                    <Pressable
+                        accessibilityRole='button'
+                        disabled={disabled || !password}
+                        onPress={() => void signIn(linkToken, password)}
+                        style={({ pressed }) => [
+                            formStyles.primaryButton,
+                            (disabled || !password) && formStyles.primaryButtonDisabled,
+                            pressed && styles.pressed,
+                        ]}
+                        testID='google-link-submit'
+                    >
+                        {disabled ? (
+                            <ActivityIndicator color={colors.onPrimary} />
+                        ) : (
+                            <Text style={formStyles.primaryButtonText}>Connect</Text>
+                        )}
+                    </Pressable>
+                    <Pressable
+                        accessibilityRole='button'
+                        disabled={disabled}
+                        onPress={closeLink}
+                        style={({ pressed }) => [styles.cancel, pressed && styles.pressed]}
+                        testID='google-link-cancel'
+                    >
+                        <Text style={styles.cancelText}>Cancel</Text>
+                    </Pressable>
+                </Dialog>
+            )}
+        </View>
+    );
+}
+
+const styles = StyleSheet.create({
+    pressed: { opacity: 0.7 },
+    section: { gap: 16, marginTop: 20 },
+    button: { minHeight: 48 },
+    divider: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    line: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.divider },
+    or: { color: colors.muted, fontSize: 14 },
+    cancel: { minHeight: 48, alignItems: 'center', justifyContent: 'center' },
+    cancelText: { color: colors.link, fontWeight: '600', fontSize: 16 },
+});

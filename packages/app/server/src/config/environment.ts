@@ -23,6 +23,11 @@ export function validateEnvironment(env: Record<string, string | undefined> = pr
                 ),
             FRONTEND_URL: z.url({ protocol: /^https$/ }),
             PORT: z.coerce.number().int().min(1).max(65535).optional(),
+            GOOGLE_WEB_CLIENT_ID: z
+                .string()
+                .regex(/^\d+-[a-z0-9]+\.apps\.googleusercontent\.com$/)
+                .or(z.literal(''))
+                .optional(),
             REVENUECAT_SECRET_API_KEY: billing ? z.string().trim().min(1) : z.string().optional(),
             REVENUECAT_WEBHOOK_SECRET: billing ? secret : z.string().optional(),
             REVENUECAT_ALLOW_SANDBOX: z.enum(['true', 'false']).optional(),

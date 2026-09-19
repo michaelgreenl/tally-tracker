@@ -126,63 +126,66 @@ afterEach(async () => {
     vi.unstubAllEnvs();
 });
 
-it('removes confirmed account data after delayed writes without clearing the next account', async () => {
-    const scope = getSessionScope();
-    const savedCounters = await CounterStorage.getAll();
-    const response = Promise.withResolvers<Response>();
-    fetchMock.mockReturnValueOnce(response.promise);
-    const deletion = session.deleteAccount();
-    await vi.waitFor(() =>
-        expect(fetchMock).toHaveBeenCalledWith(
-            expect.stringContaining('/users'),
-            expect.objectContaining({ method: 'DELETE' }),
-        ),
-    );
-    expect(session.user).toEqual(accountA);
-    expect(await CounterStorage.getAll()).toEqual(savedCounters);
-    expect((await SyncQueue.get()).map((item) => item.queuedByUserId)).toEqual(['a', 'b']);
-    expect(await CounterStorage.getOrder('a')).toEqual(['counter-a']);
+it.each([{ email: accountB.email, password: 'Test-password-123' }, { idToken: 'google-token' }])(
+    'removes deleted account data after delayed writes without clearing the next login: %j',
+    async (credentials) => {
+        const scope = getSessionScope();
+        const savedCounters = await CounterStorage.getAll();
+        const response = Promise.withResolvers<Response>();
+        fetchMock.mockReturnValueOnce(response.promise);
+        const deletion = session.deleteAccount();
+        await vi.waitFor(() =>
+            expect(fetchMock).toHaveBeenCalledWith(
+                expect.stringContaining('/users'),
+                expect.objectContaining({ method: 'DELETE' }),
+            ),
+        );
+        expect(session.user).toEqual(accountA);
+        expect(await CounterStorage.getAll()).toEqual(savedCounters);
+        expect((await SyncQueue.get()).map((item) => item.queuedByUserId)).toEqual(['a', 'b']);
+        expect(await CounterStorage.getOrder('a')).toEqual(['counter-a']);
 
-    const write = Promise.withResolvers<void>();
-    setItem.mockImplementation(async (key: string, value: string) => {
-        if (key === 'app_counters' || key === 'app_sync_queue') await write.promise;
-        storage.set(key, value);
-    });
-    const oldWrite = writeSession(scope, async () => {
-        await CounterService.persist(counters);
-        await CounterService.persistOrder('a', ['counter-owner', 'counter-a']);
-    });
-    const stale = expect(oldWrite).rejects.toBeInstanceOf(SessionChangedError);
-    // This command belongs to A, even though its counter belongs to someone else.
-    const queued = CounterService.increment(joined, 2, scope);
-    await vi.waitFor(() => expect(setItem.mock.calls.filter(([key]) => key === 'app_sync_queue')).toHaveLength(2));
-    await act(async () => {
-        response.resolve(json({ success: true }));
-    });
-    expect(session.user).toBeNull();
+        const write = Promise.withResolvers<void>();
+        setItem.mockImplementation(async (key: string, value: string) => {
+            if (key === 'app_counters' || key === 'app_sync_queue') await write.promise;
+            storage.set(key, value);
+        });
+        const oldWrite = writeSession(scope, async () => {
+            await CounterService.persist(counters);
+            await CounterService.persistOrder('a', ['counter-owner', 'counter-a']);
+        });
+        const stale = expect(oldWrite).rejects.toBeInstanceOf(SessionChangedError);
+        // This command belongs to A, even though its counter belongs to someone else.
+        const queued = CounterService.increment(joined, 2, scope);
+        await vi.waitFor(() => expect(setItem.mock.calls.filter(([key]) => key === 'app_sync_queue')).toHaveLength(2));
+        await act(async () => {
+            response.resolve(json({ success: true }));
+        });
+        expect(session.user).toBeNull();
 
-    let login!: ReturnType<typeof session.login>;
-    await act(async () => {
-        login = session.login({ email: accountB.email, password: 'Test-password-123' });
-    });
-    await vi.waitFor(() => expect(getSessionScope().userId).toBe('b'));
-    await act(async () => {
-        write.resolve();
-        await Promise.all([stale, queued]);
-        expect((await deletion).success).toBe(true);
-        expect((await login).success).toBe(true);
-    });
-    expect(await CounterStorage.getAll()).toEqual([counter('b'), counter('guest')]);
-    expect(await CounterStorage.getOrder('a')).toEqual([]);
-    expect(await CounterStorage.getOrder('b')).toEqual(['counter-b']);
-    expect(await CounterStorage.getOrder('guest')).toEqual(['counter-guest']);
-    expect((await SyncQueue.get()).map((item) => item.queuedByUserId)).toEqual(['b']);
-    expect(session.user).toEqual(accountB);
-    expect(await AuthService.getCachedUser()).toEqual(accountB);
-    expect(await tokenStorage.getAccessToken()).toBe('access-b');
-    expect(await tokenStorage.getRefreshToken()).toBe('refresh-b');
-    await expect(CounterService.increment(joined, 1, scope)).rejects.toBeInstanceOf(SessionChangedError);
-});
+        let login!: ReturnType<typeof session.login>;
+        await act(async () => {
+            login = session.login(credentials);
+        });
+        await vi.waitFor(() => expect(getSessionScope().userId).toBe('b'));
+        await act(async () => {
+            write.resolve();
+            await Promise.all([stale, queued]);
+            expect((await deletion).success).toBe(true);
+            expect((await login).success).toBe(true);
+        });
+        expect(await CounterStorage.getAll()).toEqual([counter('b'), counter('guest')]);
+        expect(await CounterStorage.getOrder('a')).toEqual([]);
+        expect(await CounterStorage.getOrder('b')).toEqual(['counter-b']);
+        expect(await CounterStorage.getOrder('guest')).toEqual(['counter-guest']);
+        expect((await SyncQueue.get()).map((item) => item.queuedByUserId)).toEqual(['b']);
+        expect(session.user).toEqual(accountB);
+        expect(await AuthService.getCachedUser()).toEqual(accountB);
+        expect(await tokenStorage.getAccessToken()).toBe('access-b');
+        expect(await tokenStorage.getRefreshToken()).toBe('refresh-b');
+        await expect(CounterService.increment(joined, 1, scope)).rejects.toBeInstanceOf(SessionChangedError);
+    },
+);
 
 it('preserves the session and stored work if the server rejects deletion', async () => {
     const saved = new Map(storage);

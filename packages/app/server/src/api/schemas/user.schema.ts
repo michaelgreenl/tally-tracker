@@ -21,6 +21,14 @@ export const loginSchema = z.object({
     }),
 });
 
+export const googleLoginSchema = z.object({
+    body: z.object({
+        idToken: z.string().min(1).max(8192),
+        password: loginPasswordSchema.optional(),
+        rememberMe: z.boolean().optional(),
+    }),
+});
+
 const refreshTokenBodySchema = z.object({
     body: z
         .object({

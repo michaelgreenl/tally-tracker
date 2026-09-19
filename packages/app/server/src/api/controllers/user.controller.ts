@@ -95,12 +95,21 @@ export const login = async (
     const user = await userRepository.getUserByEmail(sanitizedEmail);
 
     const match = await bcrypt.compare(password, user?.password ?? DUMMY_PASSWORD_HASH);
-    if (!user || !match) {
+    if (!user?.password || !match) {
         return res.status(UNAUTHORIZED).json({ success: false, message: 'Email or password is incorrect.' });
     }
 
+    return sendSession(user, rememberMe, res);
+};
+
+export const sendSession = async (user: User, rememberMe: boolean | undefined, res: Response<AuthResponse>) => {
     const credentials = await userRepository.withLockedUser(user.id, async (current, tx) => {
-        if (!current || current.password !== user.password || current.sessionVersion !== user.sessionVersion)
+        if (
+            !current ||
+            current.password !== user.password ||
+            current.googleSubject !== user.googleSubject ||
+            current.sessionVersion !== user.sessionVersion
+        )
             return null;
         const accessToken = jwt.sign(
             { id: current.id, email: current.email, sessionVersion: current.sessionVersion },

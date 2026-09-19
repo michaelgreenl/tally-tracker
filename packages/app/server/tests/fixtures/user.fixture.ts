@@ -10,6 +10,7 @@ export const buildUser = (overrides: Partial<User> = {}): User => ({
     id: TEST_USER_ID,
     email: 'test@test.com',
     password: hashedPassword,
+    googleSubject: null,
     tier: 'BASIC',
     emailVerifiedAt: null,
     sessionVersion: 0,

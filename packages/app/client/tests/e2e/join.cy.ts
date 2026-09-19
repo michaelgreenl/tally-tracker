@@ -51,6 +51,7 @@ describe('Shared counter invitations', () => {
                     cy.intercept('POST', '**/users/reset-password/verify', { body: { success: true } });
                     cy.intercept('POST', '**/users/reset-password', { body: { success: true } });
                     cy.get('[data-testid="auth-forgot-password"]').click();
+                    cy.location('pathname').should('eq', '/forgot-password');
                     cy.get('[data-testid="email-auth-email"]').type('recipient@example.com');
                     cy.get('[data-testid="email-auth-request"]').click();
                     cy.get('[data-testid="email-auth-code"]').type('123456');
