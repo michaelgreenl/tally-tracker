@@ -71,7 +71,7 @@ describe('Counter actions', () => {
                 const viewport = $banner[0].ownerDocument.defaultView!;
                 expect(bounds.left, 'message stays inside viewport').to.be.at.least(0);
                 expect(bounds.right, 'message stays inside viewport').to.be.at.most(viewport.innerWidth);
-                expect(bounds.bottom, 'message stays above page bottom').to.be.at.most(viewport.innerHeight);
+                expect(viewport.innerHeight - bounds.bottom, 'message sits near the bottom edge').to.be.within(12, 24);
             });
         cy.get(`[data-testid="counter-${counter.id}"]`).should(($card) => {
             expect($card[0].getBoundingClientRect().height, 'message does not resize the card').to.equal(cardHeight);

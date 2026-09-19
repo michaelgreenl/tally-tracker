@@ -1,10 +1,11 @@
 import { useEffect } from 'react';
-import { AccessibilityInfo, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Platform, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, FadeOutDown, ReduceMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import { colors } from '../colors';
+import { MessageText } from './message-text';
 
 const entering = FadeInDown.duration(200).reduceMotion(ReduceMotion.System);
 const exiting = FadeOutDown.duration(150).reduceMotion(ReduceMotion.System);
@@ -19,12 +20,12 @@ export function Snackbar({ message, onDismiss }: { message: string; onDismiss: (
     }, [message]);
 
     return (
-        <View pointerEvents='box-none' style={[styles.container, { bottom: insets.bottom + 104 }]}>
+        <View pointerEvents='box-none' style={[styles.container, { bottom: insets.bottom + 16 }]}>
             {Boolean(message) && (
                 <Animated.View entering={entering} exiting={exiting} style={styles.banner} testID='snackbar'>
-                    <Text accessibilityRole='alert' accessibilityLiveRegion='polite' style={styles.message}>
+                    <MessageText accessibilityRole='alert' accessibilityLiveRegion='polite' style={styles.message}>
                         {message}
-                    </Text>
+                    </MessageText>
                     <Pressable
                         accessibilityLabel='Dismiss message'
                         accessibilityRole='button'
@@ -54,9 +55,9 @@ const styles = StyleSheet.create({
         maxWidth: 640,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
-        padding: 8,
-        paddingLeft: 16,
+        gap: 12,
+        paddingVertical: 16,
+        paddingHorizontal: 20,
         backgroundColor: colors.surface,
         borderWidth: 1,
         borderColor: colors.border,

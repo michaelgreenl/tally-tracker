@@ -14,7 +14,7 @@ export interface ApiRequestOptions<T = unknown> extends Omit<RequestInit, 'body'
     sessionScope?: SessionScope | null;
 }
 
-export const REQUEST_FAILED_MESSAGE = 'Something went wrong. Please try again later.';
+export const REQUEST_FAILED_MESSAGE = 'Something happened. Try again later.';
 
 export class ApiError extends Error {
     success = false;

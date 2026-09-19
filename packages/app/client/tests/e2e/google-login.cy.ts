@@ -58,6 +58,8 @@ describe('Google sign-in', () => {
         cy.wait('@googleLogin')
             .its('request.body')
             .should('deep.equal', { idToken: 'provider-id-token', rememberMe: true });
+        cy.get('[data-testid="auth-submit-loading"]').should('not.exist');
+        cy.get('[data-testid="google-sign-in-loading"]').should('not.exist');
         cy.get('[data-testid="google-link-password"]').type('Do-not-keep1');
         cy.get('[data-testid="google-link-cancel"]').click();
         cy.get('[data-testid="google-link-dialog"]').should('not.exist');
@@ -86,6 +88,27 @@ describe('Google sign-in', () => {
         cy.get('[data-testid="google-provider-button"]').click();
         cy.wait('@googleLogin');
         cy.location('pathname').should('eq', '/home');
+    });
+
+    it('shows only Google progress while its request is pending and restores both actions after failure', () => {
+        let finish!: () => void;
+        const response = new Cypress.Promise<void>((resolve) => {
+            finish = resolve;
+        });
+        cy.intercept('POST', '**/users/google', (req) =>
+            response.then(() => req.reply({ statusCode: 401, body: { success: false } })),
+        ).as('googleLogin');
+        cy.visit('/login');
+        cy.get('[data-testid="google-provider-button"]').click();
+        cy.get('[data-testid="google-sign-in-loading"]').should('be.visible');
+        cy.get('[data-testid="auth-submit"]').should('be.disabled');
+        cy.get('[data-testid="auth-submit-loading"]')
+            .should('not.exist')
+            .then(() => finish());
+        cy.wait('@googleLogin');
+        cy.get('[data-testid="google-sign-in-loading"]').should('not.exist');
+        cy.get('[data-testid="auth-submit"]').should('not.be.disabled');
+        cy.get('[data-testid="google-provider-button"]').should('be.visible').focus().should('have.focus');
     });
 
     it('returns the Google callback to login after navigating back from registration', () => {
@@ -128,6 +151,9 @@ describe('Google sign-in', () => {
         cy.get('[data-testid="auth-email"]').type('person@gmail.com');
         cy.get('[data-testid="auth-password"]').type('Existing-password1');
         cy.get('[data-testid="auth-submit"]').click().should('be.disabled');
+        cy.get('[data-testid="auth-submit-loading"]').should('be.visible');
+        cy.get('[data-testid="google-sign-in-loading"]').should('not.exist');
+        cy.get('[data-testid="google-provider-button"]').should('be.visible').focus().should('not.have.focus');
         cy.window().then((win) => {
             (win as unknown as { googleCredential: (response: { credential: string }) => void }).googleCredential({
                 credential: 'late-token',

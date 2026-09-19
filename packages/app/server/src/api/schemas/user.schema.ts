@@ -1,10 +1,10 @@
-import { loginPasswordSchema, passwordSchema } from '@tally/core';
+import { emailSchema, loginPasswordSchema, passwordSchema } from '@tally/core';
 import { z } from 'zod';
 
 export const createUserSchema = z.object({
     body: z
         .object({
-            email: z.string().email('Invalid email format'),
+            email: emailSchema,
             password: passwordSchema,
         })
         .refine((data) => data.email, {
@@ -15,7 +15,7 @@ export const createUserSchema = z.object({
 
 export const loginSchema = z.object({
     body: z.object({
-        email: z.string().trim().toLowerCase().email(),
+        email: emailSchema.toLowerCase(),
         password: loginPasswordSchema,
         rememberMe: z.boolean().optional(),
     }),
@@ -40,7 +40,6 @@ const refreshTokenBodySchema = z.object({
 export const refreshSchema = refreshTokenBodySchema;
 export const logoutSchema = refreshTokenBodySchema;
 
-const emailSchema = z.string().trim().email('Invalid email format');
 const codeSchema = z.string().regex(/^\d{6}$/, 'Code must contain six digits');
 
 export const emailAddressSchema = z.object({

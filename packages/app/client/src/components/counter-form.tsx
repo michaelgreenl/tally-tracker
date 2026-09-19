@@ -8,6 +8,7 @@ import { useCounters } from '../counters';
 import { FormField } from './auth-form';
 import { CounterSheet } from './counter-sheet';
 import { CustomColorPicker } from './custom-color-picker';
+import { MessageText } from './message-text';
 
 import type { ClientCounter, HexColor } from '@tally/core/client';
 
@@ -181,7 +182,7 @@ export function CounterForm({ visible, counter, onCancel, onDone }: CounterFormP
                             style={styles.errorBox}
                             testID='counter-form-error'
                         >
-                            <Text style={styles.errorText}>{errorMessage}</Text>
+                            <MessageText style={styles.errorText}>{errorMessage}</MessageText>
                         </View>
                     )}
                 </ScrollView>

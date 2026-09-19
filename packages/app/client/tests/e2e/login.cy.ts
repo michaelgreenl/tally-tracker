@@ -1,6 +1,94 @@
 /// <reference types="cypress" />
 
 describe('Login controls', () => {
+    for (const route of ['/login', '/register', '/forgot-password']) {
+        it(`rejects malformed email locally on ${route}`, () => {
+            const recovery = route === '/forgot-password';
+            const prefix = recovery ? 'email-auth' : 'auth';
+            const endpoint = recovery
+                ? '**/users/reset-password/request'
+                : route === '/login'
+                  ? '**/users/login'
+                  : '**/users';
+            cy.intercept('POST', endpoint, { statusCode: 401, body: { success: false } }).as('submit');
+            cy.visit(route);
+            if (!recovery) cy.get('[data-testid="auth-password"]').type('Valid-password123');
+            if (route === '/register') cy.get('[data-testid="auth-confirm-password"]').type('Valid-password123');
+
+            for (const email of ['', '@@@@', 'person@', 'person@example..com']) {
+                cy.get(`[data-testid="${prefix}-email"]`).clear();
+                if (email) cy.get(`[data-testid="${prefix}-email"]`).type(email);
+                cy.get(`[data-testid="${prefix}-${recovery ? 'request' : 'submit'}"]`).click();
+                cy.get(`[data-testid="${prefix}-error"]`).should('be.visible');
+                cy.get('@submit.all').should('have.length', 0);
+            }
+
+            cy.get(`[data-testid="${prefix}-email"]`).clear().type('person+test@example.com');
+            cy.get(`[data-testid="${prefix}-${recovery ? 'request' : 'submit'}"]`).click();
+            cy.wait('@submit').its('request.body.email').should('eq', 'person+test@example.com');
+        });
+    }
+
+    it('requires a password before either login submit action sends a request', () => {
+        cy.intercept('POST', '**/users/login', { statusCode: 401, body: { success: false } }).as('login');
+        cy.visit('/login');
+        cy.get('[data-testid="auth-email"]').type('person@example.com');
+        cy.get('[data-testid="auth-submit"]').click();
+        cy.get('[data-testid="auth-error"]').should('be.visible');
+        cy.get('@login.all').should('have.length', 0);
+        cy.get('[data-testid="auth-password"]').type('{enter}');
+        cy.get('@login.all').should('have.length', 0);
+        cy.get('[data-testid="auth-submit-loading"]').should('not.exist');
+        // Existing passwords need not satisfy new-password complexity rules.
+        cy.get('[data-testid="auth-password"]').type('old-password{enter}');
+        cy.wait('@login').its('request.body.password').should('eq', 'old-password');
+    });
+
+    it('keeps enlarged error text inside its box without an orphaned last word', () => {
+        cy.intercept('POST', '**/users/login', {
+            statusCode: 401,
+            body: { success: false, message: 'Something went wrong. Please try again later.' },
+        }).as('login');
+        cy.visit('/login');
+        cy.get('[data-testid="auth-email"]').type('person@example.com');
+        cy.get('[data-testid="auth-password"]').type('incorrect-password');
+        cy.get('[data-testid="auth-submit"]').click();
+        cy.wait('@login');
+
+        for (const [width, height] of [
+            [375, 812],
+            [812, 375],
+        ]) {
+            cy.viewport(width, height);
+            for (const fontSize of [16, 18, 20, 24, 28, 32]) {
+                cy.get('[data-testid="auth-error-message"]').invoke('css', {
+                    fontSize: `${fontSize}px`,
+                    lineHeight: '1.4',
+                });
+                cy.get('[data-testid="auth-error-message"]')
+                    .scrollIntoView()
+                    .should(($message) => {
+                        const element = $message[0];
+                        const bounds = element.getBoundingClientRect();
+                        const lines = new Map<number, number>();
+                        for (const word of element.textContent!.matchAll(/\S+/g)) {
+                            const range = element.ownerDocument.createRange();
+                            range.setStart(element.firstChild!, word.index);
+                            range.setEnd(element.firstChild!, word.index + word[0].length);
+                            const rect = range.getBoundingClientRect();
+                            expect(rect.left, 'word stays inside left edge').to.be.at.least(bounds.left - 1);
+                            expect(rect.right, 'word stays inside right edge').to.be.at.most(bounds.right + 1);
+                            expect(rect.bottom, 'last line is not clipped').to.be.at.most(bounds.bottom + 1);
+                            lines.set(rect.top, (lines.get(rect.top) ?? 0) + 1);
+                        }
+                        if (fontSize >= 24) expect(lines.size, 'exercise multiline text').to.be.greaterThan(1);
+                        if (lines.size > 1)
+                            expect([...lines.values()].at(-1), 'last line has more than one word').to.be.greaterThan(1);
+                    });
+            }
+        }
+    });
+
     it('goes back through auth history and provides a destination for direct links', () => {
         cy.visit('/login');
         cy.get('[data-testid="auth-switch-mode"]').click();

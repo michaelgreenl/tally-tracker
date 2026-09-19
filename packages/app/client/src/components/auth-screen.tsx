@@ -1,4 +1,4 @@
-import { PASSWORD_REQUIREMENTS, passwordSchema } from '@tally/core/client';
+import { emailSchema, loginPasswordSchema, PASSWORD_REQUIREMENTS, passwordSchema } from '@tally/core/client';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { Fragment, useRef, useState } from 'react';
@@ -24,6 +24,7 @@ import { BackButton } from './back-button';
 import { Checkbox } from './checkbox';
 import { TallyBrand } from './tally-brand';
 import { GoogleSignIn } from './google-sign-in';
+import { MessageText } from './message-text';
 
 type AuthScreenProps = {
     mode: 'login' | 'register';
@@ -53,7 +54,9 @@ export function AuthScreen({ mode }: AuthScreenProps) {
     const [rememberMe, setRememberMe] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [passwordFocused, setPasswordFocused] = useState(false);
-    const [loading, setLoading] = useState(false);
+    const [passwordLoading, setPasswordLoading] = useState(false);
+    const [googleLoading, setGoogleLoading] = useState(false);
+    const loading = passwordLoading || googleLoading;
     const [errorMessage, setErrorMessage] = useState('');
 
     if (emailParameter !== previousEmailParameter) {
@@ -66,17 +69,16 @@ export function AuthScreen({ mode }: AuthScreenProps) {
 
     async function submit() {
         if (loading) return;
-        if (!email.includes('@')) {
-            setErrorMessage('Please enter a valid email address.');
+        const emailResult = emailSchema.safeParse(email);
+        if (!emailResult.success) {
+            setErrorMessage(emailResult.error.issues[0].message);
             return;
         }
 
-        if (!isLogin) {
-            const result = passwordSchema.safeParse(password);
-            if (!result.success) {
-                setErrorMessage(result.error.issues[0].message);
-                return;
-            }
+        const passwordResult = (isLogin ? loginPasswordSchema : passwordSchema).safeParse(password);
+        if (!passwordResult.success) {
+            setErrorMessage(passwordResult.error.issues[0].message);
+            return;
         }
 
         if (!isLogin && password !== confirmPassword) {
@@ -84,14 +86,14 @@ export function AuthScreen({ mode }: AuthScreenProps) {
             return;
         }
 
-        setLoading(true);
+        setPasswordLoading(true);
         setErrorMessage('');
 
         const result = isLogin
-            ? await session.login({ email, password, rememberMe })
-            : await session.register({ email, password });
+            ? await session.login({ email: emailResult.data, password, rememberMe })
+            : await session.register({ email: emailResult.data, password });
 
-        setLoading(false);
+        setPasswordLoading(false);
         if (!result.success) {
             setErrorMessage(result.message);
             return;
@@ -301,12 +303,15 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                     style={styles.errorBox}
                                     testID='auth-error'
                                 >
-                                    <Text style={styles.errorText}>{errorMessage}</Text>
+                                    <MessageText style={styles.errorText} testID='auth-error-message'>
+                                        {errorMessage}
+                                    </MessageText>
                                 </View>
                             )}
 
                             <Pressable
                                 accessibilityRole='button'
+                                accessibilityState={{ disabled: loading, busy: passwordLoading }}
                                 disabled={loading}
                                 onPress={() => void submit()}
                                 style={({ pressed }) => [
@@ -316,8 +321,8 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                 ]}
                                 testID='auth-submit'
                             >
-                                {loading ? (
-                                    <ActivityIndicator color={colors.onPrimary} />
+                                {passwordLoading ? (
+                                    <ActivityIndicator color={colors.onPrimary} testID='auth-submit-loading' />
                                 ) : (
                                     <Text style={styles.primaryButtonText}>{isLogin ? 'Login' : 'Register'}</Text>
                                 )}
@@ -325,8 +330,9 @@ export function AuthScreen({ mode }: AuthScreenProps) {
 
                             <GoogleSignIn
                                 disabled={loading}
+                                busy={googleLoading}
                                 rememberMe={rememberMe}
-                                onBusyChange={setLoading}
+                                onBusyChange={setGoogleLoading}
                                 onError={setErrorMessage}
                                 onSuccess={() =>
                                     router.replace(

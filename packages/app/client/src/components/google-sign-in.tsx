@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
+import { loginPasswordSchema } from '@tally/core/client';
 import { useFocusEffect } from 'expo-router';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -8,9 +9,11 @@ import { assertSession, getSessionScope } from '../services/session-scope';
 import { Dialog } from './dialog';
 import { FormField, styles as formStyles } from './auth-form';
 import { GoogleButton } from './google-button';
+import { MessageText } from './message-text';
 
 export type GoogleButtonProps = {
     disabled: boolean;
+    busy: boolean;
     onCredential: (idToken: string) => Promise<void>;
     onError: (message: string) => void;
     onBusyChange: (busy: boolean) => void;
@@ -18,13 +21,14 @@ export type GoogleButtonProps = {
 
 type Props = {
     disabled: boolean;
+    busy: boolean;
     rememberMe: boolean;
     onBusyChange: (busy: boolean) => void;
     onError: (message: string) => void;
     onSuccess: () => void;
 };
 
-export function GoogleSignIn({ disabled, rememberMe, onBusyChange, onError, onSuccess }: Props) {
+export function GoogleSignIn({ disabled, busy, rememberMe, onBusyChange, onError, onSuccess }: Props) {
     const session = useSession();
     const [linkToken, setLinkToken] = useState('');
     const [password, setPassword] = useState('');
@@ -56,7 +60,14 @@ export function GoogleSignIn({ disabled, rememberMe, onBusyChange, onError, onSu
     }
 
     async function signIn(idToken: string, existingPassword?: string) {
-        if (pending.current || !active.current || existingPassword === '') return;
+        if (pending.current || !active.current) return;
+        if (existingPassword !== undefined) {
+            const result = loginPasswordSchema.safeParse(existingPassword);
+            if (!result.success) {
+                setLinkError(result.error.issues[0].message);
+                return;
+            }
+        }
         pending.current = true;
         onBusyChange(true);
         onError('');
@@ -95,6 +106,7 @@ export function GoogleSignIn({ disabled, rememberMe, onBusyChange, onError, onSu
                 {focused && (
                     <GoogleButton
                         disabled={disabled || Boolean(linkToken)}
+                        busy={busy && !linkToken}
                         onCredential={signIn}
                         onError={onError}
                         onBusyChange={onBusyChange}
@@ -124,9 +136,9 @@ export function GoogleSignIn({ disabled, rememberMe, onBusyChange, onError, onSu
                         testID='google-link-password'
                     />
                     {Boolean(linkError) && (
-                        <Text accessibilityRole='alert' style={formStyles.errorText}>
+                        <MessageText accessibilityRole='alert' style={formStyles.errorText}>
                             {linkError}
-                        </Text>
+                        </MessageText>
                     )}
                     <Pressable
                         accessibilityRole='button'
@@ -139,8 +151,8 @@ export function GoogleSignIn({ disabled, rememberMe, onBusyChange, onError, onSu
                         ]}
                         testID='google-link-submit'
                     >
-                        {disabled ? (
-                            <ActivityIndicator color={colors.onPrimary} />
+                        {busy ? (
+                            <ActivityIndicator color={colors.onPrimary} testID='google-link-loading' />
                         ) : (
                             <Text style={formStyles.primaryButtonText}>Connect</Text>
                         )}

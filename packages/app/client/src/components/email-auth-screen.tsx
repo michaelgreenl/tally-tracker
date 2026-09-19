@@ -1,4 +1,4 @@
-import { PASSWORD_REQUIREMENTS, passwordSchema } from '@tally/core/client';
+import { emailSchema, PASSWORD_REQUIREMENTS, passwordSchema } from '@tally/core/client';
 import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { useRef, useState } from 'react';
@@ -16,10 +16,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '../colors';
-import { getErrorMessage } from '../api';
+import { getErrorMessage, REQUEST_FAILED_MESSAGE } from '../api';
 import { AuthService } from '../services/auth.service';
 import { useSession } from '../session';
 import { FormField, styles } from './auth-form';
+import { MessageText } from './message-text';
 
 type EmailAuthScreenProps = {
     mode: 'verify' | 'reset';
@@ -48,7 +49,7 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
     const passwordInputRef = useRef<TextInput>(null);
     const confirmPasswordInputRef = useRef<TextInput>(null);
     const [enteredEmail, setEmail] = useState(() => getEmailParameter(params.email));
-    const email = resumeSession ? session.user!.email : enteredEmail;
+    const email = (resumeSession ? session.user!.email : enteredEmail).trim();
     const [step, setStep] = useState<Step>(isVerification && !params.returnTo ? 'code' : 'email');
     const [code, setCode] = useState('');
     const [password, setPassword] = useState('');
@@ -60,8 +61,9 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
 
     async function requestCode() {
         if (loading) return;
-        if (!email.includes('@')) {
-            setErrorMessage('Enter a valid email address.');
+        const result = emailSchema.safeParse(email);
+        if (!result.success) {
+            setErrorMessage(result.error.issues[0].message);
             return;
         }
 
@@ -88,6 +90,12 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
         if (loading) return;
         setErrorMessage('');
         setStatusMessage('');
+
+        const emailResult = emailSchema.safeParse(email);
+        if (!emailResult.success) {
+            setErrorMessage(emailResult.error.issues[0].message);
+            return;
+        }
 
         if (step === 'code' && !/^\d{6}$/.test(code)) {
             setErrorMessage('Enter the six-digit code.');
@@ -126,7 +134,7 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
             setConfirmPassword('');
             setStep('complete');
         } catch (error: unknown) {
-            setErrorMessage(getErrorMessage(error, 'Something went wrong. Try again.'));
+            setErrorMessage(getErrorMessage(error, REQUEST_FAILED_MESSAGE));
         } finally {
             setLoading(false);
         }
@@ -288,7 +296,7 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
 
                             {!complete && Boolean(statusMessage) && (
                                 <View accessibilityLiveRegion='polite' style={styles.statusBox}>
-                                    <Text style={styles.statusText}>{statusMessage}</Text>
+                                    <MessageText style={styles.statusText}>{statusMessage}</MessageText>
                                 </View>
                             )}
 
@@ -299,7 +307,7 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
                                     style={styles.errorBox}
                                     testID='email-auth-error'
                                 >
-                                    <Text style={styles.errorText}>{errorMessage}</Text>
+                                    <MessageText style={styles.errorText}>{errorMessage}</MessageText>
                                 </View>
                             )}
 
