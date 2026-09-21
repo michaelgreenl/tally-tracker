@@ -142,8 +142,13 @@ export const saveAppleIdentity = (user: User, identity: AppleIdentity) =>
             (current.appleSubject && current.appleSubject !== identity.subject)
         )
             return null;
-        // A code validated before a newer revocation must not restore access afterward.
-        if (current.appleCredentialUpdatedAt && current.appleCredentialUpdatedAt > identity.authenticatedAt)
+        // Apple timestamps use seconds. Revocation wins ties with an in-flight authorization.
+        if (
+            current.appleCredentialUpdatedAt &&
+            (current.appleRefreshToken
+                ? current.appleCredentialUpdatedAt > identity.authenticatedAt
+                : current.appleCredentialUpdatedAt >= identity.authenticatedAt)
+        )
             return null;
         return tx.user.update({
             where: { id: user.id },
@@ -158,7 +163,7 @@ export const saveAppleIdentity = (user: User, identity: AppleIdentity) =>
         });
     });
 
-export const revokeAppleIdentity = async (subject: string, eventTime: number, eventId: string) => {
+export const revokeAppleIdentity = async (subject: string, eventTime: number) => {
     const user = await getUserByAppleSubject(subject);
     if (!user) return null;
     return withLockedUser(user.id, async (current, tx) => {
@@ -168,9 +173,6 @@ export const revokeAppleIdentity = async (subject: string, eventTime: number, ev
             (current.appleCredentialUpdatedAt && current.appleCredentialUpdatedAt.getTime() > eventTime * 1000)
         )
             return null;
-        const key = `apple-notification:${eventId}`;
-        if (await tx.idempotencyLog.findUnique({ where: { key } })) return null;
-        await tx.idempotencyLog.create({ data: { key, userId: user.id } });
         const updated = await tx.user.update({
             where: { id: user.id },
             data: {

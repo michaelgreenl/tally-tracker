@@ -139,14 +139,16 @@ it('revokes sessions on Apple consent withdrawal, permits reauthorization, and i
         type: 'consent-revoked',
         sub: identity.subject,
         event_time: eventTime,
-        id: 'apple-notification',
     });
     const notify = () => request(app).post('/users/apple/notifications').send({ payload: 'signed-event' }).expect(200);
     await notify();
     await request(app).get('/users/check-auth').set('Authorization', `Bearer ${accessToken}`).expect(401);
     await request(app).post('/users/refresh').send({ refreshToken }).expect(401);
-    // A retry must not revoke a new authorization, even when both happened within the same second.
-    vi.mocked(exchangeAppleCode).mockResolvedValue(identity);
+    // A repeated notification must not revoke a newer authorization.
+    vi.mocked(exchangeAppleCode).mockResolvedValue({
+        ...identity,
+        authenticatedAt: new Date(identity.authenticatedAt.getTime() + 1000),
+    });
     const next = await apple().expect(200);
     expect(next.body.data.user.id).toBe(user.id);
     await notify();
@@ -156,13 +158,12 @@ it('revokes sessions on Apple consent withdrawal, permits reauthorization, and i
         .expect(200);
 });
 
-it('rejects a code exchanged before a later revocation, even when its account lookup finishes afterward', async () => {
+it.each([0, 1])('rejects a code whose authorization timestamp precedes revocation by %s seconds', async (seconds) => {
     await apple().expect(200);
     vi.mocked(verifyAppleNotification).mockResolvedValue({
         type: 'consent-revoked',
         sub: identity.subject,
-        event_time: Math.floor(identity.authenticatedAt.getTime() / 1000) + 1,
-        id: 'later-revocation',
+        event_time: Math.floor(identity.authenticatedAt.getTime() / 1000) + seconds,
     });
     await request(app).post('/users/apple/notifications').send({ payload: 'signed-event' }).expect(200);
     const late = await apple().expect(401);

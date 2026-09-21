@@ -91,7 +91,7 @@ export const appleNotification = async (req: Request, res: Response) => {
         throw error;
     }
     if (event.type === 'consent-revoked' || event.type === 'account-deleted') {
-        const user = await users.revokeAppleIdentity(event.sub, event.event_time, event.id);
+        const user = await users.revokeAppleIdentity(event.sub, event.event_time);
         const io = req.app.get('io') as Server | undefined;
         if (user && io) {
             const sockets = await io.in(user.id).fetchSockets();

@@ -139,7 +139,7 @@ export async function verifyAppleNotification(token: string) {
                     .max(Math.floor(Date.now() / 1000) + 30),
             })
             .parse(typeof payload.events === 'string' ? JSON.parse(payload.events) : payload.events);
-        return { ...event, id: z.string().min(1).max(255).parse(payload.jti) };
+        return event;
     } catch {
         throw new AppleAuthError(401);
     }

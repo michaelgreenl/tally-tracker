@@ -141,11 +141,10 @@ it.each(['not-json', JSON.stringify({ id_token: 'missing-refresh-token' })])(
 it('authenticates notification signatures and audience before accepting revocation events', async () => {
     const events = { type: 'consent-revoked', sub: 'apple-subject', event_time: Math.floor(Date.now() / 1000) };
     const notification = { iss: claims.iss, aud: audience, iat: claims.iat, jti: 'event-id', events };
-    expect(await verifyAppleNotification(await token(notification))).toEqual({ ...events, id: 'event-id' });
-    expect(await verifyAppleNotification(await token({ ...notification, events: JSON.stringify(events) }))).toEqual({
-        ...events,
-        id: 'event-id',
-    });
+    expect(await verifyAppleNotification(await token(notification))).toEqual(events);
+    expect(await verifyAppleNotification(await token({ ...notification, events: JSON.stringify(events) }))).toEqual(
+        events,
+    );
     await expect(verifyAppleNotification(await token({ ...notification, aud: 'another.app' }))).rejects.toMatchObject({
         status: 401,
     });
