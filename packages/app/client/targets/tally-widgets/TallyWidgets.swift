@@ -1,5 +1,7 @@
 import AppIntents
+import CoreText
 import SwiftUI
+import UIKit
 import WidgetKit
 
 private let tallyURL = URL(string: "tally://home")!
@@ -116,30 +118,44 @@ struct CounterWidgetView: View {
   let entry: CounterEntry
   @Environment(\.widgetFamily) private var family
   @Environment(\.widgetRenderingMode) private var renderingMode
+  @Environment(\.locale) private var locale
+  @ScaledMetric(relativeTo: .headline) private var titleFontSize = 17.0
+  @ScaledMetric(relativeTo: .largeTitle) private var countFontSize = 34.0
 
   var body: some View {
     Group {
       if let counter = entry.counter, let owner = entry.owner {
         Group {
           if family == .systemMedium {
-            HStack(spacing: 16) {
-              VStack(alignment: .leading, spacing: 6) {
-                Text(counter.title).font(.headline).lineLimit(3)
-                if let metric = counter.metric, !metric.isEmpty {
-                  Text(metric).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+            GeometryReader { geometry in
+              HStack(spacing: 0) {
+                VStack(alignment: .leading, spacing: 4) {
+                  Text(counter.title).font(.headline).lineLimit(2)
+                  value(counter)
+                  if let metric = counter.metric, !metric.isEmpty {
+                    Text(metric).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                  }
+                  Spacer(minLength: 0)
+                  TallyMark().frame(width: 22, height: 22).accessibilityHidden(true)
                 }
-                Spacer(minLength: 0)
-                TallyMark().frame(width: 22, height: 22).accessibilityHidden(true)
+                .frame(width: geometry.size.width / 3, alignment: .leading)
+                controls(counter, owner: owner)
+                  .frame(maxWidth: .infinity, maxHeight: .infinity)
               }
-              .frame(maxWidth: .infinity, alignment: .leading)
-              valueAndControls(counter, owner: owner)
-                .frame(maxWidth: .infinity)
             }
           } else {
-            VStack(spacing: 4) {
-              Text(counter.title).font(.headline).lineLimit(1)
-              valueAndControls(counter, owner: owner)
+            VStack(spacing: 16) {
+              HStack(alignment: .top, spacing: 8) {
+                alignedText(
+                  counter.title,
+                  font: .systemFont(ofSize: titleFontSize, weight: .semibold), minimumScale: 1
+                )
+                .frame(maxWidth: .infinity, alignment: .leading)
+                value(counter)
+              }
+              controls(counter, owner: owner)
             }
+            .frame(maxHeight: .infinity, alignment: .top)
           }
         }
         .privacySensitive()
@@ -157,31 +173,54 @@ struct CounterWidgetView: View {
     .containerBackground(Color(red: 37 / 255, green: 41 / 255, blue: 46 / 255), for: .widget)
   }
 
-  private func valueAndControls(_ counter: WidgetCounter, owner: String) -> some View {
-    VStack(spacing: 8) {
-      Spacer(minLength: 0)
-      Text(counter.count, format: .number.precision(.fractionLength(0...6)))
-        .font(.system(.largeTitle, design: .rounded).bold())
-        .monospacedDigit()
-        .contentTransition(.numericText(value: counter.count))
-        .lineLimit(1)
-        .minimumScaleFactor(0.35)
-      Spacer(minLength: 0)
-      HStack(spacing: 24) {
-        control(counter, owner: owner, increase: false)
-        control(counter, owner: owner, increase: true)
+  private func value(_ counter: WidgetCounter) -> some View {
+    let baseFont = UIFont.monospacedDigitSystemFont(ofSize: countFontSize, weight: .bold)
+    let font = UIFont(
+      descriptor: baseFont.fontDescriptor.withDesign(.rounded) ?? baseFont.fontDescriptor,
+      size: countFontSize)
+    let text = counter.count.formatted(.number.precision(.fractionLength(0...6)).locale(locale))
+    return alignedText(text, font: font, minimumScale: 0.35)
+      .contentTransition(.numericText(value: counter.count))
+  }
+
+  private func alignedText(_ text: String, font: UIFont, minimumScale: CGFloat) -> some View {
+    let line = CTLineCreateWithAttributedString(
+      NSAttributedString(string: text, attributes: [.font: font]))
+    let bounds = CTLineGetBoundsWithOptions(line, .useGlyphPathBounds)
+    let top = bounds.isEmpty ? font.capHeight : bounds.maxY
+    let width = (text as NSString).size(withAttributes: [.font: font]).width
+    return Text(text)
+      .font(Font(font))
+      .lineLimit(1)
+      .minimumScaleFactor(minimumScale)
+      // Use the same font for drawing and measuring the visible glyph tops.
+      .alignmentGuide(.top) { dimensions in
+        let scale = max(minimumScale, min(1, dimensions.width / max(width, 1)))
+        return dimensions[.firstTextBaseline] - top * scale
       }
+  }
+
+  private func controls(_ counter: WidgetCounter, owner: String) -> some View {
+    HStack(spacing: 0) {
+      Spacer(minLength: 8)
+      control(counter, owner: owner, increase: false)
+      Spacer(minLength: 8)
+      control(counter, owner: owner, increase: true)
+      Spacer(minLength: 8)
     }
   }
 
   private func control(_ counter: WidgetCounter, owner: String, increase: Bool) -> some View {
     Button(intent: ChangeCounter(owner: owner, counterId: counter.id, increase: increase)) {
-      Image(systemName: increase ? "plus" : "minus")
-        .font(.system(size: 20, weight: .semibold))
-        .frame(width: 44, height: 44)
-        .background {
-          Circle().fill(accent.opacity(renderingMode == .fullColor ? 1 : 0.2)).widgetAccentable()
+      Circle()
+        .fill(accent.opacity(renderingMode == .fullColor ? 1 : 0.2))
+        .widgetAccentable()
+        .overlay {
+          Image(systemName: increase ? "plus" : "minus")
+            .font(.system(size: 26, weight: .semibold))
         }
+        .frame(minWidth: 44, maxWidth: 64, minHeight: 44, maxHeight: 64)
+        .aspectRatio(1, contentMode: .fit)
     }
     .buttonStyle(.plain)
     .disabled(
@@ -218,10 +257,17 @@ struct ShortcutProvider: TimelineProvider {
 struct ShortcutView: View {
   @Environment(\.widgetFamily) private var family
   var body: some View {
-    HStack(spacing: 6) {
-      TallyMark().frame(width: 30, height: 30)
-      if family == .accessoryRectangular { Text("Tally").font(.headline) }
+    Group {
+      if family == .accessoryCircular {
+        TallyMark()
+      } else {
+        HStack(spacing: 8) {
+          TallyMark().frame(width: 44, height: 44)
+          Text("Tally").font(.headline)
+        }
+      }
     }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
     .accessibilityLabel("Open Tally")
     .widgetURL(tallyURL)
     .containerBackground(.clear, for: .widget)
