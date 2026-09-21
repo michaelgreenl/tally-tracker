@@ -11,7 +11,7 @@ Widget taps work with Tally closed. Open Tally to send those changes to the serv
 
 The existing app remains `com.tallytracker.app`. The extension uses `com.tallytracker.app.widgets`. Both targets require the App Group `group.com.tallytracker.app`.
 
-1. Finish Apple Developer enrollment and identity verification.
+1. Confirm your Apple team can register App Groups. Complete any verification Apple requests.
 2. Register the App Group. Enable it for both identifiers in the same Apple team.
 3. Set `ios.appleTeamId` in the Expo configuration to that verified team.
 4. Generate the iOS project. Build and install both targets together with updated profiles.

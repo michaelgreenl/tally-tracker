@@ -9,6 +9,7 @@
         "userInterfaceStyle": "automatic",
         "ios": {
             "bundleIdentifier": "com.tallytracker.app",
+            "appleTeamId": "JS8H2Z53Y9",
             "icon": "./assets/tally.icon"
         },
         "android": {
