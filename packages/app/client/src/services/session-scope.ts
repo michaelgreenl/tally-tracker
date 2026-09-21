@@ -1,3 +1,5 @@
+import { widgetBridge } from './widget-bridge';
+
 export class SessionChangedError extends Error {
     constructor() {
         super('The account changed. Please try again.');
@@ -14,6 +16,13 @@ let writes = Promise.resolve();
 export const getSessionScope = () => current;
 
 export function changeSession(userId: string | null = null): SessionScope {
+    // Hide account data before any asynchronous logout or login work starts.
+    try {
+        widgetBridge?.hide();
+    } catch {
+        // Credential cleanup retries this and reports failure. Never block session invalidation.
+        console.warn('Could not hide widget data');
+    }
     controller.abort();
     controller = new AbortController();
     current = { id: current.id + 1, signal: controller.signal, userId };

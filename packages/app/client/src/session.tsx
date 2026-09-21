@@ -60,6 +60,7 @@ export async function restoreSession(): Promise<ClientUser | null> {
             ]);
         } catch {
             assertSession(scope);
+            scope.userId = null;
             return null;
         }
 

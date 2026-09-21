@@ -26,6 +26,8 @@ const bridge = vi.hoisted(() => ({
     setItem: vi.fn(),
     fetch: vi.fn(),
     update: (_counter?: unknown) => {},
+    widgetTaps: [] as { id: string; owner: string; counterId: string; amount: number }[],
+    widgetAckFails: false,
 }));
 vi.mock('@react-native-async-storage/async-storage', () => ({
     default: {
@@ -37,6 +39,17 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
     },
 }));
 vi.mock('expo-crypto', () => ({ randomUUID: () => crypto.randomUUID() }));
+vi.mock('./services/widget-bridge', () => ({
+    widgetBridge: {
+        pending: () => JSON.stringify(bridge.widgetTaps),
+        acknowledge: (ids: string[]) => {
+            if (bridge.widgetAckFails) throw new Error('Widget storage unavailable');
+            bridge.widgetTaps = bridge.widgetTaps.filter((tap) => !ids.includes(tap.id));
+        },
+        publish() {},
+        hide() {},
+    },
+}));
 vi.mock('expo-network', () => ({
     getNetworkStateAsync: async () => ({ isConnected: true }),
     addNetworkStateListener: () => ({ remove() {} }),
@@ -84,10 +97,12 @@ beforeEach(async () => {
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     changeSession('account');
     bridge.values.clear();
+    bridge.widgetTaps = [];
+    bridge.widgetAckFails = false;
     bridge.setItem.mockImplementation(async (key: string, value: string) => {
         bridge.values.set(key, value);
     });
-    remote = [initial, other];
+    remote = structuredClone([initial, other]);
     bridge.fetch
         .mockReset()
         .mockImplementation(async () => ({ success: true, data: { counters: structuredClone(remote) } }));
@@ -308,12 +323,16 @@ it.each(['edit', 'delete'] as const)(
 
 it('drains a healthy creation added while another counter is being rejected', async () => {
     let reject!: () => void;
+    let heldRejection = false;
     bridge.fetch.mockImplementation(async (path, options) => {
         if (options.method === 'POST') {
             if (options.body.title === 'Rejected') {
-                await new Promise<void>((resolve) => {
-                    reject = resolve;
-                });
+                if (!heldRejection) {
+                    heldRejection = true;
+                    await new Promise<void>((resolve) => {
+                        reject = resolve;
+                    });
+                }
                 throw new ApiError('Rejected', 422);
             }
             remote.push(options.body);
@@ -343,5 +362,71 @@ it('rejects an overlong name before changing local storage or the queue', async 
         expect((await state.updateCounter(initial.id, { title: 'x'.repeat(51) })).success).toBe(false);
     });
     expect(await CounterStorage.getAll()).toEqual([initial, other]);
+    expect(await SyncQueue.get()).toEqual([]);
+});
+
+it('keeps an app tap that arrives during a widget handoff, then syncs both amounts', async () => {
+    let release!: () => void;
+    let saving = false;
+    let held = false;
+    bridge.setItem.mockImplementation(async (key: string, value: string) => {
+        if (key === 'app_counters' && !held) {
+            held = true;
+            saving = true;
+            await new Promise<void>((resolve) => {
+                release = resolve;
+            });
+        }
+        bridge.values.set(key, value);
+    });
+    bridge.fetch.mockImplementation(async (_path, options) => {
+        if (options.method === 'PUT') remote[0].count += options.body.amount;
+        return { success: true, data: { counters: structuredClone(remote) } };
+    });
+    bridge.widgetTaps = [{ id: crypto.randomUUID(), owner: 'account', counterId: initial.id, amount: 0.25 }];
+    await act(async () => bridge.update());
+    await vi.waitFor(() => expect(saving).toBe(true));
+    await act(async () => {
+        const appTap = state.incrementCounter(initial.id, 1);
+        release();
+        await appTap;
+        await SyncManager.processQueue();
+    });
+    expect(remote[0].count).toBe(2.25);
+    expect(state.counters.find((counter) => counter.id === initial.id)?.count).toBe(2.25);
+    expect(await SyncQueue.get()).toEqual([]);
+});
+
+it('imports widget taps after fetching a counter missing from the device cache', async () => {
+    await act(async () => root.unmount());
+    await CounterStorage.clear();
+    bridge.widgetTaps = [{ id: crypto.randomUUID(), owner: 'account', counterId: initial.id, amount: 0.5 }];
+    bridge.fetch.mockImplementation(async (_path, options) => {
+        if (options.method === 'PUT') remote[0].count += options.body.amount;
+        return { success: true, data: { counters: structuredClone(remote) } };
+    });
+    root = createRoot(document.createElement('div'));
+    await act(async () => root.render(createElement(CounterProvider, null, createElement(Probe))));
+    expect(remote[0].count).toBe(1.5);
+    expect(state.counters.find((counter) => counter.id === initial.id)?.count).toBe(1.5);
+    expect(bridge.widgetTaps).toEqual([]);
+});
+
+it('holds server retries until the native widget journal acknowledges the import', async () => {
+    const tap = { id: crypto.randomUUID(), owner: 'account', counterId: initial.id, amount: 0.5 };
+    bridge.widgetTaps = [tap];
+    bridge.widgetAckFails = true;
+    bridge.fetch.mockImplementation(async (_path, options) => {
+        if (options.method === 'PUT') remote[0].count += options.body.amount;
+        return { success: true, data: { counters: structuredClone(remote) } };
+    });
+    await act(async () => bridge.update());
+    await act(async () => SyncManager.processQueue());
+    expect(remote[0].count).toBe(1);
+    expect((await SyncQueue.get()).map((command) => command.id)).toEqual([tap.id]);
+    bridge.widgetAckFails = false;
+    await act(async () => bridge.update());
+    expect(remote[0].count).toBe(1.5);
+    expect(state.counters.find((counter) => counter.id === initial.id)?.count).toBe(1.5);
     expect(await SyncQueue.get()).toEqual([]);
 });

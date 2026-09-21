@@ -45,6 +45,7 @@ describe('restoreSession', () => {
         authService.getAccessToken.mockRejectedValue(new Error('Keychain unavailable'));
 
         await expect(restoreSession()).resolves.toBeNull();
+        expect(getSessionScope().userId).toBeNull();
         expect(authService.checkAuth).not.toHaveBeenCalled();
     });
 
