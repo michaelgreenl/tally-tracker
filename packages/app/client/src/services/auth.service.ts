@@ -11,7 +11,9 @@ import type {
     AuthRequest,
     AuthResponse,
     GoogleLoginRequest,
+    AppleLoginRequest,
     GoogleAuthResponse,
+    ApiResponse,
     ClientUser,
     EmailAddressRequest,
     EmailOtpRequest,
@@ -63,13 +65,13 @@ export const AuthService = {
         return apiFetch<AuthResponse>('/users/check-auth', { method: 'GET' });
     },
 
-    async login(data: AuthRequest | GoogleLoginRequest) {
+    async login(data: AuthRequest | GoogleLoginRequest | AppleLoginRequest) {
         const scope = getSessionScope();
         // A late logout response must not clear the next login's cookies.
         await pendingLogout;
         assertSession(scope);
-        return apiFetch<GoogleAuthResponse, AuthRequest | GoogleLoginRequest>(
-            'idToken' in data ? '/users/google' : '/users/login',
+        return apiFetch<GoogleAuthResponse, AuthRequest | GoogleLoginRequest | AppleLoginRequest>(
+            'authorizationCode' in data ? '/users/apple' : 'idToken' in data ? '/users/google' : '/users/login',
             {
                 method: 'POST',
                 body: data,
@@ -77,6 +79,14 @@ export const AuthService = {
                 sessionScope: scope,
             },
         );
+    },
+
+    appleConnection() {
+        return apiFetch<ApiResponse<{ connected: boolean }>>('/users/apple/connection', { method: 'GET' });
+    },
+
+    connectApple(data: AppleLoginRequest) {
+        return apiFetch<AuthResponse, AppleLoginRequest>('/users/apple/connect', { method: 'POST', body: data });
     },
 
     logout(scope = getSessionScope(), userId: string | null = null) {

@@ -5,6 +5,9 @@ export type ClientUser = Omit<
     User,
     | 'password'
     | 'googleSubject'
+    | 'appleSubject'
+    | 'appleRefreshToken'
+    | 'appleCredentialUpdatedAt'
     | 'createdAt'
     | 'updatedAt'
     | 'emailVerifiedAt'

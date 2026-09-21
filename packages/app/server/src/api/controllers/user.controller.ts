@@ -108,6 +108,7 @@ export const sendSession = async (user: User, rememberMe: boolean | undefined, r
             !current ||
             current.password !== user.password ||
             current.googleSubject !== user.googleSubject ||
+            current.appleSubject !== user.appleSubject ||
             current.sessionVersion !== user.sessionVersion
         )
             return null;

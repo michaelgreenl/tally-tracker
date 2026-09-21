@@ -4,16 +4,19 @@ enum UserTier {
 }
 
 model User {
-    id               String    @id @default(uuid()) @db.Uuid
-    email            String    @unique
-    password         String?
-    googleSubject    String?   @unique @map("google_subject")
-    tier             UserTier  @default(BASIC)
-    emailVerifiedAt  DateTime? @map("email_verified_at")
-    sessionVersion   Int       @default(0) @map("session_version")
-    premiumExpiresAt DateTime? @map("premium_expires_at")
-    billingCheckedAt DateTime? @map("billing_checked_at")
-    billingSandbox   Boolean   @default(false) @map("billing_sandbox")
+    id                       String    @id @default(uuid()) @db.Uuid
+    email                    String    @unique
+    password                 String?
+    googleSubject            String?   @unique @map("google_subject")
+    appleSubject             String?   @unique @map("apple_subject")
+    appleRefreshToken        String?   @map("apple_refresh_token")
+    appleCredentialUpdatedAt DateTime? @map("apple_credential_updated_at")
+    tier                     UserTier  @default(BASIC)
+    emailVerifiedAt          DateTime? @map("email_verified_at")
+    sessionVersion           Int       @default(0) @map("session_version")
+    premiumExpiresAt         DateTime? @map("premium_expires_at")
+    billingCheckedAt         DateTime? @map("billing_checked_at")
+    billingSandbox           Boolean   @default(false) @map("billing_sandbox")
 
     counters       Counter[]      @relation("OwnedCounters")
     sharedCounters CounterShare[] @relation("ReceivedShares")

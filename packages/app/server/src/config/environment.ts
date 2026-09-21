@@ -8,6 +8,13 @@ export function validateEnvironment(env: Record<string, string | undefined> = pr
 
     const secret = z.string().refine((value) => value.trim().length >= 32);
     const billing = Boolean(env.REVENUECAT_SECRET_API_KEY || env.REVENUECAT_WEBHOOK_SECRET);
+    const apple = [
+        'APPLE_CLIENT_ID',
+        'APPLE_TEAM_ID',
+        'APPLE_KEY_ID',
+        'APPLE_PRIVATE_KEY',
+        'APPLE_TOKEN_ENCRYPTION_KEY',
+    ].some((name) => Boolean(env[name]));
     const result = z
         .object({
             POSTGRES_URL: z.url({ protocol: /^postgres(ql)?$/, hostname: /.+/ }),
@@ -28,6 +35,13 @@ export function validateEnvironment(env: Record<string, string | undefined> = pr
                 .regex(/^\d+-[a-z0-9]+\.apps\.googleusercontent\.com$/)
                 .or(z.literal(''))
                 .optional(),
+            APPLE_CLIENT_ID: apple ? z.string().regex(/^[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+$/) : z.string().optional(),
+            APPLE_TEAM_ID: apple ? z.string().regex(/^[A-Z0-9]{10}$/) : z.string().optional(),
+            APPLE_KEY_ID: apple ? z.string().regex(/^[A-Z0-9]{10}$/) : z.string().optional(),
+            APPLE_PRIVATE_KEY: apple
+                ? z.string().regex(/-----BEGIN PRIVATE KEY-----[\s\S]+-----END PRIVATE KEY-----/)
+                : z.string().optional(),
+            APPLE_TOKEN_ENCRYPTION_KEY: apple ? z.string().regex(/^[a-f\d]{64}$/i) : z.string().optional(),
             REVENUECAT_SECRET_API_KEY: billing ? z.string().trim().min(1) : z.string().optional(),
             REVENUECAT_WEBHOOK_SECRET: billing ? secret : z.string().optional(),
             REVENUECAT_ALLOW_SANDBOX: z.enum(['true', 'false']).optional(),

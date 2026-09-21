@@ -29,6 +29,18 @@ export const googleLoginSchema = z.object({
     }),
 });
 
+export const appleLoginSchema = z.object({
+    body: z.object({
+        authorizationCode: z.string().min(1).max(8192),
+        nonce: z.string().uuid(),
+        rememberMe: z.boolean().optional(),
+    }),
+});
+
+export const appleNotificationSchema = z.object({
+    body: z.object({ payload: z.string().min(1).max(16384) }),
+});
+
 const refreshTokenBodySchema = z.object({
     body: z
         .object({

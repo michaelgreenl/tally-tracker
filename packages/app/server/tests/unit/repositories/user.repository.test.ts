@@ -3,10 +3,12 @@ import { TEST_USER_ID } from '../../fixtures/counter.fixture.js';
 
 const prismaMock = vi.hoisted(() => {
     const tx = {
+        $queryRaw: vi.fn(),
         idempotencyLog: {
             deleteMany: vi.fn(),
         },
         user: {
+            findUnique: vi.fn(),
             deleteMany: vi.fn(),
         },
     };

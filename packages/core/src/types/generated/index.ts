@@ -153,6 +153,9 @@ export const UserScalarFieldEnumSchema = z.enum([
     'email',
     'password',
     'googleSubject',
+    'appleSubject',
+    'appleRefreshToken',
+    'appleCredentialUpdatedAt',
     'tier',
     'emailVerifiedAt',
     'sessionVersion',
@@ -319,6 +322,9 @@ export const UserSchema = z.object({
     email: z.string(),
     password: z.string().nullable(),
     googleSubject: z.string().nullable(),
+    appleSubject: z.string().nullable(),
+    appleRefreshToken: z.string().nullable(),
+    appleCredentialUpdatedAt: z.coerce.date().nullable(),
     emailVerifiedAt: z.coerce.date().nullable(),
     sessionVersion: z.number().int(),
     premiumExpiresAt: z.coerce.date().nullable(),
@@ -539,6 +545,9 @@ export const UserSelectSchema: z.ZodType<Prisma.UserSelect> = z
         email: z.boolean().optional(),
         password: z.boolean().optional(),
         googleSubject: z.boolean().optional(),
+        appleSubject: z.boolean().optional(),
+        appleRefreshToken: z.boolean().optional(),
+        appleCredentialUpdatedAt: z.boolean().optional(),
         tier: z.boolean().optional(),
         emailVerifiedAt: z.boolean().optional(),
         sessionVersion: z.boolean().optional(),
@@ -1398,6 +1407,18 @@ export const UserWhereInputSchema: z.ZodType<Prisma.UserWhereInput> = z.strictOb
         .union([z.lazy(() => StringNullableFilterSchema), z.string()])
         .optional()
         .nullable(),
+    appleSubject: z
+        .union([z.lazy(() => StringNullableFilterSchema), z.string()])
+        .optional()
+        .nullable(),
+    appleRefreshToken: z
+        .union([z.lazy(() => StringNullableFilterSchema), z.string()])
+        .optional()
+        .nullable(),
+    appleCredentialUpdatedAt: z
+        .union([z.lazy(() => DateTimeNullableFilterSchema), z.coerce.date()])
+        .optional()
+        .nullable(),
     tier: z.union([z.lazy(() => EnumUserTierFilterSchema), z.lazy(() => UserTierSchema)]).optional(),
     emailVerifiedAt: z
         .union([z.lazy(() => DateTimeNullableFilterSchema), z.coerce.date()])
@@ -1426,6 +1447,9 @@ export const UserOrderByWithRelationInputSchema: z.ZodType<Prisma.UserOrderByWit
     email: z.lazy(() => SortOrderSchema).optional(),
     password: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
     googleSubject: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
+    appleSubject: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
+    appleRefreshToken: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
+    appleCredentialUpdatedAt: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
     tier: z.lazy(() => SortOrderSchema).optional(),
     emailVerifiedAt: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
     sessionVersion: z.lazy(() => SortOrderSchema).optional(),
@@ -1446,6 +1470,17 @@ export const UserWhereUniqueInputSchema: z.ZodType<Prisma.UserWhereUniqueInput> 
             id: z.uuid(),
             email: z.string(),
             googleSubject: z.string(),
+            appleSubject: z.string(),
+        }),
+        z.object({
+            id: z.uuid(),
+            email: z.string(),
+            googleSubject: z.string(),
+        }),
+        z.object({
+            id: z.uuid(),
+            email: z.string(),
+            appleSubject: z.string(),
         }),
         z.object({
             id: z.uuid(),
@@ -1454,6 +1489,15 @@ export const UserWhereUniqueInputSchema: z.ZodType<Prisma.UserWhereUniqueInput> 
         z.object({
             id: z.uuid(),
             googleSubject: z.string(),
+            appleSubject: z.string(),
+        }),
+        z.object({
+            id: z.uuid(),
+            googleSubject: z.string(),
+        }),
+        z.object({
+            id: z.uuid(),
+            appleSubject: z.string(),
         }),
         z.object({
             id: z.uuid(),
@@ -1461,12 +1505,28 @@ export const UserWhereUniqueInputSchema: z.ZodType<Prisma.UserWhereUniqueInput> 
         z.object({
             email: z.string(),
             googleSubject: z.string(),
+            appleSubject: z.string(),
+        }),
+        z.object({
+            email: z.string(),
+            googleSubject: z.string(),
+        }),
+        z.object({
+            email: z.string(),
+            appleSubject: z.string(),
         }),
         z.object({
             email: z.string(),
         }),
         z.object({
             googleSubject: z.string(),
+            appleSubject: z.string(),
+        }),
+        z.object({
+            googleSubject: z.string(),
+        }),
+        z.object({
+            appleSubject: z.string(),
         }),
     ])
     .and(
@@ -1474,6 +1534,7 @@ export const UserWhereUniqueInputSchema: z.ZodType<Prisma.UserWhereUniqueInput> 
             id: z.uuid().optional(),
             email: z.string().optional(),
             googleSubject: z.string().optional(),
+            appleSubject: z.string().optional(),
             AND: z.union([z.lazy(() => UserWhereInputSchema), z.lazy(() => UserWhereInputSchema).array()]).optional(),
             OR: z
                 .lazy(() => UserWhereInputSchema)
@@ -1482,6 +1543,14 @@ export const UserWhereUniqueInputSchema: z.ZodType<Prisma.UserWhereUniqueInput> 
             NOT: z.union([z.lazy(() => UserWhereInputSchema), z.lazy(() => UserWhereInputSchema).array()]).optional(),
             password: z
                 .union([z.lazy(() => StringNullableFilterSchema), z.string()])
+                .optional()
+                .nullable(),
+            appleRefreshToken: z
+                .union([z.lazy(() => StringNullableFilterSchema), z.string()])
+                .optional()
+                .nullable(),
+            appleCredentialUpdatedAt: z
+                .union([z.lazy(() => DateTimeNullableFilterSchema), z.coerce.date()])
                 .optional()
                 .nullable(),
             tier: z.union([z.lazy(() => EnumUserTierFilterSchema), z.lazy(() => UserTierSchema)]).optional(),
@@ -1513,6 +1582,9 @@ export const UserOrderByWithAggregationInputSchema: z.ZodType<Prisma.UserOrderBy
     email: z.lazy(() => SortOrderSchema).optional(),
     password: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
     googleSubject: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
+    appleSubject: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
+    appleRefreshToken: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
+    appleCredentialUpdatedAt: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
     tier: z.lazy(() => SortOrderSchema).optional(),
     emailVerifiedAt: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
     sessionVersion: z.lazy(() => SortOrderSchema).optional(),
@@ -1554,6 +1626,18 @@ export const UserScalarWhereWithAggregatesInputSchema: z.ZodType<Prisma.UserScal
             .nullable(),
         googleSubject: z
             .union([z.lazy(() => StringNullableWithAggregatesFilterSchema), z.string()])
+            .optional()
+            .nullable(),
+        appleSubject: z
+            .union([z.lazy(() => StringNullableWithAggregatesFilterSchema), z.string()])
+            .optional()
+            .nullable(),
+        appleRefreshToken: z
+            .union([z.lazy(() => StringNullableWithAggregatesFilterSchema), z.string()])
+            .optional()
+            .nullable(),
+        appleCredentialUpdatedAt: z
+            .union([z.lazy(() => DateTimeNullableWithAggregatesFilterSchema), z.coerce.date()])
             .optional()
             .nullable(),
         tier: z.union([z.lazy(() => EnumUserTierWithAggregatesFilterSchema), z.lazy(() => UserTierSchema)]).optional(),
@@ -2281,6 +2365,9 @@ export const UserCreateInputSchema: z.ZodType<Prisma.UserCreateInput> = z.strict
     email: z.string(),
     password: z.string().optional().nullable(),
     googleSubject: z.string().optional().nullable(),
+    appleSubject: z.string().optional().nullable(),
+    appleRefreshToken: z.string().optional().nullable(),
+    appleCredentialUpdatedAt: z.coerce.date().optional().nullable(),
     tier: z.lazy(() => UserTierSchema).optional(),
     emailVerifiedAt: z.coerce.date().optional().nullable(),
     sessionVersion: z.number().int().optional(),
@@ -2300,6 +2387,9 @@ export const UserUncheckedCreateInputSchema: z.ZodType<Prisma.UserUncheckedCreat
     email: z.string(),
     password: z.string().optional().nullable(),
     googleSubject: z.string().optional().nullable(),
+    appleSubject: z.string().optional().nullable(),
+    appleRefreshToken: z.string().optional().nullable(),
+    appleCredentialUpdatedAt: z.coerce.date().optional().nullable(),
     tier: z.lazy(() => UserTierSchema).optional(),
     emailVerifiedAt: z.coerce.date().optional().nullable(),
     sessionVersion: z.number().int().optional(),
@@ -2323,6 +2413,18 @@ export const UserUpdateInputSchema: z.ZodType<Prisma.UserUpdateInput> = z.strict
         .nullable(),
     googleSubject: z
         .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
+    appleSubject: z
+        .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
+    appleRefreshToken: z
+        .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
+    appleCredentialUpdatedAt: z
+        .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
         .optional()
         .nullable(),
     tier: z
@@ -2361,6 +2463,18 @@ export const UserUncheckedUpdateInputSchema: z.ZodType<Prisma.UserUncheckedUpdat
         .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
         .optional()
         .nullable(),
+    appleSubject: z
+        .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
+    appleRefreshToken: z
+        .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
+    appleCredentialUpdatedAt: z
+        .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
     tier: z
         .union([z.lazy(() => UserTierSchema), z.lazy(() => EnumUserTierFieldUpdateOperationsInputSchema)])
         .optional(),
@@ -2391,6 +2505,9 @@ export const UserCreateManyInputSchema: z.ZodType<Prisma.UserCreateManyInput> = 
     email: z.string(),
     password: z.string().optional().nullable(),
     googleSubject: z.string().optional().nullable(),
+    appleSubject: z.string().optional().nullable(),
+    appleRefreshToken: z.string().optional().nullable(),
+    appleCredentialUpdatedAt: z.coerce.date().optional().nullable(),
     tier: z.lazy(() => UserTierSchema).optional(),
     emailVerifiedAt: z.coerce.date().optional().nullable(),
     sessionVersion: z.number().int().optional(),
@@ -2410,6 +2527,18 @@ export const UserUpdateManyMutationInputSchema: z.ZodType<Prisma.UserUpdateManyM
         .nullable(),
     googleSubject: z
         .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
+    appleSubject: z
+        .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
+    appleRefreshToken: z
+        .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
+    appleCredentialUpdatedAt: z
+        .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
         .optional()
         .nullable(),
     tier: z
@@ -2442,6 +2571,18 @@ export const UserUncheckedUpdateManyInputSchema: z.ZodType<Prisma.UserUncheckedU
         .nullable(),
     googleSubject: z
         .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
+    appleSubject: z
+        .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
+    appleRefreshToken: z
+        .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
+    appleCredentialUpdatedAt: z
+        .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
         .optional()
         .nullable(),
     tier: z
@@ -3311,6 +3452,9 @@ export const UserCountOrderByAggregateInputSchema: z.ZodType<Prisma.UserCountOrd
     email: z.lazy(() => SortOrderSchema).optional(),
     password: z.lazy(() => SortOrderSchema).optional(),
     googleSubject: z.lazy(() => SortOrderSchema).optional(),
+    appleSubject: z.lazy(() => SortOrderSchema).optional(),
+    appleRefreshToken: z.lazy(() => SortOrderSchema).optional(),
+    appleCredentialUpdatedAt: z.lazy(() => SortOrderSchema).optional(),
     tier: z.lazy(() => SortOrderSchema).optional(),
     emailVerifiedAt: z.lazy(() => SortOrderSchema).optional(),
     sessionVersion: z.lazy(() => SortOrderSchema).optional(),
@@ -3330,6 +3474,9 @@ export const UserMaxOrderByAggregateInputSchema: z.ZodType<Prisma.UserMaxOrderBy
     email: z.lazy(() => SortOrderSchema).optional(),
     password: z.lazy(() => SortOrderSchema).optional(),
     googleSubject: z.lazy(() => SortOrderSchema).optional(),
+    appleSubject: z.lazy(() => SortOrderSchema).optional(),
+    appleRefreshToken: z.lazy(() => SortOrderSchema).optional(),
+    appleCredentialUpdatedAt: z.lazy(() => SortOrderSchema).optional(),
     tier: z.lazy(() => SortOrderSchema).optional(),
     emailVerifiedAt: z.lazy(() => SortOrderSchema).optional(),
     sessionVersion: z.lazy(() => SortOrderSchema).optional(),
@@ -3345,6 +3492,9 @@ export const UserMinOrderByAggregateInputSchema: z.ZodType<Prisma.UserMinOrderBy
     email: z.lazy(() => SortOrderSchema).optional(),
     password: z.lazy(() => SortOrderSchema).optional(),
     googleSubject: z.lazy(() => SortOrderSchema).optional(),
+    appleSubject: z.lazy(() => SortOrderSchema).optional(),
+    appleRefreshToken: z.lazy(() => SortOrderSchema).optional(),
+    appleCredentialUpdatedAt: z.lazy(() => SortOrderSchema).optional(),
     tier: z.lazy(() => SortOrderSchema).optional(),
     emailVerifiedAt: z.lazy(() => SortOrderSchema).optional(),
     sessionVersion: z.lazy(() => SortOrderSchema).optional(),
@@ -5055,6 +5205,9 @@ export const UserCreateWithoutCountersInputSchema: z.ZodType<Prisma.UserCreateWi
     email: z.string(),
     password: z.string().optional().nullable(),
     googleSubject: z.string().optional().nullable(),
+    appleSubject: z.string().optional().nullable(),
+    appleRefreshToken: z.string().optional().nullable(),
+    appleCredentialUpdatedAt: z.coerce.date().optional().nullable(),
     tier: z.lazy(() => UserTierSchema).optional(),
     emailVerifiedAt: z.coerce.date().optional().nullable(),
     sessionVersion: z.number().int().optional(),
@@ -5074,6 +5227,9 @@ export const UserUncheckedCreateWithoutCountersInputSchema: z.ZodType<Prisma.Use
         email: z.string(),
         password: z.string().optional().nullable(),
         googleSubject: z.string().optional().nullable(),
+        appleSubject: z.string().optional().nullable(),
+        appleRefreshToken: z.string().optional().nullable(),
+        appleCredentialUpdatedAt: z.coerce.date().optional().nullable(),
         tier: z.lazy(() => UserTierSchema).optional(),
         emailVerifiedAt: z.coerce.date().optional().nullable(),
         sessionVersion: z.number().int().optional(),
@@ -5164,6 +5320,18 @@ export const UserUpdateWithoutCountersInputSchema: z.ZodType<Prisma.UserUpdateWi
         .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
         .optional()
         .nullable(),
+    appleSubject: z
+        .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
+    appleRefreshToken: z
+        .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
+    appleCredentialUpdatedAt: z
+        .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
     tier: z
         .union([z.lazy(() => UserTierSchema), z.lazy(() => EnumUserTierFieldUpdateOperationsInputSchema)])
         .optional(),
@@ -5198,6 +5366,18 @@ export const UserUncheckedUpdateWithoutCountersInputSchema: z.ZodType<Prisma.Use
             .nullable(),
         googleSubject: z
             .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        appleSubject: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        appleRefreshToken: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        appleCredentialUpdatedAt: z
+            .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
             .optional()
             .nullable(),
         tier: z
@@ -5336,6 +5516,9 @@ export const UserCreateWithoutSharedCountersInputSchema: z.ZodType<Prisma.UserCr
         email: z.string(),
         password: z.string().optional().nullable(),
         googleSubject: z.string().optional().nullable(),
+        appleSubject: z.string().optional().nullable(),
+        appleRefreshToken: z.string().optional().nullable(),
+        appleCredentialUpdatedAt: z.coerce.date().optional().nullable(),
         tier: z.lazy(() => UserTierSchema).optional(),
         emailVerifiedAt: z.coerce.date().optional().nullable(),
         sessionVersion: z.number().int().optional(),
@@ -5355,6 +5538,9 @@ export const UserUncheckedCreateWithoutSharedCountersInputSchema: z.ZodType<Pris
         email: z.string(),
         password: z.string().optional().nullable(),
         googleSubject: z.string().optional().nullable(),
+        appleSubject: z.string().optional().nullable(),
+        appleRefreshToken: z.string().optional().nullable(),
+        appleCredentialUpdatedAt: z.coerce.date().optional().nullable(),
         tier: z.lazy(() => UserTierSchema).optional(),
         emailVerifiedAt: z.coerce.date().optional().nullable(),
         sessionVersion: z.number().int().optional(),
@@ -5535,6 +5721,18 @@ export const UserUpdateWithoutSharedCountersInputSchema: z.ZodType<Prisma.UserUp
             .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
             .optional()
             .nullable(),
+        appleSubject: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        appleRefreshToken: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        appleCredentialUpdatedAt: z
+            .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
         tier: z
             .union([z.lazy(() => UserTierSchema), z.lazy(() => EnumUserTierFieldUpdateOperationsInputSchema)])
             .optional(),
@@ -5571,6 +5769,18 @@ export const UserUncheckedUpdateWithoutSharedCountersInputSchema: z.ZodType<Pris
             .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
             .optional()
             .nullable(),
+        appleSubject: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        appleRefreshToken: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        appleCredentialUpdatedAt: z
+            .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
         tier: z
             .union([z.lazy(() => UserTierSchema), z.lazy(() => EnumUserTierFieldUpdateOperationsInputSchema)])
             .optional(),
@@ -5601,6 +5811,9 @@ export const UserCreateWithoutRefreshTokensInputSchema: z.ZodType<Prisma.UserCre
         email: z.string(),
         password: z.string().optional().nullable(),
         googleSubject: z.string().optional().nullable(),
+        appleSubject: z.string().optional().nullable(),
+        appleRefreshToken: z.string().optional().nullable(),
+        appleCredentialUpdatedAt: z.coerce.date().optional().nullable(),
         tier: z.lazy(() => UserTierSchema).optional(),
         emailVerifiedAt: z.coerce.date().optional().nullable(),
         sessionVersion: z.number().int().optional(),
@@ -5620,6 +5833,9 @@ export const UserUncheckedCreateWithoutRefreshTokensInputSchema: z.ZodType<Prism
         email: z.string(),
         password: z.string().optional().nullable(),
         googleSubject: z.string().optional().nullable(),
+        appleSubject: z.string().optional().nullable(),
+        appleRefreshToken: z.string().optional().nullable(),
+        appleCredentialUpdatedAt: z.coerce.date().optional().nullable(),
         tier: z.lazy(() => UserTierSchema).optional(),
         emailVerifiedAt: z.coerce.date().optional().nullable(),
         sessionVersion: z.number().int().optional(),
@@ -5676,6 +5892,18 @@ export const UserUpdateWithoutRefreshTokensInputSchema: z.ZodType<Prisma.UserUpd
             .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
             .optional()
             .nullable(),
+        appleSubject: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        appleRefreshToken: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        appleCredentialUpdatedAt: z
+            .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
         tier: z
             .union([z.lazy(() => UserTierSchema), z.lazy(() => EnumUserTierFieldUpdateOperationsInputSchema)])
             .optional(),
@@ -5712,6 +5940,18 @@ export const UserUncheckedUpdateWithoutRefreshTokensInputSchema: z.ZodType<Prism
             .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
             .optional()
             .nullable(),
+        appleSubject: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        appleRefreshToken: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        appleCredentialUpdatedAt: z
+            .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
         tier: z
             .union([z.lazy(() => UserTierSchema), z.lazy(() => EnumUserTierFieldUpdateOperationsInputSchema)])
             .optional(),
@@ -5741,6 +5981,9 @@ export const UserCreateWithoutEmailOtpsInputSchema: z.ZodType<Prisma.UserCreateW
     email: z.string(),
     password: z.string().optional().nullable(),
     googleSubject: z.string().optional().nullable(),
+    appleSubject: z.string().optional().nullable(),
+    appleRefreshToken: z.string().optional().nullable(),
+    appleCredentialUpdatedAt: z.coerce.date().optional().nullable(),
     tier: z.lazy(() => UserTierSchema).optional(),
     emailVerifiedAt: z.coerce.date().optional().nullable(),
     sessionVersion: z.number().int().optional(),
@@ -5760,6 +6003,9 @@ export const UserUncheckedCreateWithoutEmailOtpsInputSchema: z.ZodType<Prisma.Us
         email: z.string(),
         password: z.string().optional().nullable(),
         googleSubject: z.string().optional().nullable(),
+        appleSubject: z.string().optional().nullable(),
+        appleRefreshToken: z.string().optional().nullable(),
+        appleCredentialUpdatedAt: z.coerce.date().optional().nullable(),
         tier: z.lazy(() => UserTierSchema).optional(),
         emailVerifiedAt: z.coerce.date().optional().nullable(),
         sessionVersion: z.number().int().optional(),
@@ -5814,6 +6060,18 @@ export const UserUpdateWithoutEmailOtpsInputSchema: z.ZodType<Prisma.UserUpdateW
         .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
         .optional()
         .nullable(),
+    appleSubject: z
+        .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
+    appleRefreshToken: z
+        .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
+    appleCredentialUpdatedAt: z
+        .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
     tier: z
         .union([z.lazy(() => UserTierSchema), z.lazy(() => EnumUserTierFieldUpdateOperationsInputSchema)])
         .optional(),
@@ -5848,6 +6106,18 @@ export const UserUncheckedUpdateWithoutEmailOtpsInputSchema: z.ZodType<Prisma.Us
             .nullable(),
         googleSubject: z
             .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        appleSubject: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        appleRefreshToken: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        appleCredentialUpdatedAt: z
+            .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
             .optional()
             .nullable(),
         tier: z

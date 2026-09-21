@@ -7,6 +7,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../colors';
 import { BackButton } from '../components/back-button';
 import { Dialog } from '../components/dialog';
+import { AppleSignIn } from '../components/apple-sign-in';
+import { Snackbar } from '../components/snackbar';
 import { useSession } from '../session';
 
 import type { PropsWithChildren } from 'react';
@@ -38,6 +40,8 @@ export default function SettingsScreen() {
     const [deleteLoading, setDeleteLoading] = useState(false);
     const [deleteError, setDeleteError] = useState('');
     const [logoutOpen, setLogoutOpen] = useState(false);
+    const [appleBusy, setAppleBusy] = useState(false);
+    const [notice, setNotice] = useState('');
 
     async function deleteAccount() {
         setDeleteLoading(true);
@@ -78,8 +82,16 @@ export default function SettingsScreen() {
                                 <>
                                     <Row label='Email' value={session.user?.email || 'Unknown account'} />
                                     <Row label='Tier' value={session.isPremium ? 'Premium' : 'Basic'} />
+                                    <AppleSignIn
+                                        connect
+                                        disabled={appleBusy || deleteLoading || logoutOpen || deleteOpen}
+                                        onBusyChange={setAppleBusy}
+                                        onError={setNotice}
+                                        onSuccess={() => setNotice('Apple connected.')}
+                                    />
                                     <Pressable
                                         accessibilityRole='button'
+                                        disabled={appleBusy}
                                         onPress={() => setLogoutOpen(true)}
                                         style={({ pressed }) => [styles.actionRow, pressed && styles.rowPressed]}
                                         testID='settings-logout'
@@ -136,6 +148,7 @@ export default function SettingsScreen() {
                             {session.isAuthenticated && (
                                 <Pressable
                                     accessibilityRole='button'
+                                    disabled={appleBusy}
                                     onPress={() => {
                                         setDeleteError('');
                                         setDeleteOpen(true);
@@ -241,6 +254,7 @@ export default function SettingsScreen() {
                         </Pressable>
                     </View>
                 </Dialog>
+                <Snackbar message={notice} onDismiss={() => setNotice('')} />
             </SafeAreaView>
         </>
     );

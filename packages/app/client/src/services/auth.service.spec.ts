@@ -42,6 +42,7 @@ it('still removes keychain credentials when profile removal fails', async () => 
 it.each([
     { request: { email: 'next@example.com', password: 'Password1' }, endpoint: '/users/login' },
     { request: { idToken: 'google-token' }, endpoint: '/users/google' },
+    { request: { authorizationCode: 'apple-code', nonce: 'apple-nonce' }, endpoint: '/users/apple' },
 ])('holds $endpoint until the old logout finishes, after clearing local storage', async ({ request, endpoint }) => {
     let finish!: () => void;
     vi.mocked(apiFetch).mockImplementationOnce(

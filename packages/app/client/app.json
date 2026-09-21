@@ -9,6 +9,8 @@
         "userInterfaceStyle": "automatic",
         "ios": {
             "bundleIdentifier": "com.tallytracker.app",
+            "appleTeamId": "JS8H2Z53Y9",
+            "usesAppleSignIn": true,
             "icon": "./assets/tally.icon"
         },
         "android": {
@@ -41,6 +43,7 @@
                 }
             ],
             "expo-secure-store",
+            "expo-apple-authentication",
             "@sentry/react-native/expo"
         ],
         "experiments": {

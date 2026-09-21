@@ -24,6 +24,7 @@ import { BackButton } from './back-button';
 import { Checkbox } from './checkbox';
 import { TallyBrand } from './tally-brand';
 import { GoogleSignIn } from './google-sign-in';
+import { AppleSignIn } from './apple-sign-in';
 import { MessageText } from './message-text';
 
 type AuthScreenProps = {
@@ -56,7 +57,8 @@ export function AuthScreen({ mode }: AuthScreenProps) {
     const [passwordFocused, setPasswordFocused] = useState(false);
     const [passwordLoading, setPasswordLoading] = useState(false);
     const [googleLoading, setGoogleLoading] = useState(false);
-    const loading = passwordLoading || googleLoading;
+    const [appleLoading, setAppleLoading] = useState(false);
+    const loading = passwordLoading || googleLoading || appleLoading;
     const [errorMessage, setErrorMessage] = useState('');
 
     if (emailParameter !== previousEmailParameter) {
@@ -333,6 +335,18 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                 busy={googleLoading}
                                 rememberMe={rememberMe}
                                 onBusyChange={setGoogleLoading}
+                                onError={setErrorMessage}
+                                onSuccess={() =>
+                                    router.replace(
+                                        inviteCode ? { pathname: '/join', params: { code: inviteCode } } : '/home',
+                                    )
+                                }
+                            />
+
+                            <AppleSignIn
+                                disabled={loading}
+                                rememberMe={rememberMe}
+                                onBusyChange={setAppleLoading}
                                 onError={setErrorMessage}
                                 onSuccess={() =>
                                     router.replace(

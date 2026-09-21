@@ -8,7 +8,7 @@ import { AuthService, USER_KEY } from './services/auth.service';
 import { billingApiKey, BillingService } from './services/billing.service';
 import { assertSession, changeSession, getSessionScope, SessionChangedError } from './services/session-scope';
 
-import type { AuthRequest, GoogleLoginRequest, ClientUser } from '@tally/core/client';
+import type { AuthRequest, GoogleLoginRequest, AppleLoginRequest, ClientUser } from '@tally/core/client';
 import type { PropsWithChildren } from 'react';
 
 type ActionResult = { success: true } | { success: false; message: string; code?: 'GOOGLE_LINK_REQUIRED' };
@@ -19,7 +19,7 @@ type SessionContextValue = {
     ready: boolean;
     isAuthenticated: boolean;
     isPremium: boolean;
-    login: (request: AuthRequest | GoogleLoginRequest) => Promise<ActionResult>;
+    login: (request: AuthRequest | GoogleLoginRequest | AppleLoginRequest) => Promise<ActionResult>;
     register: (request: AuthRequest) => Promise<ActionResult>;
     logout: () => Promise<ActionResult>;
     deleteAccount: () => Promise<ActionResult>;
@@ -213,7 +213,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
         return () => window.removeEventListener('storage', changed);
     }, [setUser]);
 
-    async function login(request: AuthRequest | GoogleLoginRequest): Promise<ActionResult> {
+    async function login(request: AuthRequest | GoogleLoginRequest | AppleLoginRequest): Promise<ActionResult> {
         try {
             await AuthService.waitForLogout();
             const scope = getSessionScope();
