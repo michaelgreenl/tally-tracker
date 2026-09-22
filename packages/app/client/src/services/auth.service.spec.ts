@@ -5,6 +5,7 @@ import apiFetch from '../api';
 import { AuthService, USER_KEY } from './auth.service';
 import { changeSession } from './session-scope';
 import { tokenStorage } from './token-storage';
+import { widgetBridge } from './widget-bridge';
 
 vi.mock('../api', () => ({ default: vi.fn() }));
 vi.mock('expo-crypto', () => ({ randomUUID: () => crypto.randomUUID() }));
@@ -18,10 +19,11 @@ vi.mock('./token-storage', () => ({
         clear: vi.fn(),
     },
 }));
+vi.mock('./widget-bridge', () => ({ widgetBridge: { hide: vi.fn() } }));
 
 beforeEach(() => {
-    changeSession();
     vi.resetAllMocks();
+    changeSession();
     vi.mocked(apiFetch).mockResolvedValue({ success: true });
 });
 
@@ -35,6 +37,19 @@ it('clears local credentials even when reading the keychain fails', async () => 
 it('still removes keychain credentials when profile removal fails', async () => {
     vi.mocked(AsyncStorage.removeItem).mockRejectedValueOnce(new Error('Storage unavailable'));
     await expect(AuthService.logout()).rejects.toThrow();
+    expect(tokenStorage.clear).toHaveBeenCalledOnce();
+    expect(apiFetch).toHaveBeenCalledWith('/users/logout', expect.anything());
+});
+
+it('invalidates the session and clears credentials when widget cleanup fails', async () => {
+    const previous = changeSession('alice');
+    vi.mocked(widgetBridge!.hide).mockImplementation(() => {
+        throw new Error('Widget storage unavailable');
+    });
+    const next = changeSession();
+    expect(previous.signal.aborted).toBe(true);
+    await expect(AuthService.logout(next, 'alice')).rejects.toThrow();
+    expect(AsyncStorage.removeItem).toHaveBeenCalledWith(USER_KEY);
     expect(tokenStorage.clear).toHaveBeenCalledOnce();
     expect(apiFetch).toHaveBeenCalledWith('/users/logout', expect.anything());
 });

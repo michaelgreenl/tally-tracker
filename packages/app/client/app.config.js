@@ -1,7 +1,15 @@
 module.exports = ({ config }) => ({
     ...config,
+    ios: {
+        ...config.ios,
+        entitlements: {
+            ...config.ios?.entitlements,
+            'com.apple.security.application-groups': ['group.com.tallytracker.app'],
+        },
+    },
     plugins: [
         ...(config.plugins || []),
+        '@bacons/apple-targets',
         ...(process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID
             ? [
                   [

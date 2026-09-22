@@ -4,6 +4,7 @@ import * as Network from 'expo-network';
 import apiFetch, { ApiError } from '../api';
 import { AuthService } from './auth.service';
 import { SyncQueue } from './sync-queue';
+import { pendingWidgetTaps } from './widget-sync';
 import { assertSession, getSessionScope, SessionChangedError } from './session-scope';
 import type { SessionScope } from './session-scope';
 
@@ -93,7 +94,13 @@ export const SyncManager = {
         if (status.isConnected === false) return false;
 
         const blocked = new Map<string, number>();
+        const importing = new Set(pendingWidgetTaps().map((tap) => tap.id));
         for (const queued of commands) {
+            // The native journal owns retry identity until its durable handoff finishes.
+            if (importing.has(queued.id)) {
+                blocked.set(queued.entityId, 0);
+                continue;
+            }
             const removal = queued.type === 'DELETE' || queued.type === 'REMOVE';
             if (attempted.has(queued.id)) blocked.set(queued.entityId, queued.rejected ?? 0);
             if (

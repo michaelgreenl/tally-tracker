@@ -4,6 +4,7 @@ import apiFetch from '../api';
 import { tokenStorage } from './token-storage';
 import { CounterStorage } from './counter-storage';
 import { SyncQueue } from './sync-queue';
+import { widgetBridge } from './widget-bridge';
 import { assertSession, getSessionScope, SessionChangedError, writeSession } from './session-scope';
 import type { SessionScope } from './session-scope';
 
@@ -44,11 +45,14 @@ export const AuthService = {
 
     clearLocalAuth(scope = getSessionScope()) {
         return writeSession(scope, async () => {
-            try {
-                await AsyncStorage.removeItem(USER_KEY);
-            } finally {
-                await tokenStorage.clear();
-            }
+            scope.userId = null;
+            const results = await Promise.allSettled([
+                Promise.resolve().then(() => widgetBridge?.hide()),
+                AsyncStorage.removeItem(USER_KEY),
+                tokenStorage.clear(),
+            ]);
+            const failed = results.find((result) => result.status === 'rejected');
+            if (failed) throw failed.reason;
         });
     },
 
@@ -134,6 +138,7 @@ export const AuthService = {
             this.clearLocalAuth(scope),
             writeSession(null, () => CounterStorage.removeAccount(userId)),
             SyncQueue.removeAccount(userId),
+            Promise.resolve().then(() => widgetBridge?.removeAccount(userId)),
         ]);
         if (results.some((result) => result.status === 'rejected' && !(result.reason instanceof SessionChangedError))) {
             throw new Error('Account deleted. Could not clear all device data.');

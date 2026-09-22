@@ -58,6 +58,7 @@ export const SyncQueue = {
     add(command: MutationCommand) {
         return mutateQueue(async () => {
             const queue = await this.get();
+            if (queue.some((item) => item.id === command.id)) return;
             queue.push(command);
             await this.save(command.type === 'UPDATE' ? repairRejectedEdits(queue, command) : queue);
         });

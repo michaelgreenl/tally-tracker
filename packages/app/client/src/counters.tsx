@@ -13,6 +13,7 @@ import { ApiError, getErrorMessage, REQUEST_FAILED_MESSAGE } from './api';
 import { CounterService } from './services/counter.service';
 import { SyncManager } from './services/sync-manager';
 import { SyncQueue } from './services/sync-queue';
+import { WidgetSync } from './services/widget-sync';
 import { assertSession, getSessionScope, SessionChangedError, writeSession } from './services/session-scope';
 import { connectSocket, disconnectSocket, subscribeToCounterUpdates } from './socket';
 import { useSession } from './session';
@@ -165,28 +166,54 @@ function AccountCounters({ children }: PropsWithChildren) {
         requestRefresh();
     }
 
+    const importWidgetChanges = useCallback(
+        async (discardMissing = false) => {
+            let next: ClientCounter[] | null;
+            try {
+                next = await WidgetSync.consume(scope, discardMissing);
+            } catch (error) {
+                if (!(error instanceof RangeError)) throw error;
+                // Keep the failed state visible, but allow a decrement or deletion to resolve it.
+                setSyncError(true);
+                return;
+            }
+            assertSession(scope);
+            if (next) {
+                revision.current += 1;
+                countersRef.current = next;
+                setCounters(next);
+            }
+        },
+        [scope],
+    );
+
     const replaceCounters = useCallback(
         async (next: ClientCounter[]) => {
             assertSession(scope);
             countersRef.current = next;
             setCounters(next);
-            await writeSession(scope, () => CounterService.persist(next));
+            await CounterService.persist(next);
+            await WidgetSync.publish(next, scope);
         },
         [scope],
     );
 
     const persistMutation = useCallback(
-        async (next: ClientCounter[], enqueue?: () => Promise<void>) => {
+        async (update: (current: ClientCounter[]) => ClientCounter[], enqueue?: () => Promise<void>) => {
             revision.current += 1;
             pendingWrites.current += 1;
             try {
-                await Promise.all([replaceCounters(next), enqueue?.()]);
+                await writeSession(scope, async () => {
+                    await importWidgetChanges();
+                    const next = update(countersRef.current);
+                    await Promise.all([replaceCounters(next), enqueue?.()]);
+                });
             } finally {
                 pendingWrites.current -= 1;
                 if (scope.userId && scope === getSessionScope()) requestRefresh();
             }
         },
-        [replaceCounters, requestRefresh, scope],
+        [importWidgetChanges, replaceCounters, requestRefresh, scope],
     );
 
     useEffect(() => {
@@ -232,7 +259,6 @@ function AccountCounters({ children }: PropsWithChildren) {
         if (!session.ready) return;
 
         const userId = session.user?.id || null;
-        const fetchRevision = revision.current;
         let active = true;
 
         void (async () => {
@@ -240,13 +266,20 @@ function AccountCounters({ children }: PropsWithChildren) {
             setSyncError(false);
 
             try {
+                await writeSession(scope, () => importWidgetChanges());
+                if (!active) return;
+                const fetchRevision = revision.current;
                 const order = await CounterService.getOrder(userId || 'guest');
                 if (!userId) {
                     disconnectSocket();
-                    const localCounters = (await CounterService.getAllLocal()).filter(
-                        (counter) => counter.userId === 'guest',
-                    );
-                    if (active) await replaceCounters(orderCounters(localCounters, order));
+                    await writeSession(scope, async () => {
+                        if (!active || fetchRevision !== revision.current || pendingWrites.current > 0) return;
+                        const localCounters = (await CounterService.getAllLocal()).filter(
+                            (counter) => counter.userId === 'guest',
+                        );
+                        await replaceCounters(orderCounters(localCounters, order));
+                        await importWidgetChanges(true);
+                    });
                     return;
                 }
 
@@ -275,10 +308,19 @@ function AccountCounters({ children }: PropsWithChildren) {
                 const currentOrder = countersRef.current.map((counter) => counter.id);
                 const next = orderCounters(reconciled.counters, currentOrder.length ? currentOrder : order);
                 if (reconciled.guestCounters.length) {
-                    await persistMutation(next, () => CounterService.consolidate(reconciled.guestCounters, scope));
+                    await persistMutation(
+                        () => next,
+                        () => CounterService.consolidate(reconciled.guestCounters, scope),
+                    );
                 } else {
-                    await replaceCounters(next);
+                    await writeSession(scope, async () => {
+                        if (!active || fetchRevision !== revision.current || pendingWrites.current > 0) return;
+                        await replaceCounters(next);
+                    });
                 }
+                // A counter cache can be empty after an account switch. Import its saved widget
+                // taps after fetching the counters; only a successful fetch can retire missing IDs.
+                await writeSession(scope, () => importWidgetChanges(remoteCounters !== null));
                 assertSession(scope);
                 connectSocket();
                 await SyncManager.processQueue();
@@ -297,16 +339,12 @@ function AccountCounters({ children }: PropsWithChildren) {
         return () => {
             active = false;
         };
-    }, [replaceCounters, persistMutation, session.ready, session.user?.id, refreshKey, scope]);
+    }, [importWidgetChanges, replaceCounters, persistMutation, session.ready, session.user?.id, refreshKey, scope]);
 
     async function createCounter(title: string, color: HexColor, metric = ''): Promise<ActionResult> {
         const parsedTitle = counterTitleSchema.safeParse(title);
         if (!parsedTitle.success) return fail(parsedTitle.error.issues[0].message);
         if (!counterMetricSchema.safeParse(metric).success) return fail('Metric must be 80 characters or less.');
-        if (!session.isAuthenticated && isGuestCounterLimitReached(countersRef.current)) {
-            return fail(GUEST_COUNTER_LIMIT_MESSAGE);
-        }
-
         const counter: ClientCounter = {
             id: Crypto.randomUUID(),
             title: parsedTitle.data,
@@ -321,7 +359,12 @@ function AccountCounters({ children }: PropsWithChildren) {
 
         try {
             await persistMutation(
-                [...countersRef.current, counter],
+                (current) => {
+                    if (!session.isAuthenticated && isGuestCounterLimitReached(current)) {
+                        throw new Error(GUEST_COUNTER_LIMIT_MESSAGE);
+                    }
+                    return [...current, counter];
+                },
                 session.isAuthenticated ? () => CounterService.create(counter, scope) : undefined,
             );
             return ok();
@@ -331,13 +374,12 @@ function AccountCounters({ children }: PropsWithChildren) {
     }
 
     async function reorderCounters(ids: string[]): Promise<ActionResult> {
-        const next = orderCounters(countersRef.current, ids);
         try {
-            await replaceCounters(next);
+            await persistMutation((current) => orderCounters(current, ids));
             await writeSession(scope, () =>
                 CounterService.persistOrder(
                     session.user?.id || 'guest',
-                    next.map((counter) => counter.id),
+                    countersRef.current.map((counter) => counter.id),
                 ),
             );
             return ok();
@@ -351,13 +393,17 @@ function AccountCounters({ children }: PropsWithChildren) {
         if (!counter) return fail('Counter not found');
 
         if (!counterValueSchema.safeParse(amount).success) return fail('Enter a valid increment.');
-        const count = addCounterAmount(counter.count, amount);
-        if (!counterValueSchema.safeParse(count).success) return fail('This change exceeds the counter limit.');
-        const updated = { ...counter, count };
         try {
             await persistMutation(
-                countersRef.current.map((item) => (item.id === counterId ? updated : item)),
-                session.isAuthenticated ? () => CounterService.increment(updated, amount, scope) : undefined,
+                (current) =>
+                    current.map((item) => {
+                        if (item.id !== counterId) return item;
+                        const count = addCounterAmount(item.count, amount);
+                        if (!counterValueSchema.safeParse(count).success)
+                            throw new Error('This change exceeds the counter limit.');
+                        return { ...item, count };
+                    }),
+                session.isAuthenticated ? () => CounterService.increment(counter, amount, scope) : undefined,
             );
             return ok();
         } catch (error: unknown) {
@@ -388,9 +434,8 @@ function AccountCounters({ children }: PropsWithChildren) {
 
         try {
             await persistMutation(
-                countersRef.current.map((counter) =>
-                    counter.id === counterId ? { ...counter, ...cleanUpdates } : counter,
-                ),
+                (current) =>
+                    current.map((counter) => (counter.id === counterId ? { ...counter, ...cleanUpdates } : counter)),
                 session.isAuthenticated ? () => CounterService.update(counterId, cleanUpdates, scope) : undefined,
             );
             return ok();
@@ -402,7 +447,7 @@ function AccountCounters({ children }: PropsWithChildren) {
     async function deleteCounter(counter: ClientCounter): Promise<ActionResult> {
         try {
             await persistMutation(
-                countersRef.current.filter((item) => item.id !== counter.id),
+                (current) => current.filter((item) => item.id !== counter.id),
                 session.isAuthenticated ? () => CounterService.delete(counter, scope) : undefined,
             );
             return ok();
@@ -418,8 +463,8 @@ function AccountCounters({ children }: PropsWithChildren) {
             if (!response.success || !inviteCode) {
                 return { success: false as const, message: REQUEST_FAILED_MESSAGE };
             }
-            await persistMutation(
-                countersRef.current.map((counter) =>
+            await persistMutation((current) =>
+                current.map((counter) =>
                     counter.id === counterId ? { ...counter, type: 'SHARED', inviteCode } : counter,
                 ),
             );
@@ -447,7 +492,7 @@ function AccountCounters({ children }: PropsWithChildren) {
             const counter = response.data?.counter;
             if (!response.success || !counter) return fail(response.message || 'Failed to join counter');
             if (!countersRef.current.some((item) => item.id === counter.id)) {
-                await persistMutation([...countersRef.current, counter]);
+                await persistMutation((current) => [...current, counter]);
             }
             return ok();
         } catch (error: unknown) {

@@ -38,6 +38,7 @@
         "socket.io-client": "^4.8.3"
     },
     "devDependencies": {
+        "@bacons/apple-targets": "5.0.0",
         "@types/react": "~19.2.2",
         "@types/react-dom": "~19.2.0",
         "cypress": "^13.17.0",
@@ -55,10 +56,11 @@
         "build": "expo export --platform web",
         "test:e2e": "TS_NODE_PROJECT=tsconfig.cypress.json cypress run --browser chrome",
         "test:unit": "vitest run",
+        "test:widgets": "sh scripts/test-widgets.sh",
         "test:coverage": "vitest run --coverage",
         "typecheck": "tsc --noEmit",
-        "format": "prettier --write src/ tests/e2e/ plugins/ app.config.js app.json cypress.config.mjs eslint.config.js metro.config.js package.json tsconfig.json tsconfig.cypress.json",
-        "format:check": "prettier --check src/ tests/e2e/ plugins/ app.config.js app.json cypress.config.mjs eslint.config.js metro.config.js package.json tsconfig.json tsconfig.cypress.json",
+        "format": "prettier --write src/ tests/e2e/ plugins/ modules/ 'targets/**/expo-target.config.js' app.config.js app.json cypress.config.mjs eslint.config.js metro.config.js package.json tsconfig.json tsconfig.cypress.json",
+        "format:check": "prettier --check src/ tests/e2e/ plugins/ modules/ 'targets/**/expo-target.config.js' app.config.js app.json cypress.config.mjs eslint.config.js metro.config.js package.json tsconfig.json tsconfig.cypress.json",
         "lint": "expo lint",
         "lint:all": "bun typecheck && bun format:check && bun lint"
     },

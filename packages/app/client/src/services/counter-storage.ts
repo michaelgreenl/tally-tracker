@@ -4,17 +4,30 @@ import type { ClientCounter } from '@tally/core/client';
 
 const COUNTERS_KEY = 'app_counters';
 
-export const CounterStorage = {
-    async getAll(): Promise<ClientCounter[]> {
-        const value = await AsyncStorage.getItem(COUNTERS_KEY);
-        if (!value) return [];
+type CounterState = { counters: ClientCounter[]; widgetReceipts: string[] };
 
-        const counters: unknown = JSON.parse(value);
-        return Array.isArray(counters) ? (counters as ClientCounter[]) : [];
+async function getState(): Promise<CounterState> {
+    const value = await AsyncStorage.getItem(COUNTERS_KEY);
+    if (!value) return { counters: [], widgetReceipts: [] };
+    const state = JSON.parse(value) as CounterState | ClientCounter[];
+    return Array.isArray(state) ? { counters: state, widgetReceipts: [] } : state;
+}
+
+function saveState(state: CounterState) {
+    // Receipts and counts must commit together. A crash must not apply a widget tap twice.
+    return AsyncStorage.setItem(COUNTERS_KEY, JSON.stringify(state));
+}
+
+export const CounterStorage = {
+    getState,
+    saveState,
+    async getAll(): Promise<ClientCounter[]> {
+        return (await getState()).counters;
     },
 
-    save(counters: ClientCounter[]) {
-        return AsyncStorage.setItem(COUNTERS_KEY, JSON.stringify(counters));
+    async save(counters: ClientCounter[]) {
+        const state = await getState();
+        await saveState({ ...state, counters });
     },
 
     clear() {
