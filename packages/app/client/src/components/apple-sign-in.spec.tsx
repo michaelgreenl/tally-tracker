@@ -23,11 +23,30 @@ const props = { onError: vi.fn(), onSuccess: vi.fn(), onBusyChange: vi.fn() };
 // Only native views and SDK transport are replaced. These tests cover callbacks, not native appearance.
 vi.mock('react-native', () => ({
     StyleSheet: { create: (styles: unknown) => styles },
-    useWindowDimensions: () => ({ fontScale: 1 }),
-    View: ({ children }: { children?: ReactNode }) => createElement('div', null, children),
-    Text: ({ children }: { children?: ReactNode }) => createElement('span', null, children),
+    Platform: { OS: 'ios' },
+    useWindowDimensions: () => ({ width: 440, height: 956, fontScale: 1 }),
+    Modal: ({ visible, children }: { visible: boolean; children?: ReactNode }) =>
+        visible ? createElement('div', null, children) : null,
+    KeyboardAvoidingView: ({ children }: { children?: ReactNode }) => createElement('div', null, children),
+    ScrollView: ({ children }: { children?: ReactNode }) => createElement('div', null, children),
+    View: ({ children, testID }: { children?: ReactNode; testID?: string }) =>
+        createElement('div', { 'data-testid': testID }, children),
+    Text: ({ children, testID }: { children?: ReactNode; testID?: string }) =>
+        createElement('span', { 'data-testid': testID }, children),
     ActivityIndicator: ({ testID }: { testID: string }) => createElement('span', { 'data-testid': testID }),
+    Pressable: ({
+        onPress,
+        testID,
+        disabled,
+        children,
+    }: {
+        onPress: () => void;
+        testID: string;
+        disabled?: boolean;
+        children?: ReactNode;
+    }) => createElement('button', { onClick: onPress, 'data-testid': testID, disabled }, children),
 }));
+vi.mock('react-native-svg', () => ({ default: () => null, Path: () => null, Rect: () => null }));
 vi.mock('expo-router', () => ({
     useFocusEffect: (effect: () => void | (() => void)) => {
         const isFocused = focused;
@@ -44,10 +63,6 @@ vi.mock('expo-apple-authentication', () => ({
     isAvailableAsync: async () => true,
     signInAsync: mocks.signIn,
     AppleAuthenticationScope: { EMAIL: 0 },
-    AppleAuthenticationButtonType: { CONTINUE: 2 },
-    AppleAuthenticationButtonStyle: { WHITE: 0 },
-    AppleAuthenticationButton: ({ onPress, testID }: { onPress: () => void; testID: string }) =>
-        createElement('button', { onClick: onPress, 'data-testid': testID }),
 }));
 
 async function render(connect = false, disabled = false) {
@@ -57,8 +72,8 @@ async function render(connect = false, disabled = false) {
     });
 }
 
-async function press() {
-    await act(async () => container.querySelector<HTMLButtonElement>('[data-testid="apple-sign-in"]')!.click());
+async function press(testID = 'apple-sign-in') {
+    await act(async () => container.querySelector<HTMLButtonElement>(`[data-testid="${testID}"]`)!.click());
 }
 
 beforeEach(() => {
@@ -139,6 +154,7 @@ it.each(['account change', 'leave and return'])('ignores an SDK result after %s'
 it('connects Apple to the signed-in account without starting a new login', async () => {
     changeSession('existing-user');
     await render(true);
+    await press('settings-sign-in-methods');
     await press();
     expect(mocks.connect).toHaveBeenCalledWith({
         authorizationCode: 'apple-code',
@@ -148,5 +164,30 @@ it('connects Apple to the signed-in account without starting a new login', async
     expect(mocks.login).not.toHaveBeenCalled();
     expect(mocks.refreshUser).toHaveBeenCalledOnce();
     expect(props.onSuccess).toHaveBeenCalledOnce();
+    expect(container.querySelector('[data-testid="sign-in-methods-dialog"]')).toBeNull();
+    await press('settings-sign-in-methods');
+    expect(container.querySelector('[data-testid="apple-connected"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="apple-sign-in"]')).toBeNull();
+});
+
+it('opens and dismisses sign-in methods without starting Apple authorization', async () => {
+    await render(true);
+    expect(container.querySelector('[data-testid="apple-sign-in"]')).toBeNull();
+    await press('settings-sign-in-methods');
+    expect(container.querySelector('[data-testid="apple-sign-in"]')).not.toBeNull();
+    await press('sign-in-methods-done');
+    expect(container.querySelector('[data-testid="sign-in-methods-dialog"]')).toBeNull();
+    expect(mocks.signIn).not.toHaveBeenCalled();
+});
+
+it('keeps a failed connection visible in the dialog so the user can retry', async () => {
+    mocks.connect.mockResolvedValueOnce({ success: false, message: 'This Apple account is already in use.' });
+    await render(true);
+    await press('settings-sign-in-methods');
+    await press();
+    expect(container.querySelector('[data-testid="apple-connect-error"]')).not.toBeNull();
+    expect(props.onSuccess).not.toHaveBeenCalled();
+    await press();
+    expect(container.querySelector('[data-testid="sign-in-methods-dialog"]')).toBeNull();
+    expect(props.onSuccess).toHaveBeenCalledOnce();
 });

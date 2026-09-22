@@ -14,7 +14,6 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Path } from 'react-native-svg';
 
 import { colors } from '../colors';
 import { useSession } from '../session';
@@ -159,31 +158,15 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                         <View style={[styles.card, isLogin && styles.loginCard]} testID='auth-card'>
                             {isLogin && (
                                 <AuthLink
+                                    accessibilityLabel='Continue as guest'
+                                    allowFontScaling={false}
                                     href='/home'
-                                    hitSlop={8}
+                                    hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
                                     style={styles.guestLink}
                                     textStyle={styles.guestLinkText}
                                     testID='continue-as-guest'
-                                    icon={
-                                        <Svg
-                                            aria-hidden
-                                            width={5}
-                                            height={8}
-                                            viewBox='0 0 5 8'
-                                            style={styles.guestChevron}
-                                        >
-                                            <Path
-                                                d='m0.75 0.75 3.5 3.25-3.5 3.25'
-                                                fill='none'
-                                                stroke={colors.text}
-                                                strokeWidth={1.5}
-                                                strokeLinecap='round'
-                                                strokeLinejoin='round'
-                                            />
-                                        </Svg>
-                                    }
                                 >
-                                    Continue as guest
+                                    Continue as guest ›
                                 </AuthLink>
                             )}
                             {!isLogin && (
@@ -431,20 +414,14 @@ const styles = StyleSheet.create({
         alignSelf: 'flex-end',
         minHeight: 20,
         marginBottom: 12,
-        flexDirection: 'row',
-        alignItems: 'center',
         flexShrink: 1,
-        gap: 4,
     },
     guestLinkText: {
         color: colors.text,
         flexShrink: 1,
-        fontSize: 14,
+        fontSize: 18,
+        lineHeight: 24,
         textAlign: 'right',
-    },
-    guestChevron: {
-        // Align with the label's visible glyphs, below the center of its line box.
-        transform: [{ translateY: 1 }],
     },
     loginPasswordField: {
         marginBottom: 4,
