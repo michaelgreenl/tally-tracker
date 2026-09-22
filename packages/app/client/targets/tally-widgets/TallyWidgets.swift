@@ -114,6 +114,14 @@ struct TallyMark: Shape {
   }
 }
 
+private enum CounterTextTop: AlignmentID {
+  static func defaultValue(in dimensions: ViewDimensions) -> CGFloat { dimensions[.top] }
+}
+
+extension VerticalAlignment {
+  fileprivate static let counterTextTop = VerticalAlignment(CounterTextTop.self)
+}
+
 struct CounterWidgetView: View {
   let entry: CounterEntry
   @Environment(\.widgetFamily) private var family
@@ -130,32 +138,23 @@ struct CounterWidgetView: View {
             GeometryReader { geometry in
               HStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: 4) {
-                  Text(counter.title).font(.headline).lineLimit(2)
-                  value(counter)
-                  if let metric = counter.metric, !metric.isEmpty {
-                    Text(metric).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                  }
+                  nameAndMetric(counter)
                   Spacer(minLength: 0)
                   TallyMark().frame(width: 22, height: 22).accessibilityHidden(true)
                 }
-                .frame(width: geometry.size.width / 3, alignment: .leading)
+                .frame(width: geometry.size.width / 4, alignment: .leading)
                 controls(counter, owner: owner)
                   .frame(maxWidth: .infinity, maxHeight: .infinity)
               }
             }
+          } else if family == .accessoryRectangular {
+            header(counter)
           } else {
-            VStack(spacing: 16) {
-              HStack(alignment: .top, spacing: 8) {
-                alignedText(
-                  counter.title,
-                  font: .systemFont(ofSize: titleFontSize, weight: .semibold), minimumScale: 1
-                )
-                .frame(maxWidth: .infinity, alignment: .leading)
-                value(counter)
-              }
+            VStack(spacing: 12) {
+              header(counter)
               controls(counter, owner: owner)
+                .frame(maxHeight: .infinity)
             }
-            .frame(maxHeight: .infinity, alignment: .top)
           }
         }
         .privacySensitive()
@@ -163,14 +162,37 @@ struct CounterWidgetView: View {
         VStack(spacing: 8) {
           TallyMark().frame(width: 32, height: 32)
           Text("Open Tally").font(.headline)
-          Text("Add or choose a counter.").font(.caption).multilineTextAlignment(.center)
+          if family != .accessoryRectangular {
+            Text("Add or choose a counter.").font(.caption).multilineTextAlignment(.center)
+          }
         }
       }
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .foregroundStyle(.white)
+    .foregroundStyle(family == .accessoryRectangular ? Color.primary : .white)
     .widgetURL(tallyURL)
-    .containerBackground(Color(red: 37 / 255, green: 41 / 255, blue: 46 / 255), for: .widget)
+    .containerBackground(
+      family == .accessoryRectangular
+        ? Color.clear : Color(red: 37 / 255, green: 41 / 255, blue: 46 / 255), for: .widget)
+  }
+
+  private func nameAndMetric(_ counter: WidgetCounter) -> some View {
+    VStack(alignment: .leading, spacing: 2) {
+      alignedText(
+        counter.title,
+        font: .systemFont(ofSize: titleFontSize, weight: .semibold), minimumScale: 0.85
+      )
+      if let metric = counter.metric, !metric.isEmpty {
+        Text(metric).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+      }
+    }
+  }
+
+  private func header(_ counter: WidgetCounter) -> some View {
+    HStack(alignment: .counterTextTop, spacing: 8) {
+      nameAndMetric(counter).frame(maxWidth: .infinity, alignment: .leading)
+      value(counter)
+    }
   }
 
   private func value(_ counter: WidgetCounter) -> some View {
@@ -194,7 +216,7 @@ struct CounterWidgetView: View {
       .lineLimit(1)
       .minimumScaleFactor(minimumScale)
       // Use the same font for drawing and measuring the visible glyph tops.
-      .alignmentGuide(.top) { dimensions in
+      .alignmentGuide(.counterTextTop) { dimensions in
         let scale = max(minimumScale, min(1, dimensions.width / max(width, 1)))
         return dimensions[.firstTextBaseline] - top * scale
       }
@@ -205,6 +227,10 @@ struct CounterWidgetView: View {
       Spacer(minLength: 8)
       control(counter, owner: owner, increase: false)
       Spacer(minLength: 8)
+      if family == .systemMedium {
+        value(counter)
+        Spacer(minLength: 8)
+      }
       control(counter, owner: owner, increase: true)
       Spacer(minLength: 8)
     }
@@ -240,7 +266,7 @@ struct TallyCounterWidget: Widget {
     }
     .configurationDisplayName("Counter")
     .description("Count without opening Tally. Changes sync when the app opens.")
-    .supportedFamilies([.systemSmall, .systemMedium])
+    .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular])
   }
 }
 

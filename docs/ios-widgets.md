@@ -2,7 +2,7 @@
 
 Tally includes two WidgetKit widgets on iOS 17 and later:
 
-- **Counter:** Small and medium Home Screen widgets. Choose a counter in Edit Widget. Use its existing increment for each tap.
+- **Counter:** Small and medium Home Screen widgets, plus a read-only rectangular Lock Screen counter. Choose a counter in Edit Widget. Home Screen buttons use its existing increment for each tap.
 - **Open Tally:** Circular and rectangular Lock Screen shortcuts. They open `tally://home`.
 
 Widget taps work with Tally closed. Open Tally to send those changes to the server. Remote changes reach widgets after the app refreshes. Widgets do not run a separate network or login client. Android and web do not expose these widgets.
@@ -31,7 +31,7 @@ Server processing waits until the native journal acknowledges the handoff. This 
 
 Conflicting widget taps remain stored if another device reaches the counter limit. Decrease the count or delete the counter in Tally to resolve them.
 
-No passwords, tokens, or share links enter the App Group. Session changes hide widget counter data. Account deletion also removes that account's pending widget taps. Home Screen counter content uses system privacy redaction. The Lock Screen shortcut has no counter data.
+No passwords, tokens, or share links enter the App Group. Session changes hide widget counter data. Account deletion also removes that account's pending widget taps. Counter content uses system privacy redaction, including on the Lock Screen. The separate Open Tally shortcut has no counter data.
 
 ## Verification
 
@@ -45,6 +45,6 @@ Before release, check these on a signed phone build:
 4. Change the increment in Tally. Confirm the next widget tap uses it.
 5. Test long names, large text, VoiceOver, tinted widgets, and Reduce Motion.
 6. Delete a selected counter, sign out, and switch accounts. Old widgets must not change another account.
-7. Use the Lock Screen shortcut. Confirm that it opens Tally after the system unlock step.
+7. Use the Lock Screen shortcuts and rectangular counter. Confirm that they open Tally after the system unlock step. Check the selected name, metric, and count. Check redaction while locked.
 
 Signing, phone appearance, and extension interactions still need device verification.
