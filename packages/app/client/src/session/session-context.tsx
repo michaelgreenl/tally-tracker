@@ -1,12 +1,12 @@
-import { UNAUTHORIZED } from '@tally/core/client';
 import { useRouter } from 'expo-router';
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { AppState, Platform } from 'react-native';
+import { Platform } from 'react-native';
 
 import { ApiError, getErrorMessage, setUnauthorizedHandler } from '../api';
 import { AuthService, USER_KEY } from './auth.service';
-import { billingApiKey, BillingService } from '../billing/billing.service';
-import { assertSession, changeSession, getSessionScope, SessionChangedError } from './session-scope';
+import { usePurchaseSync } from '../billing/use-purchase-sync';
+import { restoreSession } from './restore-session';
+import { assertSession, changeSession, getSessionScope } from './session-scope';
 
 import type { AuthRequest, GoogleLoginRequest, AppleLoginRequest, ClientUser } from '@tally/core/client';
 import type { PropsWithChildren } from 'react';
@@ -32,66 +32,6 @@ type SessionContextValue = {
 const SessionContext = createContext<SessionContextValue | null>(null);
 const ok = (): ActionResult => ({ success: true });
 const fail = (message: string): ActionResult => ({ success: false, message });
-
-export async function restoreSession(): Promise<ClientUser | null> {
-    const scope = getSessionScope();
-    let cachedUser: ClientUser | null;
-
-    try {
-        cachedUser = await AuthService.getCachedUser();
-        assertSession(scope);
-    } catch (error) {
-        if (error instanceof SessionChangedError) throw error;
-        await AuthService.clearLocalAuth(scope);
-        return null;
-    }
-
-    if (!cachedUser) return null;
-    scope.userId = cachedUser.id;
-
-    if (Platform.OS !== 'web') {
-        let accessToken: string | null;
-        let refreshToken: string | null;
-
-        try {
-            [accessToken, refreshToken] = await Promise.all([
-                AuthService.getAccessToken(),
-                AuthService.getRefreshToken(),
-            ]);
-        } catch {
-            assertSession(scope);
-            scope.userId = null;
-            return null;
-        }
-
-        assertSession(scope);
-        if (!accessToken && !refreshToken) {
-            await AuthService.clearLocalAuth(scope);
-            return null;
-        }
-    }
-
-    try {
-        const response = await AuthService.checkAuth();
-        const verifiedUser = response.data?.user;
-
-        if (response.success && verifiedUser && verifiedUser.id === cachedUser.id) {
-            await AuthService.cacheUser(verifiedUser, scope);
-            return verifiedUser;
-        }
-        await AuthService.clearLocalAuth(scope);
-        return null;
-    } catch (error: unknown) {
-        if (error instanceof SessionChangedError) throw error;
-        if (error instanceof ApiError && error.status === UNAUTHORIZED) {
-            await AuthService.clearLocalAuth(scope);
-            return null;
-        }
-    }
-
-    assertSession(scope);
-    return cachedUser;
-}
 
 export function SessionProvider({ children }: PropsWithChildren) {
     const router = useRouter();
@@ -127,47 +67,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
         return verifiedUser;
     }, [setUser]);
 
-    const refreshPurchases = useCallback(async () => {
-        const scope = getSessionScope();
-        if (!scope.userId) throw new Error('Sign in to verify purchases.');
-        await BillingService.sync();
-        assertSession(scope);
-        return refreshUser();
-    }, [refreshUser]);
-
-    useEffect(() => {
-        if (!user?.id || !billingApiKey()) return;
-        let active = true;
-        let refreshing = false;
-        let unsubscribe: (() => void) | undefined;
-        const refresh = async () => {
-            if (!active || refreshing) return;
-            refreshing = true;
-            try {
-                await refreshPurchases();
-            } catch {
-                // Keep the last verified profile offline. Explicit purchase/restore actions report failures.
-            } finally {
-                refreshing = false;
-            }
-        };
-        void BillingService.subscribe(user.id, () => void refresh())
-            .then((remove) => {
-                if (active) {
-                    unsubscribe = remove;
-                    void refresh();
-                } else remove();
-            })
-            .catch(() => undefined);
-        const subscription = AppState.addEventListener('change', (state) => {
-            if (state === 'active') void refresh();
-        });
-        return () => {
-            active = false;
-            unsubscribe?.();
-            subscription.remove();
-        };
-    }, [user?.id, refreshPurchases]);
+    const refreshPurchases = usePurchaseSync(user?.id, refreshUser);
 
     useEffect(() => {
         return setUnauthorizedHandler(async () => {

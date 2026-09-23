@@ -118,6 +118,27 @@ it('refreshes through the server on customer changes and app foreground, then re
     expect(removeAppState).toHaveBeenCalledOnce();
 });
 
+it('removes a purchase listener that finishes attaching after logout without starting a refresh', async () => {
+    await act(async () => root.unmount());
+    const subscription = Promise.withResolvers<() => void>();
+    const removeCustomer = vi.fn();
+    apiKey.mockReturnValue('test_example');
+    billing.subscribe.mockReturnValue(subscription.promise);
+    appState.addEventListener.mockReturnValue({ remove: vi.fn() });
+    root = createRoot(document.createElement('div'));
+    await act(async () => root.render(createElement(SessionProvider, null, createElement(Probe))));
+    await act(async () => {
+        await session.logout();
+    });
+    auth.checkAuth.mockClear();
+
+    await act(async () => subscription.resolve(removeCustomer));
+
+    expect(removeCustomer).toHaveBeenCalledOnce();
+    expect(billing.sync).not.toHaveBeenCalled();
+    expect(auth.checkAuth).not.toHaveBeenCalled();
+});
+
 it('does not apply an old account’s verification after logout and another login', async () => {
     let complete!: (response: unknown) => void;
     auth.checkAuth.mockReturnValueOnce(

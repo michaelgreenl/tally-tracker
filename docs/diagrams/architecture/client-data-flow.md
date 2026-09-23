@@ -10,6 +10,8 @@ Client modules are grouped by the feature that owns them:
 
 Tests stay beside their modules. Import leaf files directly; avoid feature-wide export barrels.
 
+`session/restore-session.ts` checks cached credentials and restores the account without React or routing. `session/session-context.tsx` owns account state, navigation, and account actions. `billing/use-purchase-sync.ts` owns purchase refresh and native listener cleanup. It receives the profile refresh action from session context.
+
 `src/counters/counter-rules.ts` owns pure ordering, guest limits, and snapshot reconciliation. `counter-context.tsx` owns React state, subscriptions, and serialized mutation timing. `CounterService` owns storage access and command creation. `SyncManager` owns queue delivery and retries. Keep session, revision, and pending-write checks with the operations they protect.
 
 ```mermaid
@@ -50,7 +52,7 @@ classDiagram
         }
         class SessionContext {
             +state: user
-            +restoreSession()
+            +refreshUser()
             +login()
             +register()
         }
