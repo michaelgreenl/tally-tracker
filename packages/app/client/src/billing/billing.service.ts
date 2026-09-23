@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 
 import apiFetch, { ApiError } from '../api';
-import { assertSession, getSessionScope, SessionChangedError } from './session-scope';
+import { assertSession, getSessionScope, SessionChangedError } from '../session/session-scope';
 
 import type { CustomerInfo, PurchasesPackage } from 'react-native-purchases';
 

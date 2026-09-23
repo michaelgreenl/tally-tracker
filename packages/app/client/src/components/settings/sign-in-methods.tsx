@@ -5,8 +5,8 @@ import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from '
 
 import { getErrorMessage } from '../../api';
 import { colors } from '../../colors';
-import { AuthService } from '../../services/auth.service';
-import { getSessionScope } from '../../services/session-scope';
+import { AuthService } from '../../session/auth.service';
+import { getSessionScope } from '../../session/session-scope';
 import { AppleSignIn } from '../auth/apple-sign-in';
 import { GoogleSignIn } from '../auth/google-sign-in';
 import { Dialog } from '../dialog';

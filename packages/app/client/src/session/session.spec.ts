@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ApiError } from './api';
-import { restoreSession } from './session';
-import { changeSession, getSessionScope } from './services/session-scope';
+import { ApiError } from '../api';
+import { restoreSession } from './session-context';
+import { changeSession, getSessionScope } from './session-scope';
 
 const { authService } = vi.hoisted(() => ({
     authService: {
@@ -23,7 +23,7 @@ const { authService } = vi.hoisted(() => ({
 
 vi.mock('react-native', () => ({ Platform: { OS: 'ios' } }));
 vi.mock('expo-router', () => ({ useRouter: () => ({ replace: vi.fn() }) }));
-vi.mock('./services/auth.service', () => ({ AuthService: authService }));
+vi.mock('./auth.service', () => ({ AuthService: authService }));
 
 describe('restoreSession', () => {
     beforeEach(() => {

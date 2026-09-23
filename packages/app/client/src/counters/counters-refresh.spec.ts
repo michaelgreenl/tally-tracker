@@ -4,17 +4,17 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 import { CounterProvider, useCounters } from './counter-context';
-import { CounterService } from '../services/counter.service';
-import { SyncManager } from '../services/sync-manager';
+import { CounterService } from './counter.service';
+import { SyncManager } from './sync-manager';
 
 import type { ClientCounter, HexColor } from '@tally/core/client';
 import type { Root } from 'react-dom/client';
 
 vi.mock('expo-crypto', () => ({ getRandomBytes: vi.fn(), randomUUID: vi.fn() }));
 vi.mock('react-native', () => ({ AppState: { addEventListener: () => ({ remove() {} }) } }));
-vi.mock('../session', () => ({ useSession: () => ({ ready: true, user: { id: 'account' } }) }));
+vi.mock('../session/session-context', () => ({ useSession: () => ({ ready: true, user: { id: 'account' } }) }));
 vi.mock('../api', () => ({ ApiError: Error, getErrorMessage: vi.fn(), REQUEST_FAILED_MESSAGE: 'Failed' }));
-vi.mock('../services/counter.service', () => ({
+vi.mock('./counter.service', () => ({
     CounterService: {
         getOrder: async () => [],
         getAllLocal: vi.fn(),
@@ -22,11 +22,11 @@ vi.mock('../services/counter.service', () => ({
         persist: vi.fn(),
     },
 }));
-vi.mock('../services/sync-manager', () => ({
+vi.mock('./sync-manager', () => ({
     SyncManager: { init() {}, dispose() {}, processQueue: vi.fn() },
 }));
-vi.mock('../services/sync-queue', () => ({ SyncQueue: { get: async () => [] } }));
-vi.mock('../socket', () => ({
+vi.mock('./sync-queue', () => ({ SyncQueue: { get: async () => [] } }));
+vi.mock('./socket', () => ({
     subscribeToCounterUpdates: () => () => {},
     connectSocket() {},
     disconnectSocket() {},

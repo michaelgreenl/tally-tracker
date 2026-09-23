@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 import apiFetch, { ApiError } from '../api';
-import { changeSession, SessionChangedError } from './session-scope';
+import { changeSession, SessionChangedError } from '../session/session-scope';
 import { billingApiKey, BillingService, purchaseNotice } from './billing.service';
 
 import type { PurchasesPackage } from 'react-native-purchases';

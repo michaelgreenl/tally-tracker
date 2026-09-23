@@ -2,11 +2,11 @@ import { NOT_FOUND } from '@tally/core/client';
 import * as Network from 'expo-network';
 
 import apiFetch, { ApiError } from '../api';
-import { AuthService } from './auth.service';
+import { AuthService } from '../session/auth.service';
 import { SyncQueue } from './sync-queue';
-import { pendingWidgetTaps } from './widget-sync';
-import { assertSession, getSessionScope, SessionChangedError } from './session-scope';
-import type { SessionScope } from './session-scope';
+import { pendingWidgetTaps } from '../widgets/widget-sync';
+import { assertSession, getSessionScope, SessionChangedError } from '../session/session-scope';
+import type { SessionScope } from '../session/session-scope';
 
 import type { MutationCommand } from './sync-queue';
 import type {

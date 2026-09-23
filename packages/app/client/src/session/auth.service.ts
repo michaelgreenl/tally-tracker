@@ -2,9 +2,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import apiFetch from '../api';
 import { tokenStorage } from './token-storage';
-import { CounterStorage } from './counter-storage';
-import { SyncQueue } from './sync-queue';
-import { widgetBridge } from './widget-bridge';
+import { CounterStorage } from '../counters/counter-storage';
+import { SyncQueue } from '../counters/sync-queue';
+import { widgetBridge } from '../widgets/widget-bridge';
 import { assertSession, getSessionScope, SessionChangedError, writeSession } from './session-scope';
 import type { SessionScope } from './session-scope';
 

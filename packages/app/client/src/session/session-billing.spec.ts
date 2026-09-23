@@ -3,8 +3,8 @@ import { act, createElement, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
-import { SessionProvider, useSession } from './session';
-import { changeSession, getSessionScope, writeSession } from './services/session-scope';
+import { SessionProvider, useSession } from './session-context';
+import { changeSession, getSessionScope, writeSession } from './session-scope';
 
 import type { ClientUser } from '@tally/core/client';
 import type { Root } from 'react-dom/client';
@@ -31,13 +31,13 @@ const { auth, billing, apiKey, appState, router } = vi.hoisted(() => ({
 }));
 vi.mock('react-native', () => ({ Platform: { OS: 'ios' }, AppState: appState }));
 vi.mock('expo-router', () => ({ useRouter: () => router }));
-vi.mock('./api', () => ({
+vi.mock('../api', () => ({
     ApiError: Error,
     getErrorMessage: (_error: unknown, message: string) => message,
     setUnauthorizedHandler: () => () => undefined,
 }));
-vi.mock('./services/auth.service', () => ({ AuthService: auth }));
-vi.mock('./services/billing.service', () => ({ BillingService: billing, billingApiKey: apiKey }));
+vi.mock('./auth.service', () => ({ AuthService: auth }));
+vi.mock('../billing/billing.service', () => ({ BillingService: billing, billingApiKey: apiKey }));
 
 const basic = { id: 'account-a', email: 'a@example.com', tier: 'BASIC', emailVerified: true } as ClientUser;
 const premium = { ...basic, tier: 'PREMIUM' } as ClientUser;

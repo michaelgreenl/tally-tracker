@@ -1,9 +1,9 @@
 import { Platform } from 'react-native';
 import { io } from 'socket.io-client';
 
-import { API_URL } from './api';
-import { AuthService } from './services/auth.service';
-import { getSessionScope } from './services/session-scope';
+import { API_URL } from '../api';
+import { AuthService } from '../session/auth.service';
+import { getSessionScope } from '../session/session-scope';
 
 const socket = io(API_URL || undefined, {
     autoConnect: false,

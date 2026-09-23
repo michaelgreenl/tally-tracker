@@ -6,7 +6,7 @@ import { ActivityIndicator, Appearance, Platform, StyleSheet, View } from 'react
 import { colors } from '../colors';
 import { CounterProvider } from '../counters/counter-context';
 import { initSentry, withSentry } from '../monitoring/sentry';
-import { SessionProvider, useSession } from '../session';
+import { SessionProvider, useSession } from '../session/session-context';
 import { Snackbar } from '../components/snackbar';
 
 initSentry();

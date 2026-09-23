@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '../colors';
 import { useCounters } from '../counters/counter-context';
-import { useSession } from '../session';
+import { useSession } from '../session/session-context';
 
 export default function JoinScreen() {
     const router = useRouter();

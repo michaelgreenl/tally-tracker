@@ -1,13 +1,13 @@
 import { addCounterAmount, counterValueSchema } from '@tally/core/client';
 import { z } from 'zod';
 
-import { CounterStorage } from './counter-storage';
-import { SyncQueue } from './sync-queue';
-import { assertSession } from './session-scope';
+import { CounterStorage } from '../counters/counter-storage';
+import { SyncQueue } from '../counters/sync-queue';
+import { assertSession } from '../session/session-scope';
 import { widgetBridge } from './widget-bridge';
 
 import type { ClientCounter } from '@tally/core/client';
-import type { SessionScope } from './session-scope';
+import type { SessionScope } from '../session/session-scope';
 
 const tapsSchema = z.array(
     z.object({

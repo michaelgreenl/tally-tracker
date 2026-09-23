@@ -10,8 +10,8 @@ import { AuthLink, styles as formStyles } from '../components/auth-form';
 import { BackButton } from '../components/back-button';
 import { Snackbar } from '../components/snackbar';
 import { TallyBrand } from '../components/tally-brand';
-import { billingApiKey, BillingService, purchaseNotice } from '../services/billing.service';
-import { useSession } from '../session';
+import { billingApiKey, BillingService, purchaseNotice } from '../billing/billing.service';
+import { useSession } from '../session/session-context';
 
 // Guests and the web can preview plans; native checkout always uses the store's package and price.
 const plans = [

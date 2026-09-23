@@ -18,7 +18,7 @@ import { TallyBrand } from '../components/tally-brand';
 import { ToolbarButton } from '../components/toolbar-button';
 import { useCounters } from '../counters/counter-context';
 import { GUEST_COUNTER_CAP, GUEST_COUNTER_LIMIT_MESSAGE, orderCounters } from '../counters/counter-rules';
-import { useSession } from '../session';
+import { useSession } from '../session/session-context';
 
 import type { ClientCounter } from '@tally/core/client';
 

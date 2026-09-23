@@ -1,8 +1,8 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 
-import { CounterStorage } from './counter-storage';
-import { SyncQueue } from './sync-queue';
-import { changeSession } from './session-scope';
+import { CounterStorage } from '../counters/counter-storage';
+import { SyncQueue } from '../counters/sync-queue';
+import { changeSession } from '../session/session-scope';
 import { WidgetSync } from './widget-sync';
 
 const device = vi.hoisted(() => ({

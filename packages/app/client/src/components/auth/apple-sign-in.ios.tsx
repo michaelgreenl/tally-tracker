@@ -4,9 +4,9 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../colors';
 import { ApiError, getErrorMessage } from '../../api';
-import { useSession } from '../../session';
-import { AuthService } from '../../services/auth.service';
-import { assertSession, getSessionScope } from '../../services/session-scope';
+import { useSession } from '../../session/session-context';
+import { AuthService } from '../../session/auth.service';
+import { assertSession, getSessionScope } from '../../session/session-scope';
 import { authorizeApple } from './native-authorization';
 import type { AppleSignInProps } from './apple-sign-in';
 import { SocialSignInButton } from './social-sign-in-button';

@@ -16,7 +16,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 import { colors } from '../colors';
 import { REQUEST_FAILED_MESSAGE } from '../api';
 import { useCounters } from '../counters/counter-context';
-import { useSession } from '../session';
+import { useSession } from '../session/session-context';
 import { CounterMenu } from './counter-menu';
 import { CounterStepper } from './counter-stepper';
 

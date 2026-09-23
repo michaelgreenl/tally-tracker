@@ -1,4 +1,4 @@
-import { widgetBridge } from './widget-bridge';
+import { widgetBridge } from '../widgets/widget-bridge';
 
 export class SessionChangedError extends Error {
     constructor() {

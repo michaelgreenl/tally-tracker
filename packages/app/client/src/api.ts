@@ -1,9 +1,9 @@
 import { OK_NO_CONTENT, REQUEST_TIMEOUT, SERVER_ERROR, UNAUTHORIZED } from '@tally/core/client';
 import { Platform } from 'react-native';
 
-import { tokenStorage } from './services/token-storage';
-import { assertSession, getSessionScope, SessionChangedError, writeSession } from './services/session-scope';
-import type { SessionScope } from './services/session-scope';
+import { tokenStorage } from './session/token-storage';
+import { assertSession, getSessionScope, SessionChangedError, writeSession } from './session/session-scope';
+import type { SessionScope } from './session/session-scope';
 
 import type { AuthResponse } from '@tally/core/client';
 

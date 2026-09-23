@@ -3,10 +3,10 @@ import { useRouter } from 'expo-router';
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 
-import { ApiError, getErrorMessage, setUnauthorizedHandler } from './api';
-import { AuthService, USER_KEY } from './services/auth.service';
-import { billingApiKey, BillingService } from './services/billing.service';
-import { assertSession, changeSession, getSessionScope, SessionChangedError } from './services/session-scope';
+import { ApiError, getErrorMessage, setUnauthorizedHandler } from '../api';
+import { AuthService, USER_KEY } from './auth.service';
+import { billingApiKey, BillingService } from '../billing/billing.service';
+import { assertSession, changeSession, getSessionScope, SessionChangedError } from './session-scope';
 
 import type { AuthRequest, GoogleLoginRequest, AppleLoginRequest, ClientUser } from '@tally/core/client';
 import type { PropsWithChildren } from 'react';

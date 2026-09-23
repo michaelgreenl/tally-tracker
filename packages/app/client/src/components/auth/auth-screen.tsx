@@ -16,7 +16,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors } from '../../colors';
-import { useSession } from '../../session';
+import { useSession } from '../../session/session-context';
 import { unstable_styles as webStyles } from '../auth-form.module.css';
 import { AuthLink, FormField, styles as formStyles } from '../auth-form';
 import { BackButton } from '../back-button';

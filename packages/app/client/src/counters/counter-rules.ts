@@ -1,6 +1,6 @@
 import { addCounterAmount } from '@tally/core/client';
 import type { ClientCounter, CreateCounterRequest, IncrementCounterRequest } from '@tally/core/client';
-import type { MutationCommand } from '../services/sync-queue';
+import type { MutationCommand } from './sync-queue';
 
 export const GUEST_COUNTER_CAP = 3;
 export const GUEST_COUNTER_LIMIT_MESSAGE = 'Counter limit reached';

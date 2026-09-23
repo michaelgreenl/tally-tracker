@@ -1,8 +1,8 @@
 import * as Crypto from 'expo-crypto';
 
 import apiFetch from '../api';
-import { assertSession, getSessionScope } from './session-scope';
-import type { SessionScope } from './session-scope';
+import { assertSession, getSessionScope } from '../session/session-scope';
+import type { SessionScope } from '../session/session-scope';
 import { CounterStorage } from './counter-storage';
 import { SyncManager } from './sync-manager';
 import { SyncQueue } from './sync-queue';

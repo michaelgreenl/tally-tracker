@@ -9,7 +9,7 @@ import { BackButton } from '../components/back-button';
 import { Dialog } from '../components/dialog';
 import { SignInMethods } from '../components/settings/sign-in-methods';
 import { SettingsAction } from '../components/settings/settings-action';
-import { useSession } from '../session';
+import { useSession } from '../session/session-context';
 
 import type { PropsWithChildren } from 'react';
 

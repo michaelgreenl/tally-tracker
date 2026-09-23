@@ -3,13 +3,13 @@ import { act, createElement, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
-import { SessionProvider, useSession } from './session';
-import { AuthService, USER_KEY } from './services/auth.service';
-import { CounterService } from './services/counter.service';
-import { CounterStorage } from './services/counter-storage';
-import { SyncQueue } from './services/sync-queue';
-import { changeSession, getSessionScope, SessionChangedError, writeSession } from './services/session-scope';
-import { tokenStorage } from './services/token-storage';
+import { SessionProvider, useSession } from './session-context';
+import { AuthService, USER_KEY } from './auth.service';
+import { CounterService } from '../counters/counter.service';
+import { CounterStorage } from '../counters/counter-storage';
+import { SyncQueue } from '../counters/sync-queue';
+import { changeSession, getSessionScope, SessionChangedError, writeSession } from './session-scope';
+import { tokenStorage } from './token-storage';
 
 import type { ClientCounter, ClientUser } from '@tally/core/client';
 import type { Root } from 'react-dom/client';
@@ -34,7 +34,7 @@ vi.mock('expo-secure-store', () => ({
         secure.delete(key);
     },
 }));
-vi.mock('./services/token-storage', () => import('./services/token-storage.native'));
+vi.mock('./token-storage', () => import('./token-storage.native'));
 vi.mock('expo-crypto', () => ({ randomUUID: () => crypto.randomUUID() }));
 vi.mock('expo-network', () => ({ getNetworkStateAsync: async () => ({ isConnected: false }) }));
 vi.mock('react-native', () => ({ Platform: { OS: 'ios' }, AppState: { addEventListener: () => ({ remove() {} }) } }));

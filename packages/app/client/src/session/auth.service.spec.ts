@@ -5,7 +5,7 @@ import apiFetch from '../api';
 import { AuthService, USER_KEY } from './auth.service';
 import { changeSession } from './session-scope';
 import { tokenStorage } from './token-storage';
-import { widgetBridge } from './widget-bridge';
+import { widgetBridge } from '../widgets/widget-bridge';
 
 vi.mock('../api', () => ({ default: vi.fn() }));
 vi.mock('expo-crypto', () => ({ randomUUID: () => crypto.randomUUID() }));
@@ -19,7 +19,7 @@ vi.mock('./token-storage', () => ({
         clear: vi.fn(),
     },
 }));
-vi.mock('./widget-bridge', () => ({ widgetBridge: { hide: vi.fn() } }));
+vi.mock('../widgets/widget-bridge', () => ({ widgetBridge: { hide: vi.fn() } }));
 
 beforeEach(() => {
     vi.resetAllMocks();

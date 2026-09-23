@@ -1,9 +1,16 @@
 ### Client Side Data Flow
 
-`src/counters/counter-rules.ts` owns pure ordering, guest limits, and snapshot reconciliation.
-`counter-context.tsx` owns React state, subscriptions, and serialized mutation timing.
-`CounterService` owns storage access and command creation. `SyncManager` owns queue delivery and retries.
-Keep session, revision, and pending-write checks with the operations they protect.
+Client modules are grouped by the feature that owns them:
+
+- `src/session/`: account state, authentication, credentials, and session write guards.
+- `src/billing/`: purchase and restoration operations.
+- `src/counters/`: counter state, storage, mutation queue, delivery, and socket updates.
+- `src/widgets/`: native widget bridge and durable counter-tap imports.
+- `src/api.ts`: shared HTTP transport and token refresh.
+
+Tests stay beside their modules. Import leaf files directly; avoid feature-wide export barrels.
+
+`src/counters/counter-rules.ts` owns pure ordering, guest limits, and snapshot reconciliation. `counter-context.tsx` owns React state, subscriptions, and serialized mutation timing. `CounterService` owns storage access and command creation. `SyncManager` owns queue delivery and retries. Keep session, revision, and pending-write checks with the operations they protect.
 
 ```mermaid
 %%{

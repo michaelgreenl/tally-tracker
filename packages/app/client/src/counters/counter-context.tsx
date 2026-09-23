@@ -10,13 +10,13 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { AppState } from 'react-native';
 
 import { ApiError, getErrorMessage, REQUEST_FAILED_MESSAGE } from '../api';
-import { CounterService } from '../services/counter.service';
-import { SyncManager } from '../services/sync-manager';
-import { SyncQueue } from '../services/sync-queue';
-import { WidgetSync } from '../services/widget-sync';
-import { assertSession, getSessionScope, SessionChangedError, writeSession } from '../services/session-scope';
-import { connectSocket, disconnectSocket, subscribeToCounterUpdates } from '../socket';
-import { useSession } from '../session';
+import { CounterService } from './counter.service';
+import { SyncManager } from './sync-manager';
+import { SyncQueue } from './sync-queue';
+import { WidgetSync } from '../widgets/widget-sync';
+import { assertSession, getSessionScope, SessionChangedError, writeSession } from '../session/session-scope';
+import { connectSocket, disconnectSocket, subscribeToCounterUpdates } from './socket';
+import { useSession } from '../session/session-context';
 
 import {
     GUEST_COUNTER_LIMIT_MESSAGE,
@@ -28,7 +28,7 @@ import {
 
 import type { ClientCounter, HexColor, UpdateCounterRequest } from '@tally/core/client';
 import type { PropsWithChildren } from 'react';
-import type { SyncStatus } from '../services/sync-manager';
+import type { SyncStatus } from './sync-manager';
 
 type ActionResult = { success: true } | { success: false; message: string };
 

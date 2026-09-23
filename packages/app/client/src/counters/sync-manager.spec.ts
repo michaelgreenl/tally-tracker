@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiError } from '../api';
 import { SyncManager } from './sync-manager';
-import { changeSession, SessionChangedError } from './session-scope';
+import { changeSession, SessionChangedError } from '../session/session-scope';
 import { SyncQueue } from './sync-queue';
 
 import type { MutationCommand } from './sync-queue';
@@ -28,7 +28,7 @@ const { apiError, apiFetch, authService, network, storage } = vi.hoisted(() => {
 });
 
 vi.mock('../api', () => ({ ApiError: apiError, default: apiFetch }));
-vi.mock('./auth.service', () => ({ AuthService: authService }));
+vi.mock('../session/auth.service', () => ({ AuthService: authService }));
 vi.mock('@react-native-async-storage/async-storage', () => ({
     default: {
         getItem: async (key: string) => storage.get(key) ?? null,

@@ -30,8 +30,8 @@ vi.mock('expo-router', () => ({
 vi.mock('expo-router/head', () => ({ default: () => null }));
 vi.mock('./components/auth-form.module.css', () => ({ unstable_styles: {} }));
 vi.mock('./components/snackbar', () => ({ Snackbar: () => null }));
-vi.mock('./session', () => ({ useSession: () => session }));
-vi.mock('./services/billing.service', () => ({
+vi.mock('./session/session-context', () => ({ useSession: () => session }));
+vi.mock('./billing/billing.service', () => ({
     BillingService: billing,
     billingApiKey: () => 'test_example',
     purchaseNotice: () => null,

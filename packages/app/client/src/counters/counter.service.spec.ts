@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CounterService } from './counter.service';
 import apiFetch from '../api';
-import { changeSession } from './session-scope';
+import { changeSession } from '../session/session-scope';
 
 import type { ClientCounter, HexColor } from '@tally/core/client';
 
@@ -16,7 +16,7 @@ const { addCommand, processQueue, getQueue } = vi.hoisted(() => ({
 
 vi.mock('expo-crypto', () => ({ randomUUID: () => 'command-1' }));
 vi.mock('../api', () => ({ default: vi.fn() }));
-vi.mock('./auth.service', () => ({
+vi.mock('../session/auth.service', () => ({
     AuthService: { getCachedUser: () => Promise.resolve({ id: 'user-1' }) },
 }));
 vi.mock('./counter-storage', () => ({ CounterStorage: {} }));

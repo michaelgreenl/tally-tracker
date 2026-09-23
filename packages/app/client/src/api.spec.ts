@@ -2,7 +2,7 @@ import { OK, UNAUTHORIZED } from '@tally/core/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import apiFetch, { ApiError, REQUEST_FAILED_MESSAGE, setUnauthorizedHandler } from './api';
-import { changeSession, SessionChangedError, writeSession } from './services/session-scope';
+import { changeSession, SessionChangedError, writeSession } from './session/session-scope';
 
 const { fetchMock, tokens, tokenStorage } = vi.hoisted(() => ({
     fetchMock: vi.fn(),
@@ -17,7 +17,7 @@ const { fetchMock, tokens, tokenStorage } = vi.hoisted(() => ({
 }));
 
 vi.mock('react-native', () => ({ Platform: { OS: 'ios' } }));
-vi.mock('./services/token-storage', () => ({ tokenStorage }));
+vi.mock('./session/token-storage', () => ({ tokenStorage }));
 
 const jsonResponse = (body: unknown, status = OK) =>
     new Response(JSON.stringify(body), {

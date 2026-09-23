@@ -5,9 +5,9 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 
 import { colors } from '../../colors';
 import { getErrorMessage } from '../../api';
-import { AuthService } from '../../services/auth.service';
-import { useSession } from '../../session';
-import { assertSession, getSessionScope } from '../../services/session-scope';
+import { AuthService } from '../../session/auth.service';
+import { useSession } from '../../session/session-context';
+import { assertSession, getSessionScope } from '../../session/session-scope';
 import { Dialog } from '../dialog';
 import { FormField, styles as formStyles } from '../auth-form';
 import { GoogleButton } from './google-button';
