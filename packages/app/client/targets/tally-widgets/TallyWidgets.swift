@@ -118,18 +118,27 @@ private enum CounterTextTop: AlignmentID {
   static func defaultValue(in dimensions: ViewDimensions) -> CGFloat { dimensions[.top] }
 }
 
+private enum CounterTextCenter: AlignmentID {
+  static func defaultValue(in dimensions: ViewDimensions) -> CGFloat {
+    dimensions[VerticalAlignment.center]
+  }
+}
+
 extension VerticalAlignment {
   fileprivate static let counterTextTop = VerticalAlignment(CounterTextTop.self)
+  fileprivate static let counterTextCenter = VerticalAlignment(CounterTextCenter.self)
 }
 
 struct CounterWidgetView: View {
   let entry: CounterEntry
   @Environment(\.widgetFamily) private var family
   @Environment(\.widgetRenderingMode) private var renderingMode
+  @Environment(\.widgetContentMargins) private var contentMargins
   @Environment(\.locale) private var locale
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @ScaledMetric(relativeTo: .headline) private var titleFontSize = 17.0
   @ScaledMetric(relativeTo: .largeTitle) private var countFontSize = 34.0
+  @ScaledMetric(relativeTo: .largeTitle) private var lockScreenCountFontSize = 40.0
 
   var body: some View {
     Group {
@@ -166,6 +175,10 @@ struct CounterWidgetView: View {
       }
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .padding(
+      family == .systemSmall
+        ? EdgeInsets(top: 16, leading: 18, bottom: 12, trailing: 12) : contentMargins
+    )
     .dynamicTypeSize(family == .systemSmall ? .large : dynamicTypeSize)
     .foregroundStyle(family == .accessoryRectangular ? Color.primary : .white)
     .widgetURL(tallyURL)
@@ -175,7 +188,7 @@ struct CounterWidgetView: View {
   }
 
   private func smallCounter(_ counter: WidgetCounter, owner: String) -> some View {
-    VStack(alignment: .leading, spacing: 0) {
+    VStack(alignment: .leading, spacing: 2) {
       Text(counter.title)
         .font(.system(size: 24, weight: .semibold))
         .lineLimit(1)
@@ -183,15 +196,20 @@ struct CounterWidgetView: View {
       HStack(alignment: .bottom, spacing: 8) {
         VStack(alignment: .leading, spacing: 4) {
           if let metric = counter.metric, !metric.isEmpty {
-            Text(metric).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+            Text(metric)
+              .font(.system(size: 14, weight: .semibold))
+              .foregroundStyle(Color(white: 181 / 255))
+              .lineLimit(1)
           }
           Spacer(minLength: 0)
           value(counter)
             .fixedSize(horizontal: false, vertical: true)
-            .frame(height: 56)
+            .frame(height: 56, alignment: .bottom)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.bottom, 2)
+            .offset(x: 2)
         }
-        VStack(spacing: 8) {
+        VStack(spacing: 10) {
           control(counter, owner: owner, increase: true)
           control(counter, owner: owner, increase: false)
         }
@@ -214,14 +232,18 @@ struct CounterWidgetView: View {
   }
 
   private func header(_ counter: WidgetCounter) -> some View {
-    HStack(alignment: .counterTextTop, spacing: 8) {
+    let hasMetric = !(counter.metric ?? "").isEmpty
+    return HStack(alignment: hasMetric ? .counterTextTop : .counterTextCenter, spacing: 8) {
       nameAndMetric(counter).frame(maxWidth: .infinity, alignment: .leading)
       value(counter)
     }
+    .padding(.horizontal, 8)
   }
 
   private func value(_ counter: WidgetCounter) -> some View {
-    let size = family == .systemSmall ? 64 : countFontSize
+    let size =
+      family == .systemSmall
+      ? 64 : (family == .accessoryRectangular ? lockScreenCountFontSize : countFontSize)
     let baseFont = UIFont.monospacedDigitSystemFont(
       ofSize: size, weight: family == .systemSmall ? .semibold : .bold)
     let font = UIFont(
@@ -242,10 +264,22 @@ struct CounterWidgetView: View {
       .font(Font(font))
       .lineLimit(1)
       .minimumScaleFactor(minimumScale)
-      // Use the same font for drawing and measuring the visible glyph tops.
+      // Align visible glyphs, not the font's empty margins.
+      .alignmentGuide(.leading) { dimensions in
+        let scale = max(minimumScale, min(1, dimensions.width / max(width, 1)))
+        return dimensions[.leading] + (family == .systemSmall ? bounds.minX * scale : 0)
+      }
       .alignmentGuide(.counterTextTop) { dimensions in
         let scale = max(minimumScale, min(1, dimensions.width / max(width, 1)))
         return dimensions[.firstTextBaseline] - top * scale
+      }
+      .alignmentGuide(.counterTextCenter) { dimensions in
+        let scale = max(minimumScale, min(1, dimensions.width / max(width, 1)))
+        return dimensions[.firstTextBaseline] - bounds.midY * scale
+      }
+      .alignmentGuide(.bottom) { dimensions in
+        let scale = max(minimumScale, min(1, dimensions.width / max(width, 1)))
+        return dimensions[.lastTextBaseline] - bounds.minY * scale
       }
   }
 
@@ -294,6 +328,7 @@ struct TallyCounterWidget: Widget {
     .configurationDisplayName("Counter")
     .description("Count without opening Tally. Changes sync when the app opens.")
     .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular])
+    .contentMarginsDisabled()
   }
 }
 
