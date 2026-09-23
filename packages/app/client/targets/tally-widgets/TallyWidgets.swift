@@ -127,6 +127,7 @@ struct CounterWidgetView: View {
   @Environment(\.widgetFamily) private var family
   @Environment(\.widgetRenderingMode) private var renderingMode
   @Environment(\.locale) private var locale
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @ScaledMetric(relativeTo: .headline) private var titleFontSize = 17.0
   @ScaledMetric(relativeTo: .largeTitle) private var countFontSize = 34.0
 
@@ -150,11 +151,7 @@ struct CounterWidgetView: View {
           } else if family == .accessoryRectangular {
             header(counter)
           } else {
-            VStack(spacing: 12) {
-              header(counter)
-              controls(counter, owner: owner)
-                .frame(maxHeight: .infinity)
-            }
+            smallCounter(counter, owner: owner)
           }
         }
         .privacySensitive()
@@ -169,11 +166,39 @@ struct CounterWidgetView: View {
       }
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .dynamicTypeSize(family == .systemSmall ? .large : dynamicTypeSize)
     .foregroundStyle(family == .accessoryRectangular ? Color.primary : .white)
     .widgetURL(tallyURL)
     .containerBackground(
       family == .accessoryRectangular
         ? Color.clear : Color(red: 37 / 255, green: 41 / 255, blue: 46 / 255), for: .widget)
+  }
+
+  private func smallCounter(_ counter: WidgetCounter, owner: String) -> some View {
+    VStack(alignment: .leading, spacing: 0) {
+      Text(counter.title)
+        .font(.system(size: 24, weight: .semibold))
+        .lineLimit(1)
+        .minimumScaleFactor(0.7)
+      HStack(alignment: .bottom, spacing: 8) {
+        VStack(alignment: .leading, spacing: 4) {
+          if let metric = counter.metric, !metric.isEmpty {
+            Text(metric).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+          }
+          Spacer(minLength: 0)
+          value(counter)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(height: 56)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        VStack(spacing: 8) {
+          control(counter, owner: owner, increase: true)
+          control(counter, owner: owner, increase: false)
+        }
+        .frame(width: 56)
+        .frame(maxHeight: .infinity, alignment: .bottom)
+      }
+    }
   }
 
   private func nameAndMetric(_ counter: WidgetCounter) -> some View {
@@ -196,12 +221,14 @@ struct CounterWidgetView: View {
   }
 
   private func value(_ counter: WidgetCounter) -> some View {
-    let baseFont = UIFont.monospacedDigitSystemFont(ofSize: countFontSize, weight: .bold)
+    let size = family == .systemSmall ? 64 : countFontSize
+    let baseFont = UIFont.monospacedDigitSystemFont(
+      ofSize: size, weight: family == .systemSmall ? .semibold : .bold)
     let font = UIFont(
       descriptor: baseFont.fontDescriptor.withDesign(.rounded) ?? baseFont.fontDescriptor,
-      size: countFontSize)
+      size: size)
     let text = counter.count.formatted(.number.precision(.fractionLength(0...6)).locale(locale))
-    return alignedText(text, font: font, minimumScale: 0.35)
+    return alignedText(text, font: font, minimumScale: family == .systemSmall ? 0.1 : 0.35)
       .contentTransition(.numericText(value: counter.count))
   }
 
