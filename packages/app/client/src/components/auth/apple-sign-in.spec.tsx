@@ -3,8 +3,8 @@ import { act, createElement, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { AppleSignIn } from './apple-sign-in.ios';
-import { SignInMethods } from './sign-in-methods';
-import { changeSession } from '../services/session-scope';
+import { SignInMethods } from '../settings/sign-in-methods';
+import { changeSession } from '../../services/session-scope';
 import type { ReactNode } from 'react';
 import type { Root } from 'react-dom/client';
 import type { AppleAuthenticationSignInOptions } from 'expo-apple-authentication';
@@ -56,9 +56,9 @@ vi.mock('expo-router', () => ({
     },
 }));
 vi.mock('expo-crypto', () => ({ randomUUID: () => crypto.randomUUID() }));
-vi.mock('../session', () => ({ useSession: () => ({ login: mocks.login, refreshUser: mocks.refreshUser }) }));
-vi.mock('../api', () => ({ ApiError: class extends Error {}, getErrorMessage: (error: Error) => error.message }));
-vi.mock('../services/auth.service', () => ({
+vi.mock('../../session', () => ({ useSession: () => ({ login: mocks.login, refreshUser: mocks.refreshUser }) }));
+vi.mock('../../api', () => ({ ApiError: class extends Error {}, getErrorMessage: (error: Error) => error.message }));
+vi.mock('../../services/auth.service', () => ({
     AuthService: { connectApple: mocks.connect, connectGoogle: mocks.connectGoogle, signInMethods: mocks.connection },
 }));
 vi.mock('./apple-sign-in', () => ({ AppleSignIn }));

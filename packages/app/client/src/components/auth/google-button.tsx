@@ -2,9 +2,16 @@ import { GoogleLogin, GoogleOAuthProvider } from '@react-oauth/google';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useState } from 'react';
 
-import { colors } from '../colors';
-import type { GoogleButtonProps } from './google-sign-in';
-import { MessageText } from './message-text';
+import { colors } from '../../colors';
+import { MessageText } from '../message-text';
+
+export type GoogleButtonProps = {
+    disabled: boolean;
+    busy: boolean;
+    onCredential: (idToken: string) => Promise<void>;
+    onError: (message: string) => void;
+    onBusyChange: (busy: boolean) => void;
+};
 
 export function GoogleButton({ disabled, busy, onCredential, onError }: GoogleButtonProps) {
     const [failed, setFailed] = useState(false);

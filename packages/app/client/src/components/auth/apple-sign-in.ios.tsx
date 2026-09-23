@@ -1,13 +1,13 @@
 import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
-import { randomUUID } from 'expo-crypto';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { colors } from '../colors';
-import { ApiError, getErrorMessage } from '../api';
-import { useSession } from '../session';
-import { AuthService } from '../services/auth.service';
-import { assertSession, getSessionScope } from '../services/session-scope';
+import { colors } from '../../colors';
+import { ApiError, getErrorMessage } from '../../api';
+import { useSession } from '../../session';
+import { AuthService } from '../../services/auth.service';
+import { assertSession, getSessionScope } from '../../services/session-scope';
+import { authorizeApple } from './native-authorization';
 import type { AppleSignInProps } from './apple-sign-in';
 import { SocialSignInButton } from './social-sign-in-button';
 
@@ -64,17 +64,10 @@ export function AppleSignIn({
         onBusyChange(true);
         onError('');
         try {
-            const nonce = randomUUID();
-            const state = randomUUID();
-            const credential = await sdk.signInAsync({
-                requestedScopes: [sdk.AppleAuthenticationScope.EMAIL],
-                nonce,
-                state,
-            });
+            const credential = await authorizeApple(sdk);
             if (focus.current !== startedFocus) return;
             assertSession(scope);
-            if (credential.state !== state || !credential.authorizationCode) throw new Error('Invalid Apple response');
-            const request = { authorizationCode: credential.authorizationCode, nonce, rememberMe };
+            const request = { ...credential, rememberMe };
             const result = connect ? await AuthService.connectApple(request) : await session.login(request);
             if (focus.current !== startedFocus) return;
             if (!result.success) {

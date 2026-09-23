@@ -3,14 +3,15 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { getErrorMessage } from '../api';
-import { colors } from '../colors';
-import { AuthService } from '../services/auth.service';
-import { getSessionScope } from '../services/session-scope';
-import { AppleSignIn } from './apple-sign-in';
-import { GoogleSignIn } from './google-sign-in';
-import { Dialog } from './dialog';
-import { MessageText } from './message-text';
+import { getErrorMessage } from '../../api';
+import { colors } from '../../colors';
+import { AuthService } from '../../services/auth.service';
+import { getSessionScope } from '../../services/session-scope';
+import { AppleSignIn } from '../auth/apple-sign-in';
+import { GoogleSignIn } from '../auth/google-sign-in';
+import { Dialog } from '../dialog';
+import { MessageText } from '../message-text';
+import { SettingsAction } from './settings-action';
 
 type Props = { disabled: boolean; onBusyChange: (busy: boolean) => void };
 
@@ -19,19 +20,18 @@ export function SignInMethods({ disabled, onBusyChange }: Props) {
     useFocusEffect(useCallback(() => () => setOpen(false), []));
     return (
         <>
-            <Pressable
-                accessibilityRole='button'
+            <SettingsAction
+                label='Sign-in methods'
+                tone='text'
                 accessibilityState={{ disabled, expanded: open }}
                 disabled={disabled}
                 onPress={() => setOpen(true)}
-                style={({ pressed }) => [styles.row, pressed && styles.pressed]}
                 testID='settings-sign-in-methods'
             >
-                <Text style={styles.label}>Sign-in methods</Text>
                 <Text accessible={false} aria-hidden style={styles.chevron}>
                     ›
                 </Text>
-            </Pressable>
+            </SettingsAction>
             {open && <MethodsDialog onClose={() => setOpen(false)} onBusyChange={onBusyChange} />}
         </>
     );
@@ -197,19 +197,8 @@ function Connected({ provider }: { provider: 'Google' | 'Apple' }) {
 }
 
 const styles = StyleSheet.create({
-    row: {
-        minHeight: 54,
-        paddingHorizontal: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.divider,
-    },
     label: { color: colors.text, fontSize: 15, fontWeight: '700' },
     chevron: { color: colors.muted, fontSize: 22 },
-    pressed: { backgroundColor: colors.input },
     methods: { gap: 12 },
     connected: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
     unavailable: { color: colors.muted, fontSize: 15, flexShrink: 1 },
