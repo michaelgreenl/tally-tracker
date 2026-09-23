@@ -9,4 +9,4 @@ xcrun swiftc -module-cache-path "$widget_check_dir/cache" \
 widget_ios_sdk=$(xcrun --sdk iphoneos --show-sdk-path)
 xcrun swiftc -typecheck -module-cache-path "$widget_check_dir/cache" \
     -sdk "$widget_ios_sdk" -target arm64-apple-ios17.0 \
-    targets/tally-widgets/WidgetStore.swift targets/tally-widgets/TallyWidgets.swift
+    targets/tally-widgets/*.swift

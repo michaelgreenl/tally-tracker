@@ -21,6 +21,9 @@ A development-server reload cannot install an extension. This feature needs a ne
 
 ## Data handoff
 
+The extension keeps registration in `TallyWidgets.swift`, actions in `WidgetIntents.swift`, and timelines in `WidgetProviders.swift`.
+`WidgetViews.swift` owns layouts. `CounterText.swift` owns glyph alignment. Keep layout values in the views, not in the data layer.
+
 `targets/tally-widgets/WidgetStore.swift` is shared by the extension and the local Expo module. The root `TallyWidgetBridge.podspec` includes both source locations without copying that store. The extension build comes from `@bacons/apple-targets`; native source stays outside generated `ios` files.
 
 The store uses an App Group file, a cross-process lock, and atomic writes. Each tap saves its amount and a unique command ID with the widget count. It uses the same six-decimal range as the core counter model.
