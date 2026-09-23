@@ -17,12 +17,111 @@ const google = (body = {}) =>
         .post('/users/google')
         .send({ idToken: 'google-token', rememberMe: true, ...body });
 
+async function existingAccount(email = 'existing@example.com') {
+    const password = 'Existing-password1';
+    const user = await prisma.user.create({ data: { email, password: await bcrypt.hash(password, 10) } });
+    const login = await request(app).post('/users/login').send({ email, password, rememberMe: true }).expect(200);
+    return {
+        user,
+        accessToken: login.body.data.accessToken as string,
+        refreshToken: login.body.data.refreshToken as string,
+    };
+}
+
+const connect = (accessToken: string) =>
+    request(app)
+        .post('/users/google/connect')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ idToken: 'google-token' });
+const methods = (accessToken: string) =>
+    request(app).get('/users/sign-in-methods').set('Authorization', `Bearer ${accessToken}`);
+
 beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv('GOOGLE_WEB_CLIENT_ID', '123-tally.apps.googleusercontent.com');
     vi.mocked(verifyGoogleToken).mockResolvedValue(identity);
 });
 afterEach(() => vi.unstubAllEnvs());
+
+it('connects Google to the current account without replacing its email, counters, or session', async () => {
+    const { user, accessToken } = await existingAccount();
+    const counter = await prisma.counter.create({ data: { userId: user.id, title: 'Water' } });
+    await prisma.user.update({
+        where: { id: user.id },
+        data: { appleSubject: 'existing-apple', appleRefreshToken: 'encrypted-token' },
+    });
+    expect((await methods(accessToken).expect(200)).body.data).toEqual({ google: false, apple: true });
+    const result = await connect(accessToken).expect(200);
+    expect(result.headers['set-cookie']).toBeUndefined();
+    expect(result.body.data).toBeUndefined();
+    expect((await methods(accessToken).expect(200)).body.data).toEqual({ google: true, apple: true });
+    const checked = await request(app)
+        .get('/users/check-auth')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+    expect(checked.body.data.user).toMatchObject({ id: user.id, email: user.email, emailVerified: false });
+    expect((await google().expect(200)).body.data.user.id).toBe(user.id);
+    const counters = await request(app).get('/counters').set('Authorization', `Bearer ${accessToken}`).expect(200);
+    expect(counters.body.data.counters.map((item: { id: string }) => item.id)).toEqual([counter.id]);
+    expect(await prisma.user.count()).toBe(1);
+});
+
+it('does not let two accounts claim the same Google identity or replace a linked identity', async () => {
+    const first = await existingAccount();
+    const second = await existingAccount('second@example.com');
+    const responses = await Promise.all([connect(first.accessToken), connect(second.accessToken)]);
+    expect(responses.map((response) => response.status).sort()).toEqual([200, 409]);
+    const winner = responses[0].status === 200 ? first : second;
+    const other = winner === first ? second : first;
+    expect((await methods(winner.accessToken)).body.data.google).toBe(true);
+    expect((await methods(other.accessToken)).body.data.google).toBe(false);
+    expect((await google().expect(200)).body.data.user.id).toBe(winner.user.id);
+    await connect(winner.accessToken).expect(200);
+    vi.mocked(verifyGoogleToken).mockResolvedValue({ ...identity, subject: 'replacement' });
+    await connect(winner.accessToken).expect(409);
+    expect(await prisma.user.findUnique({ where: { id: winner.user.id } })).toMatchObject({
+        googleSubject: identity.subject,
+    });
+});
+
+it('rejects unsigned or unauthenticated connection requests without linking an account', async () => {
+    const { user, accessToken } = await existingAccount(identity.email);
+    await request(app).get('/users/sign-in-methods').expect(401);
+    await request(app).post('/users/google/connect').send({ idToken: 'google-token' }).expect(401);
+    await request(app)
+        .post('/users/google/connect')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ email: identity.email })
+        .expect(422);
+    vi.mocked(verifyGoogleToken).mockRejectedValue(new Error('Invalid token'));
+    await connect(accessToken).expect(401);
+    expect(await prisma.user.findUnique({ where: { id: user.id } })).toMatchObject({
+        googleSubject: null,
+        emailVerifiedAt: null,
+    });
+    expect(await prisma.user.count()).toBe(1);
+});
+
+it('rejects a connection that finishes verification after logout', async () => {
+    const { user, accessToken, refreshToken } = await existingAccount();
+    let finish!: (value: typeof identity) => void;
+    let started!: () => void;
+    const verifying = new Promise<void>((resolve) => {
+        started = resolve;
+    });
+    vi.mocked(verifyGoogleToken).mockImplementation(() => {
+        started();
+        return new Promise((resolve) => {
+            finish = resolve;
+        });
+    });
+    const pending = connect(accessToken).then((response) => response);
+    await verifying;
+    await request(app).post('/users/logout').send({ refreshToken }).expect(200);
+    finish(identity);
+    expect((await pending).status).toBe(401);
+    expect(await prisma.user.findUnique({ where: { id: user.id } })).toMatchObject({ googleSubject: null });
+});
 
 it('creates one account across concurrent sign-ins and keeps its identity when the Google email changes', async () => {
     const responses = await Promise.all([google(), google()]);

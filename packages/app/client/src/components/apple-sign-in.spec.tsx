@@ -3,6 +3,7 @@ import { act, createElement, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { AppleSignIn } from './apple-sign-in.ios';
+import { SignInMethods } from './sign-in-methods';
 import { changeSession } from '../services/session-scope';
 import type { ReactNode } from 'react';
 import type { Root } from 'react-dom/client';
@@ -13,6 +14,7 @@ const mocks = vi.hoisted(() => ({
     login: vi.fn(),
     connect: vi.fn(),
     connection: vi.fn(),
+    connectGoogle: vi.fn(),
     refreshUser: vi.fn(),
 }));
 let focused = true;
@@ -23,7 +25,7 @@ const props = { onError: vi.fn(), onSuccess: vi.fn(), onBusyChange: vi.fn() };
 // Only native views and SDK transport are replaced. These tests cover callbacks, not native appearance.
 vi.mock('react-native', () => ({
     StyleSheet: { create: (styles: unknown) => styles },
-    Platform: { OS: 'ios' },
+    Platform: { OS: 'ios', select: (options: Record<string, unknown>) => options.ios ?? options.default },
     useWindowDimensions: () => ({ width: 440, height: 956, fontScale: 1 }),
     Modal: ({ visible, children }: { visible: boolean; children?: ReactNode }) =>
         visible ? createElement('div', null, children) : null,
@@ -57,7 +59,17 @@ vi.mock('expo-crypto', () => ({ randomUUID: () => crypto.randomUUID() }));
 vi.mock('../session', () => ({ useSession: () => ({ login: mocks.login, refreshUser: mocks.refreshUser }) }));
 vi.mock('../api', () => ({ ApiError: class extends Error {}, getErrorMessage: (error: Error) => error.message }));
 vi.mock('../services/auth.service', () => ({
-    AuthService: { connectApple: mocks.connect, appleConnection: mocks.connection },
+    AuthService: { connectApple: mocks.connect, connectGoogle: mocks.connectGoogle, signInMethods: mocks.connection },
+}));
+vi.mock('./apple-sign-in', () => ({ AppleSignIn }));
+// Only Google's credential transport is replaced; the real connection component and dialog run below.
+vi.mock('./google-button', () => ({
+    GoogleButton: ({ disabled, onCredential }: { disabled: boolean; onCredential: (token: string) => Promise<void> }) =>
+        createElement('button', {
+            disabled,
+            'data-testid': 'google-sign-in',
+            onClick: () => void onCredential('google-token'),
+        }),
 }));
 vi.mock('expo-apple-authentication', () => ({
     isAvailableAsync: async () => true,
@@ -76,10 +88,21 @@ async function press(testID = 'apple-sign-in') {
     await act(async () => container.querySelector<HTMLButtonElement>(`[data-testid="${testID}"]`)!.click());
 }
 
+async function openMethods() {
+    await act(async () =>
+        root.render(createElement(SignInMethods, { disabled: false, onBusyChange: props.onBusyChange })),
+    );
+    await press('settings-sign-in-methods');
+    await act(async () => {
+        await vi.dynamicImportSettled();
+    });
+}
+
 beforeEach(() => {
     vi.resetAllMocks();
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     vi.stubEnv('EXPO_PUBLIC_APPLE_SIGN_IN_ENABLED', 'true');
+    vi.stubEnv('EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID', 'test.apps.googleusercontent.com');
     changeSession();
     focused = true;
     container = document.createElement('div');
@@ -89,8 +112,9 @@ beforeEach(() => {
         authorizationCode: 'apple-code',
     }));
     mocks.login.mockResolvedValue({ success: true });
-    mocks.connection.mockResolvedValue({ success: true, data: { connected: false } });
+    mocks.connection.mockResolvedValue({ success: true, data: { google: false, apple: false } });
     mocks.connect.mockResolvedValue({ success: true });
+    mocks.connectGoogle.mockResolvedValue({ success: true });
 });
 
 afterEach(async () => {
@@ -154,7 +178,6 @@ it.each(['account change', 'leave and return'])('ignores an SDK result after %s'
 it('connects Apple to the signed-in account without starting a new login', async () => {
     changeSession('existing-user');
     await render(true);
-    await press('settings-sign-in-methods');
     await press();
     expect(mocks.connect).toHaveBeenCalledWith({
         authorizationCode: 'apple-code',
@@ -164,30 +187,69 @@ it('connects Apple to the signed-in account without starting a new login', async
     expect(mocks.login).not.toHaveBeenCalled();
     expect(mocks.refreshUser).toHaveBeenCalledOnce();
     expect(props.onSuccess).toHaveBeenCalledOnce();
-    expect(container.querySelector('[data-testid="sign-in-methods-dialog"]')).toBeNull();
-    await press('settings-sign-in-methods');
-    expect(container.querySelector('[data-testid="apple-connected"]')).not.toBeNull();
-    expect(container.querySelector('[data-testid="apple-sign-in"]')).toBeNull();
 });
 
 it('opens and dismisses sign-in methods without starting Apple authorization', async () => {
-    await render(true);
-    expect(container.querySelector('[data-testid="apple-sign-in"]')).toBeNull();
-    await press('settings-sign-in-methods');
+    await openMethods();
     expect(container.querySelector('[data-testid="apple-sign-in"]')).not.toBeNull();
     await press('sign-in-methods-done');
     expect(container.querySelector('[data-testid="sign-in-methods-dialog"]')).toBeNull();
     expect(mocks.signIn).not.toHaveBeenCalled();
 });
 
-it('keeps a failed connection visible in the dialog so the user can retry', async () => {
-    mocks.connect.mockResolvedValueOnce({ success: false, message: 'This Apple account is already in use.' });
-    await render(true);
-    await press('settings-sign-in-methods');
-    await press();
-    expect(container.querySelector('[data-testid="apple-connect-error"]')).not.toBeNull();
-    expect(props.onSuccess).not.toHaveBeenCalled();
-    await press();
-    expect(container.querySelector('[data-testid="sign-in-methods-dialog"]')).toBeNull();
-    expect(props.onSuccess).toHaveBeenCalledOnce();
+it.each(['apple', 'google'])(
+    'keeps a failed %s connection open, then shows connected only after a successful retry',
+    async (provider) => {
+        const connect = provider === 'apple' ? mocks.connect : mocks.connectGoogle;
+        connect.mockResolvedValueOnce({ success: false, message: 'This account is already in use.' });
+        await openMethods();
+        await press(`${provider}-sign-in`);
+        expect(container.querySelector('[data-testid="sign-in-methods-error"]')).not.toBeNull();
+        expect(container.querySelector(`[data-testid="${provider}-connected"]`)).toBeNull();
+        await press(`${provider}-sign-in`);
+        expect(container.querySelector(`[data-testid="${provider}-connected"]`)).not.toBeNull();
+        expect(container.querySelector(`[data-testid="${provider}-sign-in"]`)).toBeNull();
+        expect(mocks.login).not.toHaveBeenCalled();
+        if (provider === 'google') expect(connect).toHaveBeenLastCalledWith({ idToken: 'google-token' });
+    },
+);
+
+it('shows existing connections without offering to link them again', async () => {
+    mocks.connection.mockResolvedValue({ success: true, data: { google: true, apple: true } });
+    await openMethods();
+    for (const provider of ['google', 'apple']) {
+        expect(container.querySelector(`[data-testid="${provider}-connected"]`)).not.toBeNull();
+        expect(container.querySelector(`[data-testid="${provider}-sign-in"]`)).toBeNull();
+    }
+});
+
+it('does not treat a status request failure as disconnected, and can retry loading', async () => {
+    mocks.connection.mockRejectedValueOnce(new Error('Offline'));
+    await openMethods();
+    expect(container.querySelector('[data-testid="google-sign-in"]')).toBeNull();
+    expect(container.querySelector('[data-testid="apple-sign-in"]')).toBeNull();
+    await press('sign-in-methods-retry');
+    await act(async () => {
+        await vi.dynamicImportSettled();
+    });
+    expect(container.querySelector('[data-testid="google-sign-in"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="apple-sign-in"]')).not.toBeNull();
+});
+
+it('blocks other actions during connection and ignores a result after the account changes', async () => {
+    let finish!: (value: unknown) => void;
+    mocks.connectGoogle.mockReturnValue(
+        new Promise((resolve) => {
+            finish = resolve;
+        }),
+    );
+    await openMethods();
+    await press('google-sign-in');
+    for (const testID of ['sign-in-methods-done', 'apple-sign-in']) {
+        expect(container.querySelector<HTMLButtonElement>(`[data-testid="${testID}"]`)!.disabled).toBe(true);
+    }
+    changeSession('another-user');
+    await act(async () => finish({ success: true }));
+    expect(container.querySelector('[data-testid="google-connected"]')).toBeNull();
+    expect(mocks.refreshUser).not.toHaveBeenCalled();
 });

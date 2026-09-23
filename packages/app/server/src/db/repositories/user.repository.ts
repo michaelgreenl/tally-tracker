@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import type { User } from '@prisma/client';
 import { revokeAppleToken } from '../../services/apple-auth.service.js';
 import type { AppleIdentity } from '../../services/apple-auth.service.js';
+import type { GoogleIdentity } from '../../services/google-auth.service.js';
 
 type DbClient = typeof prisma | Prisma.TransactionClient;
 
@@ -116,9 +117,12 @@ export const getUserByGoogleSubject = (googleSubject: string) =>
 export const getUserByAppleSubject = (appleSubject: string) =>
     prisma.user.findUnique({ where: { appleSubject } }).then(withCurrentTier);
 
-export const getAppleConnection = async (userId: string) => {
-    const user = await prisma.user.findUnique({ where: { id: userId }, select: { appleRefreshToken: true } });
-    return Boolean(user?.appleRefreshToken);
+export const getSignInMethods = async (userId: string) => {
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { googleSubject: true, appleRefreshToken: true },
+    });
+    return user ? { google: Boolean(user.googleSubject), apple: Boolean(user.appleRefreshToken) } : null;
 };
 
 export const createAppleUser = (identity: AppleIdentity & { email: string }) =>
@@ -192,21 +196,23 @@ export const createGoogleUser = (googleSubject: string, email: string, emailVeri
         data: { googleSubject, email, emailVerifiedAt: emailVerified ? new Date() : null },
     });
 
-export const linkGoogle = (user: User, googleSubject: string, emailVerified: boolean) =>
+export const linkGoogle = (user: User, identity: GoogleIdentity) =>
     withLockedUser(user.id, async (current, tx) => {
         if (
             !current ||
             current.password !== user.password ||
             current.sessionVersion !== user.sessionVersion ||
             current.email !== user.email ||
-            (current.googleSubject && current.googleSubject !== googleSubject)
+            (current.googleSubject && current.googleSubject !== identity.subject)
         )
             return null;
         return tx.user.update({
             where: { id: user.id },
             data: {
-                googleSubject,
-                emailVerifiedAt: current.emailVerifiedAt ?? (emailVerified ? new Date() : null),
+                googleSubject: identity.subject,
+                emailVerifiedAt:
+                    current.emailVerifiedAt ??
+                    (current.email === identity.email && identity.emailVerified ? new Date() : null),
             },
         });
     });

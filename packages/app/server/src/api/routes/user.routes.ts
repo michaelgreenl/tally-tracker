@@ -1,14 +1,8 @@
 import express from 'express';
-import { post, remove, login, logout, checkAuth, refresh } from '../controllers/user.controller.js';
+import { post, remove, login, logout, checkAuth, refresh, signInMethods } from '../controllers/user.controller.js';
 import { jwt } from '../../middleware/auth.middleware.js';
-import { googleLogin, verifyGoogle } from '../controllers/google-auth.controller.js';
-import {
-    appleConnection,
-    appleLogin,
-    appleNotification,
-    connectApple,
-    verifyApple,
-} from '../controllers/apple-auth.controller.js';
+import { googleLogin, verifyGoogle, connectGoogle } from '../controllers/google-auth.controller.js';
+import { appleLogin, appleNotification, connectApple, verifyApple } from '../controllers/apple-auth.controller.js';
 import { validate } from '../../middleware/validate.middleware.js';
 import { emailAuthLimiter, loginAccountLimiter, loginIpLimiter } from '../../config/limiters.config.js';
 import {
@@ -39,7 +33,16 @@ router.delete('/', jwt, remove);
 router.post('/login', loginIpLimiter, validate(loginSchema), loginAccountLimiter, login);
 router.post('/google', loginIpLimiter, validate(googleLoginSchema), verifyGoogle, loginAccountLimiter, googleLogin);
 router.post('/apple', loginIpLimiter, validate(appleLoginSchema), verifyApple, loginAccountLimiter, appleLogin);
-router.get('/apple/connection', jwt, appleConnection);
+router.get('/sign-in-methods', jwt, signInMethods);
+router.post(
+    '/google/connect',
+    jwt,
+    loginIpLimiter,
+    validate(googleLoginSchema),
+    verifyGoogle,
+    loginAccountLimiter,
+    connectGoogle,
+);
 router.post(
     '/apple/connect',
     jwt,

@@ -4,6 +4,8 @@ import { useFocusEffect } from 'expo-router';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../colors';
+import { getErrorMessage } from '../api';
+import { AuthService } from '../services/auth.service';
 import { useSession } from '../session';
 import { assertSession, getSessionScope } from '../services/session-scope';
 import { Dialog } from './dialog';
@@ -20,15 +22,16 @@ export type GoogleButtonProps = {
 };
 
 type Props = {
+    connect?: boolean;
     disabled: boolean;
     busy: boolean;
-    rememberMe: boolean;
+    rememberMe?: boolean;
     onBusyChange: (busy: boolean) => void;
     onError: (message: string) => void;
     onSuccess: () => void;
 };
 
-export function GoogleSignIn({ disabled, busy, rememberMe, onBusyChange, onError, onSuccess }: Props) {
+export function GoogleSignIn({ connect = false, disabled, busy, rememberMe, onBusyChange, onError, onSuccess }: Props) {
     const session = useSession();
     const [linkToken, setLinkToken] = useState('');
     const [password, setPassword] = useState('');
@@ -75,19 +78,27 @@ export function GoogleSignIn({ disabled, busy, rememberMe, onBusyChange, onError
         try {
             // Ignore a provider callback after another login or logout has changed the account.
             assertSession(scope.current);
-            const result = await session.login({ idToken, password: existingPassword, rememberMe });
+            const result = connect
+                ? await AuthService.connectGoogle({ idToken })
+                : await session.login({ idToken, password: existingPassword, rememberMe });
             if (!active.current) return;
             if (result.success) {
+                if (connect) {
+                    assertSession(scope.current);
+                    await session.refreshUser();
+                    if (!active.current) return;
+                    assertSession(scope.current);
+                }
                 setLinkToken('');
                 setPassword('');
                 onSuccess();
-            } else if (result.code === 'GOOGLE_LINK_REQUIRED') {
+            } else if (!connect && 'code' in result && result.code === 'GOOGLE_LINK_REQUIRED') {
                 setLinkToken(idToken);
             } else if (existingPassword !== undefined) {
-                setLinkError(result.message);
-            } else onError(result.message);
-        } catch {
-            if (active.current) onError('Account changed. Please sign in again.');
+                setLinkError(result.message || 'Google sign-in failed. Try again.');
+            } else onError(result.message || 'Google sign-in failed. Try again.');
+        } catch (error) {
+            if (active.current && scope.current === getSessionScope()) onError(getErrorMessage(error));
         } finally {
             pending.current = false;
             onBusyChange(false);
@@ -95,6 +106,17 @@ export function GoogleSignIn({ disabled, busy, rememberMe, onBusyChange, onError
     }
 
     if (!process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID) return null;
+    if (connect) {
+        return focused ? (
+            <GoogleButton
+                disabled={disabled}
+                busy={busy}
+                onCredential={signIn}
+                onError={onError}
+                onBusyChange={onBusyChange}
+            />
+        ) : null;
+    }
     return (
         <View style={styles.section}>
             <View style={styles.divider}>

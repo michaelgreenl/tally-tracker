@@ -90,6 +90,35 @@ describe('Google sign-in', () => {
         cy.location('pathname').should('eq', '/home');
     });
 
+    it('connects Google from Settings without replacing the signed-in account', () => {
+        let connected = false;
+        cy.intercept('GET', '**/users/sign-in-methods', (req) =>
+            req.reply({ body: { success: true, data: { google: connected, apple: true } } }),
+        );
+        cy.intercept('POST', '**/users/google/connect', (req) => {
+            connected = true;
+            req.reply({ body: { success: true } });
+        }).as('connectGoogle');
+        cy.intercept('POST', '**/users/google', { statusCode: 500 }).as('googleLogin');
+        cy.visit('/settings', {
+            onBeforeLoad: (win) => win.localStorage.setItem('auth_user_profile', JSON.stringify(user)),
+        });
+        cy.get('[data-testid="settings-sign-in-methods"]').click();
+        cy.get('[data-testid="apple-connected"]').should('be.visible');
+        cy.get('[data-testid="google-provider-button"]').click();
+        cy.wait('@connectGoogle').its('request.body').should('deep.equal', { idToken: 'provider-id-token' });
+        cy.get('[data-testid="google-connected"]').should('be.visible');
+        cy.get('[data-testid="sign-in-methods-done"]').click();
+        cy.get('[data-testid="settings-sign-in-methods"]').click();
+        cy.get('[data-testid="google-connected"]').should('be.visible');
+        cy.get('[data-testid="google-provider-button"]').should('not.exist');
+        cy.get('@googleLogin.all').should('have.length', 0);
+        cy.window().then((win) =>
+            expect(JSON.parse(win.localStorage.getItem('auth_user_profile')!)).to.deep.equal(user),
+        );
+        cy.location('pathname').should('eq', '/settings');
+    });
+
     it('shows only Google progress while its request is pending and restores both actions after failure', () => {
         let finish!: () => void;
         const response = new Cypress.Promise<void>((resolve) => {

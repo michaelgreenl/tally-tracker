@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { randomUUID } from 'expo-crypto';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../colors';
 import { ApiError, getErrorMessage } from '../api';
@@ -10,7 +10,6 @@ import { AuthService } from '../services/auth.service';
 import { assertSession, getSessionScope } from '../services/session-scope';
 import type { AppleSignInProps } from './apple-sign-in';
 import { SocialSignInButton } from './social-sign-in-button';
-import { Dialog } from './dialog';
 
 type AppleSdk = typeof import('expo-apple-authentication');
 
@@ -24,10 +23,8 @@ export function AppleSignIn({
 }: AppleSignInProps) {
     const session = useSession();
     const [sdk, setSdk] = useState<AppleSdk | null>(null);
-    const [connected, setConnected] = useState(false);
     const [busy, setBusy] = useState(false);
-    const [methodsOpen, setMethodsOpen] = useState(false);
-    const [connectionError, setConnectionError] = useState('');
+    const [unavailable, setUnavailable] = useState(false);
     const focus = useRef<object | null>(null);
     const pending = useRef(false);
     const enabled = process.env.EXPO_PUBLIC_APPLE_SIGN_IN_ENABLED === 'true';
@@ -36,19 +33,17 @@ export function AppleSignIn({
         useCallback(() => {
             focus.current = {};
             let mounted = true;
-            const scope = getSessionScope();
             if (enabled) {
                 void (async () => {
                     // Keep older development builds usable until their native modules are rebuilt.
                     const apple = await import('expo-apple-authentication');
-                    if (!(await apple.isAvailableAsync())) return;
-                    if (mounted) setSdk(apple);
-                    const connection = connect ? await AuthService.appleConnection() : null;
-                    assertSession(scope);
-                    if (!mounted) return;
-                    setConnected(Boolean(connection?.data?.connected));
+                    const available = await apple.isAvailableAsync();
+                    if (mounted) {
+                        setSdk(available ? apple : null);
+                        setUnavailable(!available);
+                    }
                 })().catch(() => {
-                    /* Other sign-in methods remain available. */
+                    if (mounted) setUnavailable(true);
                 });
             }
             return () => {
@@ -57,13 +52,8 @@ export function AppleSignIn({
                 setBusy(false);
                 onBusyChange(false);
             };
-        }, [connect, enabled, onBusyChange]),
+        }, [enabled, onBusyChange]),
     );
-
-    function reportError(message: string) {
-        if (connect) setConnectionError(message);
-        else onError(message);
-    }
 
     async function signIn() {
         if (!sdk || disabled || pending.current || !focus.current) return;
@@ -72,7 +62,7 @@ export function AppleSignIn({
         pending.current = true;
         setBusy(true);
         onBusyChange(true);
-        reportError('');
+        onError('');
         try {
             const nonce = randomUUID();
             const state = randomUUID();
@@ -88,16 +78,14 @@ export function AppleSignIn({
             const result = connect ? await AuthService.connectApple(request) : await session.login(request);
             if (focus.current !== startedFocus) return;
             if (!result.success) {
-                reportError(result.message || 'Apple sign-in failed. Try again.');
+                onError(result.message || 'Apple sign-in failed. Try again.');
                 return;
             }
             if (connect) {
                 assertSession(scope);
-                setConnected(true);
                 await session.refreshUser();
                 if (focus.current !== startedFocus) return;
                 assertSession(scope);
-                setMethodsOpen(false);
             }
             onSuccess();
         } catch (error) {
@@ -106,7 +94,7 @@ export function AppleSignIn({
                 scope === getSessionScope() &&
                 !(error && typeof error === 'object' && 'code' in error && error.code === 'ERR_REQUEST_CANCELED')
             ) {
-                reportError(error instanceof ApiError ? getErrorMessage(error) : 'Apple sign-in failed. Try again.');
+                onError(error instanceof ApiError ? getErrorMessage(error) : 'Apple sign-in failed. Try again.');
             }
         } finally {
             pending.current = false;
@@ -117,74 +105,12 @@ export function AppleSignIn({
         }
     }
 
-    if (!enabled || !sdk) return null;
-    if (connect) {
-        return (
-            <>
-                <Pressable
-                    accessibilityRole='button'
-                    accessibilityState={{ disabled, expanded: methodsOpen }}
-                    disabled={disabled}
-                    onPress={() => {
-                        setConnectionError('');
-                        setMethodsOpen(true);
-                    }}
-                    style={({ pressed }) => [styles.connection, pressed && styles.pressed]}
-                    testID='settings-sign-in-methods'
-                >
-                    <Text style={styles.label}>Sign-in methods</Text>
-                    <Text accessible={false} aria-hidden style={styles.chevron}>
-                        ›
-                    </Text>
-                </Pressable>
-                <Dialog
-                    visible={methodsOpen}
-                    dismissOnBackdropPress
-                    onRequestClose={() => {
-                        if (!busy) setMethodsOpen(false);
-                    }}
-                    title='Sign-in methods'
-                    description='Manage Apple sign-in for this account.'
-                    testID='sign-in-methods-dialog'
-                >
-                    {connected ? (
-                        <Text style={styles.label} testID='apple-connected'>
-                            Apple connected
-                        </Text>
-                    ) : (
-                        <SocialSignInButton
-                            provider='Apple'
-                            disabled={disabled}
-                            busy={busy}
-                            onPress={() => void signIn()}
-                        />
-                    )}
-                    {Boolean(connectionError) && (
-                        <Text
-                            accessibilityRole='alert'
-                            accessibilityLiveRegion='polite'
-                            style={styles.error}
-                            testID='apple-connect-error'
-                        >
-                            {connectionError}
-                        </Text>
-                    )}
-                    <Pressable
-                        accessibilityRole='button'
-                        accessibilityState={{ disabled: busy }}
-                        disabled={busy}
-                        onPress={() => setMethodsOpen(false)}
-                        style={({ pressed }) => [styles.done, pressed && styles.dimmed, busy && styles.dimmed]}
-                        testID='sign-in-methods-done'
-                    >
-                        <Text style={styles.doneText}>Done</Text>
-                    </Pressable>
-                </Dialog>
-            </>
-        );
+    if (connect && unavailable) {
+        return <Text style={styles.error}>Apple sign-in is unavailable. Update the app to retry.</Text>;
     }
+    if (!enabled || !sdk) return null;
     return (
-        <View style={styles.section} testID='apple-sign-in-section'>
+        <View style={!connect && styles.section} testID='apple-sign-in-section'>
             <SocialSignInButton provider='Apple' disabled={disabled} busy={busy} onPress={() => void signIn()} />
         </View>
     );
@@ -192,21 +118,5 @@ export function AppleSignIn({
 
 const styles = StyleSheet.create({
     section: { marginTop: 12 },
-    connection: {
-        minHeight: 54,
-        paddingHorizontal: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.divider,
-    },
-    label: { color: colors.text, fontSize: 15, fontWeight: '700' },
-    chevron: { color: colors.muted, fontSize: 22 },
-    pressed: { backgroundColor: colors.input },
     error: { color: colors.danger, fontSize: 14 },
-    done: { minHeight: 44, minWidth: 44, alignSelf: 'flex-end', justifyContent: 'center' },
-    doneText: { color: colors.link, fontSize: 16, fontWeight: '700' },
-    dimmed: { opacity: 0.55 },
 });

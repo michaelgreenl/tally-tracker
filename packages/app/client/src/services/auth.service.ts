@@ -20,6 +20,7 @@ import type {
     EmailOtpRequest,
     PasswordResetRequest,
     RefreshRequest,
+    SignInMethods,
 } from '@tally/core/client';
 
 export const USER_KEY = 'auth_user_profile';
@@ -85,8 +86,12 @@ export const AuthService = {
         );
     },
 
-    appleConnection() {
-        return apiFetch<ApiResponse<{ connected: boolean }>>('/users/apple/connection', { method: 'GET' });
+    signInMethods() {
+        return apiFetch<ApiResponse<SignInMethods>>('/users/sign-in-methods', { method: 'GET' });
+    },
+
+    connectGoogle(data: Pick<GoogleLoginRequest, 'idToken'>) {
+        return apiFetch<AuthResponse, typeof data>('/users/google/connect', { method: 'POST', body: data });
     },
 
     connectApple(data: AppleLoginRequest) {

@@ -21,6 +21,8 @@ export type AuthResponse = ApiResponse<{
 
 export type GoogleAuthResponse = AuthResponse & { code?: 'GOOGLE_LINK_REQUIRED' };
 
+export type SignInMethods = { google: boolean; apple: boolean };
+
 export type CounterResponse = ApiResponse<{
     counter?: ClientCounter;
     counters?: Array<ClientCounter>;

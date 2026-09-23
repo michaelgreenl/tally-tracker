@@ -30,6 +30,29 @@ export const verifyGoogle = async (req: Request, res: Response<GoogleAuthRespons
     return next();
 };
 
+export const connectGoogle = async (req: Request, res: Response) => {
+    const identity = res.locals.googleIdentity as GoogleIdentity;
+    try {
+        const current = await userRepository.getUserByEmail(req.user!.email);
+        if (!current || current.id !== req.user!.id || current.sessionVersion !== req.user!.sessionVersion) {
+            return res.status(UNAUTHORIZED).json({ success: false, message: 'Sign in again.' });
+        }
+        if (current.googleSubject && current.googleSubject !== identity.subject) {
+            return res
+                .status(CONFLICT)
+                .json({ success: false, message: 'Another Google account is already connected.' });
+        }
+        const linked = await userRepository.linkGoogle(current, identity);
+        if (!linked) return res.status(UNAUTHORIZED).json({ success: false, message: 'Sign in again.' });
+        return res.json({ success: true });
+    } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+            return res.status(CONFLICT).json({ success: false, message: 'This Google account is already in use.' });
+        }
+        throw error;
+    }
+};
+
 export const googleLogin = async (
     req: Request<Record<string, never>, GoogleAuthResponse, GoogleLoginRequest>,
     res: Response<GoogleAuthResponse>,
@@ -54,7 +77,7 @@ export const googleLogin = async (
                 if (!(await bcrypt.compare(password, existing.password))) {
                     return res.status(UNAUTHORIZED).json({ success: false, message: 'Password is incorrect.' });
                 }
-                user = await userRepository.linkGoogle(existing, identity.subject, identity.emailVerified);
+                user = await userRepository.linkGoogle(existing, identity);
                 if (!user) {
                     return res.status(UNAUTHORIZED).json({ success: false, message: 'Please sign in again.' });
                 }

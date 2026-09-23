@@ -57,10 +57,6 @@ export const appleLogin = async (req: Request, res: Response<AuthResponse>) => {
     }
 };
 
-export const appleConnection = async (req: Request, res: Response) => {
-    res.json({ success: true, data: { connected: await users.getAppleConnection(req.user!.id) } });
-};
-
 export const connectApple = async (req: Request, res: Response<AuthResponse>) => {
     const identity = res.locals.appleIdentity as AppleIdentity;
     const current = await users.getUserByEmail(req.user!.email);
