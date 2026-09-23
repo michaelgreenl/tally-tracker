@@ -16,7 +16,8 @@ import { Snackbar } from '../components/snackbar';
 import { SyncIndicator } from '../components/sync-indicator';
 import { TallyBrand } from '../components/tally-brand';
 import { ToolbarButton } from '../components/toolbar-button';
-import { GUEST_COUNTER_CAP, GUEST_COUNTER_LIMIT_MESSAGE, orderCounters, useCounters } from '../counters';
+import { useCounters } from '../counters/counter-context';
+import { GUEST_COUNTER_CAP, GUEST_COUNTER_LIMIT_MESSAGE, orderCounters } from '../counters/counter-rules';
 import { useSession } from '../session';
 
 import type { ClientCounter } from '@tally/core/client';

@@ -5,7 +5,7 @@ import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '../colors';
-import { useCounters } from '../counters';
+import { useCounters } from '../counters/counter-context';
 import { useSession } from '../session';
 
 export default function JoinScreen() {

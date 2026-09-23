@@ -1,17 +1,8 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-import { isGuestCounterLimitReached, orderCounters, reconcileAuthenticatedCounters } from './counters';
+import { isGuestCounterLimitReached, orderCounters, reconcileAuthenticatedCounters } from './counter-rules';
 
 import type { ClientCounter, HexColor } from '@tally/core/client';
-
-vi.mock('expo-crypto', () => ({ getRandomBytes: vi.fn(), randomUUID: vi.fn() }));
-vi.mock('react-native', () => ({ AppState: {} }));
-vi.mock('./api', () => ({ getErrorMessage: (_error: unknown, fallback: string) => fallback }));
-vi.mock('./services/counter.service', () => ({ CounterService: {} }));
-vi.mock('./services/sync-manager', () => ({ SyncManager: {} }));
-vi.mock('./services/sync-queue', () => ({ SyncQueue: {} }));
-vi.mock('./socket', () => ({}));
-vi.mock('./session', () => ({ useSession: vi.fn() }));
 
 const counter = (id: string, type: ClientCounter['type'], userId = 'guest'): ClientCounter => ({
     id,

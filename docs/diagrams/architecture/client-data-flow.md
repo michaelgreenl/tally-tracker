@@ -1,5 +1,10 @@
 ### Client Side Data Flow
 
+`src/counters/counter-rules.ts` owns pure ordering, guest limits, and snapshot reconciliation.
+`counter-context.tsx` owns React state, subscriptions, and serialized mutation timing.
+`CounterService` owns storage access and command creation. `SyncManager` owns queue delivery and retries.
+Keep session, revision, and pending-write checks with the operations they protect.
+
 ```mermaid
 %%{
   init: {

@@ -3,12 +3,12 @@ import { act, createElement, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
-import { CounterProvider, useCounters } from './counters';
-import { CounterStorage } from './services/counter-storage';
-import { SyncManager } from './services/sync-manager';
-import { SyncQueue } from './services/sync-queue';
-import { changeSession } from './services/session-scope';
-import { ApiError } from './api';
+import { CounterProvider, useCounters } from './counter-context';
+import { CounterStorage } from '../services/counter-storage';
+import { SyncManager } from '../services/sync-manager';
+import { SyncQueue } from '../services/sync-queue';
+import { changeSession } from '../services/session-scope';
+import { ApiError } from '../api';
 
 import type { ClientCounter, HexColor } from '@tally/core/client';
 import type { Root } from 'react-dom/client';
@@ -39,7 +39,7 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
     },
 }));
 vi.mock('expo-crypto', () => ({ randomUUID: () => crypto.randomUUID() }));
-vi.mock('./services/widget-bridge', () => ({
+vi.mock('../services/widget-bridge', () => ({
     widgetBridge: {
         pending: () => JSON.stringify(bridge.widgetTaps),
         acknowledge: (ids: string[]) => {
@@ -55,12 +55,12 @@ vi.mock('expo-network', () => ({
     addNetworkStateListener: () => ({ remove() {} }),
 }));
 vi.mock('react-native', () => ({ AppState: { addEventListener: () => ({ remove() {} }) } }));
-vi.mock('./session', () => ({
+vi.mock('../session', () => ({
     useSession: () => ({ ready: true, user: { id: 'account', tier: 'BASIC' }, isAuthenticated: true }),
 }));
-vi.mock('./services/auth.service', () => ({ AuthService: { getCachedUser: async () => ({ id: 'account' }) } }));
-vi.mock('./api', () => ({ default: bridge.fetch, ApiError: bridge.ApiError, getErrorMessage: () => 'Failed' }));
-vi.mock('./socket', () => ({
+vi.mock('../services/auth.service', () => ({ AuthService: { getCachedUser: async () => ({ id: 'account' }) } }));
+vi.mock('../api', () => ({ default: bridge.fetch, ApiError: bridge.ApiError, getErrorMessage: () => 'Failed' }));
+vi.mock('../socket', () => ({
     subscribeToCounterUpdates: (listener: () => void) => {
         bridge.update = listener;
         return () => {};

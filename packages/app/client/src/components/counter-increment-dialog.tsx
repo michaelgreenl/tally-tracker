@@ -3,7 +3,7 @@ import { addCounterAmount, counterIncrementSchema } from '@tally/core/client';
 import { Pressable, StyleSheet, Text, TextInput } from 'react-native';
 
 import { colors } from '../colors';
-import { useCounters } from '../counters';
+import { useCounters } from '../counters/counter-context';
 import { Dialog } from './dialog';
 import { CounterStepper, counterNumberStyle } from './counter-stepper';
 import { CounterNumber } from './counter-number';

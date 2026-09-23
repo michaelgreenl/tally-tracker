@@ -4,7 +4,7 @@ import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-n
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors } from '../colors';
-import { useCounters } from '../counters';
+import { useCounters } from '../counters/counter-context';
 import { FormField } from './auth-form';
 import { CounterSheet } from './counter-sheet';
 import { CustomColorPicker } from './custom-color-picker';
