@@ -1,18 +1,44 @@
 ### Client Side Data Flow
 
-Client modules are grouped by the feature that owns them:
+Client modules use this structure:
 
-- `src/session/`: account state, authentication, credentials, and session write guards.
-- `src/billing/`: purchase and restoration operations.
-- `src/counters/`: counter state, storage, mutation queue, delivery, and socket updates.
-- `src/widgets/`: native widget bridge and durable counter-tap imports.
-- `src/api.ts`: shared HTTP transport and token refresh.
+```text
+src/
+├── app/                   # Expo routes
+├── components/
+│   ├── auth/
+│   ├── counters/
+│   ├── settings/
+│   └── shared/
+├── contexts/              # React providers and account state
+├── hooks/                 # Shared React lifecycle hooks
+├── services/
+│   ├── auth/
+│   ├── billing/
+│   ├── counters/
+│   └── session/
+├── infra/
+│   ├── http/
+│   ├── monitoring/
+│   ├── socket/
+│   ├── storage/
+│   ├── sync/
+│   └── widgets/
+├── utils/                 # Pure rules
+├── theme/                 # Shared colors
+├── content/               # Legal documents
+└── __tests__/             # Unit tests, grouped by source location
+```
 
-Tests stay beside their modules. Import leaf files directly; avoid feature-wide export barrels.
+Keep route files in `app/` and reusable UI in `components/`. Group components by their use. Put cross-feature UI in `components/shared/`.
 
-`session/restore-session.ts` checks cached credentials and restores the account without React or routing. `session/session-context.tsx` owns account state, navigation, and account actions. `billing/use-purchase-sync.ts` owns purchase refresh and native listener cleanup. It receives the profile refresh action from session context.
+Keep platform variants together, such as `token-storage.ts` and `token-storage.native.ts`. Import files directly. Shared API contracts remain in `packages/core`.
 
-`src/counters/counter-rules.ts` owns pure ordering, guest limits, and snapshot reconciliation. `counter-context.tsx` owns React state, subscriptions, and serialized mutation timing. `CounterService` owns storage access and command creation. `SyncManager` owns queue delivery and retries. Keep session, revision, and pending-write checks with the operations they protect.
+Unit tests mirror source groups under `src/__tests__/`. Plugin unit tests use `src/__tests__/plugins/`. Browser tests remain in `tests/e2e/`. Native widget checks remain in `tests/widgets/`.
+
+`services/session/restore-session.ts` checks cached credentials and restores the account without React or routing. `contexts/session-context.tsx` owns account state, navigation, and account actions. `hooks/use-purchase-sync.ts` owns purchase refresh and native listener cleanup. It receives the profile refresh action from session context.
+
+`utils/counter-rules.ts` owns pure ordering, guest limits, and snapshot reconciliation. `contexts/counter-context.tsx` owns React state, subscriptions, and serialized mutation timing. `services/counters/counter.service.ts` owns counter operations and command creation. `infra/storage/counter-storage.ts` owns local counter storage. `infra/sync/sync-manager.ts` owns queue delivery and retries. Keep session, revision, and pending-write checks with the operations they protect.
 
 ```mermaid
 %%{
@@ -69,6 +95,9 @@ classDiagram
             +login()
             +register()
         }
+    }
+
+    namespace Infra {
         class SyncManager {
             +init()
             +processQueue()
@@ -79,9 +108,6 @@ classDiagram
             +get()
             +remove()
         }
-    }
-
-    namespace Infrastructure {
         class apiFetch
         class Socket
         class AsyncStorage

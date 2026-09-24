@@ -3,11 +3,11 @@ import Head from 'expo-router/head';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, Appearance, Platform, StyleSheet, View } from 'react-native';
 
-import { colors } from '../colors';
-import { CounterProvider } from '../counters/counter-context';
-import { initSentry, withSentry } from '../monitoring/sentry';
-import { SessionProvider, useSession } from '../session/session-context';
-import { Snackbar } from '../components/snackbar';
+import { colors } from '../theme/colors';
+import { CounterProvider } from '../contexts/counter-context';
+import { initSentry, withSentry } from '../infra/monitoring/sentry';
+import { SessionProvider, useSession } from '../contexts/session-context';
+import { Snackbar } from '../components/shared/snackbar';
 
 initSentry();
 if (Platform.OS !== 'web') Appearance.setColorScheme('dark');

@@ -15,12 +15,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { colors } from '../../colors';
-import { getErrorMessage, REQUEST_FAILED_MESSAGE } from '../../api';
-import { AuthService } from '../../session/auth.service';
-import { useSession } from '../../session/session-context';
-import { FormField, styles } from '../auth-form';
-import { MessageText } from '../message-text';
+import { colors } from '../../theme/colors';
+import { getErrorMessage, REQUEST_FAILED_MESSAGE } from '../../infra/http/api';
+import { AuthService } from '../../services/auth/auth.service';
+import { useSession } from '../../contexts/session-context';
+import { FormField, styles } from '../shared/auth-form';
+import { MessageText } from '../shared/message-text';
 
 type EmailAuthScreenProps = {
     mode: 'verify' | 'reset';

@@ -5,13 +5,13 @@ import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
-import { colors } from '../colors';
-import { AuthLink, styles as formStyles } from '../components/auth-form';
-import { BackButton } from '../components/back-button';
-import { Snackbar } from '../components/snackbar';
-import { TallyBrand } from '../components/tally-brand';
-import { billingApiKey, BillingService, purchaseNotice } from '../billing/billing.service';
-import { useSession } from '../session/session-context';
+import { colors } from '../theme/colors';
+import { AuthLink, styles as formStyles } from '../components/shared/auth-form';
+import { BackButton } from '../components/shared/back-button';
+import { Snackbar } from '../components/shared/snackbar';
+import { TallyBrand } from '../components/shared/tally-brand';
+import { billingApiKey, BillingService, purchaseNotice } from '../services/billing/billing.service';
+import { useSession } from '../contexts/session-context';
 
 // Guests and the web can preview plans; native checkout always uses the store's package and price.
 const plans = [

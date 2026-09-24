@@ -3,14 +3,14 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { getErrorMessage } from '../../api';
-import { colors } from '../../colors';
-import { AuthService } from '../../session/auth.service';
-import { getSessionScope } from '../../session/session-scope';
+import { getErrorMessage } from '../../infra/http/api';
+import { colors } from '../../theme/colors';
+import { AuthService } from '../../services/auth/auth.service';
+import { getSessionScope } from '../../services/session/session-scope';
 import { AppleSignIn } from '../auth/apple-sign-in';
 import { GoogleSignIn } from '../auth/google-sign-in';
-import { Dialog } from '../dialog';
-import { MessageText } from '../message-text';
+import { Dialog } from '../shared/dialog';
+import { MessageText } from '../shared/message-text';
 import { SettingsAction } from './settings-action';
 
 type Props = { disabled: boolean; onBusyChange: (busy: boolean) => void };

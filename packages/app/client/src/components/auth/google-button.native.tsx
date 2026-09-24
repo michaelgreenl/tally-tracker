@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { useFonts } from 'expo-font';
 import { StyleSheet } from 'react-native';
 
-import { colors } from '../../colors';
+import { colors } from '../../theme/colors';
 import type { GoogleButtonProps } from './google-button';
-import { MessageText } from '../message-text';
-import { authorizeGoogle } from './native-authorization';
+import { MessageText } from '../shared/message-text';
+import { authorizeGoogle } from '../../services/auth/native-authorization';
 import { SocialSignInButton } from './social-sign-in-button';
 
 type GoogleSdk = typeof import('react-native-nitro-google-signin');

@@ -4,9 +4,9 @@ import { useEffect, useRef } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { colors } from '../colors';
-import { useCounters } from '../counters/counter-context';
-import { useSession } from '../session/session-context';
+import { colors } from '../theme/colors';
+import { useCounters } from '../contexts/counter-context';
+import { useSession } from '../contexts/session-context';
 
 export default function JoinScreen() {
     const router = useRouter();

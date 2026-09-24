@@ -6,19 +6,19 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 
-import { colors } from '../colors';
-import { CounterCard } from '../components/counter-card';
-import { CounterForm } from '../components/counter-form';
-import { CounterIncrementDialog } from '../components/counter-increment-dialog';
-import { CounterList } from '../components/counter-list';
-import { Dialog } from '../components/dialog';
-import { Snackbar } from '../components/snackbar';
-import { SyncIndicator } from '../components/sync-indicator';
-import { TallyBrand } from '../components/tally-brand';
-import { ToolbarButton } from '../components/toolbar-button';
-import { useCounters } from '../counters/counter-context';
-import { GUEST_COUNTER_CAP, GUEST_COUNTER_LIMIT_MESSAGE, orderCounters } from '../counters/counter-rules';
-import { useSession } from '../session/session-context';
+import { colors } from '../theme/colors';
+import { CounterCard } from '../components/counters/counter-card';
+import { CounterForm } from '../components/counters/counter-form';
+import { CounterIncrementDialog } from '../components/counters/counter-increment-dialog';
+import { CounterList } from '../components/counters/counter-list';
+import { Dialog } from '../components/shared/dialog';
+import { Snackbar } from '../components/shared/snackbar';
+import { SyncIndicator } from '../components/counters/sync-indicator';
+import { TallyBrand } from '../components/shared/tally-brand';
+import { ToolbarButton } from '../components/shared/toolbar-button';
+import { useCounters } from '../contexts/counter-context';
+import { GUEST_COUNTER_CAP, GUEST_COUNTER_LIMIT_MESSAGE, orderCounters } from '../utils/counter-rules';
+import { useSession } from '../contexts/session-context';
 
 import type { ClientCounter } from '@tally/core/client';
 

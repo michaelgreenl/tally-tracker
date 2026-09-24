@@ -2,8 +2,8 @@ import { GoogleLogin, GoogleOAuthProvider } from '@react-oauth/google';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useState } from 'react';
 
-import { colors } from '../../colors';
-import { MessageText } from '../message-text';
+import { colors } from '../../theme/colors';
+import { MessageText } from '../shared/message-text';
 
 export type GoogleButtonProps = {
     disabled: boolean;

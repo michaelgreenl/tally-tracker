@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text } from 'react-native';
 import type { ComponentProps, ReactNode } from 'react';
 
-import { colors } from '../../colors';
+import { colors } from '../../theme/colors';
 
 type Props = Omit<ComponentProps<typeof Pressable>, 'children' | 'style'> & {
     label: string;

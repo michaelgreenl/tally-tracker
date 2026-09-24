@@ -2,12 +2,12 @@ import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { colors } from '../../colors';
-import { ApiError, getErrorMessage } from '../../api';
-import { useSession } from '../../session/session-context';
-import { AuthService } from '../../session/auth.service';
-import { assertSession, getSessionScope } from '../../session/session-scope';
-import { authorizeApple } from './native-authorization';
+import { colors } from '../../theme/colors';
+import { ApiError, getErrorMessage } from '../../infra/http/api';
+import { useSession } from '../../contexts/session-context';
+import { AuthService } from '../../services/auth/auth.service';
+import { assertSession, getSessionScope } from '../../services/session/session-scope';
+import { authorizeApple } from '../../services/auth/native-authorization';
 import type { AppleSignInProps } from './apple-sign-in';
 import { SocialSignInButton } from './social-sign-in-button';
 

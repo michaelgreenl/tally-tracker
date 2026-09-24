@@ -15,16 +15,16 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors } from '../../colors';
-import { useSession } from '../../session/session-context';
-import { unstable_styles as webStyles } from '../auth-form.module.css';
-import { AuthLink, FormField, styles as formStyles } from '../auth-form';
-import { BackButton } from '../back-button';
-import { Checkbox } from '../checkbox';
-import { TallyBrand } from '../tally-brand';
+import { colors } from '../../theme/colors';
+import { useSession } from '../../contexts/session-context';
+import { unstable_styles as webStyles } from '../shared/auth-form.module.css';
+import { AuthLink, FormField, styles as formStyles } from '../shared/auth-form';
+import { BackButton } from '../shared/back-button';
+import { Checkbox } from '../shared/checkbox';
+import { TallyBrand } from '../shared/tally-brand';
 import { GoogleSignIn } from './google-sign-in';
 import { AppleSignIn } from './apple-sign-in';
-import { MessageText } from '../message-text';
+import { MessageText } from '../shared/message-text';
 
 type AuthScreenProps = {
     mode: 'login' | 'register';

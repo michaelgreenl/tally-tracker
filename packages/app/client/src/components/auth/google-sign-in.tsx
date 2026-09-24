@@ -3,15 +3,15 @@ import { loginPasswordSchema } from '@tally/core/client';
 import { useFocusEffect } from 'expo-router';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors } from '../../colors';
-import { getErrorMessage } from '../../api';
-import { AuthService } from '../../session/auth.service';
-import { useSession } from '../../session/session-context';
-import { assertSession, getSessionScope } from '../../session/session-scope';
-import { Dialog } from '../dialog';
-import { FormField, styles as formStyles } from '../auth-form';
+import { colors } from '../../theme/colors';
+import { getErrorMessage } from '../../infra/http/api';
+import { AuthService } from '../../services/auth/auth.service';
+import { useSession } from '../../contexts/session-context';
+import { assertSession, getSessionScope } from '../../services/session/session-scope';
+import { Dialog } from '../shared/dialog';
+import { FormField, styles as formStyles } from '../shared/auth-form';
 import { GoogleButton } from './google-button';
-import { MessageText } from '../message-text';
+import { MessageText } from '../shared/message-text';
 
 type Props = {
     connect?: boolean;

@@ -4,12 +4,12 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { colors } from '../colors';
-import { BackButton } from '../components/back-button';
-import { Dialog } from '../components/dialog';
+import { colors } from '../theme/colors';
+import { BackButton } from '../components/shared/back-button';
+import { Dialog } from '../components/shared/dialog';
 import { SignInMethods } from '../components/settings/sign-in-methods';
 import { SettingsAction } from '../components/settings/settings-action';
-import { useSession } from '../session/session-context';
+import { useSession } from '../contexts/session-context';
 
 import type { PropsWithChildren } from 'react';
 
