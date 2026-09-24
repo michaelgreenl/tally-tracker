@@ -9,7 +9,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 import { colors } from '../theme/colors';
 import { CounterCard } from '../components/counters/counter-card';
 import { CounterForm } from '../components/counters/counter-form';
-import { CounterIncrementDialog } from '../components/counters/counter-increment-dialog';
+import { CounterValueDialog } from '../components/counters/counter-value-dialog';
 import { CounterList } from '../components/counters/counter-list';
 import { Dialog } from '../components/shared/dialog';
 import { Snackbar } from '../components/shared/snackbar';
@@ -30,7 +30,9 @@ export default function HomeScreen() {
     const insets = useSafeAreaInsets();
     const [formOpen, setFormOpen] = useState(false);
     const [counterToEdit, setCounterToEdit] = useState<ClientCounter | null>(null);
-    const [incrementToEdit, setIncrementToEdit] = useState<ClientCounter | null>(null);
+    const [valueToEdit, setValueToEdit] = useState<{ counter: ClientCounter; field: 'count' | 'increment' } | null>(
+        null,
+    );
     const [guestLimitOpen, setGuestLimitOpen] = useState(false);
     const [notice, setNotice] = useState('');
     const [reorderDraft, setReorderDraft] = useState<string[] | null>(null);
@@ -191,7 +193,8 @@ export default function HomeScreen() {
                                 setCounterToEdit(item);
                                 setFormOpen(true);
                             }}
-                            onEditIncrement={setIncrementToEdit}
+                            onEditIncrement={(counter) => setValueToEdit({ counter, field: 'increment' })}
+                            onEditCount={(counter) => setValueToEdit({ counter, field: 'count' })}
                             onIncrement={(id, amount) => void incrementCounter(id, amount)}
                             onNotice={setNotice}
                             canReorder={counterState.counters.length > 1}
@@ -232,9 +235,7 @@ export default function HomeScreen() {
                     onDone={closeForm}
                 />
 
-                {incrementToEdit && (
-                    <CounterIncrementDialog counter={incrementToEdit} onClose={() => setIncrementToEdit(null)} />
-                )}
+                {valueToEdit && <CounterValueDialog {...valueToEdit} onClose={() => setValueToEdit(null)} />}
 
                 <Dialog
                     visible={removeOpen}

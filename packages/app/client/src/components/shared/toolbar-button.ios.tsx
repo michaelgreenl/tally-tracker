@@ -33,14 +33,14 @@ export function ToolbarButton({ label, icon, role, disabled: unavailable, onPres
                     ),
                     buttonBorderShape(icon ? 'circle' : 'capsule'),
                     tint(cancel ? colors.text : colors.primary),
-                    frame({ minWidth: 48, minHeight: 48 }),
+                    frame(icon ? { width: 48, height: 48 } : { minWidth: 48, minHeight: 48 }),
                 ]}
             >
                 {icon && (
                     <Image
                         systemName={icon === 'close' ? 'xmark' : 'checkmark'}
-                        size={18}
-                        modifiers={[frame({ width: 24, height: 24 })]}
+                        size={22}
+                        modifiers={[frame({ width: 32, height: 32 })]}
                     />
                 )}
             </Button>

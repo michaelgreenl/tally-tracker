@@ -32,7 +32,7 @@ struct CounterWidgetView: View {
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @ScaledMetric(relativeTo: .headline) private var titleFontSize = 17.0
   @ScaledMetric(relativeTo: .largeTitle) private var countFontSize = 34.0
-  @ScaledMetric(relativeTo: .largeTitle) private var lockScreenCountFontSize = 40.0
+  @ScaledMetric(relativeTo: .largeTitle) private var lockScreenCountFontSize = 42.0
 
   var body: some View {
     Group {
@@ -40,16 +40,21 @@ struct CounterWidgetView: View {
         Group {
           if family == .systemMedium {
             GeometryReader { geometry in
-              HStack(spacing: 0) {
-                VStack(alignment: .leading, spacing: 4) {
+              VStack(spacing: 0) {
+                HStack(alignment: .counterTextTop, spacing: 8) {
                   nameAndMetric(counter)
+                    .frame(width: geometry.size.width / 4, alignment: .leading)
                   Spacer(minLength: 0)
-                  TallyMark().frame(width: 22, height: 22).accessibilityHidden(true)
+                  incrementLabel(counter)
                 }
-                .frame(width: geometry.size.width / 4, alignment: .leading)
+                Spacer(minLength: 4)
                 controls(counter, owner: owner)
-                  .frame(maxWidth: .infinity, maxHeight: .infinity)
+                  .frame(width: geometry.size.width * 3 / 4)
+                Spacer(minLength: 4)
+                TallyMark().frame(width: 22, height: 22).accessibilityHidden(true)
+                  .frame(maxWidth: .infinity, alignment: .leading)
               }
+              .frame(width: geometry.size.width, height: geometry.size.height)
             }
           } else if family == .accessoryRectangular {
             header(counter)
@@ -82,57 +87,86 @@ struct CounterWidgetView: View {
   }
 
   private func smallCounter(_ counter: WidgetCounter, owner: String) -> some View {
-    VStack(alignment: .leading, spacing: 2) {
-      Text(counter.title)
-        .font(.system(size: 24, weight: .semibold))
-        .lineLimit(1)
-        .minimumScaleFactor(0.7)
-      HStack(alignment: .bottom, spacing: 8) {
-        VStack(alignment: .leading, spacing: 4) {
-          if let metric = counter.metric, !metric.isEmpty {
-            Text(metric)
-              .font(.system(size: 14, weight: .semibold))
-              .foregroundStyle(Color(white: 181 / 255))
-              .lineLimit(1)
-          }
-          Spacer(minLength: 0)
-          value(counter)
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(height: 56, alignment: .bottom)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.bottom, 2)
-            .offset(x: 2)
+    GeometryReader { geometry in
+      let buttonSize = min(60, (geometry.size.height - 24) / 2)
+      HStack(spacing: 8) {
+        VStack(spacing: 0) {
+          nameAndMetric(counter).frame(maxWidth: .infinity, alignment: .leading)
+          Spacer(minLength: 4)
+          value(counter).frame(maxWidth: .infinity)
+          Spacer(minLength: 4)
+          incrementLabel(counter).frame(maxWidth: .infinity, alignment: .leading)
         }
-        VStack(spacing: 10) {
+        .frame(
+          width: geometry.size.width - buttonSize - 8, height: geometry.size.height,
+          alignment: .leading)
+        VStack(spacing: 0) {
+          Spacer(minLength: 8)
           control(counter, owner: owner, increase: true)
+            .frame(width: buttonSize, height: buttonSize)
+          Spacer(minLength: 8)
           control(counter, owner: owner, increase: false)
+            .frame(width: buttonSize, height: buttonSize)
+          Spacer(minLength: 8)
         }
-        .frame(width: 56)
-        .frame(maxHeight: .infinity, alignment: .bottom)
+        .frame(width: buttonSize, height: geometry.size.height)
       }
     }
   }
 
   private func nameAndMetric(_ counter: WidgetCounter) -> some View {
-    VStack(alignment: .leading, spacing: 2) {
+    let nameOnly = family == .accessoryRectangular && (counter.metric?.isEmpty ?? true)
+    let nameSize =
+      family == .accessoryRectangular
+      ? titleFontSize * (nameOnly ? 1.5 : 1.2) : titleFontSize
+    return VStack(alignment: .leading, spacing: 2) {
       counterText(
         counter.title,
-        font: .systemFont(ofSize: titleFontSize, weight: .semibold), minimumScale: 0.85,
+        font: .systemFont(ofSize: family == .systemSmall ? 24 : nameSize, weight: .semibold),
+        minimumScale: family == .systemSmall ? 0.6 : (family == .accessoryRectangular ? 0.4 : 0.85),
         alignLeading: family == .systemSmall
       )
       if let metric = counter.metric, !metric.isEmpty {
-        Text(metric).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+        if family == .systemSmall {
+          Text(metric)
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(Color(white: 181 / 255))
+            .lineLimit(1)
+            .minimumScaleFactor(0.85)
+        } else {
+          Text(metric)
+            .font(family == .accessoryRectangular ? .subheadline : .caption)
+            .foregroundStyle(.secondary).lineLimit(1)
+            .minimumScaleFactor(family == .accessoryRectangular ? 0.5 : 1)
+        }
       }
     }
   }
 
   private func header(_ counter: WidgetCounter) -> some View {
-    let hasMetric = !(counter.metric ?? "").isEmpty
-    return HStack(alignment: hasMetric ? .counterTextTop : .counterTextCenter, spacing: 8) {
-      nameAndMetric(counter).frame(maxWidth: .infinity, alignment: .leading)
-      value(counter)
+    GeometryReader { geometry in
+      HStack(alignment: .counterTextCenter, spacing: 8) {
+        nameAndMetric(counter)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .alignmentGuide(.counterTextCenter) { $0[VerticalAlignment.center] }
+        value(counter)
+          .frame(maxWidth: geometry.size.width * 0.62)
+          .fixedSize(horizontal: true, vertical: false)
+          .layoutPriority(1)
+      }
+      .frame(width: geometry.size.width, height: geometry.size.height, alignment: .leading)
     }
     .padding(.horizontal, 8)
+  }
+
+  private func incrementLabel(_ counter: WidgetCounter) -> some View {
+    counterText(
+      "± \(counter.increment.formatted(.number.precision(.fractionLength(0...6)).locale(locale)))",
+      font: .monospacedDigitSystemFont(ofSize: 16, weight: .semibold), minimumScale: 0.6,
+      alignLeading: false
+    )
+    .foregroundStyle(Color(red: 112 / 255, green: 200 / 255, blue: 227 / 255))
+    .accessibilityLabel("Increment \(counter.increment.formatted())")
   }
 
   private func value(_ counter: WidgetCounter) -> some View {

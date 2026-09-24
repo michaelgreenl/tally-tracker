@@ -15,6 +15,7 @@ type CounterStepperProps = {
     label: string;
     testID: string;
     onIncrement: (amount: number) => void;
+    onEditValue: () => void;
     children?: ReactNode;
 };
 
@@ -26,6 +27,7 @@ export function CounterStepper({
     label,
     testID,
     onIncrement,
+    onEditValue,
     children,
 }: CounterStepperProps) {
     function button(direction: -1 | 1) {
@@ -55,13 +57,17 @@ export function CounterStepper({
     return (
         <View style={styles.row}>
             {button(-1)}
-            {children ?? (
-                <CounterNumber
-                    value={value}
-                    label={`${label} count ${value}`}
-                    style={counterNumberStyle}
-                    testID={`${testID}-count`}
-                />
+            {children || (
+                <Pressable
+                    accessibilityRole='button'
+                    accessibilityLabel={`Edit ${label}, currently ${value}`}
+                    onPress={onEditValue}
+                    disabled={disabled}
+                    style={({ pressed }) => [styles.valueButton, pressed && styles.valuePressed]}
+                    testID={`${testID}-edit-value`}
+                >
+                    <CounterNumber value={value} style={counterNumberStyle} testID={`${testID}-count`} />
+                </Pressable>
             )}
             {button(1)}
         </View>
@@ -81,6 +87,8 @@ export const counterNumberStyle = StyleSheet.create({
 }).number;
 
 const styles = StyleSheet.create({
+    valueButton: { minHeight: 52, minWidth: 80, flexShrink: 1, justifyContent: 'center', borderRadius: 9 },
+    valuePressed: { backgroundColor: colors.input },
     row: {
         flexDirection: 'row',
         alignSelf: 'center',

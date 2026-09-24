@@ -27,6 +27,7 @@ type CounterCardProps = {
     onDelete: (counter: ClientCounter) => void;
     onEdit: (counter: ClientCounter) => void;
     onEditIncrement: (counter: ClientCounter) => void;
+    onEditCount: (counter: ClientCounter) => void;
     onIncrement: (counterId: string, amount: number) => void;
     onNotice: (message: string) => void;
     canReorder: boolean;
@@ -39,6 +40,7 @@ export function CounterCard({
     onDelete,
     onEdit,
     onEditIncrement,
+    onEditCount,
     onIncrement,
     onNotice,
     canReorder,
@@ -153,6 +155,7 @@ export function CounterCard({
                             label={counter.title}
                             testID={`counter-${counter.id}`}
                             onIncrement={(amount) => onIncrement(counter.id, amount)}
+                            onEditValue={() => onEditCount(counter)}
                         />
 
                         <View style={styles.footer}>

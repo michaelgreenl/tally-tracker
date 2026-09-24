@@ -122,4 +122,24 @@ describe('Counter sync recovery', () => {
             },
         );
     });
+
+    it('saves count edits without losing taps received while the editor is open', () => {
+        cy.request('POST', '/counters', { title: 'Water', increment: 0.5, count: 2 }).then(({ body }) => {
+            const counter: ClientCounter = body.data.counter;
+            cy.get(`[data-testid="counter-${counter.id}-count"]`).should('have.text', '2').click();
+            cy.get('[data-testid="counter-count-value"]').clear().type('10');
+            cy.request('PUT', `/counters/increment/${counter.id}`, { amount: 0.5 });
+            cy.get(`[data-testid="counter-${counter.id}-count"]`).should('have.text', '2.5');
+            cy.get('[data-testid="counter-count-value"]').should('have.value', '10');
+            cy.get('[data-testid="counter-count-save"]').click();
+            cy.get(`[data-testid="counter-${counter.id}-count"]`).should('have.text', '10.5');
+            cy.get('[data-testid="home-sync-synced-icon"]').should('be.visible');
+            cy.request('GET', '/counters').then(({ body }) => {
+                expect(body.data.counters.find((item: ClientCounter) => item.id === counter.id).count).to.equal(10.5);
+            });
+            cy.clearLocalStorage();
+            openAccount(user);
+            cy.get(`[data-testid="counter-${counter.id}-count"]`).should('have.text', '10.5');
+        });
+    });
 });

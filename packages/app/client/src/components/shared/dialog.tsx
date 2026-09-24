@@ -16,9 +16,9 @@ import type { PropsWithChildren, ReactNode } from 'react';
 import type { ModalProps } from 'react-native';
 
 type DialogProps = PropsWithChildren<
-    Pick<ModalProps, 'visible' | 'onRequestClose' | 'testID'> & {
+    Pick<ModalProps, 'visible' | 'onRequestClose' | 'onShow' | 'testID'> & {
         title: string;
-        description: string;
+        description?: string;
         descriptionGap?: number;
         dismissOnBackdropPress?: boolean;
         leadingAction?: ReactNode;
@@ -29,6 +29,7 @@ type DialogProps = PropsWithChildren<
 export function Dialog({
     visible,
     onRequestClose,
+    onShow,
     testID,
     title,
     description,
@@ -42,7 +43,7 @@ export function Dialog({
     const hasHeaderActions = Boolean(leadingAction || trailingAction);
 
     return (
-        <Modal animationType='fade' onRequestClose={onRequestClose} transparent visible={visible}>
+        <Modal animationType='fade' onRequestClose={onRequestClose} onShow={onShow} transparent visible={visible}>
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboard}>
                 <ScrollView keyboardShouldPersistTaps='handled' contentContainerStyle={styles.overlay}>
                     <View
@@ -61,14 +62,17 @@ export function Dialog({
                                     accessibilityRole='header'
                                     aria-level={2}
                                     style={[styles.title, hasHeaderActions && styles.centeredTitle]}
+                                    testID={testID ? `${testID}-title` : undefined}
                                 >
                                     {title}
                                 </Text>
                                 {trailingAction && <View style={styles.headerAction}>{trailingAction}</View>}
                             </View>
-                            <Text style={[styles.description, hasHeaderActions && styles.editorDescription]}>
-                                {description}
-                            </Text>
+                            {description && (
+                                <Text style={[styles.description, hasHeaderActions && styles.editorDescription]}>
+                                    {description}
+                                </Text>
+                            )}
                         </View>
                         {children}
                     </View>
@@ -104,7 +108,7 @@ const styles = StyleSheet.create({
         backgroundColor: colors.surface,
         borderRadius: 16,
     },
-    editorCard: { gap: 4, padding: 16, paddingBottom: 32 },
+    editorCard: { gap: 12, padding: 16, paddingBottom: 32 },
     narrowCard: { width: '60%' },
     title: {
         color: colors.text,
@@ -112,13 +116,13 @@ const styles = StyleSheet.create({
         fontWeight: '800',
     },
     header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    editorHeader: { alignItems: 'flex-end' },
-    headerAction: { marginBottom: 8 },
+    editorHeader: { paddingTop: 24 },
+    headerAction: { transform: [{ translateY: '-50%' }] },
     centeredTitle: { flex: 1, fontSize: 24, fontWeight: '600', textAlign: 'center' },
     description: {
         color: colors.muted,
         fontSize: 16,
         lineHeight: 24,
     },
-    editorDescription: { textAlign: 'center', marginBottom: 18 },
+    editorDescription: { textAlign: 'center', marginBottom: 10 },
 });
