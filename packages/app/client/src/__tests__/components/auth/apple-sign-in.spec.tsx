@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
-import { act, createElement, useEffect } from 'react';
+import { act, createElement, useEffect, useLayoutEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { AppleSignIn } from '../../../components/auth/apple-sign-in.ios';
+import { GoogleButton } from '../../../components/auth/google-button.native';
+import { GoogleSignIn } from '../../../components/auth/google-sign-in';
 import { SignInMethods } from '../../../components/settings/sign-in-methods';
 import { changeSession } from '../../../services/session/session-scope';
 import type { ReactNode } from 'react';
@@ -16,13 +18,14 @@ const mocks = vi.hoisted(() => ({
     connection: vi.fn(),
     connectGoogle: vi.fn(),
     refreshUser: vi.fn(),
+    googleSignIn: vi.fn(),
 }));
 let focused = true;
 let root: Root;
 let container: HTMLDivElement;
 const props = { onError: vi.fn(), onSuccess: vi.fn(), onBusyChange: vi.fn() };
 
-// Only native views and SDK transport are replaced. These tests cover callbacks, not native appearance.
+// Native views and SDK transport are replaced. React's render/focus lifecycle is real; native geometry is not tested.
 vi.mock('react-native', () => ({
     StyleSheet: { create: (styles: unknown) => styles },
     Platform: { OS: 'ios', select: (options: Record<string, unknown>) => options.ios ?? options.default },
@@ -67,14 +70,19 @@ vi.mock('../../../services/auth/auth.service', () => ({
     AuthService: { connectApple: mocks.connect, connectGoogle: mocks.connectGoogle, signInMethods: mocks.connection },
 }));
 vi.mock('../../../components/auth/apple-sign-in', () => ({ AppleSignIn }));
-// Only Google's credential transport is replaced; the real connection component and dialog run below.
-vi.mock('../../../components/auth/google-button', () => ({
-    GoogleButton: ({ disabled, onCredential }: { disabled: boolean; onCredential: (token: string) => Promise<void> }) =>
-        createElement('button', {
-            disabled,
-            'data-testid': 'google-sign-in',
-            onClick: () => void onCredential('google-token'),
-        }),
+vi.mock('../../../components/auth/google-button', () => ({ GoogleButton }));
+vi.mock('expo-font', () => ({ isLoaded: () => true }));
+vi.mock('react-native-nitro-google-signin', () => ({
+    GoogleOneTapSignIn: {
+        configure: vi.fn(),
+        checkPlayServices: vi.fn(),
+        signOut: vi.fn(),
+        presentExplicitSignIn: mocks.googleSignIn,
+    },
+    isSuccessResponse: (response: { type: string }) => response.type === 'success',
+    isCancelledResponse: (response: { type: string }) => response.type === 'cancelled',
+    isErrorWithCode: (error: unknown) => Boolean(error && typeof error === 'object' && 'code' in error),
+    statusCodes: { SIGN_IN_CANCELLED: 'SIGN_IN_CANCELLED' },
 }));
 vi.mock('expo-apple-authentication', () => ({
     isAvailableAsync: async () => true,
@@ -120,12 +128,39 @@ beforeEach(() => {
     mocks.connection.mockResolvedValue({ success: true, data: { google: false, apple: false } });
     mocks.connect.mockResolvedValue({ success: true });
     mocks.connectGoogle.mockResolvedValue({ success: true });
+    mocks.googleSignIn.mockResolvedValue({ type: 'success', data: { idToken: 'google-token' } });
 });
 
 afterEach(async () => {
     await act(async () => root.unmount());
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
+});
+
+it('renders native sign-in buttons in the first commit and keeps them mounted across focus changes', async () => {
+    const firstCommit: (Element | null)[] = [];
+    const buttons = () =>
+        ['google-sign-in', 'apple-sign-in'].map((id) => container.querySelector(`[data-testid="${id}"]`));
+    function Screen() {
+        // Inspect before passive effects or asynchronous SDK setup can insert a missing button.
+        useLayoutEffect(() => {
+            firstCommit.push(...buttons());
+        }, []);
+        return (
+            <>
+                <GoogleSignIn {...props} disabled={false} busy={false} />
+                <AppleSignIn {...props} disabled={false} />
+            </>
+        );
+    }
+    await act(async () => root.render(<Screen />));
+    expect(firstCommit).toHaveLength(2);
+    expect(firstCommit).not.toContain(null);
+    for (const nextFocus of [false, true]) {
+        focused = nextFocus;
+        await act(async () => root.render(<Screen />));
+        buttons().forEach((button, index) => expect(button).toBe(firstCommit[index]));
+    }
 });
 
 it('submits the returned code with its original nonce and blocks disabled presses', async () => {

@@ -1,4 +1,5 @@
 import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
+import { useFonts } from 'expo-font';
 import Head from 'expo-router/head';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, Appearance, Platform, StyleSheet, View } from 'react-native';
@@ -26,8 +27,11 @@ const navigationTheme = {
 
 function Navigator() {
     const session = useSession();
+    const [fontsLoaded, fontError] = useFonts(
+        Platform.OS === 'web' ? {} : { GoogleSansMedium: require('../../assets/fonts/GoogleSans-Medium.ttf') },
+    );
 
-    if (!session.ready) {
+    if (!session.ready || (!fontsLoaded && !fontError)) {
         return (
             <View style={styles.loading}>
                 <ActivityIndicator color={colors.link} size='large' />

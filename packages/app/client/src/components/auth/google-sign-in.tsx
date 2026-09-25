@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { loginPasswordSchema } from '@tally/core/client';
 import { useFocusEffect } from 'expo-router';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../theme/colors';
 import { getErrorMessage } from '../../infra/http/api';
@@ -29,6 +29,8 @@ export function GoogleSignIn({ connect = false, disabled, busy, rememberMe, onBu
     const [password, setPassword] = useState('');
     const [linkError, setLinkError] = useState('');
     const [focused, setFocused] = useState(false);
+    // Google's web SDK has one global callback; only the focused page may register it.
+    const showButton = Platform.OS !== 'web' || focused;
     const pending = useRef(false);
     const active = useRef(true);
     const scope = useRef(getSessionScope());
@@ -99,7 +101,7 @@ export function GoogleSignIn({ connect = false, disabled, busy, rememberMe, onBu
 
     if (!process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID) return null;
     if (connect) {
-        return focused ? (
+        return showButton ? (
             <GoogleButton
                 disabled={disabled}
                 busy={busy}
@@ -117,7 +119,7 @@ export function GoogleSignIn({ connect = false, disabled, busy, rememberMe, onBu
                 <View style={styles.line} />
             </View>
             <View style={styles.button}>
-                {focused && (
+                {showButton && (
                     <GoogleButton
                         disabled={disabled || Boolean(linkToken)}
                         busy={busy && !linkToken}

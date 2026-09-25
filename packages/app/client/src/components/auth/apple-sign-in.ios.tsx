@@ -1,8 +1,8 @@
 import { useCallback, useRef, useState } from 'react';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { useFocusEffect } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
-import { colors } from '../../theme/colors';
 import { ApiError, getErrorMessage } from '../../infra/http/api';
 import { useSession } from '../../contexts/session-context';
 import { AuthService } from '../../services/auth/auth.service';
@@ -10,8 +10,6 @@ import { assertSession, getSessionScope } from '../../services/session/session-s
 import { authorizeApple } from '../../services/auth/native-authorization';
 import type { AppleSignInProps } from './apple-sign-in';
 import { SocialSignInButton } from './social-sign-in-button';
-
-type AppleSdk = typeof import('expo-apple-authentication');
 
 export function AppleSignIn({
     connect = false,
@@ -22,9 +20,7 @@ export function AppleSignIn({
     onSuccess,
 }: AppleSignInProps) {
     const session = useSession();
-    const [sdk, setSdk] = useState<AppleSdk | null>(null);
     const [busy, setBusy] = useState(false);
-    const [unavailable, setUnavailable] = useState(false);
     const focus = useRef<object | null>(null);
     const pending = useRef(false);
     const enabled = process.env.EXPO_PUBLIC_APPLE_SIGN_IN_ENABLED === 'true';
@@ -32,31 +28,16 @@ export function AppleSignIn({
     useFocusEffect(
         useCallback(() => {
             focus.current = {};
-            let mounted = true;
-            if (enabled) {
-                void (async () => {
-                    // Keep older development builds usable until their native modules are rebuilt.
-                    const apple = await import('expo-apple-authentication');
-                    const available = await apple.isAvailableAsync();
-                    if (mounted) {
-                        setSdk(available ? apple : null);
-                        setUnavailable(!available);
-                    }
-                })().catch(() => {
-                    if (mounted) setUnavailable(true);
-                });
-            }
             return () => {
-                mounted = false;
                 focus.current = null;
                 setBusy(false);
                 onBusyChange(false);
             };
-        }, [enabled, onBusyChange]),
+        }, [onBusyChange]),
     );
 
     async function signIn() {
-        if (!sdk || disabled || pending.current || !focus.current) return;
+        if (!enabled || disabled || pending.current || !focus.current) return;
         const startedFocus = focus.current;
         const scope = getSessionScope();
         pending.current = true;
@@ -64,7 +45,7 @@ export function AppleSignIn({
         onBusyChange(true);
         onError('');
         try {
-            const credential = await authorizeApple(sdk);
+            const credential = await authorizeApple(AppleAuthentication);
             if (focus.current !== startedFocus) return;
             assertSession(scope);
             const request = { ...credential, rememberMe };
@@ -98,10 +79,7 @@ export function AppleSignIn({
         }
     }
 
-    if (connect && unavailable) {
-        return <Text style={styles.error}>Apple sign-in is unavailable. Update the app to retry.</Text>;
-    }
-    if (!enabled || !sdk) return null;
+    if (!enabled) return null;
     return (
         <View style={!connect && styles.section} testID='apple-sign-in-section'>
             <SocialSignInButton provider='Apple' disabled={disabled} busy={busy} onPress={() => void signIn()} />
@@ -111,5 +89,4 @@ export function AppleSignIn({
 
 const styles = StyleSheet.create({
     section: { marginTop: 12 },
-    error: { color: colors.danger, fontSize: 14 },
 });
