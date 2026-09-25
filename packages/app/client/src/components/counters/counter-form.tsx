@@ -7,7 +7,6 @@ import { colors } from '../../theme/colors';
 import { useCounters } from '../../contexts/counter-context';
 import { FormField } from '../shared/auth-form';
 import { CounterSheet } from './counter-sheet';
-import { CustomColorPicker } from './custom-color-picker';
 import { MessageText } from '../shared/message-text';
 
 import type { ClientCounter, HexColor } from '@tally/core/client';
@@ -19,14 +18,10 @@ type CounterFormProps = {
     onDone: () => void;
 };
 
-const colorChoices = ['#000000', '#0f7899', '#2563eb', '#7c3aed', '#be123c', '#15803d'] as const;
-const isHexColor = (value: string): value is HexColor => /^#(?:[0-9a-fA-F]{3}){1,2}$/.test(value);
-
 export function CounterForm({ visible, counter, onCancel, onDone }: CounterFormProps) {
     const counterState = useCounters();
     const insets = useSafeAreaInsets();
     const [title, setTitle] = useState(counter?.title || '');
-    const [color, setColor] = useState(counter?.color || '#000000');
     const [metric, setMetric] = useState(counter?.metric || '');
     const [errorMessage, setErrorMessage] = useState('');
     const [loading, setLoading] = useState(false);
@@ -37,7 +32,6 @@ export function CounterForm({ visible, counter, onCancel, onDone }: CounterFormP
         setWasVisible(visible);
         if (visible) {
             setTitle(counter?.title || '');
-            setColor(counter?.color || '#000000');
             setMetric(counter?.metric || '');
             setErrorMessage('');
         }
@@ -53,16 +47,12 @@ export function CounterForm({ visible, counter, onCancel, onDone }: CounterFormP
             setErrorMessage('Name is required.');
             return;
         }
-        if (!isHexColor(color)) {
-            setErrorMessage('Choose a valid color.');
-            return;
-        }
 
         setLoading(true);
         setErrorMessage('');
         const result = counter
-            ? await counterState.updateCounter(counter.id, { title, color, metric })
-            : await counterState.createCounter(title, color, metric);
+            ? await counterState.updateCounter(counter.id, { title, metric })
+            : await counterState.createCounter(title, '#000000' as HexColor, metric);
         setLoading(false);
 
         if (!result.success) {
@@ -140,41 +130,6 @@ export function CounterForm({ visible, counter, onCancel, onDone }: CounterFormP
                         testID='counter-metric'
                     />
 
-                    <View style={styles.field}>
-                        <Text style={styles.label}>Color</Text>
-                        <ScrollView
-                            horizontal
-                            alwaysBounceHorizontal={false}
-                            accessibilityLabel='Counter color choices'
-                            contentContainerStyle={styles.colorChoices}
-                            keyboardShouldPersistTaps='handled'
-                            style={styles.colors}
-                            testID='counter-color-choices'
-                        >
-                            <CustomColorPicker value={color} onChange={setColor} disabled={loading} />
-                            {colorChoices.map((choice) => (
-                                <Pressable
-                                    key={choice}
-                                    accessibilityLabel={`Color ${choice}`}
-                                    accessibilityRole='radio'
-                                    accessibilityState={{ checked: color.toLowerCase() === choice }}
-                                    disabled={loading}
-                                    onPress={() => setColor(choice)}
-                                    style={styles.swatchButton}
-                                    testID={`counter-color-${choice.slice(1)}`}
-                                >
-                                    <View
-                                        style={[
-                                            styles.color,
-                                            { backgroundColor: choice },
-                                            color.toLowerCase() === choice && styles.colorSelected,
-                                        ]}
-                                    />
-                                </Pressable>
-                            ))}
-                        </ScrollView>
-                    </View>
-
                     {Boolean(errorMessage) && (
                         <View
                             accessibilityLiveRegion='polite'
@@ -206,39 +161,6 @@ const styles = StyleSheet.create({
     form: {
         paddingHorizontal: 22,
         paddingBottom: 8,
-    },
-    field: {
-        // Controls have 4px above each circle, matching the other labels' 7px gap.
-        gap: 3,
-    },
-    label: {
-        color: colors.text,
-        fontSize: 14,
-        fontWeight: '600',
-    },
-    colors: {
-        flexGrow: 0,
-    },
-    colorChoices: {
-        gap: 16,
-    },
-    swatchButton: {
-        width: 60,
-        height: 60,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderRadius: 30,
-    },
-    color: {
-        width: 52,
-        height: 52,
-        borderWidth: 2,
-        borderColor: colors.surface,
-        borderRadius: 26,
-        boxShadow: `0 0 0 1px ${colors.border}`,
-    },
-    colorSelected: {
-        boxShadow: `0 0 0 3px ${colors.link}`,
     },
     errorBox: {
         padding: 12,

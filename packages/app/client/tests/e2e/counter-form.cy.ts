@@ -45,6 +45,8 @@ describe('Counter sheet', () => {
     it('saves a metric and decimal step, applies each tap, and discards canceled changes', () => {
         cy.viewport(390, 844);
         cy.get('[data-testid="add-counter-button"]').click();
+        cy.get('[data-testid="counter-form-submit"]').click();
+        cy.get('[data-testid="counter-form-error"]').should('be.visible');
         cy.get('[data-testid="counter-title"]').type('Water');
         cy.get('[data-testid="counter-metric"]').type('16oz water bottle');
         cy.get('[data-testid="counter-form-submit"]').click();
@@ -212,40 +214,32 @@ describe('Counter sheet', () => {
         cy.get('[data-testid$="-count"]').should('have.text', '0');
     });
 
-    it('saves custom picker colors and loads them when editing', () => {
-        cy.get('[data-testid="add-counter-button"]').click();
-        cy.get('[data-testid="counter-form-submit"]').click();
-        cy.get('[data-testid="counter-form-error"]').should('be.visible');
-        cy.get('[data-testid="counter-title"]').type('Custom color');
-        cy.get('[data-testid="counter-color-2563eb"]').click();
-        cy.get('[data-testid="counter-custom-color-dialog"]').should('not.exist');
-        cy.get('[data-testid="counter-custom-color"]').click();
-        // The picker owns this accessible slider, so use its label instead of an internal selector.
-        cy.get('[aria-label="Color hue"]').focus().type('{rightarrow}');
-        cy.get('[data-testid="counter-custom-color-done"]').click();
-        cy.get('[data-testid="counter-custom-color-dialog"]').should('not.exist');
-        cy.get('[data-testid="counter-custom-color"]')
-            .should('not.have.attr', 'aria-label', 'Custom color, selected #2563eb')
-            .invoke('attr', 'aria-label')
-            .then((chosenColor) => {
-                cy.get('[data-testid="counter-form-submit"]').click();
-                cy.get('[data-testid="home-counter-form"]').should('not.exist');
-                cy.reload();
-                cy.get('[data-testid^="counter-"][data-testid$="-menu"]').click();
-                cy.get('[data-testid^="counter-"][data-testid$="-edit"]').click();
-                cy.get('[data-testid="counter-custom-color"]').should('have.attr', 'aria-label', chosenColor);
-            });
-
-        cy.get('[data-testid="counter-color-be123c"]').click();
+    it('preserves a saved color when editing a counter', () => {
+        const counter = {
+            id: crypto.randomUUID(),
+            title: 'Water',
+            color: '#2563eb',
+            metric: null,
+            count: 0,
+            increment: 1,
+            userId: 'guest',
+            type: 'PERSONAL',
+            inviteCode: null,
+        };
+        cy.visit('/home', {
+            onBeforeLoad(win) {
+                win.localStorage.setItem('app_counters', JSON.stringify({ counters: [counter], widgetReceipts: [] }));
+            },
+        });
+        cy.get(`[data-testid="counter-${counter.id}-menu"]`).click();
+        cy.get(`[data-testid="counter-${counter.id}-edit"]`).click();
+        cy.get('[data-testid="counter-title"]').clear().type('Water bottles');
         cy.get('[data-testid="counter-form-submit"]').click();
         cy.get('[data-testid="home-counter-form"]').should('not.exist');
         cy.reload();
-        cy.get('[data-testid^="counter-"][data-testid$="-menu"]').click();
-        cy.get('[data-testid^="counter-"][data-testid$="-edit"]').click();
-        cy.get('[data-testid="counter-custom-color"]').should(
-            'have.attr',
-            'aria-label',
-            'Custom color, selected #be123c',
-        );
+        cy.window().should((win) => {
+            const { counters } = JSON.parse(win.localStorage.getItem('app_counters')!);
+            expect(counters[0]).to.include({ id: counter.id, title: 'Water bottles', color: '#2563eb' });
+        });
     });
 });
