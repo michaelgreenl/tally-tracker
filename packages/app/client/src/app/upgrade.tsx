@@ -17,7 +17,7 @@ import { useSession } from '../contexts/session-context';
 const plans = [
     { id: 'monthly', name: 'Monthly', price: '$1', period: '/ month', detail: 'Billed monthly' },
     { id: 'yearly', name: 'Yearly', price: '$10', period: '/ year', detail: 'Billed yearly' },
-    { id: 'lifetime', name: 'Lifetime', price: '$20', period: 'once', detail: 'One-time payment' },
+    { id: 'lifetime', name: 'Lifetime', price: '$30', period: 'once', detail: 'One-time payment' },
 ] as const;
 
 export default function UpgradeScreen() {

@@ -102,7 +102,7 @@ Use RevenueCat or an equivalent entitlement service:
 
 Monthly and yearly plans are subscriptions. Lifetime access is a non-consumable purchase.
 
-Target prices are about 1 USD monthly, 10 USD yearly, and 20 USD lifetime.
+US release prices are 1 USD monthly, 10 USD yearly, and 30 USD lifetime.
 
 ### 6. Upgrade UI Replacement
 
