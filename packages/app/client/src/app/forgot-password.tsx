@@ -1,4 +1,4 @@
-import { EmailAuthScreen } from '../components/email-auth-screen';
+import { EmailAuthScreen } from '../components/auth/email-auth-screen';
 
 export default function ForgotPasswordScreen() {
     return <EmailAuthScreen mode='reset' />;

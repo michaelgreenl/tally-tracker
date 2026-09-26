@@ -6,6 +6,38 @@ describe('Counter actions', () => {
         cy.clearLocalStorage();
     });
 
+    it('resets only the selected guest count immediately and persists it', () => {
+        const counter = {
+            id: crypto.randomUUID(),
+            userId: 'guest',
+            title: 'Water',
+            count: -16.9,
+            metric: 'fl-oz',
+            increment: 16.9,
+            type: 'PERSONAL',
+            inviteCode: null,
+            color: '#000000',
+        };
+        const other = { ...counter, id: crypto.randomUUID(), title: 'Other counter', count: 8 };
+        cy.visit('/home', {
+            onBeforeLoad(win) {
+                win.localStorage.setItem(
+                    'app_counters',
+                    JSON.stringify({ counters: [counter, other], widgetReceipts: [] }),
+                );
+            },
+        });
+        cy.get(`[data-testid="counter-${counter.id}-menu"]`).click();
+        cy.get(`[data-testid="counter-${counter.id}-reset"]`).click();
+        cy.get(`[data-testid="counter-${counter.id}-count"]`).should('have.text', '0');
+        cy.reload();
+        cy.get(`[data-testid="counter-${counter.id}-count"]`).should('have.text', '0');
+        cy.window().should((win) => {
+            const { counters } = JSON.parse(win.localStorage.getItem('app_counters')!);
+            expect(counters).to.deep.equal([{ ...counter, count: 0 }, other]);
+        });
+    });
+
     it('keeps guest sharing disabled while edit and delete work through the menu', () => {
         cy.visit('/home');
         cy.get('[data-testid="add-counter-button"]').click();
@@ -71,7 +103,7 @@ describe('Counter actions', () => {
                 const viewport = $banner[0].ownerDocument.defaultView!;
                 expect(bounds.left, 'message stays inside viewport').to.be.at.least(0);
                 expect(bounds.right, 'message stays inside viewport').to.be.at.most(viewport.innerWidth);
-                expect(bounds.bottom, 'message stays above page bottom').to.be.at.most(viewport.innerHeight);
+                expect(viewport.innerHeight - bounds.bottom, 'message sits near the bottom edge').to.be.within(12, 24);
             });
         cy.get(`[data-testid="counter-${counter.id}"]`).should(($card) => {
             expect($card[0].getBoundingClientRect().height, 'message does not resize the card').to.equal(cardHeight);

@@ -71,4 +71,21 @@ describe('startup configuration', () => {
             }),
         ).toThrow('REVENUECAT_WEBHOOK_SECRET');
     });
+
+    it('rejects partial Apple configuration and malformed token-encryption keys', () => {
+        const apple = {
+            APPLE_CLIENT_ID: 'com.tallytracker.app',
+            APPLE_TEAM_ID: 'TEAM123456',
+            APPLE_KEY_ID: 'KEY1234567',
+            APPLE_PRIVATE_KEY: '-----BEGIN PRIVATE KEY-----\nfixture\n-----END PRIVATE KEY-----',
+            APPLE_TOKEN_ENCRYPTION_KEY: 'a'.repeat(64),
+        };
+        expect(() => validateEnvironment({ ...production, ...apple })).not.toThrow();
+        for (const field of Object.keys(apple)) {
+            expect(() => validateEnvironment({ ...production, ...apple, [field]: '' })).toThrow(field);
+        }
+        expect(() => validateEnvironment({ ...production, ...apple, APPLE_TOKEN_ENCRYPTION_KEY: 'not-a-key' })).toThrow(
+            'APPLE_TOKEN_ENCRYPTION_KEY',
+        );
+    });
 });

@@ -122,8 +122,13 @@ describe('Counter order', () => {
                             buttons: 1,
                             clientX: first.left + 30,
                         };
-                        cy.wrap($first).trigger('pointerdown', { ...pointer, clientY: first.top + 30 });
-                        cy.wrap($first).trigger('mousedown', {
+                        // Start on the heading; the count at the row's center is an edit button.
+                        const pressTarget = `counter-${ids[0]}-${mode === 'long press' ? 'title' : 'drag'}`;
+                        cy.get(`[data-testid="${pressTarget}"]`).trigger('pointerdown', {
+                            ...pointer,
+                            clientY: first.top + 30,
+                        });
+                        cy.get(`[data-testid="${pressTarget}"]`).trigger('mousedown', {
                             ...pointer,
                             eventConstructor: 'MouseEvent',
                             clientY: first.top + 30,

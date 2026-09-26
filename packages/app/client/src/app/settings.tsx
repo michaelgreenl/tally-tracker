@@ -4,10 +4,12 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { colors } from '../colors';
-import { BackButton } from '../components/back-button';
-import { Dialog } from '../components/dialog';
-import { useSession } from '../session';
+import { colors } from '../theme/colors';
+import { BackButton } from '../components/shared/back-button';
+import { Dialog } from '../components/shared/dialog';
+import { SignInMethods } from '../components/settings/sign-in-methods';
+import { SettingsAction } from '../components/settings/settings-action';
+import { useSession } from '../contexts/session-context';
 
 import type { PropsWithChildren } from 'react';
 
@@ -38,6 +40,7 @@ export default function SettingsScreen() {
     const [deleteLoading, setDeleteLoading] = useState(false);
     const [deleteError, setDeleteError] = useState('');
     const [logoutOpen, setLogoutOpen] = useState(false);
+    const [methodsBusy, setMethodsBusy] = useState(false);
 
     async function deleteAccount() {
         setDeleteLoading(true);
@@ -78,14 +81,17 @@ export default function SettingsScreen() {
                                 <>
                                     <Row label='Email' value={session.user?.email || 'Unknown account'} />
                                     <Row label='Tier' value={session.isPremium ? 'Premium' : 'Basic'} />
-                                    <Pressable
-                                        accessibilityRole='button'
+                                    <SignInMethods
+                                        key={session.sessionId}
+                                        disabled={methodsBusy || deleteLoading || logoutOpen || deleteOpen}
+                                        onBusyChange={setMethodsBusy}
+                                    />
+                                    <SettingsAction
+                                        label='Logout'
+                                        disabled={methodsBusy}
                                         onPress={() => setLogoutOpen(true)}
-                                        style={({ pressed }) => [styles.actionRow, pressed && styles.rowPressed]}
                                         testID='settings-logout'
-                                    >
-                                        <Text style={styles.actionText}>Logout</Text>
-                                    </Pressable>
+                                    />
                                 </>
                             ) : (
                                 <>
@@ -134,42 +140,29 @@ export default function SettingsScreen() {
                                 </Pressable>
                             </Link>
                             {session.isAuthenticated && (
-                                <Pressable
-                                    accessibilityRole='button'
+                                <SettingsAction
+                                    label='Delete account'
+                                    tone='danger'
+                                    last
+                                    disabled={methodsBusy}
                                     onPress={() => {
                                         setDeleteError('');
                                         setDeleteOpen(true);
                                     }}
-                                    style={({ pressed }) => [
-                                        styles.actionRow,
-                                        styles.lastRow,
-                                        pressed && styles.rowPressed,
-                                    ]}
                                     testID='settings-delete-account'
-                                >
-                                    <Text style={styles.deleteText}>Delete account</Text>
-                                </Pressable>
+                                />
                             )}
                         </Section>
 
                         <Section title='Legal'>
                             <Link href='/legal/privacy' asChild>
-                                <Pressable accessibilityRole='link' style={styles.actionRow}>
-                                    <Text style={styles.actionText}>Privacy Policy</Text>
-                                </Pressable>
+                                <SettingsAction accessibilityRole='link' label='Privacy Policy' />
                             </Link>
                             <Link href='/legal/terms' asChild>
-                                <Pressable accessibilityRole='link' style={styles.actionRow}>
-                                    <Text style={styles.actionText}>Terms of Service</Text>
-                                </Pressable>
+                                <SettingsAction accessibilityRole='link' label='Terms of Service' />
                             </Link>
                             <Link href='/legal/support' asChild>
-                                <Pressable
-                                    accessibilityRole='link'
-                                    style={StyleSheet.flatten([styles.actionRow, styles.lastRow])}
-                                >
-                                    <Text style={styles.actionText}>Support/Contact</Text>
-                                </Pressable>
+                                <SettingsAction accessibilityRole='link' label='Support/Contact' last />
                             </Link>
                         </Section>
                     </View>
@@ -314,23 +307,11 @@ const styles = StyleSheet.create({
         fontSize: 14,
         textAlign: 'right',
     },
-    actionRow: {
-        minHeight: 54,
-        justifyContent: 'center',
-        paddingHorizontal: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.divider,
-    },
     rowPressed: {
         backgroundColor: colors.input,
     },
     lastRow: {
         borderBottomWidth: 0,
-    },
-    actionText: {
-        color: colors.link,
-        fontSize: 15,
-        fontWeight: '700',
     },
     guestRow: {
         gap: 5,
@@ -392,11 +373,6 @@ const styles = StyleSheet.create({
     detailCopy: {
         flex: 1,
         gap: 4,
-    },
-    deleteText: {
-        color: colors.danger,
-        fontSize: 15,
-        fontWeight: '700',
     },
     deleteError: {
         color: colors.danger,

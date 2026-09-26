@@ -14,7 +14,7 @@ import bcrypt from 'bcrypt';
 import { Prisma } from '@prisma/client';
 
 import type { Request, Response } from 'express';
-import type { AuthResponse, ClientUser } from '@tally/core';
+import type { ApiResponse, AuthResponse, ClientUser, SignInMethods } from '@tally/core';
 import type { AuthRequest, RefreshRequest } from '@tally/core';
 import type { User } from '@prisma/client';
 import type { Server } from 'socket.io';
@@ -48,6 +48,12 @@ export const checkAuth = async (req: Request, res: Response<AuthResponse>) => {
         success: true,
         data: { user: toClientUser(user) },
     });
+};
+
+export const signInMethods = async (req: Request, res: Response<ApiResponse<SignInMethods>>) => {
+    const methods = await userRepository.getSignInMethods(req.user!.id);
+    if (!methods) return res.status(UNAUTHORIZED).json({ success: false, message: 'Sign in again.' });
+    res.json({ success: true, data: methods });
 };
 
 const sanitizeEmail = (email: string): string => {
@@ -95,12 +101,22 @@ export const login = async (
     const user = await userRepository.getUserByEmail(sanitizedEmail);
 
     const match = await bcrypt.compare(password, user?.password ?? DUMMY_PASSWORD_HASH);
-    if (!user || !match) {
+    if (!user?.password || !match) {
         return res.status(UNAUTHORIZED).json({ success: false, message: 'Email or password is incorrect.' });
     }
 
+    return sendSession(user, rememberMe, res);
+};
+
+export const sendSession = async (user: User, rememberMe: boolean | undefined, res: Response<AuthResponse>) => {
     const credentials = await userRepository.withLockedUser(user.id, async (current, tx) => {
-        if (!current || current.password !== user.password || current.sessionVersion !== user.sessionVersion)
+        if (
+            !current ||
+            current.password !== user.password ||
+            current.googleSubject !== user.googleSubject ||
+            current.appleSubject !== user.appleSubject ||
+            current.sessionVersion !== user.sessionVersion
+        )
             return null;
         const accessToken = jwt.sign(
             { id: current.id, email: current.email, sessionVersion: current.sessionVersion },

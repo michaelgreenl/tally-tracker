@@ -18,6 +18,19 @@ The Test Store's current `default` offering contains:
 
 Store credentials, webhook delivery, and a new native development build remain necessary for manual testing. This integration does not enable production payments.
 
+## App Store release settings
+
+App Store Connect has these US prices saved as of September 25, 2026:
+
+- Free app download.
+- `tally_premium_monthly`: USD 1 per month.
+- `tally_premium_yearly`: USD 10 per year, billed yearly.
+- `tally_premium_lifetime`: USD 30 once, as a non-consumable purchase.
+
+Apple calculates prices in other currencies. The app and all three products select 148 non-EU countries or regions. All 27 EU countries are excluded. Automatic availability in future countries or regions is off.
+
+These settings do not publish the app or submit products for review. Connect the products to RevenueCat and verify signed-build purchases before release. The separate Test Store still uses the test prices above.
+
 ## Client configuration
 
 Set `EXPO_PUBLIC_REVENUECAT_TEST_API_KEY` to the Test Store's public SDK key in the client's ignored `.env`. Restart Expo after changes. Test Store keys are accepted only in development builds.

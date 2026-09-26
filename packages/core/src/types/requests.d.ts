@@ -23,6 +23,18 @@ export interface AuthRequest {
     rememberMe?: boolean;
 }
 
+export interface GoogleLoginRequest {
+    idToken: string;
+    password?: string;
+    rememberMe?: boolean;
+}
+
+export interface AppleLoginRequest {
+    authorizationCode: string;
+    nonce: string;
+    rememberMe?: boolean;
+}
+
 export interface RefreshRequest {
     refreshToken?: string;
 }

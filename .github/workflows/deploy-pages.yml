@@ -23,6 +23,7 @@ jobs:
       HUSKY: 0
       EXPO_BASE_URL: /tally-tracker
       EXPO_PUBLIC_API_URL: https://tally-tracker-server.onrender.com
+      EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: ${{ vars.GOOGLE_WEB_CLIENT_ID }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6

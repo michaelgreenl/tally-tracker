@@ -1,6 +1,8 @@
 import express from 'express';
-import { post, remove, login, logout, checkAuth, refresh } from '../controllers/user.controller.js';
+import { post, remove, login, logout, checkAuth, refresh, signInMethods } from '../controllers/user.controller.js';
 import { jwt } from '../../middleware/auth.middleware.js';
+import { googleLogin, verifyGoogle, connectGoogle } from '../controllers/google-auth.controller.js';
+import { appleLogin, appleNotification, connectApple, verifyApple } from '../controllers/apple-auth.controller.js';
 import { validate } from '../../middleware/validate.middleware.js';
 import { emailAuthLimiter, loginAccountLimiter, loginIpLimiter } from '../../config/limiters.config.js';
 import {
@@ -15,6 +17,9 @@ import {
     emailAddressSchema,
     emailOtpSchema,
     loginSchema,
+    googleLoginSchema,
+    appleLoginSchema,
+    appleNotificationSchema,
     logoutSchema,
     passwordResetSchema,
     refreshSchema,
@@ -26,6 +31,28 @@ router.get('/check-auth', jwt, checkAuth);
 router.post('/', emailAuthLimiter, validate(createUserSchema), post);
 router.delete('/', jwt, remove);
 router.post('/login', loginIpLimiter, validate(loginSchema), loginAccountLimiter, login);
+router.post('/google', loginIpLimiter, validate(googleLoginSchema), verifyGoogle, loginAccountLimiter, googleLogin);
+router.post('/apple', loginIpLimiter, validate(appleLoginSchema), verifyApple, loginAccountLimiter, appleLogin);
+router.get('/sign-in-methods', jwt, signInMethods);
+router.post(
+    '/google/connect',
+    jwt,
+    loginIpLimiter,
+    validate(googleLoginSchema),
+    verifyGoogle,
+    loginAccountLimiter,
+    connectGoogle,
+);
+router.post(
+    '/apple/connect',
+    jwt,
+    loginIpLimiter,
+    validate(appleLoginSchema),
+    verifyApple,
+    loginAccountLimiter,
+    connectApple,
+);
+router.post('/apple/notifications', validate(appleNotificationSchema), appleNotification);
 router.post('/logout', validate(logoutSchema), logout);
 router.post('/refresh', validate(refreshSchema), refresh);
 router.post('/verify-email/request', emailAuthLimiter, validate(emailAddressSchema), requestEmailVerification);

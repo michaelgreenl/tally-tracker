@@ -3,8 +3,8 @@ import Head from 'expo-router/head';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { colors } from '../../colors';
-import { isLegalDocumentKey, legalDocumentKeys, legalDocuments } from '../../legal-documents';
+import { colors } from '../../theme/colors';
+import { isLegalDocumentKey, legalDocumentKeys, legalDocuments } from '../../content/legal-documents';
 
 export function generateStaticParams() {
     return legalDocumentKeys.map((document) => ({ document }));

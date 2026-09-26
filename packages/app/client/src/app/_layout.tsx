@@ -1,13 +1,14 @@
 import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
+import { useFonts } from 'expo-font';
 import Head from 'expo-router/head';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, Appearance, Platform, StyleSheet, View } from 'react-native';
 
-import { colors } from '../colors';
-import { CounterProvider } from '../counters';
-import { initSentry, withSentry } from '../monitoring/sentry';
-import { SessionProvider, useSession } from '../session';
-import { Snackbar } from '../components/snackbar';
+import { colors } from '../theme/colors';
+import { CounterProvider } from '../contexts/counter-context';
+import { initSentry, withSentry } from '../infra/monitoring/sentry';
+import { SessionProvider, useSession } from '../contexts/session-context';
+import { Snackbar } from '../components/shared/snackbar';
 
 initSentry();
 if (Platform.OS !== 'web') Appearance.setColorScheme('dark');
@@ -26,8 +27,11 @@ const navigationTheme = {
 
 function Navigator() {
     const session = useSession();
+    const [fontsLoaded, fontError] = useFonts(
+        Platform.OS === 'web' ? {} : { GoogleSansMedium: require('../../assets/fonts/GoogleSans-Medium.ttf') },
+    );
 
-    if (!session.ready) {
+    if (!session.ready || (!fontsLoaded && !fontError)) {
         return (
             <View style={styles.loading}>
                 <ActivityIndicator color={colors.link} size='large' />

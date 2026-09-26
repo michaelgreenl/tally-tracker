@@ -6,18 +6,19 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 
-import { colors } from '../colors';
-import { CounterCard } from '../components/counter-card';
-import { CounterForm } from '../components/counter-form';
-import { CounterIncrementDialog } from '../components/counter-increment-dialog';
-import { CounterList } from '../components/counter-list';
-import { Dialog } from '../components/dialog';
-import { Snackbar } from '../components/snackbar';
-import { SyncIndicator } from '../components/sync-indicator';
-import { TallyBrand } from '../components/tally-brand';
-import { ToolbarButton } from '../components/toolbar-button';
-import { GUEST_COUNTER_CAP, GUEST_COUNTER_LIMIT_MESSAGE, orderCounters, useCounters } from '../counters';
-import { useSession } from '../session';
+import { colors } from '../theme/colors';
+import { CounterCard } from '../components/counters/counter-card';
+import { CounterForm } from '../components/counters/counter-form';
+import { CounterValueDialog } from '../components/counters/counter-value-dialog';
+import { CounterList } from '../components/counters/counter-list';
+import { Dialog } from '../components/shared/dialog';
+import { Snackbar } from '../components/shared/snackbar';
+import { SyncIndicator } from '../components/counters/sync-indicator';
+import { TallyBrand } from '../components/shared/tally-brand';
+import { ToolbarButton } from '../components/shared/toolbar-button';
+import { useCounters } from '../contexts/counter-context';
+import { GUEST_COUNTER_CAP, GUEST_COUNTER_LIMIT_MESSAGE, orderCounters } from '../utils/counter-rules';
+import { useSession } from '../contexts/session-context';
 
 import type { ClientCounter } from '@tally/core/client';
 
@@ -29,7 +30,9 @@ export default function HomeScreen() {
     const insets = useSafeAreaInsets();
     const [formOpen, setFormOpen] = useState(false);
     const [counterToEdit, setCounterToEdit] = useState<ClientCounter | null>(null);
-    const [incrementToEdit, setIncrementToEdit] = useState<ClientCounter | null>(null);
+    const [valueToEdit, setValueToEdit] = useState<{ counter: ClientCounter; field: 'count' | 'increment' } | null>(
+        null,
+    );
     const [guestLimitOpen, setGuestLimitOpen] = useState(false);
     const [notice, setNotice] = useState('');
     const [reorderDraft, setReorderDraft] = useState<string[] | null>(null);
@@ -186,11 +189,13 @@ export default function HomeScreen() {
                                     setRemoveOpen(true);
                                 } else void removeCounter(item);
                             }}
+                            onReset={(item) => void incrementCounter(item.id, -item.count)}
                             onEdit={(item) => {
                                 setCounterToEdit(item);
                                 setFormOpen(true);
                             }}
-                            onEditIncrement={setIncrementToEdit}
+                            onEditIncrement={(counter) => setValueToEdit({ counter, field: 'increment' })}
+                            onEditCount={(counter) => setValueToEdit({ counter, field: 'count' })}
                             onIncrement={(id, amount) => void incrementCounter(id, amount)}
                             onNotice={setNotice}
                             canReorder={counterState.counters.length > 1}
@@ -231,9 +236,7 @@ export default function HomeScreen() {
                     onDone={closeForm}
                 />
 
-                {incrementToEdit && (
-                    <CounterIncrementDialog counter={incrementToEdit} onClose={() => setIncrementToEdit(null)} />
-                )}
+                {valueToEdit && <CounterValueDialog {...valueToEdit} onClose={() => setValueToEdit(null)} />}
 
                 <Dialog
                     visible={removeOpen}

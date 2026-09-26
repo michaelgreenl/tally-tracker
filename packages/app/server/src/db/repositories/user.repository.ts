@@ -1,6 +1,9 @@
 import prisma from '../prisma.js';
 import { Prisma } from '@prisma/client';
 import type { User } from '@prisma/client';
+import { revokeAppleToken } from '../../services/apple-auth.service.js';
+import type { AppleIdentity } from '../../services/apple-auth.service.js';
+import type { GoogleIdentity } from '../../services/google-auth.service.js';
 
 type DbClient = typeof prisma | Prisma.TransactionClient;
 
@@ -46,6 +49,12 @@ export const createUser = async ({ email, password }: { email: string; password:
 
 export const deleteAccount = async (userId: string) =>
     prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId}::uuid FOR UPDATE`;
+        const user = await tx.user.findUnique({ where: { id: userId } });
+        // Keep the account and encrypted token if Apple is unavailable, so deletion can be retried.
+        if (user?.appleSubject && user.appleRefreshToken) {
+            await revokeAppleToken(user.appleSubject, user.appleRefreshToken);
+        }
         const idempotencyLogs = await tx.idempotencyLog.deleteMany({
             where: { userId },
         });
@@ -101,6 +110,112 @@ export const getUserByEmail = (email: string) =>
             },
         })
         .then(withCurrentTier);
+
+export const getUserByGoogleSubject = (googleSubject: string) =>
+    prisma.user.findUnique({ where: { googleSubject } }).then(withCurrentTier);
+
+export const getUserByAppleSubject = (appleSubject: string) =>
+    prisma.user.findUnique({ where: { appleSubject } }).then(withCurrentTier);
+
+export const getSignInMethods = async (userId: string) => {
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { googleSubject: true, appleRefreshToken: true },
+    });
+    return user ? { google: Boolean(user.googleSubject), apple: Boolean(user.appleRefreshToken) } : null;
+};
+
+export const createAppleUser = (identity: AppleIdentity & { email: string }) =>
+    prisma.user.create({
+        data: {
+            email: identity.email,
+            emailVerifiedAt: new Date(),
+            appleSubject: identity.subject,
+            appleRefreshToken: identity.refreshToken,
+            appleCredentialUpdatedAt: identity.authenticatedAt,
+        },
+    });
+
+export const saveAppleIdentity = (user: User, identity: AppleIdentity) =>
+    withLockedUser(user.id, async (current, tx) => {
+        if (
+            !current ||
+            current.sessionVersion !== user.sessionVersion ||
+            current.password !== user.password ||
+            current.appleSubject !== user.appleSubject ||
+            (current.appleSubject && current.appleSubject !== identity.subject)
+        )
+            return null;
+        // Apple timestamps use seconds. Revocation wins ties with an in-flight authorization.
+        if (
+            current.appleCredentialUpdatedAt &&
+            (current.appleRefreshToken
+                ? current.appleCredentialUpdatedAt > identity.authenticatedAt
+                : current.appleCredentialUpdatedAt >= identity.authenticatedAt)
+        )
+            return null;
+        return tx.user.update({
+            where: { id: user.id },
+            data: {
+                appleSubject: identity.subject,
+                appleRefreshToken: identity.refreshToken,
+                appleCredentialUpdatedAt: identity.authenticatedAt,
+                emailVerifiedAt:
+                    current.emailVerifiedAt ??
+                    (current.email === identity.email && identity.emailVerified ? new Date() : null),
+            },
+        });
+    });
+
+export const revokeAppleIdentity = async (subject: string, eventTime: number) => {
+    const user = await getUserByAppleSubject(subject);
+    if (!user) return null;
+    return withLockedUser(user.id, async (current, tx) => {
+        if (
+            !current ||
+            current.appleSubject !== subject ||
+            (current.appleCredentialUpdatedAt && current.appleCredentialUpdatedAt.getTime() > eventTime * 1000)
+        )
+            return null;
+        const updated = await tx.user.update({
+            where: { id: user.id },
+            data: {
+                appleRefreshToken: null,
+                appleCredentialUpdatedAt: new Date(eventTime * 1000),
+                ...(current.appleRefreshToken ? { sessionVersion: { increment: 1 } } : {}),
+            },
+        });
+        if (!current.appleRefreshToken) return null;
+        await tx.refreshToken.deleteMany({ where: { userId: user.id } });
+        return updated;
+    });
+};
+
+export const createGoogleUser = (googleSubject: string, email: string, emailVerified: boolean) =>
+    prisma.user.create({
+        data: { googleSubject, email, emailVerifiedAt: emailVerified ? new Date() : null },
+    });
+
+export const linkGoogle = (user: User, identity: GoogleIdentity) =>
+    withLockedUser(user.id, async (current, tx) => {
+        if (
+            !current ||
+            current.password !== user.password ||
+            current.sessionVersion !== user.sessionVersion ||
+            current.email !== user.email ||
+            (current.googleSubject && current.googleSubject !== identity.subject)
+        )
+            return null;
+        return tx.user.update({
+            where: { id: user.id },
+            data: {
+                googleSubject: identity.subject,
+                emailVerifiedAt:
+                    current.emailVerifiedAt ??
+                    (current.email === identity.email && identity.emailVerified ? new Date() : null),
+            },
+        });
+    });
 
 export const updateBillingEntitlement = (
     userId: string,

@@ -35,6 +35,7 @@
         "express": "^5.2.1",
         "express-rate-limit": "^8.5.2",
         "helmet": "^8.1.0",
+        "jose": "6.2.12",
         "jsonwebtoken": "^9.0.3",
         "pg": "^8.17.0",
         "socket.io": "^4.8.3",
