@@ -2,13 +2,14 @@
     "expo": {
         "name": "Tally",
         "slug": "tally-tracker",
-        "version": "0.1.0",
+        "version": "1.0.0",
         "orientation": "portrait",
         "icon": "./assets/images/icon.png",
         "scheme": "tally",
         "userInterfaceStyle": "automatic",
         "ios": {
             "bundleIdentifier": "com.tallytracker.app",
+            "buildNumber": "1",
             "appleTeamId": "JS8H2Z53Y9",
             "usesAppleSignIn": true,
             "icon": "./assets/tally.icon"
