@@ -35,7 +35,7 @@ for (const action of ['logout', 'deletion'] as const) {
             cy
                 .wrap(null)
                 .should(() => {
-                    expect(frame.contentDocument?.querySelector(`[data-testid="${id}"]`)).not.to.be.null;
+                    expect(frame.contentDocument?.querySelector(`[data-testid="${id}"]`)).to.exist;
                 })
                 .then(() => cy.wrap(frame.contentDocument!).find(`[data-testid="${id}"]`));
         field('auth-email').type(b.email);
