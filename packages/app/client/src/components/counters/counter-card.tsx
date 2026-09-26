@@ -25,6 +25,7 @@ import type { ClientCounter } from '@tally/core/client';
 type CounterCardProps = {
     counter: ClientCounter;
     onDelete: (counter: ClientCounter) => void;
+    onReset: (counter: ClientCounter) => void;
     onEdit: (counter: ClientCounter) => void;
     onEditIncrement: (counter: ClientCounter) => void;
     onEditCount: (counter: ClientCounter) => void;
@@ -38,6 +39,7 @@ type CounterCardProps = {
 export function CounterCard({
     counter,
     onDelete,
+    onReset,
     onEdit,
     onEditIncrement,
     onEditCount,
@@ -130,6 +132,7 @@ export function CounterCard({
                                 canReorder={canReorder}
                                 onAction={(action) => {
                                     if (action === 'edit') onEdit(counter);
+                                    else if (action === 'reset') onReset(counter);
                                     else if (action === 'delete') onDelete(counter);
                                     else if (action === 'reorder') onReorder();
                                     else void share();

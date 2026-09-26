@@ -189,6 +189,7 @@ export default function HomeScreen() {
                                     setRemoveOpen(true);
                                 } else void removeCounter(item);
                             }}
+                            onReset={(item) => void incrementCounter(item.id, -item.count)}
                             onEdit={(item) => {
                                 setCounterToEdit(item);
                                 setFormOpen(true);

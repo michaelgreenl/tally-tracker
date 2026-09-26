@@ -25,6 +25,7 @@ export function CounterMenu({
                 testID={`counter-${counterId}-menu`}
             >
                 <Button label='Edit' onPress={() => onAction('edit')} />
+                <Button label='Reset' onPress={() => onAction('reset')} />
                 <Button
                     label={!canShare ? 'Share (Premium)' : busy ? 'Sharing…' : 'Share'}
                     modifiers={[disabled(!canShare || busy)]}

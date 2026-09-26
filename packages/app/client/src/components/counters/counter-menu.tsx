@@ -12,7 +12,7 @@ export type CounterMenuProps = PropsWithChildren<{
     isOwner: boolean;
     busy: boolean;
     canReorder: boolean;
-    onAction: (action: 'edit' | 'share' | 'delete' | 'reorder') => void;
+    onAction: (action: 'edit' | 'reset' | 'share' | 'delete' | 'reorder') => void;
 }>;
 
 export function CounterMenu({
@@ -31,6 +31,7 @@ export function CounterMenu({
     const shareLabel = !canShare ? 'Share (Premium)' : busy ? 'Sharing…' : 'Share';
     const actions = [
         { id: 'edit', label: 'Edit', run: () => onAction('edit'), disabled: false },
+        { id: 'reset', label: 'Reset', run: () => onAction('reset'), disabled: false },
         { id: 'share', label: shareLabel, run: () => onAction('share'), disabled: !canShare || busy },
         { id: 'reorder', label: 'Reorder', run: () => onAction('reorder'), disabled: !canReorder },
         { id: 'delete', label: isOwner ? 'Delete' : 'Leave', run: () => onAction('delete'), disabled: false },

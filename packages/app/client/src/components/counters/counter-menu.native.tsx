@@ -23,6 +23,7 @@ export function CounterMenu({
             testID={`counter-${counterId}-menu`}
             actions={[
                 { id: 'edit', title: 'Edit' },
+                { id: 'reset', title: 'Reset' },
                 {
                     id: 'share',
                     title: !canShare ? 'Share (Premium)' : busy ? 'Sharing…' : 'Share',
@@ -32,7 +33,14 @@ export function CounterMenu({
                 { id: 'delete', title: isOwner ? 'Delete' : 'Leave', attributes: { destructive: true } },
             ]}
             onPressAction={({ nativeEvent: { event } }) => {
-                if (event === 'edit' || event === 'share' || event === 'delete' || event === 'reorder') onAction(event);
+                if (
+                    event === 'edit' ||
+                    event === 'reset' ||
+                    event === 'share' ||
+                    event === 'delete' ||
+                    event === 'reorder'
+                )
+                    onAction(event);
             }}
         >
             <Pressable

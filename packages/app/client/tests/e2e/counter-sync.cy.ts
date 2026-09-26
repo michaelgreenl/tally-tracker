@@ -29,6 +29,24 @@ describe('Counter sync recovery', () => {
         cy.request('DELETE', '/users');
     });
 
+    it('resets the latest count and keeps zero after syncing and clearing the local cache', () => {
+        cy.request('POST', '/counters', { title: 'Water', increment: 0.5, count: 2 }).then(({ body }) => {
+            const counter: ClientCounter = body.data.counter;
+            cy.get(`[data-testid="counter-${counter.id}-menu"]`).click();
+            cy.request('PUT', `/counters/increment/${counter.id}`, { amount: 0.5 });
+            cy.get(`[data-testid="counter-${counter.id}-count"]`).should('have.text', '2.5');
+            cy.get(`[data-testid="counter-${counter.id}-reset"]`).click();
+            cy.get(`[data-testid="counter-${counter.id}-count"]`).should('have.text', '0');
+            cy.get('[data-testid="home-sync-synced-icon"]').should('be.visible');
+            cy.request('GET', '/counters').then(({ body }) => {
+                expect(body.data.counters.find((item: ClientCounter) => item.id === counter.id).count).to.equal(0);
+            });
+            cy.clearLocalStorage();
+            openAccount(user);
+            cy.get(`[data-testid="counter-${counter.id}-count"]`).should('have.text', '0');
+        });
+    });
+
     it('shows a spinner while sync is pending and replaces it when sync finishes', () => {
         let finishSync!: () => void;
         const response = new Cypress.Promise<void>((resolve) => {
