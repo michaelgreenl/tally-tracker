@@ -10,10 +10,11 @@ export function TallyBrand({ style, children = 'Tally' }: Pick<TextProps, 'style
 
     return (
         <View style={[styles.brand, { gap: (fontSize * 8) / 34 }]} testID='tally-brand'>
-            <TallyLogo color={colors.text} size={(fontSize * 34) / 28} />
+            <TallyLogo color={colors.text} size={fontSize} />
             <Text
                 accessibilityRole='header'
                 aria-level={1}
+                allowFontScaling={false}
                 style={[styles.title, { fontSize }, style]}
                 testID='tally-title'
             >
