@@ -108,9 +108,9 @@ export const legalDocuments = {
     },
     support: {
         title: 'Support',
-        updated: 'July 7, 2026',
+        updated: 'September 27, 2026',
         introduction:
-            'Use this page for Tally support information. A direct support contact should be listed here before public store submission.',
+            'For help with Tally, email tallysupportcontact1@gmail.com. Do not send passwords, verification codes, or payment details.',
         sections: [
             {
                 title: 'Account help',
