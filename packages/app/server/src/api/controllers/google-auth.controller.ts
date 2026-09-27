@@ -1,5 +1,5 @@
 import { Prisma } from '@prisma/client';
-import bcrypt from 'bcrypt';
+import { verifyPassword } from '../../util/password.util.js';
 import { CONFLICT, UNAUTHORIZED, UNPROCESSABLE_ENTITY } from '@tally/core';
 
 import * as userRepository from '../../db/repositories/user.repository.js';
@@ -42,7 +42,7 @@ export const connectGoogle = async (req: Request, res: Response) => {
                 .status(CONFLICT)
                 .json({ success: false, message: 'Another Google account is already connected.' });
         }
-        const linked = await userRepository.linkGoogle(current, identity);
+        const linked = await userRepository.linkGoogle(current, identity, req.user!.sessionId);
         if (!linked) return res.status(UNAUTHORIZED).json({ success: false, message: 'Sign in again.' });
         return res.json({ success: true });
     } catch (error) {
@@ -74,7 +74,7 @@ export const googleLogin = async (
                         message: 'Enter your Tally password to connect Google.',
                     });
                 }
-                if (!(await bcrypt.compare(password, existing.password))) {
+                if (!(await verifyPassword(password, existing.password))) {
                     return res.status(UNAUTHORIZED).json({ success: false, message: 'Password is incorrect.' });
                 }
                 user = await userRepository.linkGoogle(existing, identity);

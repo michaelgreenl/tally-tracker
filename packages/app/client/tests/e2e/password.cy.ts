@@ -6,6 +6,7 @@ describe('New password requirements', () => {
             const isRegister = mode === 'register';
             const prefix = isRegister ? 'auth' : 'email-auth';
             const email = 'password-rules@example.invalid';
+            const validPassword = isRegister ? 'Abcdef12' : `Ab1${'é'.repeat(100)}`;
 
             cy.intercept('POST', isRegister ? '**/users' : '**/users/reset-password', {
                 statusCode: isRegister ? 201 : 200,
@@ -30,7 +31,7 @@ describe('New password requirements', () => {
                 cy.wait('@verifyCode');
             }
 
-            for (const password of ['Abc12', 'abcdefghijklmno1', 'Abcdefghijklmnop', `Ab1${'é'.repeat(35)}`]) {
+            for (const password of ['Abcdef1', 'abcdefghijklmno1', 'Abcdefghijklmnop']) {
                 cy.get(`[data-testid="${prefix}-password"]`).clear().type(password);
                 cy.get(`[data-testid="${prefix}-confirm-password"]`).clear().type(password);
                 cy.get(`[data-testid="${prefix}-submit"]`).click();
@@ -38,14 +39,14 @@ describe('New password requirements', () => {
                 cy.get('@submitPassword.all').should('have.length', 0);
             }
 
-            cy.get(`[data-testid="${prefix}-password"]`).clear().type('New-password123');
-            cy.get(`[data-testid="${prefix}-confirm-password"]`).clear().type('New-password123');
+            cy.get(`[data-testid="${prefix}-password"]`).clear().type(validPassword);
+            cy.get(`[data-testid="${prefix}-confirm-password"]`).clear().type(validPassword);
             cy.get(`[data-testid="${prefix}-submit"]`).click();
             cy.wait('@submitPassword')
                 .its('request.body')
                 .should('deep.equal', {
                     email,
-                    password: 'New-password123',
+                    password: validPassword,
                     ...(!isRegister && { code: '123456' }),
                 });
             if (isRegister) cy.location('pathname').should('eq', '/verify-email');

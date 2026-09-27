@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 import { BackButton } from '../components/shared/back-button';
 import { Dialog } from '../components/shared/dialog';
+import { Checkbox } from '../components/shared/checkbox';
 import { SignInMethods } from '../components/settings/sign-in-methods';
 import { SettingsAction } from '../components/settings/settings-action';
 import { useSession } from '../contexts/session-context';
@@ -40,6 +41,7 @@ export default function SettingsScreen() {
     const [deleteLoading, setDeleteLoading] = useState(false);
     const [deleteError, setDeleteError] = useState('');
     const [logoutOpen, setLogoutOpen] = useState(false);
+    const [logoutAllDevices, setLogoutAllDevices] = useState(false);
     const [methodsBusy, setMethodsBusy] = useState(false);
 
     async function deleteAccount() {
@@ -89,7 +91,10 @@ export default function SettingsScreen() {
                                     <SettingsAction
                                         label='Logout'
                                         disabled={methodsBusy}
-                                        onPress={() => setLogoutOpen(true)}
+                                        onPress={() => {
+                                            setLogoutAllDevices(false);
+                                            setLogoutOpen(true);
+                                        }}
                                         testID='settings-logout'
                                     />
                                 </>
@@ -173,7 +178,7 @@ export default function SettingsScreen() {
                     onRequestClose={() => setLogoutOpen(false)}
                     testID='logout-confirm'
                     title='Log out?'
-                    description='This logs you out on all devices. Unsynced changes stay on this device for your next login.'
+                    description='Unsynced changes stay on this device for your next login.'
                 >
                     <View style={styles.modalActions}>
                         <Pressable
@@ -188,13 +193,24 @@ export default function SettingsScreen() {
                             accessibilityRole='button'
                             onPress={() => {
                                 setLogoutOpen(false);
-                                void session.logout();
+                                void session.logout(logoutAllDevices);
                             }}
                             style={styles.primaryButton}
                             testID='logout-confirm-submit'
                         >
                             <Text style={styles.primaryButtonText}>Log out</Text>
                         </Pressable>
+                    </View>
+                    <View style={styles.logoutOption}>
+                        <Checkbox
+                            label='Log out all devices'
+                            value={logoutAllDevices}
+                            onValueChange={setLogoutAllDevices}
+                            testID='logout-all-devices'
+                        />
+                        <Text onPress={() => setLogoutAllDevices((value) => !value)} style={styles.logoutOptionLabel}>
+                            Log out all devices
+                        </Text>
                     </View>
                 </Dialog>
 
@@ -383,6 +399,19 @@ const styles = StyleSheet.create({
         flexWrap: 'wrap',
         justifyContent: 'flex-end',
         gap: 12,
+    },
+    logoutOption: {
+        minHeight: 44,
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
+        gap: 10,
+    },
+    logoutOptionLabel: {
+        color: colors.text,
+        fontSize: 14,
+        flexShrink: 1,
+        paddingVertical: 12,
     },
     deleteButton: {
         minHeight: 46,

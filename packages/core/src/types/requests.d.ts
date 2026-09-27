@@ -5,6 +5,7 @@ export interface AccessTokenPayload {
     id: string;
     email: string;
     sessionVersion: number;
+    sessionId: string;
 }
 
 // ***** Express *****
@@ -37,6 +38,10 @@ export interface AppleLoginRequest {
 
 export interface RefreshRequest {
     refreshToken?: string;
+}
+
+export interface LogoutRequest extends RefreshRequest {
+    allDevices?: boolean;
 }
 
 export interface EmailAddressRequest {

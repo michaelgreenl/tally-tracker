@@ -39,7 +39,7 @@ describe('Auth Middleware', () => {
     });
 
     it('should extract token from access_token cookie', async () => {
-        vi.mocked(jwtUtil.verify).mockReturnValue({ id: 'user-123', sessionVersion: 0 });
+        vi.mocked(jwtUtil.verify).mockReturnValue({ id: 'user-123', sessionVersion: 0, sessionId: 'session-123' });
         vi.mocked(userRepository.getUserAuthById).mockResolvedValue({
             id: 'user-123',
             email: 'test@example.com',
@@ -54,6 +54,7 @@ describe('Auth Middleware', () => {
         expect(jwtUtil.verify).toHaveBeenCalledWith('valid-token');
         expect(req.user).toEqual({
             id: 'user-123',
+            sessionId: 'session-123',
             email: 'test@example.com',
             emailVerifiedAt: null,
             sessionVersion: 0,
@@ -62,7 +63,7 @@ describe('Auth Middleware', () => {
     });
 
     it('should extract token from Bearer header', async () => {
-        vi.mocked(jwtUtil.verify).mockReturnValue({ id: 'user-123', sessionVersion: 0 });
+        vi.mocked(jwtUtil.verify).mockReturnValue({ id: 'user-123', sessionVersion: 0, sessionId: 'session-123' });
         vi.mocked(userRepository.getUserAuthById).mockResolvedValue({
             id: 'user-123',
             email: 'test@example.com',
@@ -79,6 +80,7 @@ describe('Auth Middleware', () => {
         expect(jwtUtil.verify).toHaveBeenCalledWith('valid-token');
         expect(req.user).toEqual({
             id: 'user-123',
+            sessionId: 'session-123',
             email: 'test@example.com',
             emailVerifiedAt: null,
             sessionVersion: 0,
@@ -87,7 +89,7 @@ describe('Auth Middleware', () => {
     });
 
     it('should prefer an explicit Bearer token over a stale cookie', async () => {
-        vi.mocked(jwtUtil.verify).mockReturnValue({ id: 'user-123', sessionVersion: 0 });
+        vi.mocked(jwtUtil.verify).mockReturnValue({ id: 'user-123', sessionVersion: 0, sessionId: 'session-123' });
         vi.mocked(userRepository.getUserAuthById).mockResolvedValue({
             id: 'user-123',
             email: 'test@example.com',
@@ -136,7 +138,7 @@ describe('Auth Middleware', () => {
     });
 
     it('should reject a token from an invalidated session', async () => {
-        vi.mocked(jwtUtil.verify).mockReturnValue({ id: 'user-123', sessionVersion: 0 });
+        vi.mocked(jwtUtil.verify).mockReturnValue({ id: 'user-123', sessionVersion: 0, sessionId: 'session-123' });
         vi.mocked(userRepository.getUserAuthById).mockResolvedValue({
             id: 'user-123',
             email: 'test@example.com',
@@ -153,7 +155,7 @@ describe('Auth Middleware', () => {
     });
 
     it('reports a database outage without rejecting valid credentials', async () => {
-        vi.mocked(jwtUtil.verify).mockReturnValue({ id: 'user-123', sessionVersion: 0 });
+        vi.mocked(jwtUtil.verify).mockReturnValue({ id: 'user-123', sessionVersion: 0, sessionId: 'session-123' });
         vi.mocked(userRepository.getUserAuthById).mockRejectedValue(new Error('Database unavailable'));
         const res = mockRes();
 

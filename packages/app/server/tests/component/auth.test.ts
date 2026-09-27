@@ -1,7 +1,6 @@
 import { OK, CREATED, OK_NO_CONTENT, UNAUTHORIZED, UNPROCESSABLE_ENTITY, SERVER_ERROR } from '@tally/core';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
-import bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 import type { Request, Response, NextFunction } from 'express';
 import type { Prisma } from '@prisma/client';
@@ -15,7 +14,13 @@ vi.mock('../../src/middleware/auth.middleware', () => ({
             return res.status(401).json({ success: false, message: 'Invalid token' });
         }
 
-        req.user = { id: TEST_USER_ID, email: 'test@test.com', emailVerifiedAt: null, sessionVersion: 0 };
+        req.user = {
+            id: TEST_USER_ID,
+            email: 'test@test.com',
+            emailVerifiedAt: null,
+            sessionVersion: 0,
+            sessionId: 'session-123',
+        };
         next();
     },
 }));
@@ -64,6 +69,7 @@ describe('Auth Routes', () => {
             } as unknown as Prisma.TransactionClient),
         );
         vi.mocked(tokenRepository.rotate).mockResolvedValue(null);
+        vi.mocked(tokenRepository.create).mockResolvedValue(buildRefreshToken());
         vi.mocked(tokenRepository.revokeSession).mockResolvedValue(null);
     });
 
@@ -132,25 +138,21 @@ describe('Auth Routes', () => {
         ['post', '/users'],
         ['post', '/users/reset-password'],
     ] as const)('%s %s password requirements', (method, path) => {
-        it.each([
-            `A1${'a'.repeat(12)}`,
-            `A1${'😀'.repeat(7)}`,
-            'abcdefghijklmno1',
-            'Abcdefghijklmnop',
-            `Ab1${'a'.repeat(70)}`,
-            `Ab1${'é'.repeat(35)}`,
-        ])('rejects an invalid new password: %s', async (password) => {
-            const res = await request(app)[method](path).send({
-                email: 'test@test.com',
-                code: '123456',
-                password,
-            });
+        it.each(['Abcdef1', `A1${'😀'.repeat(5)}`, 'abcdefghijklmno1', 'Abcdefghijklmnop'])(
+            'rejects an invalid new password: %s',
+            async (password) => {
+                const res = await request(app)[method](path).send({
+                    email: 'test@test.com',
+                    code: '123456',
+                    password,
+                });
 
-            expect(res.status).toBe(UNPROCESSABLE_ENTITY);
-            expect(res.body.errors).toEqual(
-                expect.arrayContaining([expect.objectContaining({ field: 'body.password' })]),
-            );
-        });
+                expect(res.status).toBe(UNPROCESSABLE_ENTITY);
+                expect(res.body.errors).toEqual(
+                    expect.arrayContaining([expect.objectContaining({ field: 'body.password' })]),
+                );
+            },
+        );
     });
 
     describe('POST /users/login', () => {
@@ -197,7 +199,6 @@ describe('Auth Routes', () => {
             expect(res.status).toBe(OK);
             expect(res.body.data.accessToken).toBeDefined();
             expect(res.body.data.refreshToken).toBeUndefined();
-            expect(tokenRepository.create).not.toHaveBeenCalled();
         });
 
         it('should set cookies on login', async () => {
@@ -220,12 +221,10 @@ describe('Auth Routes', () => {
 
         it('uses the same public error for unknown email and wrong password', async () => {
             vi.mocked(userRepository.getUserByEmail).mockResolvedValue(null);
-            const compare = vi.spyOn(bcrypt, 'compare');
             const unknown = await request(app).post('/users/login').send({
                 email: 'unknown@test.com',
                 password: 'wrongpassword',
             });
-            expect(compare).toHaveBeenCalledOnce();
             vi.mocked(userRepository.getUserByEmail).mockResolvedValue(buildUser());
             const wrong = await request(app).post('/users/login').send({
                 email: 'test@test.com',
@@ -304,14 +303,14 @@ describe('Auth Routes', () => {
                 .set('Cookie', `refresh_token=${TEST_REFRESH_TOKEN_ID}`);
 
             expect(res.status).toBe(OK);
-            expect(tokenRepository.revokeSession).toHaveBeenCalledWith(null, TEST_REFRESH_TOKEN_ID, undefined);
+            expect(tokenRepository.revokeSession).toHaveBeenCalledWith(null, TEST_REFRESH_TOKEN_ID, undefined, false);
         });
 
         it('should clear tokens using a refresh token in the request body', async () => {
             const res = await request(app).post('/users/logout').send({ refreshToken: TEST_REFRESH_TOKEN_ID });
 
             expect(res.status).toBe(OK);
-            expect(tokenRepository.revokeSession).toHaveBeenCalledWith(null, TEST_REFRESH_TOKEN_ID, undefined);
+            expect(tokenRepository.revokeSession).toHaveBeenCalledWith(null, TEST_REFRESH_TOKEN_ID, undefined, false);
         });
 
         it('should succeed even without a refresh token cookie', async () => {

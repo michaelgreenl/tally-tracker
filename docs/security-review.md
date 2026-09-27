@@ -6,6 +6,14 @@ Original revision: `49ece1c`. Repairs are local commits on `dev`.
 This record tracks the source review and its repairs. It is not a release certification or a production penetration test.
 No repair in this review has been pushed or deployed. Production settings and native store transactions remain unverified.
 
+### Policy update — 2026-09-27
+
+The account rules below describe the September review, not the current release policy.
+The user replaced all-device logout with current-session logout. An unchecked “Log out all devices” option retains account-wide logout.
+The password minimum is now eight characters. Uppercase and number requirements remain unchanged.
+New password hashes use scrypt without the former 72-byte limit. Existing bcrypt passwords remain usable.
+The `20260927000000_device_sessions` migration gives each login a stable ID for revocation across token rotations.
+
 ## Findings
 
 | ID | Original finding | Source repair |

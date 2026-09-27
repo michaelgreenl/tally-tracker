@@ -1,5 +1,5 @@
 import { OK, SERVER_ERROR, UNPROCESSABLE_ENTITY } from '@tally/core';
-import bcrypt from 'bcrypt';
+import { hashPassword, verifyPassword } from '../../util/password.util.js';
 
 import * as emailOtpRepository from '../../db/repositories/email-otp.repository.js';
 import * as userRepository from '../../db/repositories/user.repository.js';
@@ -94,8 +94,8 @@ export const resetPassword = async (
 
         const digest = digestEmailOtp(user.id, 'PASSWORD_RESET', req.body.code);
         const [reusesPassword, password] = await Promise.all([
-            user.password ? bcrypt.compare(req.body.password, user.password) : false,
-            bcrypt.hash(req.body.password, 10),
+            user.password ? verifyPassword(req.body.password, user.password) : false,
+            hashPassword(req.body.password),
         ]);
         const reset = await emailOtpRepository.resetPassword(user.id, digest, password, reusesPassword);
         if (reset === 'INVALID_CODE') {

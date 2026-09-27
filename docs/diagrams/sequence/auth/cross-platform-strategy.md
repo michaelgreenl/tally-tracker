@@ -67,8 +67,9 @@ The lock covers each HTTP response, not refresh retries. This requires a secure 
 Use HTTPS in production. Localhost also supports this check; plain HTTP on a LAN may not.
 
 Logout requires confirmation and immediately closes the private UI. Queued changes keep their original account owner.
-The server increments the account session version, removes its refresh tokens, and disconnects its old sockets.
-This ends all account sessions. A failed remote logout does not block local sign-out; the client reports incomplete revocation.
+By default, the server removes only that login's refresh tokens and disconnects its sockets. A stable session ID survives token rotation.
+The unchecked “Log out all devices” option instead revokes every session for the account.
+A failed remote logout does not block local sign-out; the client reports incomplete revocation.
 
 Confirmed account deletion removes that account's local counters, pending commands, and saved order.
 Cleanup waits for started writes and preserves another account's credentials. Failed server deletion leaves local work unchanged.

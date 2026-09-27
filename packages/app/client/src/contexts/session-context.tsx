@@ -21,7 +21,7 @@ type SessionContextValue = {
     isPremium: boolean;
     login: (request: AuthRequest | GoogleLoginRequest | AppleLoginRequest) => Promise<ActionResult>;
     register: (request: AuthRequest) => Promise<ActionResult>;
-    logout: () => Promise<ActionResult>;
+    logout: (allDevices?: boolean) => Promise<ActionResult>;
     deleteAccount: () => Promise<ActionResult>;
     refreshUser: () => Promise<ClientUser>;
     refreshPurchases: () => Promise<ClientUser>;
@@ -165,7 +165,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
         }
     }
 
-    async function logout(): Promise<ActionResult> {
+    async function logout(allDevices = false): Promise<ActionResult> {
         if (!userRef.current) return ok();
         const userId = userRef.current.id;
         const scope = changeSession();
@@ -173,7 +173,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
         setUser(null);
         setNotice('');
         router.replace('/login');
-        void Promise.resolve(AuthService.logout(scope, userId)).catch((error: unknown) => {
+        void Promise.resolve(AuthService.logout(scope, userId, allDevices)).catch((error: unknown) => {
             if (scope === getSessionScope()) setNotice(getErrorMessage(error, 'Could not finish logging out.'));
         });
         return ok();

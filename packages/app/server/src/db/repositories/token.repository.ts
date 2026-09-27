@@ -39,16 +39,19 @@ export const rotate = async (id: string, expiresAt: Date, expectedUserId?: strin
                 ? { user, token: replacement }
                 : null;
         }
-        const replacement = await tx.refreshToken.create({ data: { userId: user.id, expiresAt } });
+        const replacement = await tx.refreshToken.create({
+            data: { userId: user.id, sessionId: token.sessionId, expiresAt },
+        });
         await tx.refreshToken.update({ where: { id }, data: { rotatedAt: now, replacementId: replacement.id } });
         return { user, token: replacement };
     });
 };
 
 export const revokeSession = async (
-    access: { id: string; sessionVersion: number } | null,
+    access: { id: string; sessionVersion: number; sessionId: string } | null,
     refreshId?: string,
     expectedUserId?: string,
+    allDevices = false,
 ) => {
     const initial = refreshId ? await get(refreshId) : null;
     const userId = access?.id || initial?.userId;
@@ -58,10 +61,20 @@ export const revokeSession = async (
         if (!user) return null;
         const refresh = refreshId ? await tx.refreshToken.findUnique({ where: { id: refreshId } }) : null;
         const validRefresh = refresh?.userId === userId && refresh.expiresAt > new Date();
-        if (!validRefresh && access?.sessionVersion !== user.sessionVersion) return null;
-        const revoked = await tx.user.update({ where: { id: userId }, data: { sessionVersion: { increment: 1 } } });
-        await tx.refreshToken.deleteMany({ where: { userId } });
-        return { userId, sessionVersion: revoked.sessionVersion };
+        const sessionId =
+            access?.sessionVersion === user.sessionVersion ? access.sessionId : validRefresh ? refresh.sessionId : null;
+        if (!sessionId) return null;
+        const active = await tx.refreshToken.findFirst({
+            where: { userId, sessionId, rotatedAt: null, expiresAt: { gt: new Date() } },
+        });
+        if (!active) return null;
+        if (allDevices) {
+            const revoked = await tx.user.update({ where: { id: userId }, data: { sessionVersion: { increment: 1 } } });
+            await tx.refreshToken.deleteMany({ where: { userId } });
+            return { userId, sessionVersion: revoked.sessionVersion, sessionId: null };
+        }
+        await tx.refreshToken.deleteMany({ where: { userId, sessionId } });
+        return { userId, sessionVersion: user.sessionVersion, sessionId };
     });
 };
 

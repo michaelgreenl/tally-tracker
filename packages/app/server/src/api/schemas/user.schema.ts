@@ -50,7 +50,9 @@ const refreshTokenBodySchema = z.object({
 });
 
 export const refreshSchema = refreshTokenBodySchema;
-export const logoutSchema = refreshTokenBodySchema;
+export const logoutSchema = z.object({
+    body: z.object({ refreshToken: z.string().uuid().optional(), allDevices: z.boolean().optional() }).optional(),
+});
 
 const codeSchema = z.string().regex(/^\d{6}$/, 'Code must contain six digits');
 

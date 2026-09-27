@@ -1,5 +1,50 @@
 /// <reference types="cypress" />
 
+for (const allDevices of [false, true]) {
+    it(`uses the logout checkbox to select the sessions to end (all devices: ${allDevices})`, () => {
+        cy.clearCookies();
+        cy.clearLocalStorage();
+        cy.viewport(allDevices ? 667 : 375, allDevices ? 375 : 812);
+        const account = {
+            email: `logout-choice-${crypto.randomUUID()}@example.com`,
+            password: 'Abcdef12',
+            rememberMe: true,
+        };
+        let otherDeviceToken: string;
+        cy.request('POST', '/users', account);
+        cy.request('POST', '/users/login', account).then(({ body }) => {
+            otherDeviceToken = body.data.accessToken;
+        });
+        cy.request('POST', '/users/login', account).then(({ body }) => {
+            cy.visit('/settings', {
+                onBeforeLoad: (win) => win.localStorage.setItem('auth_user_profile', JSON.stringify(body.data.user)),
+            });
+        });
+        cy.intercept('POST', '**/users/logout').as('logout');
+        cy.get('[data-testid="settings-logout"]').click();
+        cy.get('[data-testid="logout-all-devices"]').should('not.be.checked').check();
+        cy.get('[data-testid="logout-cancel"]').click();
+        cy.get('[data-testid="settings-logout"]').click();
+        cy.get('[data-testid="logout-all-devices"]').should('not.be.checked');
+        if (allDevices) cy.get('[data-testid="logout-all-devices"]').click().should('be.checked');
+        cy.get('[data-testid="logout-confirm"]').screenshot(`logout-${allDevices ? 'all' : 'current'}-session`);
+        cy.get('[data-testid="logout-confirm-submit"]').click();
+        cy.wait('@logout').its('request.body.allDevices').should('eq', allDevices);
+        cy.location('pathname').should('eq', '/login');
+        cy.then(() =>
+            cy.request({
+                url: '/users/check-auth',
+                headers: { Authorization: `Bearer ${otherDeviceToken}` },
+                failOnStatusCode: false,
+            }),
+        )
+            .its('status')
+            .should('eq', allDevices ? 401 : 200);
+        cy.request('POST', '/users/login', account);
+        cy.request('DELETE', '/users');
+    });
+}
+
 for (const action of ['logout', 'deletion'] as const) {
     it(`finishes account ${action} before a second browser context installs another account’s cookies`, () => {
         cy.clearCookies();

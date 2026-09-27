@@ -57,6 +57,7 @@ export const buildShare = (overrides: Partial<CounterShare> = {}): CounterShare 
 
 export const buildRefreshToken = (overrides: Partial<RefreshToken> = {}): RefreshToken => ({
     id: TEST_REFRESH_TOKEN_ID,
+    sessionId: randomUUID(),
     userId: TEST_USER_ID,
     rotatedAt: null,
     replacementId: null,

@@ -79,7 +79,7 @@ const closeSocketServer = async () => {
 };
 
 const signAccessToken = (payload: Record<string, unknown>, secret = TEST_JWT_SECRET) =>
-    jsonwebtoken.sign(payload, secret, {
+    jsonwebtoken.sign({ sessionId: 'session-123', ...payload }, secret, {
         audience: AUDIENCE,
         expiresIn: '45m',
         issuer: ISSUER,

@@ -10,7 +10,7 @@ import {
 import { captureServerError } from '../../monitoring/sentry.js';
 import { issueEmailOtp } from '../../services/email-otp.service.js';
 import jwt from '../../util/jwt.util.js';
-import bcrypt from 'bcrypt';
+import { hashPassword, verifyPassword } from '../../util/password.util.js';
 import { Prisma } from '@prisma/client';
 
 import type { Request, Response } from 'express';
@@ -20,8 +20,8 @@ import type { User } from '@prisma/client';
 import type { Server } from 'socket.io';
 
 const REFRESH_TOKEN_TTL = 30 * 24 * 60 * 60 * 1000; // 30d
-// Unknown accounts still pay the same bcrypt cost as an incorrect password.
-const DUMMY_PASSWORD_HASH = '$2b$10$RbpR42/g2.4KJVi2faLOcuooync48POnkHFq1Qy9GeiMfSNU1xyaa';
+// Unknown accounts still pay the password-hashing cost.
+const DUMMY_PASSWORD_HASH = `scrypt-v1$${'0'.repeat(32)}$${'0'.repeat(128)}`;
 
 const toClientUser = (user: Pick<User, 'id' | 'email' | 'tier' | 'emailVerifiedAt'>): ClientUser => ({
     id: user.id,
@@ -69,7 +69,7 @@ export const post = async (
 
         const sanitizedEmail = sanitizeEmail(email);
 
-        const hash = await bcrypt.hash(password, 10);
+        const hash = await hashPassword(password);
         const user = await userRepository.createUser({ email: sanitizedEmail, password: hash });
         void issueEmailOtp(user, 'EMAIL_VERIFICATION').catch((error: unknown) => {
             captureServerError(error, { req, source: 'user.post.emailVerification' });
@@ -100,7 +100,7 @@ export const login = async (
     const sanitizedEmail = sanitizeEmail(email);
     const user = await userRepository.getUserByEmail(sanitizedEmail);
 
-    const match = await bcrypt.compare(password, user?.password ?? DUMMY_PASSWORD_HASH);
+    const match = await verifyPassword(password, user?.password ?? DUMMY_PASSWORD_HASH);
     if (!user?.password || !match) {
         return res.status(UNAUTHORIZED).json({ success: false, message: 'Email or password is incorrect.' });
     }
@@ -118,16 +118,23 @@ export const sendSession = async (user: User, rememberMe: boolean | undefined, r
             current.sessionVersion !== user.sessionVersion
         )
             return null;
+        // Even a non-remembered login needs its own revocable session. Its refresh secret stays on the server.
+        const token = await tx.refreshToken.create({
+            data: {
+                userId: user.id,
+                expiresAt: new Date(Date.now() + (rememberMe ? REFRESH_TOKEN_TTL : 24 * 60 * 60 * 1000)),
+            },
+        });
         const accessToken = jwt.sign(
-            { id: current.id, email: current.email, sessionVersion: current.sessionVersion },
+            {
+                id: current.id,
+                email: current.email,
+                sessionVersion: current.sessionVersion,
+                sessionId: token.sessionId,
+            },
             rememberMe ? '60m' : '1d',
         );
-        const token = rememberMe
-            ? await tx.refreshToken.create({
-                  data: { userId: user.id, expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL) },
-              })
-            : null;
-        return { user: toClientUser(current), accessToken, refreshToken: token?.id };
+        return { user: toClientUser(current), accessToken, refreshToken: rememberMe ? token.id : undefined };
     });
     if (!credentials) return res.status(UNAUTHORIZED).json({ success: false, message: 'Please sign in again.' });
     const { accessToken, refreshToken } = credentials;
@@ -165,7 +172,12 @@ export const refresh = async (
     }
 
     const { user, token: newTokenRecord } = rotated;
-    const accessToken = jwt.sign({ id: user.id, email: user.email, sessionVersion: user.sessionVersion });
+    const accessToken = jwt.sign({
+        id: user.id,
+        email: user.email,
+        sessionVersion: user.sessionVersion,
+        sessionId: newTokenRecord.sessionId,
+    });
 
     res.cookie('access_token', accessToken, shortAccessCookieConfig);
     res.cookie('refresh_token', newTokenRecord.id, refreshCookieConfig);
@@ -183,27 +195,38 @@ export const logout = async (req: Request, res: Response<AuthResponse>) => {
         const token = req.headers.authorization?.startsWith('Bearer ')
             ? req.headers.authorization.slice(7)
             : req.cookies?.access_token;
-        let access: { id: string; sessionVersion: number } | null = null;
+        let access: { id: string; sessionVersion: number; sessionId: string } | null = null;
         if (token) {
             try {
                 const decoded = jwt.verify(token);
                 if (
                     typeof decoded !== 'string' &&
                     typeof decoded.id === 'string' &&
-                    typeof decoded.sessionVersion === 'number'
+                    typeof decoded.sessionVersion === 'number' &&
+                    typeof decoded.sessionId === 'string'
                 ) {
-                    access = { id: decoded.id, sessionVersion: decoded.sessionVersion };
+                    access = { id: decoded.id, sessionVersion: decoded.sessionVersion, sessionId: decoded.sessionId };
                 }
             } catch {
                 /* A valid refresh token can still revoke an expired access session. */
             }
         }
-        const revoked = await tokenRepository.revokeSession(access, refreshTokenId, req.get('X-Account-Id'));
+        const revoked = await tokenRepository.revokeSession(
+            access,
+            refreshTokenId,
+            req.get('X-Account-Id'),
+            req.body?.allDevices === true,
+        );
         const io = req.app.get('io') as Server | undefined;
         if (revoked && io) {
             const sockets = await io.in(revoked.userId).fetchSockets();
             for (const socket of sockets) {
-                if (socket.data.sessionVersion < revoked.sessionVersion) socket.disconnect(true);
+                if (
+                    revoked.sessionId
+                        ? socket.data.sessionId === revoked.sessionId
+                        : socket.data.sessionVersion < revoked.sessionVersion
+                )
+                    socket.disconnect(true);
             }
         }
 

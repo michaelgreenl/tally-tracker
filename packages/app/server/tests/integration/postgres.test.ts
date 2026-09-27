@@ -104,8 +104,8 @@ describe('PostgreSQL integration', () => {
         expect(eligible.body.data.userId).toBe(account.id);
     });
 
-    it.each([`A1${'a'.repeat(70)}`, `Ab1${'é'.repeat(34)}z`])(
-        'accepts 72 UTF-8 password bytes but never truncates extra input: %s',
+    it.each(['Abcdef12', `A1${'a'.repeat(100)}`, `Ab1${'é'.repeat(100)}`])(
+        'registers and verifies the complete password: %s',
         async (password) => {
             const email = `password-length.${randomUUID()}@example.com`;
             await request(app).post('/users').send({ email, password }).expect(201);
@@ -113,13 +113,7 @@ describe('PostgreSQL integration', () => {
             await request(app)
                 .post('/users/login')
                 .send({ email, password: `${password}x` })
-                .expect(422);
-            const rejectedEmail = `overlong.${randomUUID()}@example.com`;
-            await request(app)
-                .post('/users')
-                .send({ email: rejectedEmail, password: `${password}x` })
-                .expect(422);
-            expect(await prisma.user.findUnique({ where: { email: rejectedEmail } })).toBeNull();
+                .expect(401);
         },
     );
 
@@ -294,43 +288,70 @@ describe('PostgreSQL integration', () => {
         expect(await prisma.user.findUniqueOrThrow({ where: { id: account.id }, select })).toEqual(before);
     });
 
-    it.each(['websocket', 'polling'])('revokes credentials and %s sockets on access-only logout', async (transport) => {
-        const account = await sharingAccount('BASIC');
-        const other = await sharingAccount('BASIC');
-        const remembered = await request(app)
-            .post('/users/login')
-            .send({ email: account.email, password: account.password, rememberMe: true })
-            .expect(200);
-        const socket = createSocket(socketUrl, {
-            auth: { token: account.authorization.slice(7) },
-            transports: [transport],
-            autoConnect: false,
-        });
-        try {
-            const connected = new Promise<void>((resolve) => socket.once('session-ready', resolve));
-            socket.connect();
-            await connected;
-            await vi.waitFor(async () => expect(await io.in(account.id).fetchSockets()).toHaveLength(1));
-            await request(app).post('/users/logout').set('Authorization', account.authorization).expect(200);
-            await request(app).get('/users/check-auth').set('Authorization', account.authorization).expect(401);
-            await request(app)
-                .get('/users/check-auth')
-                .set('Authorization', `Bearer ${remembered.body.data.accessToken}`)
-                .expect(401);
-            await request(app)
-                .post('/users/refresh')
-                .send({ refreshToken: remembered.body.data.refreshToken })
-                .expect(401);
-            await vi.waitFor(() => expect(socket.connected).toBe(false));
-            const stillSignedIn = await request(app)
-                .get('/users/check-auth')
-                .set('Authorization', other.authorization)
+    it.each([
+        { transport: 'websocket', allDevices: false },
+        { transport: 'polling', allDevices: false },
+        { transport: 'websocket', allDevices: true },
+        { transport: 'polling', allDevices: true },
+    ])(
+        'revokes only the chosen sessions over $transport (all devices: $allDevices)',
+        async ({ transport, allDevices }) => {
+            const account = await sharingAccount('BASIC');
+            const other = await sharingAccount('BASIC');
+            const remembered = await request(app)
+                .post('/users/login')
+                .send({ email: account.email, password: account.password, rememberMe: true })
                 .expect(200);
-            expect(stillSignedIn.body.data.user.id).toBe(other.id);
-        } finally {
-            socket.disconnect();
-        }
-    });
+            const socket = createSocket(socketUrl, {
+                auth: { token: account.authorization.slice(7) },
+                transports: [transport],
+                autoConnect: false,
+            });
+            const secondSocket = createSocket(socketUrl, {
+                auth: { token: remembered.body.data.accessToken },
+                transports: [transport],
+                autoConnect: false,
+            });
+            try {
+                const connected = Promise.all(
+                    [socket, secondSocket].map(
+                        (client) =>
+                            new Promise<void>((resolve, reject) => {
+                                client.once('session-ready', resolve);
+                                client.once('connect_error', reject);
+                            }),
+                    ),
+                );
+                socket.connect();
+                secondSocket.connect();
+                await connected;
+                await request(app)
+                    .post('/users/logout')
+                    .set('Authorization', account.authorization)
+                    .send({ allDevices })
+                    .expect(200);
+                await request(app).get('/users/check-auth').set('Authorization', account.authorization).expect(401);
+                await request(app)
+                    .get('/users/check-auth')
+                    .set('Authorization', `Bearer ${remembered.body.data.accessToken}`)
+                    .expect(allDevices ? 401 : 200);
+                await request(app)
+                    .post('/users/refresh')
+                    .send({ refreshToken: remembered.body.data.refreshToken })
+                    .expect(allDevices ? 401 : 200);
+                await vi.waitFor(() => expect(socket.connected).toBe(false));
+                await vi.waitFor(() => expect(secondSocket.connected).toBe(!allDevices));
+                const stillSignedIn = await request(app)
+                    .get('/users/check-auth')
+                    .set('Authorization', other.authorization)
+                    .expect(200);
+                expect(stillSignedIn.body.data.user.id).toBe(other.id);
+            } finally {
+                socket.disconnect();
+                secondSocket.disconnect();
+            }
+        },
+    );
 
     it('clears the previous remembered account when another browser account logs in without Remember me', async () => {
         const a = await sharingAccount('BASIC');
@@ -393,6 +414,7 @@ describe('PostgreSQL integration', () => {
             .send({ email: account.email, password: account.password, rememberMe: true })
             .expect(200);
         const original = login.body.data.refreshToken;
+        const sessionId = (jwtUtil.verify(login.body.data.accessToken) as { sessionId: string }).sessionId;
         const refresh = (token: string) => request(app).post('/users/refresh').send({ refreshToken: token });
         const expired = await prisma.refreshToken.create({ data: { userId: account.id, expiresAt: new Date(0) } });
         await refresh(expired.id).expect(401);
@@ -400,7 +422,7 @@ describe('PostgreSQL integration', () => {
         expect(retry.body.data.refreshToken).toBe(first.body.data.refreshToken);
         expect(
             await prisma.refreshToken.count({
-                where: { userId: account.id, rotatedAt: null, expiresAt: { gt: new Date() } },
+                where: { sessionId, rotatedAt: null, expiresAt: { gt: new Date() } },
             }),
         ).toBe(1);
         await prisma.refreshToken.update({
@@ -414,7 +436,8 @@ describe('PostgreSQL integration', () => {
             .get('/users/check-auth')
             .set('Authorization', `Bearer ${first.body.data.accessToken}`)
             .expect(401);
-        expect(await prisma.refreshToken.count({ where: { userId: account.id } })).toBe(0);
+        expect(await prisma.refreshToken.count({ where: { sessionId } })).toBe(0);
+        await request(app).get('/users/check-auth').set('Authorization', account.authorization).expect(200);
     });
 
     it('does not issue a refresh credential when logout wins the user lock', async () => {
@@ -444,10 +467,13 @@ describe('PostgreSQL integration', () => {
         try {
             await arrived;
             lock.mockRestore();
-            await request(app).post('/users/logout').set('Authorization', account.authorization).expect(200);
+            await request(app)
+                .post('/users/logout')
+                .set('Authorization', `Bearer ${login.body.data.accessToken}`)
+                .expect(200);
             release();
             expect((await refreshing).status).toBe(401);
-            expect(await prisma.refreshToken.count({ where: { userId: account.id } })).toBe(0);
+            await request(app).get('/users/check-auth').set('Authorization', account.authorization).expect(200);
         } finally {
             lock.mockRestore();
             release();
@@ -485,7 +511,8 @@ describe('PostgreSQL integration', () => {
 
     it('disconnects an authenticated socket when its access token expires', async () => {
         const account = await sharingAccount('BASIC');
-        const token = jwtUtil.sign({ id: account.id, email: account.email, sessionVersion: 0 }, '2s');
+        const { sessionId } = jwtUtil.verify(account.authorization.slice(7)) as { sessionId: string };
+        const token = jwtUtil.sign({ id: account.id, email: account.email, sessionVersion: 0, sessionId }, '2s');
         const socket = createSocket(socketUrl, { auth: { token }, transports: ['websocket'], autoConnect: false });
         try {
             const connected = new Promise<void>((resolve) => socket.once('session-ready', resolve));
@@ -747,7 +774,7 @@ describe('PostgreSQL integration', () => {
     it('consumes email codes and invalidates sessions after a password reset', async () => {
         const email = `email-auth.${randomUUID()}@example.com`;
         const password = 'Integration-password1';
-        const newPassword = 'New-integration-password1';
+        const newPassword = `New-password1${'é'.repeat(100)}`;
         const verificationCode = '123456';
         const resetCode = '654321';
 
@@ -833,6 +860,10 @@ describe('PostgreSQL integration', () => {
 
         const newLogin = await request(app).post('/users/login').send({ email, password: newPassword });
         expect(newLogin.status).toBe(200);
+        await request(app)
+            .post('/users/login')
+            .send({ email, password: `${newPassword}x` })
+            .expect(401);
     });
 
     it('rejects the current password without consuming a valid reset code', async () => {

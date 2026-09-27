@@ -136,14 +136,15 @@ export const createAppleUser = (identity: AppleIdentity & { email: string }) =>
         },
     });
 
-export const saveAppleIdentity = (user: User, identity: AppleIdentity) =>
+export const saveAppleIdentity = (user: User, identity: AppleIdentity, sessionId?: string) =>
     withLockedUser(user.id, async (current, tx) => {
         if (
             !current ||
             current.sessionVersion !== user.sessionVersion ||
             current.password !== user.password ||
             current.appleSubject !== user.appleSubject ||
-            (current.appleSubject && current.appleSubject !== identity.subject)
+            (current.appleSubject && current.appleSubject !== identity.subject) ||
+            (sessionId !== undefined && !(await getUserAuthById(user.id, sessionId, tx)))
         )
             return null;
         // Apple timestamps use seconds. Revocation wins ties with an in-flight authorization.
@@ -196,14 +197,15 @@ export const createGoogleUser = (googleSubject: string, email: string, emailVeri
         data: { googleSubject, email, emailVerifiedAt: emailVerified ? new Date() : null },
     });
 
-export const linkGoogle = (user: User, identity: GoogleIdentity) =>
+export const linkGoogle = (user: User, identity: GoogleIdentity, sessionId?: string) =>
     withLockedUser(user.id, async (current, tx) => {
         if (
             !current ||
             current.password !== user.password ||
             current.sessionVersion !== user.sessionVersion ||
             current.email !== user.email ||
-            (current.googleSubject && current.googleSubject !== identity.subject)
+            (current.googleSubject && current.googleSubject !== identity.subject) ||
+            (sessionId !== undefined && !(await getUserAuthById(user.id, sessionId, tx)))
         )
             return null;
         return tx.user.update({
@@ -229,8 +231,15 @@ export const updateBillingEntitlement = (
         data,
     });
 
-export const getUserAuthById = (userId: string) =>
-    prisma.user.findUnique({
-        where: { id: userId },
+export const getUserAuthById = (userId: string, sessionId?: string, db: DbClient = prisma) =>
+    db.user.findUnique({
+        where: {
+            id: userId,
+            ...(sessionId === undefined
+                ? {}
+                : {
+                      refreshTokens: { some: { sessionId, rotatedAt: null, expiresAt: { gt: new Date() } } },
+                  }),
+        },
         select: { id: true, email: true, sessionVersion: true, emailVerifiedAt: true },
     });

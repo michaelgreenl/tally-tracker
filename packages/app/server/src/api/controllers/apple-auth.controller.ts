@@ -67,7 +67,7 @@ export const connectApple = async (req: Request, res: Response<AuthResponse>) =>
         return res.status(409).json({ success: false, message: 'Another Apple account is already connected.' });
     }
     try {
-        const user = await users.saveAppleIdentity(current, identity);
+        const user = await users.saveAppleIdentity(current, identity, req.user!.sessionId);
         if (!user) return res.status(401).json({ success: false, message: 'Please sign in again.' });
         return res.json({ success: true });
     } catch (error) {

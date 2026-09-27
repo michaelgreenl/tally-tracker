@@ -19,7 +19,7 @@ import type {
     EmailAddressRequest,
     EmailOtpRequest,
     PasswordResetRequest,
-    RefreshRequest,
+    LogoutRequest,
     SignInMethods,
 } from '@tally/core/client';
 
@@ -98,7 +98,7 @@ export const AuthService = {
         return apiFetch<AuthResponse, AppleLoginRequest>('/users/apple/connect', { method: 'POST', body: data });
     },
 
-    logout(scope = getSessionScope(), userId: string | null = null) {
+    logout(scope = getSessionScope(), userId: string | null = null, allDevices = false) {
         const result = (async () => {
             const [access, refresh] = await Promise.allSettled([
                 tokenStorage.getAccessToken(),
@@ -112,9 +112,9 @@ export const AuthService = {
             }
             const accessToken = access.status === 'fulfilled' ? access.value : null;
             const refreshToken = refresh.status === 'fulfilled' ? refresh.value : null;
-            const body: RefreshRequest | undefined = refreshToken ? { refreshToken } : undefined;
+            const body: LogoutRequest = { ...(refreshToken ? { refreshToken } : {}), allDevices };
             // Remote revocation must still run if local storage fails.
-            const response = await apiFetch<AuthResponse, RefreshRequest>('/users/logout', {
+            const response = await apiFetch<AuthResponse, LogoutRequest>('/users/logout', {
                 method: 'POST',
                 body,
                 requiresAuth: false,
@@ -126,7 +126,11 @@ export const AuthService = {
             }).catch(() => null);
             if (localFailed) throw new Error('Could not clear this device. Restart and try again.');
             if (!response?.success || access.status === 'rejected' || refresh.status === 'rejected') {
-                throw new Error('Signed out here. Other devices may still be signed in.');
+                throw new Error(
+                    allDevices
+                        ? 'Signed out here. Other devices may still be signed in.'
+                        : 'Signed out here. Could not end the server session.',
+                );
             }
             return response;
         })();

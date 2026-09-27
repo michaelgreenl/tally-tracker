@@ -25,7 +25,8 @@ export const jwt = async (req: Request, res: Response, next: NextFunction) => {
         if (
             typeof decoded === 'string' ||
             typeof decoded.id !== 'string' ||
-            typeof decoded.sessionVersion !== 'number'
+            typeof decoded.sessionVersion !== 'number' ||
+            typeof decoded.sessionId !== 'string'
         ) {
             throw new Error('Invalid token payload');
         }
@@ -33,13 +34,13 @@ export const jwt = async (req: Request, res: Response, next: NextFunction) => {
         return res.status(UNAUTHORIZED).json({ success: false, message: 'Invalid token' });
     }
     try {
-        const user = await userRepository.getUserAuthById(decoded.id);
+        const user = await userRepository.getUserAuthById(decoded.id, decoded.sessionId);
         const expectedUserId = req.get('X-Account-Id');
         if (!user || user.sessionVersion !== decoded.sessionVersion || (expectedUserId && expectedUserId !== user.id)) {
             return res.status(UNAUTHORIZED).json({ success: false, message: 'Expired session' });
         }
 
-        req.user = user;
+        req.user = { ...user, sessionId: decoded.sessionId };
         next();
     } catch {
         // A database failure is not proof that the user's credentials expired.

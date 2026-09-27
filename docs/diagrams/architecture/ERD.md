@@ -74,6 +74,7 @@ BASIC BASIC
   "refresh_tokens" {
     String id "PK"
     String user_id 
+    String session_id
     DateTime expires_at 
     DateTime created_at 
     DateTime rotated_at "nullable"

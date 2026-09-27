@@ -68,5 +68,5 @@ sequenceDiagram
 ```
 
 Expired tokens cannot refresh a session. A rotated token cannot create a second replacement.
-The server keeps rotated records until expiry so logout can still identify and revoke the account.
+The server keeps rotated records until expiry so logout can identify and revoke the selected session.
 Temporary server failures preserve the local session and queued changes.

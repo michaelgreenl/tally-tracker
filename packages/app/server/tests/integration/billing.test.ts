@@ -25,7 +25,10 @@ async function account() {
     const user = await prisma.user.create({
         data: { email: `${randomUUID()}@example.invalid`, password: 'test-only', emailVerifiedAt: new Date() },
     });
-    const authorization = `Bearer ${jwt.sign({ id: user.id, email: user.email, sessionVersion: user.sessionVersion })}`;
+    const session = await prisma.refreshToken.create({
+        data: { userId: user.id, expiresAt: new Date(Date.now() + 60_000) },
+    });
+    const authorization = `Bearer ${jwt.sign({ id: user.id, email: user.email, sessionVersion: user.sessionVersion, sessionId: session.sessionId })}`;
     const counter = await prisma.counter.create({ data: { title: 'Billing access check', userId: user.id } });
     return { user, authorization, counter };
 }

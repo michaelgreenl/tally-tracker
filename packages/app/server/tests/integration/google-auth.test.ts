@@ -5,6 +5,7 @@ import app from '../../src/app.js';
 import prisma from '../../src/db/prisma.js';
 import { verifyGoogleToken } from '../../src/services/google-auth.service.js';
 import { sendEmailOtp } from '../../src/services/email.service.js';
+import { hashPassword } from '../../src/util/password.util.js';
 
 // JWT signature and claims are tested with real signed tokens in unit/google-auth.test.ts.
 // This suite keeps the API, account locks, sessions, and PostgreSQL constraints real.
@@ -146,9 +147,9 @@ it('creates one account across concurrent sign-ins and keeps its identity when t
 });
 
 it('requires the existing password before linking and preserves the original account and counters', async () => {
-    const password = 'Existing-password1';
+    const password = `Existing-password1${'é'.repeat(100)}`;
     const existing = await prisma.user.create({
-        data: { email: identity.email, password: await bcrypt.hash(password, 10), tier: 'PREMIUM' },
+        data: { email: identity.email, password: await hashPassword(password), tier: 'PREMIUM' },
     });
     const counter = await prisma.counter.create({ data: { userId: existing.id, title: 'Water' } });
     const needsPassword = await google().expect(409);

@@ -25,6 +25,7 @@ type SocketAuthPayload = {
 type VerifiedToken = {
     id?: unknown;
     sessionVersion?: unknown;
+    sessionId?: unknown;
     exp?: unknown;
 };
 
@@ -63,15 +64,21 @@ const getVerifiedUserId = async (token: string) => {
         typeof decoded.id !== 'string' ||
         !decoded.id ||
         typeof decoded.sessionVersion !== 'number' ||
+        typeof decoded.sessionId !== 'string' ||
         typeof decoded.exp !== 'number'
     ) {
         throw new Error(INVALID_TOKEN_ERROR);
     }
 
-    const user = await userRepository.getUserAuthById(decoded.id);
+    const user = await userRepository.getUserAuthById(decoded.id, decoded.sessionId);
     if (!user || user.sessionVersion !== decoded.sessionVersion) throw new Error(INVALID_TOKEN_ERROR);
 
-    return { userId: decoded.id, sessionVersion: decoded.sessionVersion, expiresAt: decoded.exp * 1000 };
+    return {
+        userId: decoded.id,
+        sessionVersion: decoded.sessionVersion,
+        sessionId: decoded.sessionId,
+        expiresAt: decoded.exp * 1000,
+    };
 };
 
 const authenticateSocket = async (socket: Socket, next: (error?: Error) => void) => {
@@ -103,12 +110,13 @@ const initializeIO = (httpServer: HttpServer) => {
         const userId = socket.data.userId as string;
         // Room admission and revocation use the same lock; a late handshake cannot rejoin after logout.
         void userRepository
-            .withLockedUser(userId, async (user) => {
+            .withLockedUser(userId, async (user, tx) => {
                 if (
                     !socket.connected ||
                     !user ||
                     user.sessionVersion !== socket.data.sessionVersion ||
-                    socket.data.expiresAt <= Date.now()
+                    socket.data.expiresAt <= Date.now() ||
+                    !(await userRepository.getUserAuthById(userId, socket.data.sessionId, tx))
                 ) {
                     socket.disconnect(true);
                     return;
