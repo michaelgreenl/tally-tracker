@@ -30,6 +30,14 @@
         },
         "plugins": [
             [
+                "expo-build-properties",
+                {
+                    "ios": {
+                        "enableSceneSupport": true
+                    }
+                }
+            ],
+            [
                 "expo-router",
                 {
                     "origin": "https://michaelgreenl.github.io/tally-tracker"
