@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 
 import { colors } from '../../theme/colors';
+import { MessageText } from './message-text';
 
 import type { PropsWithChildren, ReactNode } from 'react';
 import type { ModalProps } from 'react-native';
@@ -72,9 +73,9 @@ export function Dialog({
                                 {trailingAction && <View style={styles.headerAction}>{trailingAction}</View>}
                             </View>
                             {description && (
-                                <Text style={[styles.description, hasHeaderActions && styles.editorDescription]}>
+                                <MessageText style={[styles.description, hasHeaderActions && styles.editorDescription]}>
                                     {description}
-                                </Text>
+                                </MessageText>
                             )}
                         </View>
                         {children}

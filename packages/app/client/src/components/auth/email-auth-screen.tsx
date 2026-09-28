@@ -179,12 +179,12 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
         },
         code: {
             title: isVerification ? 'Verify Email' : 'Verify Code',
-            description: `Enter the 6-digit code sent to\n${email}`,
+            description: 'Enter the 6-digit code sent to',
             action: 'Verify Code',
         },
         password: {
             title: 'New Password',
-            description: `Choose a new password for\n${email}`,
+            description: 'Choose a new password for',
             action: 'Reset Password',
         },
         complete: {
@@ -224,7 +224,30 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
                                 <Text accessibilityRole='header' aria-level={1} style={styles.title}>
                                     {copy.title}
                                 </Text>
-                                <Text style={styles.subtitle}>{copy.description}</Text>
+                                <MessageText style={styles.subtitle}>{copy.description}</MessageText>
+                                {(step === 'code' || step === 'password') && (
+                                    <View
+                                        accessible
+                                        accessibilityLabel={email}
+                                        style={styles.emailAddress}
+                                        testID='email-auth-address'
+                                    >
+                                        {email
+                                            .split(/(?=@)/)
+                                            .flatMap((part) =>
+                                                part.startsWith('@') ? [part] : part.split(/(?=[+._-])/),
+                                            )
+                                            .map((part, index) => (
+                                                <MessageText
+                                                    accessible={false}
+                                                    key={index}
+                                                    style={[styles.subtitle, styles.emailPart]}
+                                                >
+                                                    {part}
+                                                </MessageText>
+                                            ))}
+                                    </View>
+                                )}
                             </View>
 
                             {step === 'email' && (

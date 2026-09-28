@@ -174,7 +174,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                     <Text accessibilityRole='header' aria-level={2} style={styles.title}>
                                         Create Account
                                     </Text>
-                                    <Text style={styles.subtitle}>Get started with Tally</Text>
+                                    <MessageText style={styles.subtitle}>Get started with Tally</MessageText>
                                 </View>
                             )}
 

@@ -1,5 +1,40 @@
 /// <reference types="cypress" />
 
+describe('Email address layout', () => {
+    it('keeps a long verification address inside the form without splitting its short domain', () => {
+        const email = 'countertracker5000+appreview@gmail.com';
+        cy.visit(`/verify-email?email=${encodeURIComponent(email)}`);
+
+        for (const [width, height] of [
+            [375, 812],
+            [440, 956],
+            [812, 375],
+        ]) {
+            cy.viewport(width, height);
+            for (const fontSize of [15, 20, 32]) {
+                cy.get('[data-testid="email-auth-address"]').children().invoke('css', 'fontSize', `${fontSize}px`);
+                cy.get('[data-testid="email-auth-address"]').should(($address) => {
+                    const address = $address[0];
+                    const bounds = address.getBoundingClientRect();
+                    for (const part of address.children) {
+                        const range = address.ownerDocument.createRange();
+                        range.selectNodeContents(part);
+                        for (const rect of Array.from(range.getClientRects())) {
+                            expect(rect.left, 'text clears left edge').to.be.at.least(bounds.left - 1);
+                            expect(rect.right, 'text clears right edge').to.be.at.most(bounds.right + 1);
+                            expect(rect.bottom, 'text is not clipped').to.be.at.most(bounds.bottom + 1);
+                        }
+                    }
+                    const domain = address.ownerDocument.createRange();
+                    domain.selectNodeContents(address.lastElementChild!);
+                    expect(domain.getClientRects().length, 'short domain stays on one line').to.equal(1);
+                });
+            }
+        }
+        cy.get('[data-testid="email-auth-address"]').screenshot('verification-long-email-large-text');
+    });
+});
+
 describe('New password requirements', () => {
     for (const mode of ['register', 'reset']) {
         it(`blocks invalid passwords before submitting ${mode}`, () => {

@@ -110,6 +110,15 @@ export const styles = StyleSheet.create({
         color: colors.muted,
         fontSize: 15,
     },
+    emailAddress: {
+        width: '100%',
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'center',
+    },
+    emailPart: {
+        maxWidth: '100%',
+    },
     field: {
         marginBottom: 18,
     },
