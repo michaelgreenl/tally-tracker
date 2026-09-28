@@ -9,7 +9,7 @@
         "userInterfaceStyle": "automatic",
         "ios": {
             "bundleIdentifier": "com.tallytracker.app",
-            "buildNumber": "1",
+            "buildNumber": "3",
             "appleTeamId": "JS8H2Z53Y9",
             "usesAppleSignIn": true,
             "icon": "./assets/tally.icon"
@@ -53,7 +53,13 @@
             ],
             "expo-secure-store",
             "expo-apple-authentication",
-            "@sentry/react-native/expo"
+            [
+                "@sentry/react-native/expo",
+                {
+                    "organization": "mgsentrypersonal",
+                    "project": "tally-client"
+                }
+            ]
         ],
         "experiments": {
             "typedRoutes": true

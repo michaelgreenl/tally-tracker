@@ -44,12 +44,20 @@ The first public release is complete when:
 ### 2. Sentry Crash and Error Reporting
 
 - [x] implementation complete
-- [ ] production verification complete
+- [x] production verification complete
 
 - Report client, native, and server errors.
 - Upload production source maps.
 - Keep diagnostic collection consistent with the Privacy Policy.
 - Verify one controlled production event before store submission.
+
+Verified September 28, 2026:
+
+- The production API reported controlled event `TALLY-SERVER-1` and stayed healthy.
+- The release simulator reported native event `TALLY-CLIENT-1`, tagged `production` and version `1.0.0 (3)`.
+- Build 3 uploaded its JavaScript source maps and native debug symbols. The archive is not yet on TestFlight.
+- Local release settings use `.env.production.local` and `.env.sentry-build-plugin` in `packages/app/client`. Both files stay outside Git.
+- Render stores the API DSN and production environment. The upload token is not in the app bundle.
 
 ### 3. Email Verification and Forgot Password
 
