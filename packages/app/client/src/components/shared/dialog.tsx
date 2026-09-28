@@ -20,6 +20,7 @@ type DialogProps = PropsWithChildren<
         title: string;
         description?: string;
         descriptionGap?: number;
+        contentGap?: number;
         dismissOnBackdropPress?: boolean;
         leadingAction?: ReactNode;
         trailingAction?: ReactNode;
@@ -34,6 +35,7 @@ export function Dialog({
     title,
     description,
     descriptionGap,
+    contentGap,
     dismissOnBackdropPress = false,
     leadingAction,
     trailingAction,
@@ -52,6 +54,7 @@ export function Dialog({
                             styles.card,
                             hasHeaderActions && styles.editorCard,
                             hasHeaderActions && width >= 600 && styles.narrowCard,
+                            contentGap !== undefined && { gap: contentGap },
                         ]}
                         testID={testID}
                     >

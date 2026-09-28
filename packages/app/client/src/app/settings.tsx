@@ -178,39 +178,45 @@ export default function SettingsScreen() {
                     onRequestClose={() => setLogoutOpen(false)}
                     testID='logout-confirm'
                     title='Log out?'
-                    description='Unsynced changes stay on this device for your next login.'
+                    description='You’ll need to log in again to access your account.'
+                    contentGap={8}
                 >
-                    <View style={styles.modalActions}>
-                        <Pressable
-                            accessibilityRole='button'
-                            onPress={() => setLogoutOpen(false)}
-                            style={styles.secondaryButton}
-                            testID='logout-cancel'
-                        >
-                            <Text style={styles.secondaryButtonText}>Cancel</Text>
-                        </Pressable>
-                        <Pressable
-                            accessibilityRole='button'
-                            onPress={() => {
-                                setLogoutOpen(false);
-                                void session.logout(logoutAllDevices);
-                            }}
-                            style={styles.primaryButton}
-                            testID='logout-confirm-submit'
-                        >
-                            <Text style={styles.primaryButtonText}>Log out</Text>
-                        </Pressable>
-                    </View>
-                    <View style={styles.logoutOption}>
-                        <Checkbox
-                            label='Log out all devices'
-                            value={logoutAllDevices}
-                            onValueChange={setLogoutAllDevices}
-                            testID='logout-all-devices'
-                        />
-                        <Text onPress={() => setLogoutAllDevices((value) => !value)} style={styles.logoutOptionLabel}>
-                            Log out all devices
-                        </Text>
+                    <View style={styles.logoutFooter}>
+                        <View style={styles.logoutOption}>
+                            <Checkbox
+                                label='Log out all devices'
+                                value={logoutAllDevices}
+                                onValueChange={setLogoutAllDevices}
+                                testID='logout-all-devices'
+                            />
+                            <Text
+                                onPress={() => setLogoutAllDevices((value) => !value)}
+                                style={styles.logoutOptionLabel}
+                            >
+                                Log out all devices
+                            </Text>
+                        </View>
+                        <View style={[styles.modalActions, styles.logoutActions]}>
+                            <Pressable
+                                accessibilityRole='button'
+                                onPress={() => setLogoutOpen(false)}
+                                style={styles.secondaryButton}
+                                testID='logout-cancel'
+                            >
+                                <Text style={styles.secondaryButtonText}>Cancel</Text>
+                            </Pressable>
+                            <Pressable
+                                accessibilityRole='button'
+                                onPress={() => {
+                                    setLogoutOpen(false);
+                                    void session.logout(logoutAllDevices);
+                                }}
+                                style={styles.primaryButton}
+                                testID='logout-confirm-submit'
+                            >
+                                <Text style={styles.primaryButtonText}>Log out</Text>
+                            </Pressable>
+                        </View>
                     </View>
                 </Dialog>
 
@@ -400,11 +406,21 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
         gap: 12,
     },
+    logoutFooter: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        rowGap: 8,
+    },
+    logoutActions: {
+        flexGrow: 1,
+    },
     logoutOption: {
         minHeight: 44,
         flexDirection: 'row',
         alignItems: 'center',
-        alignSelf: 'flex-start',
+        flexShrink: 1,
+        marginRight: 24,
         gap: 10,
     },
     logoutOptionLabel: {
