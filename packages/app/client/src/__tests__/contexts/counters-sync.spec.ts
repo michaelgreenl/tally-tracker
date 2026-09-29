@@ -67,6 +67,7 @@ vi.mock('../../infra/http/api', () => ({
     getErrorMessage: () => 'Failed',
 }));
 vi.mock('../../infra/socket/socket', () => ({
+    subscribeToPresence: () => () => {},
     subscribeToCounterUpdates: (listener: () => void) => {
         bridge.update = listener;
         return () => {};

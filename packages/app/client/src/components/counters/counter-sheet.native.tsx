@@ -6,7 +6,14 @@ import { colors } from '../../theme/colors';
 
 import type { CounterSheetProps } from './counter-sheet';
 
-export function CounterSheet({ visible, loading, onDismiss, children, footer }: CounterSheetProps) {
+export function CounterSheet({
+    visible,
+    loading,
+    onDismiss,
+    children,
+    footer,
+    testID = 'home-counter-form',
+}: CounterSheetProps) {
     const { fontScale } = useWindowDimensions();
 
     return (
@@ -17,7 +24,7 @@ export function CounterSheet({ visible, loading, onDismiss, children, footer }: 
             onDismiss={onDismiss}
             backgroundStyle={{ backgroundColor: colors.surface }}
         >
-            <GestureHandlerRootView accessibilityViewIsModal style={{ flex: 1 }} testID='home-counter-form'>
+            <GestureHandlerRootView accessibilityViewIsModal style={{ flex: 1 }} testID={testID}>
                 {children}
                 {footer}
             </GestureHandlerRootView>

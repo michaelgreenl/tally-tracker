@@ -10,13 +10,21 @@ export type CounterSheetProps = PropsWithChildren<{
     loading: boolean;
     onDismiss: () => void;
     footer: ReactElement;
+    testID?: string;
 }>;
 
-export function CounterSheet({ visible, loading, onDismiss, children, footer }: CounterSheetProps) {
+export function CounterSheet({
+    visible,
+    loading,
+    onDismiss,
+    children,
+    footer,
+    testID = 'home-counter-form',
+}: CounterSheetProps) {
     return (
         <Modal animationType='fade' onRequestClose={onDismiss} transparent visible={visible}>
             <GestureHandlerRootView style={styles.overlay}>
-                <View accessibilityViewIsModal style={styles.sheet} testID='home-counter-form'>
+                <View accessibilityViewIsModal style={styles.sheet} testID={testID}>
                     {children}
                     {footer}
                 </View>

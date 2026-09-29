@@ -70,6 +70,13 @@ export const AuthService = {
         return apiFetch<AuthResponse>('/users/check-auth', { method: 'GET' });
     },
 
+    setUsername(username: string) {
+        return apiFetch<AuthResponse, { username: string }>('/users/username', {
+            method: 'POST',
+            body: { username },
+        });
+    },
+
     async login(data: AuthRequest | GoogleLoginRequest | AppleLoginRequest) {
         const scope = getSessionScope();
         // A late logout response must not clear the next login's cookies.

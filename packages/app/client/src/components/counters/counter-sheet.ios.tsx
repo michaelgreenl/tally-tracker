@@ -12,7 +12,14 @@ import { colors } from '../../theme/colors';
 
 import type { CounterSheetProps } from './counter-sheet';
 
-export function CounterSheet({ visible, loading, onDismiss, children, footer }: CounterSheetProps) {
+export function CounterSheet({
+    visible,
+    loading,
+    onDismiss,
+    children,
+    footer,
+    testID = 'home-counter-form',
+}: CounterSheetProps) {
     const { width, fontScale } = useWindowDimensions();
 
     return (
@@ -31,7 +38,7 @@ export function CounterSheet({ visible, loading, onDismiss, children, footer }: 
                         interactiveDismissDisabled(loading),
                         presentationBackground(colors.surface),
                     ]}
-                    testID='home-counter-form'
+                    testID={testID}
                 >
                     <RNHostView>
                         <GestureHandlerRootView style={{ flexGrow: 1, height: 0, paddingTop: 16 }}>

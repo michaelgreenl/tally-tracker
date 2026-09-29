@@ -48,6 +48,10 @@ describe('Expo full-stack counter journey', () => {
         });
         cy.location('pathname').should('eq', '/home');
 
+        cy.get('[data-testid="username-input"]').type(`counter_${suffix.replaceAll('-', '_')}`);
+        cy.get('[data-testid="username-submit"]').click();
+        cy.get('[data-testid="username-setup"]').should('not.exist');
+
         cy.intercept('POST', '**/counters').as('createCounter');
         cy.get('[data-testid="add-counter-button"]').click();
         cy.get('[data-testid="counter-title"]').type(title);
@@ -125,6 +129,7 @@ describe('Expo full-stack counter journey', () => {
         cy.get('[data-testid="auth-submit"]').click();
         cy.wait('@loginUser').its('response.statusCode').should('eq', OK);
         cy.wait('@getCounters').its('response.statusCode').should('eq', OK);
+        cy.get('[data-testid="username-setup"]').should('not.exist');
 
         let refreshPhase = 'before-reload';
         cy.intercept('POST', '**/users/refresh', (request) => {

@@ -45,7 +45,7 @@ vi.mock('expo-network', () => ({ getNetworkStateAsync: async () => ({ isConnecte
 vi.mock('react-native', () => ({ Platform: { OS: 'ios' }, AppState: { addEventListener: () => ({ remove() {} }) } }));
 vi.mock('expo-router', () => ({ useRouter: () => router }));
 
-const accountA: ClientUser = { id: 'a', email: 'a@example.com', tier: 'BASIC', emailVerified: true };
+const accountA: ClientUser = { id: 'a', email: 'a@example.com', username: 'alice', tier: 'BASIC', emailVerified: true };
 const accountB: ClientUser = { ...accountA, id: 'b', email: 'b@example.com' };
 const counter = (userId: string): ClientCounter => ({
     id: `counter-${userId}`,

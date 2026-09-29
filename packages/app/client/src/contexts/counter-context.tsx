@@ -15,7 +15,13 @@ import { SyncManager } from '../infra/sync/sync-manager';
 import { SyncQueue } from '../infra/sync/sync-queue';
 import { WidgetSync } from '../infra/widgets/widget-sync';
 import { assertSession, getSessionScope, SessionChangedError, writeSession } from '../services/session/session-scope';
-import { connectSocket, disconnectSocket, subscribeToCounterUpdates } from '../infra/socket/socket';
+import {
+    connectSocket,
+    disconnectSocket,
+    subscribeToCounterUpdates,
+    subscribeToPresence,
+    updatePresence,
+} from '../infra/socket/socket';
 import { useSession } from './session-context';
 
 import {
@@ -34,6 +40,7 @@ type ActionResult = { success: true } | { success: false; message: string };
 
 type CounterContextValue = {
     counters: ClientCounter[];
+    onlineUserIds: ReadonlySet<string>;
     loading: boolean;
     refreshing: boolean;
     syncError: boolean;
@@ -64,6 +71,7 @@ function AccountCounters({ children }: PropsWithChildren) {
     const session = useSession();
     const [scope] = useState(getSessionScope);
     const [counters, setCounters] = useState<ClientCounter[]>([]);
+    const [onlineUserIds, setOnlineUserIds] = useState<ReadonlySet<string>>(new Set());
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [syncError, setSyncError] = useState(false);
@@ -139,6 +147,7 @@ function AccountCounters({ children }: PropsWithChildren) {
         // Events invalidate a snapshot. Their payload can precede pending local writes.
         const unsubscribe = subscribeToCounterUpdates(requestRefresh, requestRefresh);
         const appState = AppState.addEventListener('change', (state) => {
+            updatePresence(state);
             if (state === 'active') requestRefresh();
         });
 
@@ -149,6 +158,32 @@ function AccountCounters({ children }: PropsWithChildren) {
             SyncManager.dispose();
         };
     }, [requestRefresh]);
+
+    useEffect(() => {
+        if (!session.user?.id) return;
+        let version = 0;
+        const clear = () => {
+            version += 1;
+            setOnlineUserIds(new Set());
+        };
+        const refresh = () => {
+            const request = ++version;
+            void CounterService.presence(scope)
+                .then((response) => {
+                    if (request === version && scope === getSessionScope()) {
+                        setOnlineUserIds(new Set(response.data ?? []));
+                    }
+                })
+                .catch(() => {
+                    if (request === version) setOnlineUserIds(new Set());
+                });
+        };
+        const unsubscribe = subscribeToPresence(refresh, clear);
+        return () => {
+            version += 1;
+            unsubscribe();
+        };
+    }, [scope, session.user?.id]);
 
     useEffect(() => {
         if (syncStatus === 'syncing') return;
@@ -424,6 +459,7 @@ function AccountCounters({ children }: PropsWithChildren) {
         <CounterContext.Provider
             value={{
                 counters,
+                onlineUserIds,
                 loading: loading || syncStatus === 'syncing',
                 refreshing,
                 syncError: syncError || syncStatus === 'error',

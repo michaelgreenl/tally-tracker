@@ -21,6 +21,7 @@ type SessionContextValue = {
     isPremium: boolean;
     login: (request: AuthRequest | GoogleLoginRequest | AppleLoginRequest) => Promise<ActionResult>;
     register: (request: AuthRequest) => Promise<ActionResult>;
+    setUsername: (username: string) => Promise<ActionResult>;
     logout: (allDevices?: boolean) => Promise<ActionResult>;
     deleteAccount: () => Promise<ActionResult>;
     refreshUser: () => Promise<ClientUser>;
@@ -179,6 +180,22 @@ export function SessionProvider({ children }: PropsWithChildren) {
         return ok();
     }
 
+    async function setUsername(username: string): Promise<ActionResult> {
+        const scope = getSessionScope();
+        try {
+            const response = await AuthService.setUsername(username);
+            const updated = response.data?.user;
+            if (!response.success || !updated) return fail(response.message || 'Could not save username.');
+            assertSession(scope);
+            await AuthService.cacheUser(updated, scope);
+            assertSession(scope);
+            setUser(updated);
+            return ok();
+        } catch (error) {
+            return fail(getErrorMessage(error, 'Could not save username.'));
+        }
+    }
+
     async function deleteAccount(): Promise<ActionResult> {
         const scope = getSessionScope();
         const userId = userRef.current?.id;
@@ -211,6 +228,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
                 isPremium: user?.tier === 'PREMIUM',
                 login,
                 register,
+                setUsername,
                 logout,
                 deleteAccount,
                 refreshUser,

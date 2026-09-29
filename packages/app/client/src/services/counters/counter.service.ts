@@ -7,7 +7,14 @@ import { CounterStorage } from '../../infra/storage/counter-storage';
 import { SyncManager } from '../../infra/sync/sync-manager';
 import { SyncQueue } from '../../infra/sync/sync-queue';
 
-import type { ClientCounter, CounterResponse, JoinCounterRequest, UpdateCounterRequest } from '@tally/core/client';
+import type {
+    ApiResponse,
+    ClientCounter,
+    CounterMember,
+    CounterResponse,
+    JoinCounterRequest,
+    UpdateCounterRequest,
+} from '@tally/core/client';
 
 const queuedUserId = (scope: SessionScope) => {
     assertSession(scope);
@@ -34,6 +41,17 @@ export const CounterService = {
     clearLocal: CounterStorage.clear,
     getOrder: CounterStorage.getOrder,
     persistOrder: CounterStorage.saveOrder,
+
+    members(counterId: string, sessionScope = getSessionScope()) {
+        return apiFetch<ApiResponse<CounterMember[]>>(`/counters/${counterId}/members`, {
+            method: 'GET',
+            sessionScope,
+        });
+    },
+
+    presence(sessionScope = getSessionScope()) {
+        return apiFetch<ApiResponse<string[]>>('/counters/presence', { method: 'GET', sessionScope });
+    },
 
     async fetchRemote(sessionScope = getSessionScope()) {
         const response = await apiFetch<CounterResponse>('/counters', { method: 'GET', sessionScope });

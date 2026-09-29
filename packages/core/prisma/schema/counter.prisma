@@ -16,7 +16,8 @@ model Counter {
     userId String @map("user_id") @db.Uuid
     owner  User   @relation("OwnedCounters", fields: [userId], references: [id], onDelete: Cascade)
 
-    shares CounterShare[]
+    shares   CounterShare[]
+    activity CounterActivity[]
 
     createdAt DateTime @default(now()) @map("created_at")
     updatedAt DateTime @updatedAt @map("updated_at")
@@ -28,6 +29,19 @@ enum ShareStatus {
     PENDING
     ACCEPTED
     REJECTED
+}
+
+// Keep only each member's latest count change, not an activity history.
+model CounterActivity {
+    counterId String   @map("counter_id")
+    counter   Counter  @relation(fields: [counterId], references: [id], onDelete: Cascade)
+    userId    String   @map("user_id") @db.Uuid
+    user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    amount    Decimal  @db.Decimal(15, 6)
+    at        DateTime @default(now()) @updatedAt
+
+    @@id([counterId, userId])
+    @@map("counter_activity")
 }
 
 model CounterShare {

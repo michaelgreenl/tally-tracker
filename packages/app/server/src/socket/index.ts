@@ -9,6 +9,7 @@ import { parse as parseCookie } from 'cookie';
 import { socketCorsOpts } from '../config/cors.config.js';
 import * as userRepository from '../db/repositories/user.repository.js';
 import jwtUtil from '../util/jwt.util.js';
+import { notifyPresence } from './presence.js';
 
 import { Server as HttpServer } from 'http';
 import type { Socket } from 'socket.io';
@@ -122,6 +123,24 @@ const initializeIO = (httpServer: HttpServer) => {
                     return;
                 }
                 await socket.join(userId);
+                socket.data.active = false;
+                let notification: ReturnType<typeof setTimeout> | undefined;
+                const changed = () => {
+                    if (notification) return;
+                    notification = setTimeout(() => {
+                        notification = undefined;
+                        void notifyPresence(io, userId).catch(() => undefined);
+                    }, 100);
+                    notification.unref();
+                };
+                socket.on('presence', (active: unknown) => {
+                    if (typeof active !== 'boolean' || socket.data.active === active) return;
+                    socket.data.active = active;
+                    changed();
+                });
+                socket.once('disconnect', () => {
+                    if (socket.data.active) changed();
+                });
                 socket.emit('session-ready');
                 const expiry = setTimeout(() => socket.disconnect(true), socket.data.expiresAt - Date.now());
                 expiry.unref();

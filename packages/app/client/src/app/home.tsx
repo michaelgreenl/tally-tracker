@@ -11,6 +11,7 @@ import { CounterCard } from '../components/counters/counter-card';
 import { CounterForm } from '../components/counters/counter-form';
 import { CounterValueDialog } from '../components/counters/counter-value-dialog';
 import { CounterList } from '../components/counters/counter-list';
+import { CounterMembersSheet } from '../components/counters/counter-members-sheet';
 import { Dialog } from '../components/shared/dialog';
 import { Snackbar } from '../components/shared/snackbar';
 import { SyncIndicator } from '../components/counters/sync-indicator';
@@ -30,6 +31,7 @@ export default function HomeScreen() {
     const insets = useSafeAreaInsets();
     const [formOpen, setFormOpen] = useState(false);
     const [counterToEdit, setCounterToEdit] = useState<ClientCounter | null>(null);
+    const [membersCounterId, setMembersCounterId] = useState<string | null>(null);
     const [valueToEdit, setValueToEdit] = useState<{ counter: ClientCounter; field: 'count' | 'increment' } | null>(
         null,
     );
@@ -196,6 +198,7 @@ export default function HomeScreen() {
                             }}
                             onEditIncrement={(counter) => setValueToEdit({ counter, field: 'increment' })}
                             onEditCount={(counter) => setValueToEdit({ counter, field: 'count' })}
+                            onMembers={(counter) => setMembersCounterId(counter.id)}
                             onIncrement={(id, amount) => void incrementCounter(id, amount)}
                             onNotice={setNotice}
                             canReorder={counterState.counters.length > 1}
@@ -237,6 +240,11 @@ export default function HomeScreen() {
                 />
 
                 {valueToEdit && <CounterValueDialog {...valueToEdit} onClose={() => setValueToEdit(null)} />}
+
+                <CounterMembersSheet
+                    counter={counterState.counters.find((counter) => counter.id === membersCounterId)}
+                    onClose={() => setMembersCounterId(null)}
+                />
 
                 <Dialog
                     visible={removeOpen}

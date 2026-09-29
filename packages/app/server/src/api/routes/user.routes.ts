@@ -1,5 +1,14 @@
 import express from 'express';
-import { post, remove, login, logout, checkAuth, refresh, signInMethods } from '../controllers/user.controller.js';
+import {
+    post,
+    remove,
+    login,
+    logout,
+    checkAuth,
+    refresh,
+    signInMethods,
+    setUsername,
+} from '../controllers/user.controller.js';
 import { jwt } from '../../middleware/auth.middleware.js';
 import { googleLogin, verifyGoogle, connectGoogle } from '../controllers/google-auth.controller.js';
 import { appleLogin, appleNotification, connectApple, verifyApple } from '../controllers/apple-auth.controller.js';
@@ -23,11 +32,13 @@ import {
     logoutSchema,
     passwordResetSchema,
     refreshSchema,
+    setUsernameSchema,
 } from '../schemas/user.schema.js';
 
 const router = express.Router();
 
 router.get('/check-auth', jwt, checkAuth);
+router.post('/username', jwt, validate(setUsernameSchema), setUsername);
 router.post('/', emailAuthLimiter, validate(createUserSchema), post);
 router.delete('/', jwt, remove);
 router.post('/login', loginIpLimiter, validate(loginSchema), loginAccountLimiter, login);

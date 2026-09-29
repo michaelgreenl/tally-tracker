@@ -1,4 +1,5 @@
 import prisma from '../prisma.js';
+import { createHash } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import type { User } from '@prisma/client';
 import { revokeAppleToken } from '../../services/apple-auth.service.js';
@@ -21,6 +22,7 @@ export const withLockedUser = <T>(
 const userSelectSchema = {
     id: true,
     email: true,
+    username: true,
     tier: true,
     premiumExpiresAt: true,
     billingSandbox: true,
@@ -45,6 +47,15 @@ export const createUser = async ({ email, password }: { email: string; password:
             email,
             password,
         },
+    });
+
+export const setUsername = (userId: string, username: string) =>
+    withLockedUser(userId, async (user, tx) => {
+        if (!user) return null;
+        // A fixed-size key keeps long usernames within PostgreSQL's unique-index limit.
+        const usernameKey = createHash('sha256').update(username.toLowerCase()).digest('hex');
+        if (user.username) return user;
+        return tx.user.update({ where: { id: userId }, data: { username, usernameKey } });
     });
 
 export const deleteAccount = async (userId: string) =>

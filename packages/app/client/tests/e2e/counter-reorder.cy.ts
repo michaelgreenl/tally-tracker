@@ -197,7 +197,7 @@ describe('Counter order', () => {
             inviteCode: null,
         }));
         const openAccount = (id: string) => {
-            const user = { id, email: `${id}@example.com`, tier: 'PREMIUM', emailVerified: true };
+            const user = { id, username: id, email: `${id}@example.com`, tier: 'PREMIUM', emailVerified: true };
             cy.intercept('GET', '**/users/check-auth', { body: { success: true, data: { user } } });
             cy.visit('/home', {
                 onBeforeLoad(win) {
@@ -228,7 +228,13 @@ describe('Counter order', () => {
     });
 
     it('scrolls at the edge while dragging a card beyond the visible rows', () => {
-        const user = { id: 'scroll-user', email: 'scroll@example.com', tier: 'PREMIUM', emailVerified: true };
+        const user = {
+            id: 'scroll-user',
+            username: 'scroll_user',
+            email: 'scroll@example.com',
+            tier: 'PREMIUM',
+            emailVerified: true,
+        };
         const counters = Array.from({ length: 20 }, (_, index) => ({
             id: `scroll-${index}`,
             title: `Counter ${index}`,

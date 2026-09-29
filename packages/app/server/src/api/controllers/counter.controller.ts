@@ -2,10 +2,11 @@ import { OK, CREATED, BAD_REQUEST, FORBIDDEN, NOT_FOUND, CONFLICT } from '@tally
 import * as counterRepository from '../../db/repositories/counter.repository.js';
 import * as userRepository from '../../db/repositories/user.repository.js';
 import { runIdempotentMutation } from '../../services/idempotency.service.js';
+import { getOnlineParticipants } from '../../socket/presence.js';
 
 import type { Request, Response } from 'express';
 import type { ShareStatusType } from '@tally/core';
-import type { CounterResponse } from '@tally/core';
+import type { CounterResponse, ApiResponse, CounterMember } from '@tally/core';
 import type {
     CreateCounterRequest,
     UpdateCounterRequest,
@@ -143,6 +144,17 @@ export const getAllByUser = async (req: Request, res: Response<CounterResponse>)
     res.json({ success: true, data: { counters } });
 };
 
+export const presence = async (req: Request, res: Response<ApiResponse<string[]>>) => {
+    const online = await getOnlineParticipants(req.app.get('io'), req.user!.id);
+    res.json({ success: true, data: online });
+};
+
+export const members = async (req: Request, res: Response<ApiResponse<CounterMember[]>>) => {
+    const members = await counterRepository.getMembers(req.params.counterId as string, req.user!.id);
+    if (!members) return res.status(NOT_FOUND).json({ success: false, message: 'Counter not found' });
+    res.json({ success: true, data: members });
+};
+
 export const put = async (
     req: Request<{ counterId: string }, CounterResponse, UpdateCounterRequest>,
     res: Response<CounterResponse>,
@@ -213,6 +225,13 @@ export const increment = async (
             return { status: NOT_FOUND, body: { success: false, message: 'Counter not found' } };
         }
 
+        if (counter.type === 'SHARED' && amount !== 0) {
+            await tx.counterActivity.upsert({
+                where: { counterId_userId: { counterId, userId } },
+                create: { counterId, userId, amount },
+                update: { amount, at: new Date() },
+            });
+        }
         participants = await counterRepository.getParticipants(counterId, tx);
         counterToBroadcast = counter;
 

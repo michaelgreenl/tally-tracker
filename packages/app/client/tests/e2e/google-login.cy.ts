@@ -13,7 +13,13 @@ window.google = { accounts: { id: {
     }
 } } };
 `;
-const user = { id: 'google-account', email: 'person@gmail.com', tier: 'BASIC', emailVerified: true };
+const user = {
+    id: 'google-account',
+    username: 'google_user',
+    email: 'person@gmail.com',
+    tier: 'BASIC',
+    emailVerified: true,
+};
 
 describe('Google sign-in', () => {
     beforeEach(() => {

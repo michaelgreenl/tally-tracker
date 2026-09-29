@@ -1,5 +1,7 @@
-import { emailSchema, loginPasswordSchema, passwordSchema } from '@tally/core';
+import { emailSchema, loginPasswordSchema, passwordSchema, usernameSchema } from '@tally/core';
 import { z } from 'zod';
+
+export const setUsernameSchema = z.object({ body: z.strictObject({ username: usernameSchema }) });
 
 export const createUserSchema = z.object({
     body: z

@@ -23,7 +23,13 @@ describe('Upgrade', () => {
 
     it('returns to checkout after explicit email verification without a new login', () => {
         cy.viewport(390, 844);
-        const user = { id: 'unverified-buyer', email: 'buyer@example.com', tier: 'BASIC', emailVerified: false };
+        const user = {
+            id: 'unverified-buyer',
+            username: 'buyer',
+            email: 'buyer@example.com',
+            tier: 'BASIC',
+            emailVerified: false,
+        };
         cy.intercept('GET', '**/users/check-auth', { body: { success: true, data: { user } } });
         cy.intercept('GET', '**/counters', { body: { success: true, data: { counters: [] } } });
         cy.intercept('POST', '**/users/verify-email/request', { body: { success: true } }).as('requestCode');
@@ -58,7 +64,13 @@ describe('Upgrade', () => {
                 body: {
                     success: true,
                     data: {
-                        user: { id: 'upgrade-user', email: 'upgrade@example.com', tier, emailVerified: true },
+                        user: {
+                            id: 'upgrade-user',
+                            username: 'buyer',
+                            email: 'upgrade@example.com',
+                            tier,
+                            emailVerified: true,
+                        },
                     },
                 },
             });

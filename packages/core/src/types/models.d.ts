@@ -4,6 +4,7 @@ import { HexColor } from './index';
 export type ClientUser = Omit<
     User,
     | 'password'
+    | 'usernameKey'
     | 'googleSubject'
     | 'appleSubject'
     | 'appleRefreshToken'
@@ -24,4 +25,11 @@ export type ClientCounter = Omit<Counter, 'createdAt' | 'updatedAt' | 'color' | 
     increment: number;
     color: HexColor | null;
     shares?: CounterShare[];
+};
+
+export type CounterMember = {
+    id: string;
+    username: string | null;
+    isOwner: boolean;
+    lastAction: { amount: number; at: string } | null;
 };

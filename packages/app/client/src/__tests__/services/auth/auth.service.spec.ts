@@ -98,7 +98,7 @@ it('does not let a partially failed old credential write finish after a new logi
         stored.userId = JSON.parse(value).id;
     });
     const login = (id: string) => ({
-        user: { id, email: `${id}@example.com`, tier: 'BASIC' as const, emailVerified: true },
+        user: { id, email: `${id}@example.com`, username: id, tier: 'BASIC' as const, emailVerified: true },
         accessToken: id,
         refreshToken: id,
     });

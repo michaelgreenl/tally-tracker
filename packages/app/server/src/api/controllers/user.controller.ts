@@ -1,5 +1,6 @@
-import { CREATED, UNAUTHORIZED, NOT_FOUND, UNPROCESSABLE_ENTITY } from '@tally/core';
+import { CREATED, UNAUTHORIZED, NOT_FOUND, UNPROCESSABLE_ENTITY, CONFLICT } from '@tally/core';
 import * as userRepository from '../../db/repositories/user.repository.js';
+import { getSharedParticipantIds } from '../../db/repositories/counter.repository.js';
 import * as tokenRepository from '../../db/repositories/token.repository.js';
 import {
     accessCookieConfig,
@@ -23,12 +24,28 @@ const REFRESH_TOKEN_TTL = 30 * 24 * 60 * 60 * 1000; // 30d
 // Unknown accounts still pay the password-hashing cost.
 const DUMMY_PASSWORD_HASH = `scrypt-v1$${'0'.repeat(32)}$${'0'.repeat(128)}`;
 
-const toClientUser = (user: Pick<User, 'id' | 'email' | 'tier' | 'emailVerifiedAt'>): ClientUser => ({
+const toClientUser = (user: Pick<User, 'id' | 'email' | 'username' | 'tier' | 'emailVerifiedAt'>): ClientUser => ({
     id: user.id,
     email: user.email,
+    username: user.username,
     tier: user.tier,
     emailVerified: Boolean(user.emailVerifiedAt),
 });
+
+export const setUsername = async (req: Request, res: Response<AuthResponse>) => {
+    try {
+        const user = await userRepository.setUsername(req.user!.id, req.body.username);
+        if (!user) return res.status(UNAUTHORIZED).json({ success: false, message: 'Sign in again.' });
+        const participants = await getSharedParticipantIds(user.id);
+        (req.app.get('io') as Server | undefined)?.to(participants).emit('counters-changed');
+        return res.json({ success: true, data: { user: toClientUser(user) } });
+    } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+            return res.status(CONFLICT).json({ success: false, message: 'That username is taken.' });
+        }
+        throw error;
+    }
+};
 
 // Access token is validated by the jwt middleware before reaching here.
 // Just look up the user and return their data.
@@ -249,7 +266,11 @@ export const remove = async (req: Request, res: Response<AuthResponse>) => {
         return res.status(UNAUTHORIZED).json({ success: false, message: 'Not authenticated' });
     }
 
+    const participants = await getSharedParticipantIds(userId);
     await userRepository.deleteAccount(userId);
+    const io = req.app.get('io') as Server | undefined;
+    io?.in(userId).disconnectSockets(true);
+    io?.to(participants).emit('counters-changed');
 
     res.clearCookie('access_token', clearCookieConfig);
     res.clearCookie('refresh_token', clearCookieConfig);

@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { io } from 'socket.io-client';
 
 import { API_URL } from '../http/api';
@@ -9,6 +9,8 @@ const socket = io(API_URL || undefined, {
     autoConnect: false,
     // Metro owns WebSocket upgrades; dev web uses the same-origin HTTP proxy.
     transports: Platform.OS === 'web' && __DEV__ ? ['polling'] : ['websocket', 'polling'],
+    // Native sockets use tokens, not a browser origin. iOS otherwise supplies the API's origin.
+    extraHeaders: Platform.OS === 'web' ? undefined : { Origin: '' },
     withCredentials: true,
     auth: async (callback) => {
         const scope = getSessionScope();
@@ -29,6 +31,26 @@ export const connectSocket = () => {
 
 export const disconnectSocket = () => {
     if (socket.connected || socket.active) socket.disconnect();
+};
+
+export const updatePresence = (state = AppState.currentState) => {
+    // Do not queue an old foreground state while disconnected.
+    if (socket.connected) socket.emit('presence', state === 'active');
+};
+
+socket.on('session-ready', () => updatePresence());
+
+export const subscribeToPresence = (listener: () => void, onDisconnect: () => void) => {
+    socket.on('presence-changed', listener);
+    socket.on('counters-changed', listener);
+    socket.on('session-ready', listener);
+    socket.on('disconnect', onDisconnect);
+    return () => {
+        socket.off('presence-changed', listener);
+        socket.off('counters-changed', listener);
+        socket.off('session-ready', listener);
+        socket.off('disconnect', onDisconnect);
+    };
 };
 
 socket.on('disconnect', (reason) => {

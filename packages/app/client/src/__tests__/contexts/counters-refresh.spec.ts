@@ -31,6 +31,7 @@ vi.mock('../../infra/sync/sync-manager', () => ({
 }));
 vi.mock('../../infra/sync/sync-queue', () => ({ SyncQueue: { get: async () => [] } }));
 vi.mock('../../infra/socket/socket', () => ({
+    subscribeToPresence: () => () => {},
     subscribeToCounterUpdates: () => () => {},
     connectSocket() {},
     disconnectSocket() {},

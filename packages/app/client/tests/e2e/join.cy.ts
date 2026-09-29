@@ -13,7 +13,13 @@ describe('Shared counter invitations', () => {
                 type: 'SHARED',
                 inviteCode,
             };
-            const user = { id: 'recipient', email: 'recipient@example.com', tier: 'BASIC', emailVerified: true };
+            const user = {
+                id: 'recipient',
+                username: 'recipient',
+                email: 'recipient@example.com',
+                tier: 'BASIC',
+                emailVerified: true,
+            };
             cy.clearCookies();
             cy.clearLocalStorage();
             cy.intercept('GET', '**/counters', {

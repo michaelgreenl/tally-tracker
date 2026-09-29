@@ -106,6 +106,8 @@ export const CounterScalarFieldEnumSchema = z.enum([
     'updatedAt',
 ]);
 
+export const CounterActivityScalarFieldEnumSchema = z.enum(['counterId', 'userId', 'amount', 'at']);
+
 export const CounterShareScalarFieldEnumSchema = z.enum([
     'id',
     'status',
@@ -152,6 +154,8 @@ export const LoginRateLimitScalarFieldEnumSchema = z.enum(['key', 'hits', 'reset
 export const UserScalarFieldEnumSchema = z.enum([
     'id',
     'email',
+    'username',
+    'usernameKey',
     'password',
     'googleSubject',
     'appleSubject',
@@ -238,6 +242,21 @@ export const CounterSchema = z.object({
 export type Counter = z.infer<typeof CounterSchema>;
 
 /////////////////////////////////////////
+// COUNTER ACTIVITY SCHEMA
+/////////////////////////////////////////
+
+export const CounterActivitySchema = z.object({
+    counterId: z.string(),
+    userId: z.string(),
+    amount: z.instanceof(Prisma.Decimal, {
+        message: "Field 'amount' must be a Decimal. Location: ['Models', 'CounterActivity']",
+    }),
+    at: z.coerce.date(),
+});
+
+export type CounterActivity = z.infer<typeof CounterActivitySchema>;
+
+/////////////////////////////////////////
 // COUNTER SHARE SCHEMA
 /////////////////////////////////////////
 
@@ -322,6 +341,8 @@ export const UserSchema = z.object({
     tier: UserTierSchema,
     id: z.uuid(),
     email: z.string(),
+    username: z.string().nullable(),
+    usernameKey: z.string().nullable(),
     password: z.string().nullable(),
     googleSubject: z.string().nullable(),
     appleSubject: z.string().nullable(),
@@ -349,6 +370,7 @@ export const CounterIncludeSchema: z.ZodType<Prisma.CounterInclude> = z
     .object({
         owner: z.union([z.boolean(), z.lazy(() => UserArgsSchema)]).optional(),
         shares: z.union([z.boolean(), z.lazy(() => CounterShareFindManyArgsSchema)]).optional(),
+        activity: z.union([z.boolean(), z.lazy(() => CounterActivityFindManyArgsSchema)]).optional(),
         _count: z.union([z.boolean(), z.lazy(() => CounterCountOutputTypeArgsSchema)]).optional(),
     })
     .strict();
@@ -369,6 +391,7 @@ export const CounterCountOutputTypeArgsSchema: z.ZodType<Prisma.CounterCountOutp
 export const CounterCountOutputTypeSelectSchema: z.ZodType<Prisma.CounterCountOutputTypeSelect> = z
     .object({
         shares: z.boolean().optional(),
+        activity: z.boolean().optional(),
     })
     .strict();
 
@@ -387,7 +410,36 @@ export const CounterSelectSchema: z.ZodType<Prisma.CounterSelect> = z
         updatedAt: z.boolean().optional(),
         owner: z.union([z.boolean(), z.lazy(() => UserArgsSchema)]).optional(),
         shares: z.union([z.boolean(), z.lazy(() => CounterShareFindManyArgsSchema)]).optional(),
+        activity: z.union([z.boolean(), z.lazy(() => CounterActivityFindManyArgsSchema)]).optional(),
         _count: z.union([z.boolean(), z.lazy(() => CounterCountOutputTypeArgsSchema)]).optional(),
+    })
+    .strict();
+
+// COUNTER ACTIVITY
+//------------------------------------------------------
+
+export const CounterActivityIncludeSchema: z.ZodType<Prisma.CounterActivityInclude> = z
+    .object({
+        counter: z.union([z.boolean(), z.lazy(() => CounterArgsSchema)]).optional(),
+        user: z.union([z.boolean(), z.lazy(() => UserArgsSchema)]).optional(),
+    })
+    .strict();
+
+export const CounterActivityArgsSchema: z.ZodType<Prisma.CounterActivityDefaultArgs> = z
+    .object({
+        select: z.lazy(() => CounterActivitySelectSchema).optional(),
+        include: z.lazy(() => CounterActivityIncludeSchema).optional(),
+    })
+    .strict();
+
+export const CounterActivitySelectSchema: z.ZodType<Prisma.CounterActivitySelect> = z
+    .object({
+        counterId: z.boolean().optional(),
+        userId: z.boolean().optional(),
+        amount: z.boolean().optional(),
+        at: z.boolean().optional(),
+        counter: z.union([z.boolean(), z.lazy(() => CounterArgsSchema)]).optional(),
+        user: z.union([z.boolean(), z.lazy(() => UserArgsSchema)]).optional(),
     })
     .strict();
 
@@ -516,6 +568,7 @@ export const UserIncludeSchema: z.ZodType<Prisma.UserInclude> = z
         sharedCounters: z.union([z.boolean(), z.lazy(() => CounterShareFindManyArgsSchema)]).optional(),
         refreshTokens: z.union([z.boolean(), z.lazy(() => RefreshTokenFindManyArgsSchema)]).optional(),
         emailOtps: z.union([z.boolean(), z.lazy(() => EmailOtpFindManyArgsSchema)]).optional(),
+        counterActivity: z.union([z.boolean(), z.lazy(() => CounterActivityFindManyArgsSchema)]).optional(),
         _count: z.union([z.boolean(), z.lazy(() => UserCountOutputTypeArgsSchema)]).optional(),
     })
     .strict();
@@ -539,6 +592,7 @@ export const UserCountOutputTypeSelectSchema: z.ZodType<Prisma.UserCountOutputTy
         sharedCounters: z.boolean().optional(),
         refreshTokens: z.boolean().optional(),
         emailOtps: z.boolean().optional(),
+        counterActivity: z.boolean().optional(),
     })
     .strict();
 
@@ -546,6 +600,8 @@ export const UserSelectSchema: z.ZodType<Prisma.UserSelect> = z
     .object({
         id: z.boolean().optional(),
         email: z.boolean().optional(),
+        username: z.boolean().optional(),
+        usernameKey: z.boolean().optional(),
         password: z.boolean().optional(),
         googleSubject: z.boolean().optional(),
         appleSubject: z.boolean().optional(),
@@ -563,6 +619,7 @@ export const UserSelectSchema: z.ZodType<Prisma.UserSelect> = z
         sharedCounters: z.union([z.boolean(), z.lazy(() => CounterShareFindManyArgsSchema)]).optional(),
         refreshTokens: z.union([z.boolean(), z.lazy(() => RefreshTokenFindManyArgsSchema)]).optional(),
         emailOtps: z.union([z.boolean(), z.lazy(() => EmailOtpFindManyArgsSchema)]).optional(),
+        counterActivity: z.union([z.boolean(), z.lazy(() => CounterActivityFindManyArgsSchema)]).optional(),
         _count: z.union([z.boolean(), z.lazy(() => UserCountOutputTypeArgsSchema)]).optional(),
     })
     .strict();
@@ -626,6 +683,7 @@ export const CounterWhereInputSchema: z.ZodType<Prisma.CounterWhereInput> = z.st
     updatedAt: z.union([z.lazy(() => DateTimeFilterSchema), z.coerce.date()]).optional(),
     owner: z.union([z.lazy(() => UserScalarRelationFilterSchema), z.lazy(() => UserWhereInputSchema)]).optional(),
     shares: z.lazy(() => CounterShareListRelationFilterSchema).optional(),
+    activity: z.lazy(() => CounterActivityListRelationFilterSchema).optional(),
 });
 
 export const CounterOrderByWithRelationInputSchema: z.ZodType<Prisma.CounterOrderByWithRelationInput> = z.strictObject({
@@ -642,6 +700,7 @@ export const CounterOrderByWithRelationInputSchema: z.ZodType<Prisma.CounterOrde
     updatedAt: z.lazy(() => SortOrderSchema).optional(),
     owner: z.lazy(() => UserOrderByWithRelationInputSchema).optional(),
     shares: z.lazy(() => CounterShareOrderByRelationAggregateInputSchema).optional(),
+    activity: z.lazy(() => CounterActivityOrderByRelationAggregateInputSchema).optional(),
 });
 
 export const CounterWhereUniqueInputSchema: z.ZodType<Prisma.CounterWhereUniqueInput> = z
@@ -716,6 +775,7 @@ export const CounterWhereUniqueInputSchema: z.ZodType<Prisma.CounterWhereUniqueI
                 .union([z.lazy(() => UserScalarRelationFilterSchema), z.lazy(() => UserWhereInputSchema)])
                 .optional(),
             shares: z.lazy(() => CounterShareListRelationFilterSchema).optional(),
+            activity: z.lazy(() => CounterActivityListRelationFilterSchema).optional(),
         }),
     );
 
@@ -805,6 +865,149 @@ export const CounterScalarWhereWithAggregatesInputSchema: z.ZodType<Prisma.Count
         userId: z.union([z.lazy(() => UuidWithAggregatesFilterSchema), z.string()]).optional(),
         createdAt: z.union([z.lazy(() => DateTimeWithAggregatesFilterSchema), z.coerce.date()]).optional(),
         updatedAt: z.union([z.lazy(() => DateTimeWithAggregatesFilterSchema), z.coerce.date()]).optional(),
+    });
+
+export const CounterActivityWhereInputSchema: z.ZodType<Prisma.CounterActivityWhereInput> = z.strictObject({
+    AND: z
+        .union([z.lazy(() => CounterActivityWhereInputSchema), z.lazy(() => CounterActivityWhereInputSchema).array()])
+        .optional(),
+    OR: z
+        .lazy(() => CounterActivityWhereInputSchema)
+        .array()
+        .optional(),
+    NOT: z
+        .union([z.lazy(() => CounterActivityWhereInputSchema), z.lazy(() => CounterActivityWhereInputSchema).array()])
+        .optional(),
+    counterId: z.union([z.lazy(() => StringFilterSchema), z.string()]).optional(),
+    userId: z.union([z.lazy(() => UuidFilterSchema), z.string()]).optional(),
+    amount: z
+        .union([
+            z.lazy(() => DecimalFilterSchema),
+            z
+                .union([
+                    z.number(),
+                    z.string(),
+                    z.instanceof(Decimal),
+                    z.instanceof(Prisma.Decimal),
+                    DecimalJsLikeSchema,
+                ])
+                .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+        ])
+        .optional(),
+    at: z.union([z.lazy(() => DateTimeFilterSchema), z.coerce.date()]).optional(),
+    counter: z
+        .union([z.lazy(() => CounterScalarRelationFilterSchema), z.lazy(() => CounterWhereInputSchema)])
+        .optional(),
+    user: z.union([z.lazy(() => UserScalarRelationFilterSchema), z.lazy(() => UserWhereInputSchema)]).optional(),
+});
+
+export const CounterActivityOrderByWithRelationInputSchema: z.ZodType<Prisma.CounterActivityOrderByWithRelationInput> =
+    z.strictObject({
+        counterId: z.lazy(() => SortOrderSchema).optional(),
+        userId: z.lazy(() => SortOrderSchema).optional(),
+        amount: z.lazy(() => SortOrderSchema).optional(),
+        at: z.lazy(() => SortOrderSchema).optional(),
+        counter: z.lazy(() => CounterOrderByWithRelationInputSchema).optional(),
+        user: z.lazy(() => UserOrderByWithRelationInputSchema).optional(),
+    });
+
+export const CounterActivityWhereUniqueInputSchema: z.ZodType<Prisma.CounterActivityWhereUniqueInput> = z
+    .object({
+        counterId_userId: z.lazy(() => CounterActivityCounterIdUserIdCompoundUniqueInputSchema),
+    })
+    .and(
+        z.strictObject({
+            counterId_userId: z.lazy(() => CounterActivityCounterIdUserIdCompoundUniqueInputSchema).optional(),
+            AND: z
+                .union([
+                    z.lazy(() => CounterActivityWhereInputSchema),
+                    z.lazy(() => CounterActivityWhereInputSchema).array(),
+                ])
+                .optional(),
+            OR: z
+                .lazy(() => CounterActivityWhereInputSchema)
+                .array()
+                .optional(),
+            NOT: z
+                .union([
+                    z.lazy(() => CounterActivityWhereInputSchema),
+                    z.lazy(() => CounterActivityWhereInputSchema).array(),
+                ])
+                .optional(),
+            counterId: z.union([z.lazy(() => StringFilterSchema), z.string()]).optional(),
+            userId: z.union([z.lazy(() => UuidFilterSchema), z.string()]).optional(),
+            amount: z
+                .union([
+                    z.lazy(() => DecimalFilterSchema),
+                    z
+                        .union([
+                            z.number(),
+                            z.string(),
+                            z.instanceof(Decimal),
+                            z.instanceof(Prisma.Decimal),
+                            DecimalJsLikeSchema,
+                        ])
+                        .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+                ])
+                .optional(),
+            at: z.union([z.lazy(() => DateTimeFilterSchema), z.coerce.date()]).optional(),
+            counter: z
+                .union([z.lazy(() => CounterScalarRelationFilterSchema), z.lazy(() => CounterWhereInputSchema)])
+                .optional(),
+            user: z
+                .union([z.lazy(() => UserScalarRelationFilterSchema), z.lazy(() => UserWhereInputSchema)])
+                .optional(),
+        }),
+    );
+
+export const CounterActivityOrderByWithAggregationInputSchema: z.ZodType<Prisma.CounterActivityOrderByWithAggregationInput> =
+    z.strictObject({
+        counterId: z.lazy(() => SortOrderSchema).optional(),
+        userId: z.lazy(() => SortOrderSchema).optional(),
+        amount: z.lazy(() => SortOrderSchema).optional(),
+        at: z.lazy(() => SortOrderSchema).optional(),
+        _count: z.lazy(() => CounterActivityCountOrderByAggregateInputSchema).optional(),
+        _avg: z.lazy(() => CounterActivityAvgOrderByAggregateInputSchema).optional(),
+        _max: z.lazy(() => CounterActivityMaxOrderByAggregateInputSchema).optional(),
+        _min: z.lazy(() => CounterActivityMinOrderByAggregateInputSchema).optional(),
+        _sum: z.lazy(() => CounterActivitySumOrderByAggregateInputSchema).optional(),
+    });
+
+export const CounterActivityScalarWhereWithAggregatesInputSchema: z.ZodType<Prisma.CounterActivityScalarWhereWithAggregatesInput> =
+    z.strictObject({
+        AND: z
+            .union([
+                z.lazy(() => CounterActivityScalarWhereWithAggregatesInputSchema),
+                z.lazy(() => CounterActivityScalarWhereWithAggregatesInputSchema).array(),
+            ])
+            .optional(),
+        OR: z
+            .lazy(() => CounterActivityScalarWhereWithAggregatesInputSchema)
+            .array()
+            .optional(),
+        NOT: z
+            .union([
+                z.lazy(() => CounterActivityScalarWhereWithAggregatesInputSchema),
+                z.lazy(() => CounterActivityScalarWhereWithAggregatesInputSchema).array(),
+            ])
+            .optional(),
+        counterId: z.union([z.lazy(() => StringWithAggregatesFilterSchema), z.string()]).optional(),
+        userId: z.union([z.lazy(() => UuidWithAggregatesFilterSchema), z.string()]).optional(),
+        amount: z
+            .union([
+                z.lazy(() => DecimalWithAggregatesFilterSchema),
+                z
+                    .union([
+                        z.number(),
+                        z.string(),
+                        z.instanceof(Decimal),
+                        z.instanceof(Prisma.Decimal),
+                        DecimalJsLikeSchema,
+                    ])
+                    .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+            ])
+            .optional(),
+        at: z.union([z.lazy(() => DateTimeWithAggregatesFilterSchema), z.coerce.date()]).optional(),
     });
 
 export const CounterShareWhereInputSchema: z.ZodType<Prisma.CounterShareWhereInput> = z.strictObject({
@@ -1407,6 +1610,14 @@ export const UserWhereInputSchema: z.ZodType<Prisma.UserWhereInput> = z.strictOb
     NOT: z.union([z.lazy(() => UserWhereInputSchema), z.lazy(() => UserWhereInputSchema).array()]).optional(),
     id: z.union([z.lazy(() => UuidFilterSchema), z.string()]).optional(),
     email: z.union([z.lazy(() => StringFilterSchema), z.string()]).optional(),
+    username: z
+        .union([z.lazy(() => StringNullableFilterSchema), z.string()])
+        .optional()
+        .nullable(),
+    usernameKey: z
+        .union([z.lazy(() => StringNullableFilterSchema), z.string()])
+        .optional()
+        .nullable(),
     password: z
         .union([z.lazy(() => StringNullableFilterSchema), z.string()])
         .optional()
@@ -1448,11 +1659,14 @@ export const UserWhereInputSchema: z.ZodType<Prisma.UserWhereInput> = z.strictOb
     sharedCounters: z.lazy(() => CounterShareListRelationFilterSchema).optional(),
     refreshTokens: z.lazy(() => RefreshTokenListRelationFilterSchema).optional(),
     emailOtps: z.lazy(() => EmailOtpListRelationFilterSchema).optional(),
+    counterActivity: z.lazy(() => CounterActivityListRelationFilterSchema).optional(),
 });
 
 export const UserOrderByWithRelationInputSchema: z.ZodType<Prisma.UserOrderByWithRelationInput> = z.strictObject({
     id: z.lazy(() => SortOrderSchema).optional(),
     email: z.lazy(() => SortOrderSchema).optional(),
+    username: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
+    usernameKey: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
     password: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
     googleSubject: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
     appleSubject: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
@@ -1470,6 +1684,7 @@ export const UserOrderByWithRelationInputSchema: z.ZodType<Prisma.UserOrderByWit
     sharedCounters: z.lazy(() => CounterShareOrderByRelationAggregateInputSchema).optional(),
     refreshTokens: z.lazy(() => RefreshTokenOrderByRelationAggregateInputSchema).optional(),
     emailOtps: z.lazy(() => EmailOtpOrderByRelationAggregateInputSchema).optional(),
+    counterActivity: z.lazy(() => CounterActivityOrderByRelationAggregateInputSchema).optional(),
 });
 
 export const UserWhereUniqueInputSchema: z.ZodType<Prisma.UserWhereUniqueInput> = z
@@ -1477,6 +1692,30 @@ export const UserWhereUniqueInputSchema: z.ZodType<Prisma.UserWhereUniqueInput> 
         z.object({
             id: z.uuid(),
             email: z.string(),
+            usernameKey: z.string(),
+            googleSubject: z.string(),
+            appleSubject: z.string(),
+        }),
+        z.object({
+            id: z.uuid(),
+            email: z.string(),
+            usernameKey: z.string(),
+            googleSubject: z.string(),
+        }),
+        z.object({
+            id: z.uuid(),
+            email: z.string(),
+            usernameKey: z.string(),
+            appleSubject: z.string(),
+        }),
+        z.object({
+            id: z.uuid(),
+            email: z.string(),
+            usernameKey: z.string(),
+        }),
+        z.object({
+            id: z.uuid(),
+            email: z.string(),
             googleSubject: z.string(),
             appleSubject: z.string(),
         }),
@@ -1496,6 +1735,26 @@ export const UserWhereUniqueInputSchema: z.ZodType<Prisma.UserWhereUniqueInput> 
         }),
         z.object({
             id: z.uuid(),
+            usernameKey: z.string(),
+            googleSubject: z.string(),
+            appleSubject: z.string(),
+        }),
+        z.object({
+            id: z.uuid(),
+            usernameKey: z.string(),
+            googleSubject: z.string(),
+        }),
+        z.object({
+            id: z.uuid(),
+            usernameKey: z.string(),
+            appleSubject: z.string(),
+        }),
+        z.object({
+            id: z.uuid(),
+            usernameKey: z.string(),
+        }),
+        z.object({
+            id: z.uuid(),
             googleSubject: z.string(),
             appleSubject: z.string(),
         }),
@@ -1512,6 +1771,26 @@ export const UserWhereUniqueInputSchema: z.ZodType<Prisma.UserWhereUniqueInput> 
         }),
         z.object({
             email: z.string(),
+            usernameKey: z.string(),
+            googleSubject: z.string(),
+            appleSubject: z.string(),
+        }),
+        z.object({
+            email: z.string(),
+            usernameKey: z.string(),
+            googleSubject: z.string(),
+        }),
+        z.object({
+            email: z.string(),
+            usernameKey: z.string(),
+            appleSubject: z.string(),
+        }),
+        z.object({
+            email: z.string(),
+            usernameKey: z.string(),
+        }),
+        z.object({
+            email: z.string(),
             googleSubject: z.string(),
             appleSubject: z.string(),
         }),
@@ -1525,6 +1804,22 @@ export const UserWhereUniqueInputSchema: z.ZodType<Prisma.UserWhereUniqueInput> 
         }),
         z.object({
             email: z.string(),
+        }),
+        z.object({
+            usernameKey: z.string(),
+            googleSubject: z.string(),
+            appleSubject: z.string(),
+        }),
+        z.object({
+            usernameKey: z.string(),
+            googleSubject: z.string(),
+        }),
+        z.object({
+            usernameKey: z.string(),
+            appleSubject: z.string(),
+        }),
+        z.object({
+            usernameKey: z.string(),
         }),
         z.object({
             googleSubject: z.string(),
@@ -1541,6 +1836,7 @@ export const UserWhereUniqueInputSchema: z.ZodType<Prisma.UserWhereUniqueInput> 
         z.strictObject({
             id: z.uuid().optional(),
             email: z.string().optional(),
+            usernameKey: z.string().optional(),
             googleSubject: z.string().optional(),
             appleSubject: z.string().optional(),
             AND: z.union([z.lazy(() => UserWhereInputSchema), z.lazy(() => UserWhereInputSchema).array()]).optional(),
@@ -1549,6 +1845,10 @@ export const UserWhereUniqueInputSchema: z.ZodType<Prisma.UserWhereUniqueInput> 
                 .array()
                 .optional(),
             NOT: z.union([z.lazy(() => UserWhereInputSchema), z.lazy(() => UserWhereInputSchema).array()]).optional(),
+            username: z
+                .union([z.lazy(() => StringNullableFilterSchema), z.string()])
+                .optional()
+                .nullable(),
             password: z
                 .union([z.lazy(() => StringNullableFilterSchema), z.string()])
                 .optional()
@@ -1582,12 +1882,15 @@ export const UserWhereUniqueInputSchema: z.ZodType<Prisma.UserWhereUniqueInput> 
             sharedCounters: z.lazy(() => CounterShareListRelationFilterSchema).optional(),
             refreshTokens: z.lazy(() => RefreshTokenListRelationFilterSchema).optional(),
             emailOtps: z.lazy(() => EmailOtpListRelationFilterSchema).optional(),
+            counterActivity: z.lazy(() => CounterActivityListRelationFilterSchema).optional(),
         }),
     );
 
 export const UserOrderByWithAggregationInputSchema: z.ZodType<Prisma.UserOrderByWithAggregationInput> = z.strictObject({
     id: z.lazy(() => SortOrderSchema).optional(),
     email: z.lazy(() => SortOrderSchema).optional(),
+    username: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
+    usernameKey: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
     password: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
     googleSubject: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
     appleSubject: z.union([z.lazy(() => SortOrderSchema), z.lazy(() => SortOrderInputSchema)]).optional(),
@@ -1628,6 +1931,14 @@ export const UserScalarWhereWithAggregatesInputSchema: z.ZodType<Prisma.UserScal
             .optional(),
         id: z.union([z.lazy(() => UuidWithAggregatesFilterSchema), z.string()]).optional(),
         email: z.union([z.lazy(() => StringWithAggregatesFilterSchema), z.string()]).optional(),
+        username: z
+            .union([z.lazy(() => StringNullableWithAggregatesFilterSchema), z.string()])
+            .optional()
+            .nullable(),
+        usernameKey: z
+            .union([z.lazy(() => StringNullableWithAggregatesFilterSchema), z.string()])
+            .optional()
+            .nullable(),
         password: z
             .union([z.lazy(() => StringNullableWithAggregatesFilterSchema), z.string()])
             .optional()
@@ -1686,6 +1997,7 @@ export const CounterCreateInputSchema: z.ZodType<Prisma.CounterCreateInput> = z.
     updatedAt: z.coerce.date().optional(),
     owner: z.lazy(() => UserCreateNestedOneWithoutCountersInputSchema),
     shares: z.lazy(() => CounterShareCreateNestedManyWithoutCounterInputSchema).optional(),
+    activity: z.lazy(() => CounterActivityCreateNestedManyWithoutCounterInputSchema).optional(),
 });
 
 export const CounterUncheckedCreateInputSchema: z.ZodType<Prisma.CounterUncheckedCreateInput> = z.strictObject({
@@ -1707,6 +2019,7 @@ export const CounterUncheckedCreateInputSchema: z.ZodType<Prisma.CounterUnchecke
     createdAt: z.coerce.date().optional(),
     updatedAt: z.coerce.date().optional(),
     shares: z.lazy(() => CounterShareUncheckedCreateNestedManyWithoutCounterInputSchema).optional(),
+    activity: z.lazy(() => CounterActivityUncheckedCreateNestedManyWithoutCounterInputSchema).optional(),
 });
 
 export const CounterUpdateInputSchema: z.ZodType<Prisma.CounterUpdateInput> = z.strictObject({
@@ -1759,6 +2072,7 @@ export const CounterUpdateInputSchema: z.ZodType<Prisma.CounterUpdateInput> = z.
     updatedAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
     owner: z.lazy(() => UserUpdateOneRequiredWithoutCountersNestedInputSchema).optional(),
     shares: z.lazy(() => CounterShareUpdateManyWithoutCounterNestedInputSchema).optional(),
+    activity: z.lazy(() => CounterActivityUpdateManyWithoutCounterNestedInputSchema).optional(),
 });
 
 export const CounterUncheckedUpdateInputSchema: z.ZodType<Prisma.CounterUncheckedUpdateInput> = z.strictObject({
@@ -1811,6 +2125,7 @@ export const CounterUncheckedUpdateInputSchema: z.ZodType<Prisma.CounterUnchecke
     createdAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
     updatedAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
     shares: z.lazy(() => CounterShareUncheckedUpdateManyWithoutCounterNestedInputSchema).optional(),
+    activity: z.lazy(() => CounterActivityUncheckedUpdateManyWithoutCounterNestedInputSchema).optional(),
 });
 
 export const CounterCreateManyInputSchema: z.ZodType<Prisma.CounterCreateManyInput> = z.strictObject({
@@ -1933,6 +2248,115 @@ export const CounterUncheckedUpdateManyInputSchema: z.ZodType<Prisma.CounterUnch
     createdAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
     updatedAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
 });
+
+export const CounterActivityCreateInputSchema: z.ZodType<Prisma.CounterActivityCreateInput> = z.strictObject({
+    amount: z
+        .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+        .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+    at: z.coerce.date().optional(),
+    counter: z.lazy(() => CounterCreateNestedOneWithoutActivityInputSchema),
+    user: z.lazy(() => UserCreateNestedOneWithoutCounterActivityInputSchema),
+});
+
+export const CounterActivityUncheckedCreateInputSchema: z.ZodType<Prisma.CounterActivityUncheckedCreateInput> =
+    z.strictObject({
+        counterId: z.string(),
+        userId: z.string(),
+        amount: z
+            .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+            .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+        at: z.coerce.date().optional(),
+    });
+
+export const CounterActivityUpdateInputSchema: z.ZodType<Prisma.CounterActivityUpdateInput> = z.strictObject({
+    amount: z
+        .union([
+            z
+                .union([
+                    z.number(),
+                    z.string(),
+                    z.instanceof(Decimal),
+                    z.instanceof(Prisma.Decimal),
+                    DecimalJsLikeSchema,
+                ])
+                .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+            z.lazy(() => DecimalFieldUpdateOperationsInputSchema),
+        ])
+        .optional(),
+    at: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
+    counter: z.lazy(() => CounterUpdateOneRequiredWithoutActivityNestedInputSchema).optional(),
+    user: z.lazy(() => UserUpdateOneRequiredWithoutCounterActivityNestedInputSchema).optional(),
+});
+
+export const CounterActivityUncheckedUpdateInputSchema: z.ZodType<Prisma.CounterActivityUncheckedUpdateInput> =
+    z.strictObject({
+        counterId: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+        userId: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+        amount: z
+            .union([
+                z
+                    .union([
+                        z.number(),
+                        z.string(),
+                        z.instanceof(Decimal),
+                        z.instanceof(Prisma.Decimal),
+                        DecimalJsLikeSchema,
+                    ])
+                    .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+                z.lazy(() => DecimalFieldUpdateOperationsInputSchema),
+            ])
+            .optional(),
+        at: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
+    });
+
+export const CounterActivityCreateManyInputSchema: z.ZodType<Prisma.CounterActivityCreateManyInput> = z.strictObject({
+    counterId: z.string(),
+    userId: z.string(),
+    amount: z
+        .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+        .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+    at: z.coerce.date().optional(),
+});
+
+export const CounterActivityUpdateManyMutationInputSchema: z.ZodType<Prisma.CounterActivityUpdateManyMutationInput> =
+    z.strictObject({
+        amount: z
+            .union([
+                z
+                    .union([
+                        z.number(),
+                        z.string(),
+                        z.instanceof(Decimal),
+                        z.instanceof(Prisma.Decimal),
+                        DecimalJsLikeSchema,
+                    ])
+                    .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+                z.lazy(() => DecimalFieldUpdateOperationsInputSchema),
+            ])
+            .optional(),
+        at: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
+    });
+
+export const CounterActivityUncheckedUpdateManyInputSchema: z.ZodType<Prisma.CounterActivityUncheckedUpdateManyInput> =
+    z.strictObject({
+        counterId: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+        userId: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+        amount: z
+            .union([
+                z
+                    .union([
+                        z.number(),
+                        z.string(),
+                        z.instanceof(Decimal),
+                        z.instanceof(Prisma.Decimal),
+                        DecimalJsLikeSchema,
+                    ])
+                    .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+                z.lazy(() => DecimalFieldUpdateOperationsInputSchema),
+            ])
+            .optional(),
+        at: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
+    });
 
 export const CounterShareCreateInputSchema: z.ZodType<Prisma.CounterShareCreateInput> = z.strictObject({
     id: z.uuid().optional(),
@@ -2378,6 +2802,8 @@ export const LoginRateLimitUncheckedUpdateManyInputSchema: z.ZodType<Prisma.Logi
 export const UserCreateInputSchema: z.ZodType<Prisma.UserCreateInput> = z.strictObject({
     id: z.uuid().optional(),
     email: z.string(),
+    username: z.string().optional().nullable(),
+    usernameKey: z.string().optional().nullable(),
     password: z.string().optional().nullable(),
     googleSubject: z.string().optional().nullable(),
     appleSubject: z.string().optional().nullable(),
@@ -2395,11 +2821,14 @@ export const UserCreateInputSchema: z.ZodType<Prisma.UserCreateInput> = z.strict
     sharedCounters: z.lazy(() => CounterShareCreateNestedManyWithoutUserInputSchema).optional(),
     refreshTokens: z.lazy(() => RefreshTokenCreateNestedManyWithoutUserInputSchema).optional(),
     emailOtps: z.lazy(() => EmailOtpCreateNestedManyWithoutUserInputSchema).optional(),
+    counterActivity: z.lazy(() => CounterActivityCreateNestedManyWithoutUserInputSchema).optional(),
 });
 
 export const UserUncheckedCreateInputSchema: z.ZodType<Prisma.UserUncheckedCreateInput> = z.strictObject({
     id: z.uuid().optional(),
     email: z.string(),
+    username: z.string().optional().nullable(),
+    usernameKey: z.string().optional().nullable(),
     password: z.string().optional().nullable(),
     googleSubject: z.string().optional().nullable(),
     appleSubject: z.string().optional().nullable(),
@@ -2417,11 +2846,20 @@ export const UserUncheckedCreateInputSchema: z.ZodType<Prisma.UserUncheckedCreat
     sharedCounters: z.lazy(() => CounterShareUncheckedCreateNestedManyWithoutUserInputSchema).optional(),
     refreshTokens: z.lazy(() => RefreshTokenUncheckedCreateNestedManyWithoutUserInputSchema).optional(),
     emailOtps: z.lazy(() => EmailOtpUncheckedCreateNestedManyWithoutUserInputSchema).optional(),
+    counterActivity: z.lazy(() => CounterActivityUncheckedCreateNestedManyWithoutUserInputSchema).optional(),
 });
 
 export const UserUpdateInputSchema: z.ZodType<Prisma.UserUpdateInput> = z.strictObject({
     id: z.union([z.uuid(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
     email: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+    username: z
+        .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
+    usernameKey: z
+        .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
     password: z
         .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
         .optional()
@@ -2465,11 +2903,20 @@ export const UserUpdateInputSchema: z.ZodType<Prisma.UserUpdateInput> = z.strict
     sharedCounters: z.lazy(() => CounterShareUpdateManyWithoutUserNestedInputSchema).optional(),
     refreshTokens: z.lazy(() => RefreshTokenUpdateManyWithoutUserNestedInputSchema).optional(),
     emailOtps: z.lazy(() => EmailOtpUpdateManyWithoutUserNestedInputSchema).optional(),
+    counterActivity: z.lazy(() => CounterActivityUpdateManyWithoutUserNestedInputSchema).optional(),
 });
 
 export const UserUncheckedUpdateInputSchema: z.ZodType<Prisma.UserUncheckedUpdateInput> = z.strictObject({
     id: z.union([z.uuid(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
     email: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+    username: z
+        .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
+    usernameKey: z
+        .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
     password: z
         .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
         .optional()
@@ -2513,11 +2960,14 @@ export const UserUncheckedUpdateInputSchema: z.ZodType<Prisma.UserUncheckedUpdat
     sharedCounters: z.lazy(() => CounterShareUncheckedUpdateManyWithoutUserNestedInputSchema).optional(),
     refreshTokens: z.lazy(() => RefreshTokenUncheckedUpdateManyWithoutUserNestedInputSchema).optional(),
     emailOtps: z.lazy(() => EmailOtpUncheckedUpdateManyWithoutUserNestedInputSchema).optional(),
+    counterActivity: z.lazy(() => CounterActivityUncheckedUpdateManyWithoutUserNestedInputSchema).optional(),
 });
 
 export const UserCreateManyInputSchema: z.ZodType<Prisma.UserCreateManyInput> = z.strictObject({
     id: z.uuid().optional(),
     email: z.string(),
+    username: z.string().optional().nullable(),
+    usernameKey: z.string().optional().nullable(),
     password: z.string().optional().nullable(),
     googleSubject: z.string().optional().nullable(),
     appleSubject: z.string().optional().nullable(),
@@ -2536,6 +2986,14 @@ export const UserCreateManyInputSchema: z.ZodType<Prisma.UserCreateManyInput> = 
 export const UserUpdateManyMutationInputSchema: z.ZodType<Prisma.UserUpdateManyMutationInput> = z.strictObject({
     id: z.union([z.uuid(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
     email: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+    username: z
+        .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
+    usernameKey: z
+        .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
     password: z
         .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
         .optional()
@@ -2580,6 +3038,14 @@ export const UserUpdateManyMutationInputSchema: z.ZodType<Prisma.UserUpdateManyM
 export const UserUncheckedUpdateManyInputSchema: z.ZodType<Prisma.UserUncheckedUpdateManyInput> = z.strictObject({
     id: z.union([z.uuid(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
     email: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+    username: z
+        .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
+    usernameKey: z
+        .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
     password: z
         .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
         .optional()
@@ -2762,12 +3228,24 @@ export const CounterShareListRelationFilterSchema: z.ZodType<Prisma.CounterShare
     none: z.lazy(() => CounterShareWhereInputSchema).optional(),
 });
 
+export const CounterActivityListRelationFilterSchema: z.ZodType<Prisma.CounterActivityListRelationFilter> =
+    z.strictObject({
+        every: z.lazy(() => CounterActivityWhereInputSchema).optional(),
+        some: z.lazy(() => CounterActivityWhereInputSchema).optional(),
+        none: z.lazy(() => CounterActivityWhereInputSchema).optional(),
+    });
+
 export const SortOrderInputSchema: z.ZodType<Prisma.SortOrderInput> = z.strictObject({
     sort: z.lazy(() => SortOrderSchema),
     nulls: z.lazy(() => NullsOrderSchema).optional(),
 });
 
 export const CounterShareOrderByRelationAggregateInputSchema: z.ZodType<Prisma.CounterShareOrderByRelationAggregateInput> =
+    z.strictObject({
+        _count: z.lazy(() => SortOrderSchema).optional(),
+    });
+
+export const CounterActivityOrderByRelationAggregateInputSchema: z.ZodType<Prisma.CounterActivityOrderByRelationAggregateInput> =
     z.strictObject({
         _count: z.lazy(() => SortOrderSchema).optional(),
     });
@@ -2979,6 +3457,51 @@ export const DateTimeWithAggregatesFilterSchema: z.ZodType<Prisma.DateTimeWithAg
     _max: z.lazy(() => NestedDateTimeFilterSchema).optional(),
 });
 
+export const CounterScalarRelationFilterSchema: z.ZodType<Prisma.CounterScalarRelationFilter> = z.strictObject({
+    is: z.lazy(() => CounterWhereInputSchema).optional(),
+    isNot: z.lazy(() => CounterWhereInputSchema).optional(),
+});
+
+export const CounterActivityCounterIdUserIdCompoundUniqueInputSchema: z.ZodType<Prisma.CounterActivityCounterIdUserIdCompoundUniqueInput> =
+    z.strictObject({
+        counterId: z.string(),
+        userId: z.string(),
+    });
+
+export const CounterActivityCountOrderByAggregateInputSchema: z.ZodType<Prisma.CounterActivityCountOrderByAggregateInput> =
+    z.strictObject({
+        counterId: z.lazy(() => SortOrderSchema).optional(),
+        userId: z.lazy(() => SortOrderSchema).optional(),
+        amount: z.lazy(() => SortOrderSchema).optional(),
+        at: z.lazy(() => SortOrderSchema).optional(),
+    });
+
+export const CounterActivityAvgOrderByAggregateInputSchema: z.ZodType<Prisma.CounterActivityAvgOrderByAggregateInput> =
+    z.strictObject({
+        amount: z.lazy(() => SortOrderSchema).optional(),
+    });
+
+export const CounterActivityMaxOrderByAggregateInputSchema: z.ZodType<Prisma.CounterActivityMaxOrderByAggregateInput> =
+    z.strictObject({
+        counterId: z.lazy(() => SortOrderSchema).optional(),
+        userId: z.lazy(() => SortOrderSchema).optional(),
+        amount: z.lazy(() => SortOrderSchema).optional(),
+        at: z.lazy(() => SortOrderSchema).optional(),
+    });
+
+export const CounterActivityMinOrderByAggregateInputSchema: z.ZodType<Prisma.CounterActivityMinOrderByAggregateInput> =
+    z.strictObject({
+        counterId: z.lazy(() => SortOrderSchema).optional(),
+        userId: z.lazy(() => SortOrderSchema).optional(),
+        amount: z.lazy(() => SortOrderSchema).optional(),
+        at: z.lazy(() => SortOrderSchema).optional(),
+    });
+
+export const CounterActivitySumOrderByAggregateInputSchema: z.ZodType<Prisma.CounterActivitySumOrderByAggregateInput> =
+    z.strictObject({
+        amount: z.lazy(() => SortOrderSchema).optional(),
+    });
+
 export const EnumShareStatusFilterSchema: z.ZodType<Prisma.EnumShareStatusFilter> = z.strictObject({
     equals: z.lazy(() => ShareStatusSchema).optional(),
     in: z
@@ -2990,11 +3513,6 @@ export const EnumShareStatusFilterSchema: z.ZodType<Prisma.EnumShareStatusFilter
         .array()
         .optional(),
     not: z.union([z.lazy(() => ShareStatusSchema), z.lazy(() => NestedEnumShareStatusFilterSchema)]).optional(),
-});
-
-export const CounterScalarRelationFilterSchema: z.ZodType<Prisma.CounterScalarRelationFilter> = z.strictObject({
-    is: z.lazy(() => CounterWhereInputSchema).optional(),
-    isNot: z.lazy(() => CounterWhereInputSchema).optional(),
 });
 
 export const CounterShareCounterIdUserIdCompoundUniqueInputSchema: z.ZodType<Prisma.CounterShareCounterIdUserIdCompoundUniqueInput> =
@@ -3468,6 +3986,8 @@ export const EmailOtpOrderByRelationAggregateInputSchema: z.ZodType<Prisma.Email
 export const UserCountOrderByAggregateInputSchema: z.ZodType<Prisma.UserCountOrderByAggregateInput> = z.strictObject({
     id: z.lazy(() => SortOrderSchema).optional(),
     email: z.lazy(() => SortOrderSchema).optional(),
+    username: z.lazy(() => SortOrderSchema).optional(),
+    usernameKey: z.lazy(() => SortOrderSchema).optional(),
     password: z.lazy(() => SortOrderSchema).optional(),
     googleSubject: z.lazy(() => SortOrderSchema).optional(),
     appleSubject: z.lazy(() => SortOrderSchema).optional(),
@@ -3490,6 +4010,8 @@ export const UserAvgOrderByAggregateInputSchema: z.ZodType<Prisma.UserAvgOrderBy
 export const UserMaxOrderByAggregateInputSchema: z.ZodType<Prisma.UserMaxOrderByAggregateInput> = z.strictObject({
     id: z.lazy(() => SortOrderSchema).optional(),
     email: z.lazy(() => SortOrderSchema).optional(),
+    username: z.lazy(() => SortOrderSchema).optional(),
+    usernameKey: z.lazy(() => SortOrderSchema).optional(),
     password: z.lazy(() => SortOrderSchema).optional(),
     googleSubject: z.lazy(() => SortOrderSchema).optional(),
     appleSubject: z.lazy(() => SortOrderSchema).optional(),
@@ -3508,6 +4030,8 @@ export const UserMaxOrderByAggregateInputSchema: z.ZodType<Prisma.UserMaxOrderBy
 export const UserMinOrderByAggregateInputSchema: z.ZodType<Prisma.UserMinOrderByAggregateInput> = z.strictObject({
     id: z.lazy(() => SortOrderSchema).optional(),
     email: z.lazy(() => SortOrderSchema).optional(),
+    username: z.lazy(() => SortOrderSchema).optional(),
+    usernameKey: z.lazy(() => SortOrderSchema).optional(),
     password: z.lazy(() => SortOrderSchema).optional(),
     googleSubject: z.lazy(() => SortOrderSchema).optional(),
     appleSubject: z.lazy(() => SortOrderSchema).optional(),
@@ -3591,6 +4115,31 @@ export const CounterShareCreateNestedManyWithoutCounterInputSchema: z.ZodType<Pr
             .optional(),
     });
 
+export const CounterActivityCreateNestedManyWithoutCounterInputSchema: z.ZodType<Prisma.CounterActivityCreateNestedManyWithoutCounterInput> =
+    z.strictObject({
+        create: z
+            .union([
+                z.lazy(() => CounterActivityCreateWithoutCounterInputSchema),
+                z.lazy(() => CounterActivityCreateWithoutCounterInputSchema).array(),
+                z.lazy(() => CounterActivityUncheckedCreateWithoutCounterInputSchema),
+                z.lazy(() => CounterActivityUncheckedCreateWithoutCounterInputSchema).array(),
+            ])
+            .optional(),
+        connectOrCreate: z
+            .union([
+                z.lazy(() => CounterActivityCreateOrConnectWithoutCounterInputSchema),
+                z.lazy(() => CounterActivityCreateOrConnectWithoutCounterInputSchema).array(),
+            ])
+            .optional(),
+        createMany: z.lazy(() => CounterActivityCreateManyCounterInputEnvelopeSchema).optional(),
+        connect: z
+            .union([
+                z.lazy(() => CounterActivityWhereUniqueInputSchema),
+                z.lazy(() => CounterActivityWhereUniqueInputSchema).array(),
+            ])
+            .optional(),
+    });
+
 export const CounterShareUncheckedCreateNestedManyWithoutCounterInputSchema: z.ZodType<Prisma.CounterShareUncheckedCreateNestedManyWithoutCounterInput> =
     z.strictObject({
         create: z
@@ -3612,6 +4161,31 @@ export const CounterShareUncheckedCreateNestedManyWithoutCounterInputSchema: z.Z
             .union([
                 z.lazy(() => CounterShareWhereUniqueInputSchema),
                 z.lazy(() => CounterShareWhereUniqueInputSchema).array(),
+            ])
+            .optional(),
+    });
+
+export const CounterActivityUncheckedCreateNestedManyWithoutCounterInputSchema: z.ZodType<Prisma.CounterActivityUncheckedCreateNestedManyWithoutCounterInput> =
+    z.strictObject({
+        create: z
+            .union([
+                z.lazy(() => CounterActivityCreateWithoutCounterInputSchema),
+                z.lazy(() => CounterActivityCreateWithoutCounterInputSchema).array(),
+                z.lazy(() => CounterActivityUncheckedCreateWithoutCounterInputSchema),
+                z.lazy(() => CounterActivityUncheckedCreateWithoutCounterInputSchema).array(),
+            ])
+            .optional(),
+        connectOrCreate: z
+            .union([
+                z.lazy(() => CounterActivityCreateOrConnectWithoutCounterInputSchema),
+                z.lazy(() => CounterActivityCreateOrConnectWithoutCounterInputSchema).array(),
+            ])
+            .optional(),
+        createMany: z.lazy(() => CounterActivityCreateManyCounterInputEnvelopeSchema).optional(),
+        connect: z
+            .union([
+                z.lazy(() => CounterActivityWhereUniqueInputSchema),
+                z.lazy(() => CounterActivityWhereUniqueInputSchema).array(),
             ])
             .optional(),
     });
@@ -3747,6 +4321,73 @@ export const CounterShareUpdateManyWithoutCounterNestedInputSchema: z.ZodType<Pr
             .optional(),
     });
 
+export const CounterActivityUpdateManyWithoutCounterNestedInputSchema: z.ZodType<Prisma.CounterActivityUpdateManyWithoutCounterNestedInput> =
+    z.strictObject({
+        create: z
+            .union([
+                z.lazy(() => CounterActivityCreateWithoutCounterInputSchema),
+                z.lazy(() => CounterActivityCreateWithoutCounterInputSchema).array(),
+                z.lazy(() => CounterActivityUncheckedCreateWithoutCounterInputSchema),
+                z.lazy(() => CounterActivityUncheckedCreateWithoutCounterInputSchema).array(),
+            ])
+            .optional(),
+        connectOrCreate: z
+            .union([
+                z.lazy(() => CounterActivityCreateOrConnectWithoutCounterInputSchema),
+                z.lazy(() => CounterActivityCreateOrConnectWithoutCounterInputSchema).array(),
+            ])
+            .optional(),
+        upsert: z
+            .union([
+                z.lazy(() => CounterActivityUpsertWithWhereUniqueWithoutCounterInputSchema),
+                z.lazy(() => CounterActivityUpsertWithWhereUniqueWithoutCounterInputSchema).array(),
+            ])
+            .optional(),
+        createMany: z.lazy(() => CounterActivityCreateManyCounterInputEnvelopeSchema).optional(),
+        set: z
+            .union([
+                z.lazy(() => CounterActivityWhereUniqueInputSchema),
+                z.lazy(() => CounterActivityWhereUniqueInputSchema).array(),
+            ])
+            .optional(),
+        disconnect: z
+            .union([
+                z.lazy(() => CounterActivityWhereUniqueInputSchema),
+                z.lazy(() => CounterActivityWhereUniqueInputSchema).array(),
+            ])
+            .optional(),
+        delete: z
+            .union([
+                z.lazy(() => CounterActivityWhereUniqueInputSchema),
+                z.lazy(() => CounterActivityWhereUniqueInputSchema).array(),
+            ])
+            .optional(),
+        connect: z
+            .union([
+                z.lazy(() => CounterActivityWhereUniqueInputSchema),
+                z.lazy(() => CounterActivityWhereUniqueInputSchema).array(),
+            ])
+            .optional(),
+        update: z
+            .union([
+                z.lazy(() => CounterActivityUpdateWithWhereUniqueWithoutCounterInputSchema),
+                z.lazy(() => CounterActivityUpdateWithWhereUniqueWithoutCounterInputSchema).array(),
+            ])
+            .optional(),
+        updateMany: z
+            .union([
+                z.lazy(() => CounterActivityUpdateManyWithWhereWithoutCounterInputSchema),
+                z.lazy(() => CounterActivityUpdateManyWithWhereWithoutCounterInputSchema).array(),
+            ])
+            .optional(),
+        deleteMany: z
+            .union([
+                z.lazy(() => CounterActivityScalarWhereInputSchema),
+                z.lazy(() => CounterActivityScalarWhereInputSchema).array(),
+            ])
+            .optional(),
+    });
+
 export const CounterShareUncheckedUpdateManyWithoutCounterNestedInputSchema: z.ZodType<Prisma.CounterShareUncheckedUpdateManyWithoutCounterNestedInput> =
     z.strictObject({
         create: z
@@ -3810,6 +4451,137 @@ export const CounterShareUncheckedUpdateManyWithoutCounterNestedInputSchema: z.Z
             .union([
                 z.lazy(() => CounterShareScalarWhereInputSchema),
                 z.lazy(() => CounterShareScalarWhereInputSchema).array(),
+            ])
+            .optional(),
+    });
+
+export const CounterActivityUncheckedUpdateManyWithoutCounterNestedInputSchema: z.ZodType<Prisma.CounterActivityUncheckedUpdateManyWithoutCounterNestedInput> =
+    z.strictObject({
+        create: z
+            .union([
+                z.lazy(() => CounterActivityCreateWithoutCounterInputSchema),
+                z.lazy(() => CounterActivityCreateWithoutCounterInputSchema).array(),
+                z.lazy(() => CounterActivityUncheckedCreateWithoutCounterInputSchema),
+                z.lazy(() => CounterActivityUncheckedCreateWithoutCounterInputSchema).array(),
+            ])
+            .optional(),
+        connectOrCreate: z
+            .union([
+                z.lazy(() => CounterActivityCreateOrConnectWithoutCounterInputSchema),
+                z.lazy(() => CounterActivityCreateOrConnectWithoutCounterInputSchema).array(),
+            ])
+            .optional(),
+        upsert: z
+            .union([
+                z.lazy(() => CounterActivityUpsertWithWhereUniqueWithoutCounterInputSchema),
+                z.lazy(() => CounterActivityUpsertWithWhereUniqueWithoutCounterInputSchema).array(),
+            ])
+            .optional(),
+        createMany: z.lazy(() => CounterActivityCreateManyCounterInputEnvelopeSchema).optional(),
+        set: z
+            .union([
+                z.lazy(() => CounterActivityWhereUniqueInputSchema),
+                z.lazy(() => CounterActivityWhereUniqueInputSchema).array(),
+            ])
+            .optional(),
+        disconnect: z
+            .union([
+                z.lazy(() => CounterActivityWhereUniqueInputSchema),
+                z.lazy(() => CounterActivityWhereUniqueInputSchema).array(),
+            ])
+            .optional(),
+        delete: z
+            .union([
+                z.lazy(() => CounterActivityWhereUniqueInputSchema),
+                z.lazy(() => CounterActivityWhereUniqueInputSchema).array(),
+            ])
+            .optional(),
+        connect: z
+            .union([
+                z.lazy(() => CounterActivityWhereUniqueInputSchema),
+                z.lazy(() => CounterActivityWhereUniqueInputSchema).array(),
+            ])
+            .optional(),
+        update: z
+            .union([
+                z.lazy(() => CounterActivityUpdateWithWhereUniqueWithoutCounterInputSchema),
+                z.lazy(() => CounterActivityUpdateWithWhereUniqueWithoutCounterInputSchema).array(),
+            ])
+            .optional(),
+        updateMany: z
+            .union([
+                z.lazy(() => CounterActivityUpdateManyWithWhereWithoutCounterInputSchema),
+                z.lazy(() => CounterActivityUpdateManyWithWhereWithoutCounterInputSchema).array(),
+            ])
+            .optional(),
+        deleteMany: z
+            .union([
+                z.lazy(() => CounterActivityScalarWhereInputSchema),
+                z.lazy(() => CounterActivityScalarWhereInputSchema).array(),
+            ])
+            .optional(),
+    });
+
+export const CounterCreateNestedOneWithoutActivityInputSchema: z.ZodType<Prisma.CounterCreateNestedOneWithoutActivityInput> =
+    z.strictObject({
+        create: z
+            .union([
+                z.lazy(() => CounterCreateWithoutActivityInputSchema),
+                z.lazy(() => CounterUncheckedCreateWithoutActivityInputSchema),
+            ])
+            .optional(),
+        connectOrCreate: z.lazy(() => CounterCreateOrConnectWithoutActivityInputSchema).optional(),
+        connect: z.lazy(() => CounterWhereUniqueInputSchema).optional(),
+    });
+
+export const UserCreateNestedOneWithoutCounterActivityInputSchema: z.ZodType<Prisma.UserCreateNestedOneWithoutCounterActivityInput> =
+    z.strictObject({
+        create: z
+            .union([
+                z.lazy(() => UserCreateWithoutCounterActivityInputSchema),
+                z.lazy(() => UserUncheckedCreateWithoutCounterActivityInputSchema),
+            ])
+            .optional(),
+        connectOrCreate: z.lazy(() => UserCreateOrConnectWithoutCounterActivityInputSchema).optional(),
+        connect: z.lazy(() => UserWhereUniqueInputSchema).optional(),
+    });
+
+export const CounterUpdateOneRequiredWithoutActivityNestedInputSchema: z.ZodType<Prisma.CounterUpdateOneRequiredWithoutActivityNestedInput> =
+    z.strictObject({
+        create: z
+            .union([
+                z.lazy(() => CounterCreateWithoutActivityInputSchema),
+                z.lazy(() => CounterUncheckedCreateWithoutActivityInputSchema),
+            ])
+            .optional(),
+        connectOrCreate: z.lazy(() => CounterCreateOrConnectWithoutActivityInputSchema).optional(),
+        upsert: z.lazy(() => CounterUpsertWithoutActivityInputSchema).optional(),
+        connect: z.lazy(() => CounterWhereUniqueInputSchema).optional(),
+        update: z
+            .union([
+                z.lazy(() => CounterUpdateToOneWithWhereWithoutActivityInputSchema),
+                z.lazy(() => CounterUpdateWithoutActivityInputSchema),
+                z.lazy(() => CounterUncheckedUpdateWithoutActivityInputSchema),
+            ])
+            .optional(),
+    });
+
+export const UserUpdateOneRequiredWithoutCounterActivityNestedInputSchema: z.ZodType<Prisma.UserUpdateOneRequiredWithoutCounterActivityNestedInput> =
+    z.strictObject({
+        create: z
+            .union([
+                z.lazy(() => UserCreateWithoutCounterActivityInputSchema),
+                z.lazy(() => UserUncheckedCreateWithoutCounterActivityInputSchema),
+            ])
+            .optional(),
+        connectOrCreate: z.lazy(() => UserCreateOrConnectWithoutCounterActivityInputSchema).optional(),
+        upsert: z.lazy(() => UserUpsertWithoutCounterActivityInputSchema).optional(),
+        connect: z.lazy(() => UserWhereUniqueInputSchema).optional(),
+        update: z
+            .union([
+                z.lazy(() => UserUpdateToOneWithWhereWithoutCounterActivityInputSchema),
+                z.lazy(() => UserUpdateWithoutCounterActivityInputSchema),
+                z.lazy(() => UserUncheckedUpdateWithoutCounterActivityInputSchema),
             ])
             .optional(),
     });
@@ -4073,6 +4845,31 @@ export const EmailOtpCreateNestedManyWithoutUserInputSchema: z.ZodType<Prisma.Em
             .optional(),
     });
 
+export const CounterActivityCreateNestedManyWithoutUserInputSchema: z.ZodType<Prisma.CounterActivityCreateNestedManyWithoutUserInput> =
+    z.strictObject({
+        create: z
+            .union([
+                z.lazy(() => CounterActivityCreateWithoutUserInputSchema),
+                z.lazy(() => CounterActivityCreateWithoutUserInputSchema).array(),
+                z.lazy(() => CounterActivityUncheckedCreateWithoutUserInputSchema),
+                z.lazy(() => CounterActivityUncheckedCreateWithoutUserInputSchema).array(),
+            ])
+            .optional(),
+        connectOrCreate: z
+            .union([
+                z.lazy(() => CounterActivityCreateOrConnectWithoutUserInputSchema),
+                z.lazy(() => CounterActivityCreateOrConnectWithoutUserInputSchema).array(),
+            ])
+            .optional(),
+        createMany: z.lazy(() => CounterActivityCreateManyUserInputEnvelopeSchema).optional(),
+        connect: z
+            .union([
+                z.lazy(() => CounterActivityWhereUniqueInputSchema),
+                z.lazy(() => CounterActivityWhereUniqueInputSchema).array(),
+            ])
+            .optional(),
+    });
+
 export const CounterUncheckedCreateNestedManyWithoutOwnerInputSchema: z.ZodType<Prisma.CounterUncheckedCreateNestedManyWithoutOwnerInput> =
     z.strictObject({
         create: z
@@ -4164,6 +4961,31 @@ export const EmailOtpUncheckedCreateNestedManyWithoutUserInputSchema: z.ZodType<
         createMany: z.lazy(() => EmailOtpCreateManyUserInputEnvelopeSchema).optional(),
         connect: z
             .union([z.lazy(() => EmailOtpWhereUniqueInputSchema), z.lazy(() => EmailOtpWhereUniqueInputSchema).array()])
+            .optional(),
+    });
+
+export const CounterActivityUncheckedCreateNestedManyWithoutUserInputSchema: z.ZodType<Prisma.CounterActivityUncheckedCreateNestedManyWithoutUserInput> =
+    z.strictObject({
+        create: z
+            .union([
+                z.lazy(() => CounterActivityCreateWithoutUserInputSchema),
+                z.lazy(() => CounterActivityCreateWithoutUserInputSchema).array(),
+                z.lazy(() => CounterActivityUncheckedCreateWithoutUserInputSchema),
+                z.lazy(() => CounterActivityUncheckedCreateWithoutUserInputSchema).array(),
+            ])
+            .optional(),
+        connectOrCreate: z
+            .union([
+                z.lazy(() => CounterActivityCreateOrConnectWithoutUserInputSchema),
+                z.lazy(() => CounterActivityCreateOrConnectWithoutUserInputSchema).array(),
+            ])
+            .optional(),
+        createMany: z.lazy(() => CounterActivityCreateManyUserInputEnvelopeSchema).optional(),
+        connect: z
+            .union([
+                z.lazy(() => CounterActivityWhereUniqueInputSchema),
+                z.lazy(() => CounterActivityWhereUniqueInputSchema).array(),
+            ])
             .optional(),
     });
 
@@ -4414,6 +5236,73 @@ export const EmailOtpUpdateManyWithoutUserNestedInputSchema: z.ZodType<Prisma.Em
             .optional(),
     });
 
+export const CounterActivityUpdateManyWithoutUserNestedInputSchema: z.ZodType<Prisma.CounterActivityUpdateManyWithoutUserNestedInput> =
+    z.strictObject({
+        create: z
+            .union([
+                z.lazy(() => CounterActivityCreateWithoutUserInputSchema),
+                z.lazy(() => CounterActivityCreateWithoutUserInputSchema).array(),
+                z.lazy(() => CounterActivityUncheckedCreateWithoutUserInputSchema),
+                z.lazy(() => CounterActivityUncheckedCreateWithoutUserInputSchema).array(),
+            ])
+            .optional(),
+        connectOrCreate: z
+            .union([
+                z.lazy(() => CounterActivityCreateOrConnectWithoutUserInputSchema),
+                z.lazy(() => CounterActivityCreateOrConnectWithoutUserInputSchema).array(),
+            ])
+            .optional(),
+        upsert: z
+            .union([
+                z.lazy(() => CounterActivityUpsertWithWhereUniqueWithoutUserInputSchema),
+                z.lazy(() => CounterActivityUpsertWithWhereUniqueWithoutUserInputSchema).array(),
+            ])
+            .optional(),
+        createMany: z.lazy(() => CounterActivityCreateManyUserInputEnvelopeSchema).optional(),
+        set: z
+            .union([
+                z.lazy(() => CounterActivityWhereUniqueInputSchema),
+                z.lazy(() => CounterActivityWhereUniqueInputSchema).array(),
+            ])
+            .optional(),
+        disconnect: z
+            .union([
+                z.lazy(() => CounterActivityWhereUniqueInputSchema),
+                z.lazy(() => CounterActivityWhereUniqueInputSchema).array(),
+            ])
+            .optional(),
+        delete: z
+            .union([
+                z.lazy(() => CounterActivityWhereUniqueInputSchema),
+                z.lazy(() => CounterActivityWhereUniqueInputSchema).array(),
+            ])
+            .optional(),
+        connect: z
+            .union([
+                z.lazy(() => CounterActivityWhereUniqueInputSchema),
+                z.lazy(() => CounterActivityWhereUniqueInputSchema).array(),
+            ])
+            .optional(),
+        update: z
+            .union([
+                z.lazy(() => CounterActivityUpdateWithWhereUniqueWithoutUserInputSchema),
+                z.lazy(() => CounterActivityUpdateWithWhereUniqueWithoutUserInputSchema).array(),
+            ])
+            .optional(),
+        updateMany: z
+            .union([
+                z.lazy(() => CounterActivityUpdateManyWithWhereWithoutUserInputSchema),
+                z.lazy(() => CounterActivityUpdateManyWithWhereWithoutUserInputSchema).array(),
+            ])
+            .optional(),
+        deleteMany: z
+            .union([
+                z.lazy(() => CounterActivityScalarWhereInputSchema),
+                z.lazy(() => CounterActivityScalarWhereInputSchema).array(),
+            ])
+            .optional(),
+    });
+
 export const CounterUncheckedUpdateManyWithoutOwnerNestedInputSchema: z.ZodType<Prisma.CounterUncheckedUpdateManyWithoutOwnerNestedInput> =
     z.strictObject({
         create: z
@@ -4649,6 +5538,73 @@ export const EmailOtpUncheckedUpdateManyWithoutUserNestedInputSchema: z.ZodType<
             .optional(),
         deleteMany: z
             .union([z.lazy(() => EmailOtpScalarWhereInputSchema), z.lazy(() => EmailOtpScalarWhereInputSchema).array()])
+            .optional(),
+    });
+
+export const CounterActivityUncheckedUpdateManyWithoutUserNestedInputSchema: z.ZodType<Prisma.CounterActivityUncheckedUpdateManyWithoutUserNestedInput> =
+    z.strictObject({
+        create: z
+            .union([
+                z.lazy(() => CounterActivityCreateWithoutUserInputSchema),
+                z.lazy(() => CounterActivityCreateWithoutUserInputSchema).array(),
+                z.lazy(() => CounterActivityUncheckedCreateWithoutUserInputSchema),
+                z.lazy(() => CounterActivityUncheckedCreateWithoutUserInputSchema).array(),
+            ])
+            .optional(),
+        connectOrCreate: z
+            .union([
+                z.lazy(() => CounterActivityCreateOrConnectWithoutUserInputSchema),
+                z.lazy(() => CounterActivityCreateOrConnectWithoutUserInputSchema).array(),
+            ])
+            .optional(),
+        upsert: z
+            .union([
+                z.lazy(() => CounterActivityUpsertWithWhereUniqueWithoutUserInputSchema),
+                z.lazy(() => CounterActivityUpsertWithWhereUniqueWithoutUserInputSchema).array(),
+            ])
+            .optional(),
+        createMany: z.lazy(() => CounterActivityCreateManyUserInputEnvelopeSchema).optional(),
+        set: z
+            .union([
+                z.lazy(() => CounterActivityWhereUniqueInputSchema),
+                z.lazy(() => CounterActivityWhereUniqueInputSchema).array(),
+            ])
+            .optional(),
+        disconnect: z
+            .union([
+                z.lazy(() => CounterActivityWhereUniqueInputSchema),
+                z.lazy(() => CounterActivityWhereUniqueInputSchema).array(),
+            ])
+            .optional(),
+        delete: z
+            .union([
+                z.lazy(() => CounterActivityWhereUniqueInputSchema),
+                z.lazy(() => CounterActivityWhereUniqueInputSchema).array(),
+            ])
+            .optional(),
+        connect: z
+            .union([
+                z.lazy(() => CounterActivityWhereUniqueInputSchema),
+                z.lazy(() => CounterActivityWhereUniqueInputSchema).array(),
+            ])
+            .optional(),
+        update: z
+            .union([
+                z.lazy(() => CounterActivityUpdateWithWhereUniqueWithoutUserInputSchema),
+                z.lazy(() => CounterActivityUpdateWithWhereUniqueWithoutUserInputSchema).array(),
+            ])
+            .optional(),
+        updateMany: z
+            .union([
+                z.lazy(() => CounterActivityUpdateManyWithWhereWithoutUserInputSchema),
+                z.lazy(() => CounterActivityUpdateManyWithWhereWithoutUserInputSchema).array(),
+            ])
+            .optional(),
+        deleteMany: z
+            .union([
+                z.lazy(() => CounterActivityScalarWhereInputSchema),
+                z.lazy(() => CounterActivityScalarWhereInputSchema).array(),
+            ])
             .optional(),
     });
 
@@ -5221,6 +6177,8 @@ export const NestedBoolWithAggregatesFilterSchema: z.ZodType<Prisma.NestedBoolWi
 export const UserCreateWithoutCountersInputSchema: z.ZodType<Prisma.UserCreateWithoutCountersInput> = z.strictObject({
     id: z.uuid().optional(),
     email: z.string(),
+    username: z.string().optional().nullable(),
+    usernameKey: z.string().optional().nullable(),
     password: z.string().optional().nullable(),
     googleSubject: z.string().optional().nullable(),
     appleSubject: z.string().optional().nullable(),
@@ -5237,12 +6195,15 @@ export const UserCreateWithoutCountersInputSchema: z.ZodType<Prisma.UserCreateWi
     sharedCounters: z.lazy(() => CounterShareCreateNestedManyWithoutUserInputSchema).optional(),
     refreshTokens: z.lazy(() => RefreshTokenCreateNestedManyWithoutUserInputSchema).optional(),
     emailOtps: z.lazy(() => EmailOtpCreateNestedManyWithoutUserInputSchema).optional(),
+    counterActivity: z.lazy(() => CounterActivityCreateNestedManyWithoutUserInputSchema).optional(),
 });
 
 export const UserUncheckedCreateWithoutCountersInputSchema: z.ZodType<Prisma.UserUncheckedCreateWithoutCountersInput> =
     z.strictObject({
         id: z.uuid().optional(),
         email: z.string(),
+        username: z.string().optional().nullable(),
+        usernameKey: z.string().optional().nullable(),
         password: z.string().optional().nullable(),
         googleSubject: z.string().optional().nullable(),
         appleSubject: z.string().optional().nullable(),
@@ -5259,6 +6220,7 @@ export const UserUncheckedCreateWithoutCountersInputSchema: z.ZodType<Prisma.Use
         sharedCounters: z.lazy(() => CounterShareUncheckedCreateNestedManyWithoutUserInputSchema).optional(),
         refreshTokens: z.lazy(() => RefreshTokenUncheckedCreateNestedManyWithoutUserInputSchema).optional(),
         emailOtps: z.lazy(() => EmailOtpUncheckedCreateNestedManyWithoutUserInputSchema).optional(),
+        counterActivity: z.lazy(() => CounterActivityUncheckedCreateNestedManyWithoutUserInputSchema).optional(),
     });
 
 export const UserCreateOrConnectWithoutCountersInputSchema: z.ZodType<Prisma.UserCreateOrConnectWithoutCountersInput> =
@@ -5306,6 +6268,42 @@ export const CounterShareCreateManyCounterInputEnvelopeSchema: z.ZodType<Prisma.
         skipDuplicates: z.boolean().optional(),
     });
 
+export const CounterActivityCreateWithoutCounterInputSchema: z.ZodType<Prisma.CounterActivityCreateWithoutCounterInput> =
+    z.strictObject({
+        amount: z
+            .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+            .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+        at: z.coerce.date().optional(),
+        user: z.lazy(() => UserCreateNestedOneWithoutCounterActivityInputSchema),
+    });
+
+export const CounterActivityUncheckedCreateWithoutCounterInputSchema: z.ZodType<Prisma.CounterActivityUncheckedCreateWithoutCounterInput> =
+    z.strictObject({
+        userId: z.string(),
+        amount: z
+            .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+            .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+        at: z.coerce.date().optional(),
+    });
+
+export const CounterActivityCreateOrConnectWithoutCounterInputSchema: z.ZodType<Prisma.CounterActivityCreateOrConnectWithoutCounterInput> =
+    z.strictObject({
+        where: z.lazy(() => CounterActivityWhereUniqueInputSchema),
+        create: z.union([
+            z.lazy(() => CounterActivityCreateWithoutCounterInputSchema),
+            z.lazy(() => CounterActivityUncheckedCreateWithoutCounterInputSchema),
+        ]),
+    });
+
+export const CounterActivityCreateManyCounterInputEnvelopeSchema: z.ZodType<Prisma.CounterActivityCreateManyCounterInputEnvelope> =
+    z.strictObject({
+        data: z.union([
+            z.lazy(() => CounterActivityCreateManyCounterInputSchema),
+            z.lazy(() => CounterActivityCreateManyCounterInputSchema).array(),
+        ]),
+        skipDuplicates: z.boolean().optional(),
+    });
+
 export const UserUpsertWithoutCountersInputSchema: z.ZodType<Prisma.UserUpsertWithoutCountersInput> = z.strictObject({
     update: z.union([
         z.lazy(() => UserUpdateWithoutCountersInputSchema),
@@ -5330,6 +6328,14 @@ export const UserUpdateToOneWithWhereWithoutCountersInputSchema: z.ZodType<Prism
 export const UserUpdateWithoutCountersInputSchema: z.ZodType<Prisma.UserUpdateWithoutCountersInput> = z.strictObject({
     id: z.union([z.uuid(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
     email: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+    username: z
+        .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
+    usernameKey: z
+        .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
     password: z
         .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
         .optional()
@@ -5372,12 +6378,21 @@ export const UserUpdateWithoutCountersInputSchema: z.ZodType<Prisma.UserUpdateWi
     sharedCounters: z.lazy(() => CounterShareUpdateManyWithoutUserNestedInputSchema).optional(),
     refreshTokens: z.lazy(() => RefreshTokenUpdateManyWithoutUserNestedInputSchema).optional(),
     emailOtps: z.lazy(() => EmailOtpUpdateManyWithoutUserNestedInputSchema).optional(),
+    counterActivity: z.lazy(() => CounterActivityUpdateManyWithoutUserNestedInputSchema).optional(),
 });
 
 export const UserUncheckedUpdateWithoutCountersInputSchema: z.ZodType<Prisma.UserUncheckedUpdateWithoutCountersInput> =
     z.strictObject({
         id: z.union([z.uuid(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
         email: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+        username: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        usernameKey: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
         password: z
             .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
             .optional()
@@ -5420,6 +6435,7 @@ export const UserUncheckedUpdateWithoutCountersInputSchema: z.ZodType<Prisma.Use
         sharedCounters: z.lazy(() => CounterShareUncheckedUpdateManyWithoutUserNestedInputSchema).optional(),
         refreshTokens: z.lazy(() => RefreshTokenUncheckedUpdateManyWithoutUserNestedInputSchema).optional(),
         emailOtps: z.lazy(() => EmailOtpUncheckedUpdateManyWithoutUserNestedInputSchema).optional(),
+        counterActivity: z.lazy(() => CounterActivityUncheckedUpdateManyWithoutUserNestedInputSchema).optional(),
     });
 
 export const CounterShareUpsertWithWhereUniqueWithoutCounterInputSchema: z.ZodType<Prisma.CounterShareUpsertWithWhereUniqueWithoutCounterInput> =
@@ -5478,6 +6494,449 @@ export const CounterShareScalarWhereInputSchema: z.ZodType<Prisma.CounterShareSc
     updatedAt: z.union([z.lazy(() => DateTimeFilterSchema), z.coerce.date()]).optional(),
 });
 
+export const CounterActivityUpsertWithWhereUniqueWithoutCounterInputSchema: z.ZodType<Prisma.CounterActivityUpsertWithWhereUniqueWithoutCounterInput> =
+    z.strictObject({
+        where: z.lazy(() => CounterActivityWhereUniqueInputSchema),
+        update: z.union([
+            z.lazy(() => CounterActivityUpdateWithoutCounterInputSchema),
+            z.lazy(() => CounterActivityUncheckedUpdateWithoutCounterInputSchema),
+        ]),
+        create: z.union([
+            z.lazy(() => CounterActivityCreateWithoutCounterInputSchema),
+            z.lazy(() => CounterActivityUncheckedCreateWithoutCounterInputSchema),
+        ]),
+    });
+
+export const CounterActivityUpdateWithWhereUniqueWithoutCounterInputSchema: z.ZodType<Prisma.CounterActivityUpdateWithWhereUniqueWithoutCounterInput> =
+    z.strictObject({
+        where: z.lazy(() => CounterActivityWhereUniqueInputSchema),
+        data: z.union([
+            z.lazy(() => CounterActivityUpdateWithoutCounterInputSchema),
+            z.lazy(() => CounterActivityUncheckedUpdateWithoutCounterInputSchema),
+        ]),
+    });
+
+export const CounterActivityUpdateManyWithWhereWithoutCounterInputSchema: z.ZodType<Prisma.CounterActivityUpdateManyWithWhereWithoutCounterInput> =
+    z.strictObject({
+        where: z.lazy(() => CounterActivityScalarWhereInputSchema),
+        data: z.union([
+            z.lazy(() => CounterActivityUpdateManyMutationInputSchema),
+            z.lazy(() => CounterActivityUncheckedUpdateManyWithoutCounterInputSchema),
+        ]),
+    });
+
+export const CounterActivityScalarWhereInputSchema: z.ZodType<Prisma.CounterActivityScalarWhereInput> = z.strictObject({
+    AND: z
+        .union([
+            z.lazy(() => CounterActivityScalarWhereInputSchema),
+            z.lazy(() => CounterActivityScalarWhereInputSchema).array(),
+        ])
+        .optional(),
+    OR: z
+        .lazy(() => CounterActivityScalarWhereInputSchema)
+        .array()
+        .optional(),
+    NOT: z
+        .union([
+            z.lazy(() => CounterActivityScalarWhereInputSchema),
+            z.lazy(() => CounterActivityScalarWhereInputSchema).array(),
+        ])
+        .optional(),
+    counterId: z.union([z.lazy(() => StringFilterSchema), z.string()]).optional(),
+    userId: z.union([z.lazy(() => UuidFilterSchema), z.string()]).optional(),
+    amount: z
+        .union([
+            z.lazy(() => DecimalFilterSchema),
+            z
+                .union([
+                    z.number(),
+                    z.string(),
+                    z.instanceof(Decimal),
+                    z.instanceof(Prisma.Decimal),
+                    DecimalJsLikeSchema,
+                ])
+                .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+        ])
+        .optional(),
+    at: z.union([z.lazy(() => DateTimeFilterSchema), z.coerce.date()]).optional(),
+});
+
+export const CounterCreateWithoutActivityInputSchema: z.ZodType<Prisma.CounterCreateWithoutActivityInput> =
+    z.strictObject({
+        id: z.uuid().optional(),
+        title: z.string(),
+        count: z
+            .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+            .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+            .optional(),
+        increment: z
+            .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+            .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+            .optional(),
+        metric: z.string().optional().nullable(),
+        color: z.string().optional().nullable(),
+        type: z.lazy(() => CounterTypeSchema).optional(),
+        inviteCode: z.string().optional().nullable(),
+        createdAt: z.coerce.date().optional(),
+        updatedAt: z.coerce.date().optional(),
+        owner: z.lazy(() => UserCreateNestedOneWithoutCountersInputSchema),
+        shares: z.lazy(() => CounterShareCreateNestedManyWithoutCounterInputSchema).optional(),
+    });
+
+export const CounterUncheckedCreateWithoutActivityInputSchema: z.ZodType<Prisma.CounterUncheckedCreateWithoutActivityInput> =
+    z.strictObject({
+        id: z.uuid().optional(),
+        title: z.string(),
+        count: z
+            .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+            .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+            .optional(),
+        increment: z
+            .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+            .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' })
+            .optional(),
+        metric: z.string().optional().nullable(),
+        color: z.string().optional().nullable(),
+        type: z.lazy(() => CounterTypeSchema).optional(),
+        inviteCode: z.string().optional().nullable(),
+        userId: z.string(),
+        createdAt: z.coerce.date().optional(),
+        updatedAt: z.coerce.date().optional(),
+        shares: z.lazy(() => CounterShareUncheckedCreateNestedManyWithoutCounterInputSchema).optional(),
+    });
+
+export const CounterCreateOrConnectWithoutActivityInputSchema: z.ZodType<Prisma.CounterCreateOrConnectWithoutActivityInput> =
+    z.strictObject({
+        where: z.lazy(() => CounterWhereUniqueInputSchema),
+        create: z.union([
+            z.lazy(() => CounterCreateWithoutActivityInputSchema),
+            z.lazy(() => CounterUncheckedCreateWithoutActivityInputSchema),
+        ]),
+    });
+
+export const UserCreateWithoutCounterActivityInputSchema: z.ZodType<Prisma.UserCreateWithoutCounterActivityInput> =
+    z.strictObject({
+        id: z.uuid().optional(),
+        email: z.string(),
+        username: z.string().optional().nullable(),
+        usernameKey: z.string().optional().nullable(),
+        password: z.string().optional().nullable(),
+        googleSubject: z.string().optional().nullable(),
+        appleSubject: z.string().optional().nullable(),
+        appleRefreshToken: z.string().optional().nullable(),
+        appleCredentialUpdatedAt: z.coerce.date().optional().nullable(),
+        tier: z.lazy(() => UserTierSchema).optional(),
+        emailVerifiedAt: z.coerce.date().optional().nullable(),
+        sessionVersion: z.number().int().optional(),
+        premiumExpiresAt: z.coerce.date().optional().nullable(),
+        billingCheckedAt: z.coerce.date().optional().nullable(),
+        billingSandbox: z.boolean().optional(),
+        createdAt: z.coerce.date().optional(),
+        updatedAt: z.coerce.date().optional(),
+        counters: z.lazy(() => CounterCreateNestedManyWithoutOwnerInputSchema).optional(),
+        sharedCounters: z.lazy(() => CounterShareCreateNestedManyWithoutUserInputSchema).optional(),
+        refreshTokens: z.lazy(() => RefreshTokenCreateNestedManyWithoutUserInputSchema).optional(),
+        emailOtps: z.lazy(() => EmailOtpCreateNestedManyWithoutUserInputSchema).optional(),
+    });
+
+export const UserUncheckedCreateWithoutCounterActivityInputSchema: z.ZodType<Prisma.UserUncheckedCreateWithoutCounterActivityInput> =
+    z.strictObject({
+        id: z.uuid().optional(),
+        email: z.string(),
+        username: z.string().optional().nullable(),
+        usernameKey: z.string().optional().nullable(),
+        password: z.string().optional().nullable(),
+        googleSubject: z.string().optional().nullable(),
+        appleSubject: z.string().optional().nullable(),
+        appleRefreshToken: z.string().optional().nullable(),
+        appleCredentialUpdatedAt: z.coerce.date().optional().nullable(),
+        tier: z.lazy(() => UserTierSchema).optional(),
+        emailVerifiedAt: z.coerce.date().optional().nullable(),
+        sessionVersion: z.number().int().optional(),
+        premiumExpiresAt: z.coerce.date().optional().nullable(),
+        billingCheckedAt: z.coerce.date().optional().nullable(),
+        billingSandbox: z.boolean().optional(),
+        createdAt: z.coerce.date().optional(),
+        updatedAt: z.coerce.date().optional(),
+        counters: z.lazy(() => CounterUncheckedCreateNestedManyWithoutOwnerInputSchema).optional(),
+        sharedCounters: z.lazy(() => CounterShareUncheckedCreateNestedManyWithoutUserInputSchema).optional(),
+        refreshTokens: z.lazy(() => RefreshTokenUncheckedCreateNestedManyWithoutUserInputSchema).optional(),
+        emailOtps: z.lazy(() => EmailOtpUncheckedCreateNestedManyWithoutUserInputSchema).optional(),
+    });
+
+export const UserCreateOrConnectWithoutCounterActivityInputSchema: z.ZodType<Prisma.UserCreateOrConnectWithoutCounterActivityInput> =
+    z.strictObject({
+        where: z.lazy(() => UserWhereUniqueInputSchema),
+        create: z.union([
+            z.lazy(() => UserCreateWithoutCounterActivityInputSchema),
+            z.lazy(() => UserUncheckedCreateWithoutCounterActivityInputSchema),
+        ]),
+    });
+
+export const CounterUpsertWithoutActivityInputSchema: z.ZodType<Prisma.CounterUpsertWithoutActivityInput> =
+    z.strictObject({
+        update: z.union([
+            z.lazy(() => CounterUpdateWithoutActivityInputSchema),
+            z.lazy(() => CounterUncheckedUpdateWithoutActivityInputSchema),
+        ]),
+        create: z.union([
+            z.lazy(() => CounterCreateWithoutActivityInputSchema),
+            z.lazy(() => CounterUncheckedCreateWithoutActivityInputSchema),
+        ]),
+        where: z.lazy(() => CounterWhereInputSchema).optional(),
+    });
+
+export const CounterUpdateToOneWithWhereWithoutActivityInputSchema: z.ZodType<Prisma.CounterUpdateToOneWithWhereWithoutActivityInput> =
+    z.strictObject({
+        where: z.lazy(() => CounterWhereInputSchema).optional(),
+        data: z.union([
+            z.lazy(() => CounterUpdateWithoutActivityInputSchema),
+            z.lazy(() => CounterUncheckedUpdateWithoutActivityInputSchema),
+        ]),
+    });
+
+export const CounterUpdateWithoutActivityInputSchema: z.ZodType<Prisma.CounterUpdateWithoutActivityInput> =
+    z.strictObject({
+        id: z.union([z.uuid(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+        title: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+        count: z
+            .union([
+                z
+                    .union([
+                        z.number(),
+                        z.string(),
+                        z.instanceof(Decimal),
+                        z.instanceof(Prisma.Decimal),
+                        DecimalJsLikeSchema,
+                    ])
+                    .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+                z.lazy(() => DecimalFieldUpdateOperationsInputSchema),
+            ])
+            .optional(),
+        increment: z
+            .union([
+                z
+                    .union([
+                        z.number(),
+                        z.string(),
+                        z.instanceof(Decimal),
+                        z.instanceof(Prisma.Decimal),
+                        DecimalJsLikeSchema,
+                    ])
+                    .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+                z.lazy(() => DecimalFieldUpdateOperationsInputSchema),
+            ])
+            .optional(),
+        metric: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        color: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        type: z
+            .union([z.lazy(() => CounterTypeSchema), z.lazy(() => EnumCounterTypeFieldUpdateOperationsInputSchema)])
+            .optional(),
+        inviteCode: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        createdAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
+        updatedAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
+        owner: z.lazy(() => UserUpdateOneRequiredWithoutCountersNestedInputSchema).optional(),
+        shares: z.lazy(() => CounterShareUpdateManyWithoutCounterNestedInputSchema).optional(),
+    });
+
+export const CounterUncheckedUpdateWithoutActivityInputSchema: z.ZodType<Prisma.CounterUncheckedUpdateWithoutActivityInput> =
+    z.strictObject({
+        id: z.union([z.uuid(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+        title: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+        count: z
+            .union([
+                z
+                    .union([
+                        z.number(),
+                        z.string(),
+                        z.instanceof(Decimal),
+                        z.instanceof(Prisma.Decimal),
+                        DecimalJsLikeSchema,
+                    ])
+                    .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+                z.lazy(() => DecimalFieldUpdateOperationsInputSchema),
+            ])
+            .optional(),
+        increment: z
+            .union([
+                z
+                    .union([
+                        z.number(),
+                        z.string(),
+                        z.instanceof(Decimal),
+                        z.instanceof(Prisma.Decimal),
+                        DecimalJsLikeSchema,
+                    ])
+                    .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+                z.lazy(() => DecimalFieldUpdateOperationsInputSchema),
+            ])
+            .optional(),
+        metric: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        color: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        type: z
+            .union([z.lazy(() => CounterTypeSchema), z.lazy(() => EnumCounterTypeFieldUpdateOperationsInputSchema)])
+            .optional(),
+        inviteCode: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        userId: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+        createdAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
+        updatedAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
+        shares: z.lazy(() => CounterShareUncheckedUpdateManyWithoutCounterNestedInputSchema).optional(),
+    });
+
+export const UserUpsertWithoutCounterActivityInputSchema: z.ZodType<Prisma.UserUpsertWithoutCounterActivityInput> =
+    z.strictObject({
+        update: z.union([
+            z.lazy(() => UserUpdateWithoutCounterActivityInputSchema),
+            z.lazy(() => UserUncheckedUpdateWithoutCounterActivityInputSchema),
+        ]),
+        create: z.union([
+            z.lazy(() => UserCreateWithoutCounterActivityInputSchema),
+            z.lazy(() => UserUncheckedCreateWithoutCounterActivityInputSchema),
+        ]),
+        where: z.lazy(() => UserWhereInputSchema).optional(),
+    });
+
+export const UserUpdateToOneWithWhereWithoutCounterActivityInputSchema: z.ZodType<Prisma.UserUpdateToOneWithWhereWithoutCounterActivityInput> =
+    z.strictObject({
+        where: z.lazy(() => UserWhereInputSchema).optional(),
+        data: z.union([
+            z.lazy(() => UserUpdateWithoutCounterActivityInputSchema),
+            z.lazy(() => UserUncheckedUpdateWithoutCounterActivityInputSchema),
+        ]),
+    });
+
+export const UserUpdateWithoutCounterActivityInputSchema: z.ZodType<Prisma.UserUpdateWithoutCounterActivityInput> =
+    z.strictObject({
+        id: z.union([z.uuid(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+        email: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+        username: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        usernameKey: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        password: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        googleSubject: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        appleSubject: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        appleRefreshToken: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        appleCredentialUpdatedAt: z
+            .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        tier: z
+            .union([z.lazy(() => UserTierSchema), z.lazy(() => EnumUserTierFieldUpdateOperationsInputSchema)])
+            .optional(),
+        emailVerifiedAt: z
+            .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        sessionVersion: z.union([z.number().int(), z.lazy(() => IntFieldUpdateOperationsInputSchema)]).optional(),
+        premiumExpiresAt: z
+            .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        billingCheckedAt: z
+            .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        billingSandbox: z.union([z.boolean(), z.lazy(() => BoolFieldUpdateOperationsInputSchema)]).optional(),
+        createdAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
+        updatedAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
+        counters: z.lazy(() => CounterUpdateManyWithoutOwnerNestedInputSchema).optional(),
+        sharedCounters: z.lazy(() => CounterShareUpdateManyWithoutUserNestedInputSchema).optional(),
+        refreshTokens: z.lazy(() => RefreshTokenUpdateManyWithoutUserNestedInputSchema).optional(),
+        emailOtps: z.lazy(() => EmailOtpUpdateManyWithoutUserNestedInputSchema).optional(),
+    });
+
+export const UserUncheckedUpdateWithoutCounterActivityInputSchema: z.ZodType<Prisma.UserUncheckedUpdateWithoutCounterActivityInput> =
+    z.strictObject({
+        id: z.union([z.uuid(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+        email: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+        username: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        usernameKey: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        password: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        googleSubject: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        appleSubject: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        appleRefreshToken: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        appleCredentialUpdatedAt: z
+            .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        tier: z
+            .union([z.lazy(() => UserTierSchema), z.lazy(() => EnumUserTierFieldUpdateOperationsInputSchema)])
+            .optional(),
+        emailVerifiedAt: z
+            .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        sessionVersion: z.union([z.number().int(), z.lazy(() => IntFieldUpdateOperationsInputSchema)]).optional(),
+        premiumExpiresAt: z
+            .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        billingCheckedAt: z
+            .union([z.coerce.date(), z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        billingSandbox: z.union([z.boolean(), z.lazy(() => BoolFieldUpdateOperationsInputSchema)]).optional(),
+        createdAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
+        updatedAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
+        counters: z.lazy(() => CounterUncheckedUpdateManyWithoutOwnerNestedInputSchema).optional(),
+        sharedCounters: z.lazy(() => CounterShareUncheckedUpdateManyWithoutUserNestedInputSchema).optional(),
+        refreshTokens: z.lazy(() => RefreshTokenUncheckedUpdateManyWithoutUserNestedInputSchema).optional(),
+        emailOtps: z.lazy(() => EmailOtpUncheckedUpdateManyWithoutUserNestedInputSchema).optional(),
+    });
+
 export const CounterCreateWithoutSharesInputSchema: z.ZodType<Prisma.CounterCreateWithoutSharesInput> = z.strictObject({
     id: z.uuid().optional(),
     title: z.string(),
@@ -5496,6 +6955,7 @@ export const CounterCreateWithoutSharesInputSchema: z.ZodType<Prisma.CounterCrea
     createdAt: z.coerce.date().optional(),
     updatedAt: z.coerce.date().optional(),
     owner: z.lazy(() => UserCreateNestedOneWithoutCountersInputSchema),
+    activity: z.lazy(() => CounterActivityCreateNestedManyWithoutCounterInputSchema).optional(),
 });
 
 export const CounterUncheckedCreateWithoutSharesInputSchema: z.ZodType<Prisma.CounterUncheckedCreateWithoutSharesInput> =
@@ -5517,6 +6977,7 @@ export const CounterUncheckedCreateWithoutSharesInputSchema: z.ZodType<Prisma.Co
         userId: z.string(),
         createdAt: z.coerce.date().optional(),
         updatedAt: z.coerce.date().optional(),
+        activity: z.lazy(() => CounterActivityUncheckedCreateNestedManyWithoutCounterInputSchema).optional(),
     });
 
 export const CounterCreateOrConnectWithoutSharesInputSchema: z.ZodType<Prisma.CounterCreateOrConnectWithoutSharesInput> =
@@ -5532,6 +6993,8 @@ export const UserCreateWithoutSharedCountersInputSchema: z.ZodType<Prisma.UserCr
     z.strictObject({
         id: z.uuid().optional(),
         email: z.string(),
+        username: z.string().optional().nullable(),
+        usernameKey: z.string().optional().nullable(),
         password: z.string().optional().nullable(),
         googleSubject: z.string().optional().nullable(),
         appleSubject: z.string().optional().nullable(),
@@ -5548,12 +7011,15 @@ export const UserCreateWithoutSharedCountersInputSchema: z.ZodType<Prisma.UserCr
         counters: z.lazy(() => CounterCreateNestedManyWithoutOwnerInputSchema).optional(),
         refreshTokens: z.lazy(() => RefreshTokenCreateNestedManyWithoutUserInputSchema).optional(),
         emailOtps: z.lazy(() => EmailOtpCreateNestedManyWithoutUserInputSchema).optional(),
+        counterActivity: z.lazy(() => CounterActivityCreateNestedManyWithoutUserInputSchema).optional(),
     });
 
 export const UserUncheckedCreateWithoutSharedCountersInputSchema: z.ZodType<Prisma.UserUncheckedCreateWithoutSharedCountersInput> =
     z.strictObject({
         id: z.uuid().optional(),
         email: z.string(),
+        username: z.string().optional().nullable(),
+        usernameKey: z.string().optional().nullable(),
         password: z.string().optional().nullable(),
         googleSubject: z.string().optional().nullable(),
         appleSubject: z.string().optional().nullable(),
@@ -5570,6 +7036,7 @@ export const UserUncheckedCreateWithoutSharedCountersInputSchema: z.ZodType<Pris
         counters: z.lazy(() => CounterUncheckedCreateNestedManyWithoutOwnerInputSchema).optional(),
         refreshTokens: z.lazy(() => RefreshTokenUncheckedCreateNestedManyWithoutUserInputSchema).optional(),
         emailOtps: z.lazy(() => EmailOtpUncheckedCreateNestedManyWithoutUserInputSchema).optional(),
+        counterActivity: z.lazy(() => CounterActivityUncheckedCreateNestedManyWithoutUserInputSchema).optional(),
     });
 
 export const UserCreateOrConnectWithoutSharedCountersInputSchema: z.ZodType<Prisma.UserCreateOrConnectWithoutSharedCountersInput> =
@@ -5651,6 +7118,7 @@ export const CounterUpdateWithoutSharesInputSchema: z.ZodType<Prisma.CounterUpda
     createdAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
     updatedAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
     owner: z.lazy(() => UserUpdateOneRequiredWithoutCountersNestedInputSchema).optional(),
+    activity: z.lazy(() => CounterActivityUpdateManyWithoutCounterNestedInputSchema).optional(),
 });
 
 export const CounterUncheckedUpdateWithoutSharesInputSchema: z.ZodType<Prisma.CounterUncheckedUpdateWithoutSharesInput> =
@@ -5703,6 +7171,7 @@ export const CounterUncheckedUpdateWithoutSharesInputSchema: z.ZodType<Prisma.Co
         userId: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
         createdAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
         updatedAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
+        activity: z.lazy(() => CounterActivityUncheckedUpdateManyWithoutCounterNestedInputSchema).optional(),
     });
 
 export const UserUpsertWithoutSharedCountersInputSchema: z.ZodType<Prisma.UserUpsertWithoutSharedCountersInput> =
@@ -5731,6 +7200,14 @@ export const UserUpdateWithoutSharedCountersInputSchema: z.ZodType<Prisma.UserUp
     z.strictObject({
         id: z.union([z.uuid(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
         email: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+        username: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        usernameKey: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
         password: z
             .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
             .optional()
@@ -5773,12 +7250,21 @@ export const UserUpdateWithoutSharedCountersInputSchema: z.ZodType<Prisma.UserUp
         counters: z.lazy(() => CounterUpdateManyWithoutOwnerNestedInputSchema).optional(),
         refreshTokens: z.lazy(() => RefreshTokenUpdateManyWithoutUserNestedInputSchema).optional(),
         emailOtps: z.lazy(() => EmailOtpUpdateManyWithoutUserNestedInputSchema).optional(),
+        counterActivity: z.lazy(() => CounterActivityUpdateManyWithoutUserNestedInputSchema).optional(),
     });
 
 export const UserUncheckedUpdateWithoutSharedCountersInputSchema: z.ZodType<Prisma.UserUncheckedUpdateWithoutSharedCountersInput> =
     z.strictObject({
         id: z.union([z.uuid(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
         email: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+        username: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        usernameKey: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
         password: z
             .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
             .optional()
@@ -5821,12 +7307,15 @@ export const UserUncheckedUpdateWithoutSharedCountersInputSchema: z.ZodType<Pris
         counters: z.lazy(() => CounterUncheckedUpdateManyWithoutOwnerNestedInputSchema).optional(),
         refreshTokens: z.lazy(() => RefreshTokenUncheckedUpdateManyWithoutUserNestedInputSchema).optional(),
         emailOtps: z.lazy(() => EmailOtpUncheckedUpdateManyWithoutUserNestedInputSchema).optional(),
+        counterActivity: z.lazy(() => CounterActivityUncheckedUpdateManyWithoutUserNestedInputSchema).optional(),
     });
 
 export const UserCreateWithoutRefreshTokensInputSchema: z.ZodType<Prisma.UserCreateWithoutRefreshTokensInput> =
     z.strictObject({
         id: z.uuid().optional(),
         email: z.string(),
+        username: z.string().optional().nullable(),
+        usernameKey: z.string().optional().nullable(),
         password: z.string().optional().nullable(),
         googleSubject: z.string().optional().nullable(),
         appleSubject: z.string().optional().nullable(),
@@ -5843,12 +7332,15 @@ export const UserCreateWithoutRefreshTokensInputSchema: z.ZodType<Prisma.UserCre
         counters: z.lazy(() => CounterCreateNestedManyWithoutOwnerInputSchema).optional(),
         sharedCounters: z.lazy(() => CounterShareCreateNestedManyWithoutUserInputSchema).optional(),
         emailOtps: z.lazy(() => EmailOtpCreateNestedManyWithoutUserInputSchema).optional(),
+        counterActivity: z.lazy(() => CounterActivityCreateNestedManyWithoutUserInputSchema).optional(),
     });
 
 export const UserUncheckedCreateWithoutRefreshTokensInputSchema: z.ZodType<Prisma.UserUncheckedCreateWithoutRefreshTokensInput> =
     z.strictObject({
         id: z.uuid().optional(),
         email: z.string(),
+        username: z.string().optional().nullable(),
+        usernameKey: z.string().optional().nullable(),
         password: z.string().optional().nullable(),
         googleSubject: z.string().optional().nullable(),
         appleSubject: z.string().optional().nullable(),
@@ -5865,6 +7357,7 @@ export const UserUncheckedCreateWithoutRefreshTokensInputSchema: z.ZodType<Prism
         counters: z.lazy(() => CounterUncheckedCreateNestedManyWithoutOwnerInputSchema).optional(),
         sharedCounters: z.lazy(() => CounterShareUncheckedCreateNestedManyWithoutUserInputSchema).optional(),
         emailOtps: z.lazy(() => EmailOtpUncheckedCreateNestedManyWithoutUserInputSchema).optional(),
+        counterActivity: z.lazy(() => CounterActivityUncheckedCreateNestedManyWithoutUserInputSchema).optional(),
     });
 
 export const UserCreateOrConnectWithoutRefreshTokensInputSchema: z.ZodType<Prisma.UserCreateOrConnectWithoutRefreshTokensInput> =
@@ -5902,6 +7395,14 @@ export const UserUpdateWithoutRefreshTokensInputSchema: z.ZodType<Prisma.UserUpd
     z.strictObject({
         id: z.union([z.uuid(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
         email: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+        username: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        usernameKey: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
         password: z
             .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
             .optional()
@@ -5944,12 +7445,21 @@ export const UserUpdateWithoutRefreshTokensInputSchema: z.ZodType<Prisma.UserUpd
         counters: z.lazy(() => CounterUpdateManyWithoutOwnerNestedInputSchema).optional(),
         sharedCounters: z.lazy(() => CounterShareUpdateManyWithoutUserNestedInputSchema).optional(),
         emailOtps: z.lazy(() => EmailOtpUpdateManyWithoutUserNestedInputSchema).optional(),
+        counterActivity: z.lazy(() => CounterActivityUpdateManyWithoutUserNestedInputSchema).optional(),
     });
 
 export const UserUncheckedUpdateWithoutRefreshTokensInputSchema: z.ZodType<Prisma.UserUncheckedUpdateWithoutRefreshTokensInput> =
     z.strictObject({
         id: z.union([z.uuid(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
         email: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+        username: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        usernameKey: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
         password: z
             .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
             .optional()
@@ -5992,11 +7502,14 @@ export const UserUncheckedUpdateWithoutRefreshTokensInputSchema: z.ZodType<Prism
         counters: z.lazy(() => CounterUncheckedUpdateManyWithoutOwnerNestedInputSchema).optional(),
         sharedCounters: z.lazy(() => CounterShareUncheckedUpdateManyWithoutUserNestedInputSchema).optional(),
         emailOtps: z.lazy(() => EmailOtpUncheckedUpdateManyWithoutUserNestedInputSchema).optional(),
+        counterActivity: z.lazy(() => CounterActivityUncheckedUpdateManyWithoutUserNestedInputSchema).optional(),
     });
 
 export const UserCreateWithoutEmailOtpsInputSchema: z.ZodType<Prisma.UserCreateWithoutEmailOtpsInput> = z.strictObject({
     id: z.uuid().optional(),
     email: z.string(),
+    username: z.string().optional().nullable(),
+    usernameKey: z.string().optional().nullable(),
     password: z.string().optional().nullable(),
     googleSubject: z.string().optional().nullable(),
     appleSubject: z.string().optional().nullable(),
@@ -6013,12 +7526,15 @@ export const UserCreateWithoutEmailOtpsInputSchema: z.ZodType<Prisma.UserCreateW
     counters: z.lazy(() => CounterCreateNestedManyWithoutOwnerInputSchema).optional(),
     sharedCounters: z.lazy(() => CounterShareCreateNestedManyWithoutUserInputSchema).optional(),
     refreshTokens: z.lazy(() => RefreshTokenCreateNestedManyWithoutUserInputSchema).optional(),
+    counterActivity: z.lazy(() => CounterActivityCreateNestedManyWithoutUserInputSchema).optional(),
 });
 
 export const UserUncheckedCreateWithoutEmailOtpsInputSchema: z.ZodType<Prisma.UserUncheckedCreateWithoutEmailOtpsInput> =
     z.strictObject({
         id: z.uuid().optional(),
         email: z.string(),
+        username: z.string().optional().nullable(),
+        usernameKey: z.string().optional().nullable(),
         password: z.string().optional().nullable(),
         googleSubject: z.string().optional().nullable(),
         appleSubject: z.string().optional().nullable(),
@@ -6035,6 +7551,7 @@ export const UserUncheckedCreateWithoutEmailOtpsInputSchema: z.ZodType<Prisma.Us
         counters: z.lazy(() => CounterUncheckedCreateNestedManyWithoutOwnerInputSchema).optional(),
         sharedCounters: z.lazy(() => CounterShareUncheckedCreateNestedManyWithoutUserInputSchema).optional(),
         refreshTokens: z.lazy(() => RefreshTokenUncheckedCreateNestedManyWithoutUserInputSchema).optional(),
+        counterActivity: z.lazy(() => CounterActivityUncheckedCreateNestedManyWithoutUserInputSchema).optional(),
     });
 
 export const UserCreateOrConnectWithoutEmailOtpsInputSchema: z.ZodType<Prisma.UserCreateOrConnectWithoutEmailOtpsInput> =
@@ -6070,6 +7587,14 @@ export const UserUpdateToOneWithWhereWithoutEmailOtpsInputSchema: z.ZodType<Pris
 export const UserUpdateWithoutEmailOtpsInputSchema: z.ZodType<Prisma.UserUpdateWithoutEmailOtpsInput> = z.strictObject({
     id: z.union([z.uuid(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
     email: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+    username: z
+        .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
+    usernameKey: z
+        .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+        .optional()
+        .nullable(),
     password: z
         .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
         .optional()
@@ -6112,12 +7637,21 @@ export const UserUpdateWithoutEmailOtpsInputSchema: z.ZodType<Prisma.UserUpdateW
     counters: z.lazy(() => CounterUpdateManyWithoutOwnerNestedInputSchema).optional(),
     sharedCounters: z.lazy(() => CounterShareUpdateManyWithoutUserNestedInputSchema).optional(),
     refreshTokens: z.lazy(() => RefreshTokenUpdateManyWithoutUserNestedInputSchema).optional(),
+    counterActivity: z.lazy(() => CounterActivityUpdateManyWithoutUserNestedInputSchema).optional(),
 });
 
 export const UserUncheckedUpdateWithoutEmailOtpsInputSchema: z.ZodType<Prisma.UserUncheckedUpdateWithoutEmailOtpsInput> =
     z.strictObject({
         id: z.union([z.uuid(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
         email: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+        username: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
+        usernameKey: z
+            .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
+            .optional()
+            .nullable(),
         password: z
             .union([z.string(), z.lazy(() => NullableStringFieldUpdateOperationsInputSchema)])
             .optional()
@@ -6160,6 +7694,7 @@ export const UserUncheckedUpdateWithoutEmailOtpsInputSchema: z.ZodType<Prisma.Us
         counters: z.lazy(() => CounterUncheckedUpdateManyWithoutOwnerNestedInputSchema).optional(),
         sharedCounters: z.lazy(() => CounterShareUncheckedUpdateManyWithoutUserNestedInputSchema).optional(),
         refreshTokens: z.lazy(() => RefreshTokenUncheckedUpdateManyWithoutUserNestedInputSchema).optional(),
+        counterActivity: z.lazy(() => CounterActivityUncheckedUpdateManyWithoutUserNestedInputSchema).optional(),
     });
 
 export const CounterCreateWithoutOwnerInputSchema: z.ZodType<Prisma.CounterCreateWithoutOwnerInput> = z.strictObject({
@@ -6180,6 +7715,7 @@ export const CounterCreateWithoutOwnerInputSchema: z.ZodType<Prisma.CounterCreat
     createdAt: z.coerce.date().optional(),
     updatedAt: z.coerce.date().optional(),
     shares: z.lazy(() => CounterShareCreateNestedManyWithoutCounterInputSchema).optional(),
+    activity: z.lazy(() => CounterActivityCreateNestedManyWithoutCounterInputSchema).optional(),
 });
 
 export const CounterUncheckedCreateWithoutOwnerInputSchema: z.ZodType<Prisma.CounterUncheckedCreateWithoutOwnerInput> =
@@ -6201,6 +7737,7 @@ export const CounterUncheckedCreateWithoutOwnerInputSchema: z.ZodType<Prisma.Cou
         createdAt: z.coerce.date().optional(),
         updatedAt: z.coerce.date().optional(),
         shares: z.lazy(() => CounterShareUncheckedCreateNestedManyWithoutCounterInputSchema).optional(),
+        activity: z.lazy(() => CounterActivityUncheckedCreateNestedManyWithoutCounterInputSchema).optional(),
     });
 
 export const CounterCreateOrConnectWithoutOwnerInputSchema: z.ZodType<Prisma.CounterCreateOrConnectWithoutOwnerInput> =
@@ -6330,6 +7867,42 @@ export const EmailOtpCreateManyUserInputEnvelopeSchema: z.ZodType<Prisma.EmailOt
         data: z.union([
             z.lazy(() => EmailOtpCreateManyUserInputSchema),
             z.lazy(() => EmailOtpCreateManyUserInputSchema).array(),
+        ]),
+        skipDuplicates: z.boolean().optional(),
+    });
+
+export const CounterActivityCreateWithoutUserInputSchema: z.ZodType<Prisma.CounterActivityCreateWithoutUserInput> =
+    z.strictObject({
+        amount: z
+            .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+            .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+        at: z.coerce.date().optional(),
+        counter: z.lazy(() => CounterCreateNestedOneWithoutActivityInputSchema),
+    });
+
+export const CounterActivityUncheckedCreateWithoutUserInputSchema: z.ZodType<Prisma.CounterActivityUncheckedCreateWithoutUserInput> =
+    z.strictObject({
+        counterId: z.string(),
+        amount: z
+            .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+            .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+        at: z.coerce.date().optional(),
+    });
+
+export const CounterActivityCreateOrConnectWithoutUserInputSchema: z.ZodType<Prisma.CounterActivityCreateOrConnectWithoutUserInput> =
+    z.strictObject({
+        where: z.lazy(() => CounterActivityWhereUniqueInputSchema),
+        create: z.union([
+            z.lazy(() => CounterActivityCreateWithoutUserInputSchema),
+            z.lazy(() => CounterActivityUncheckedCreateWithoutUserInputSchema),
+        ]),
+    });
+
+export const CounterActivityCreateManyUserInputEnvelopeSchema: z.ZodType<Prisma.CounterActivityCreateManyUserInputEnvelope> =
+    z.strictObject({
+        data: z.union([
+            z.lazy(() => CounterActivityCreateManyUserInputSchema),
+            z.lazy(() => CounterActivityCreateManyUserInputSchema).array(),
         ]),
         skipDuplicates: z.boolean().optional(),
     });
@@ -6573,6 +8146,37 @@ export const EmailOtpScalarWhereInputSchema: z.ZodType<Prisma.EmailOtpScalarWher
     createdAt: z.union([z.lazy(() => DateTimeFilterSchema), z.coerce.date()]).optional(),
 });
 
+export const CounterActivityUpsertWithWhereUniqueWithoutUserInputSchema: z.ZodType<Prisma.CounterActivityUpsertWithWhereUniqueWithoutUserInput> =
+    z.strictObject({
+        where: z.lazy(() => CounterActivityWhereUniqueInputSchema),
+        update: z.union([
+            z.lazy(() => CounterActivityUpdateWithoutUserInputSchema),
+            z.lazy(() => CounterActivityUncheckedUpdateWithoutUserInputSchema),
+        ]),
+        create: z.union([
+            z.lazy(() => CounterActivityCreateWithoutUserInputSchema),
+            z.lazy(() => CounterActivityUncheckedCreateWithoutUserInputSchema),
+        ]),
+    });
+
+export const CounterActivityUpdateWithWhereUniqueWithoutUserInputSchema: z.ZodType<Prisma.CounterActivityUpdateWithWhereUniqueWithoutUserInput> =
+    z.strictObject({
+        where: z.lazy(() => CounterActivityWhereUniqueInputSchema),
+        data: z.union([
+            z.lazy(() => CounterActivityUpdateWithoutUserInputSchema),
+            z.lazy(() => CounterActivityUncheckedUpdateWithoutUserInputSchema),
+        ]),
+    });
+
+export const CounterActivityUpdateManyWithWhereWithoutUserInputSchema: z.ZodType<Prisma.CounterActivityUpdateManyWithWhereWithoutUserInput> =
+    z.strictObject({
+        where: z.lazy(() => CounterActivityScalarWhereInputSchema),
+        data: z.union([
+            z.lazy(() => CounterActivityUpdateManyMutationInputSchema),
+            z.lazy(() => CounterActivityUncheckedUpdateManyWithoutUserInputSchema),
+        ]),
+    });
+
 export const CounterShareCreateManyCounterInputSchema: z.ZodType<Prisma.CounterShareCreateManyCounterInput> =
     z.strictObject({
         id: z.uuid().optional(),
@@ -6580,6 +8184,15 @@ export const CounterShareCreateManyCounterInputSchema: z.ZodType<Prisma.CounterS
         userId: z.string(),
         createdAt: z.coerce.date().optional(),
         updatedAt: z.coerce.date().optional(),
+    });
+
+export const CounterActivityCreateManyCounterInputSchema: z.ZodType<Prisma.CounterActivityCreateManyCounterInput> =
+    z.strictObject({
+        userId: z.string(),
+        amount: z
+            .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+            .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+        at: z.coerce.date().optional(),
     });
 
 export const CounterShareUpdateWithoutCounterInputSchema: z.ZodType<Prisma.CounterShareUpdateWithoutCounterInput> =
@@ -6613,6 +8226,66 @@ export const CounterShareUncheckedUpdateManyWithoutCounterInputSchema: z.ZodType
         userId: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
         createdAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
         updatedAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
+    });
+
+export const CounterActivityUpdateWithoutCounterInputSchema: z.ZodType<Prisma.CounterActivityUpdateWithoutCounterInput> =
+    z.strictObject({
+        amount: z
+            .union([
+                z
+                    .union([
+                        z.number(),
+                        z.string(),
+                        z.instanceof(Decimal),
+                        z.instanceof(Prisma.Decimal),
+                        DecimalJsLikeSchema,
+                    ])
+                    .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+                z.lazy(() => DecimalFieldUpdateOperationsInputSchema),
+            ])
+            .optional(),
+        at: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
+        user: z.lazy(() => UserUpdateOneRequiredWithoutCounterActivityNestedInputSchema).optional(),
+    });
+
+export const CounterActivityUncheckedUpdateWithoutCounterInputSchema: z.ZodType<Prisma.CounterActivityUncheckedUpdateWithoutCounterInput> =
+    z.strictObject({
+        userId: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+        amount: z
+            .union([
+                z
+                    .union([
+                        z.number(),
+                        z.string(),
+                        z.instanceof(Decimal),
+                        z.instanceof(Prisma.Decimal),
+                        DecimalJsLikeSchema,
+                    ])
+                    .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+                z.lazy(() => DecimalFieldUpdateOperationsInputSchema),
+            ])
+            .optional(),
+        at: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
+    });
+
+export const CounterActivityUncheckedUpdateManyWithoutCounterInputSchema: z.ZodType<Prisma.CounterActivityUncheckedUpdateManyWithoutCounterInput> =
+    z.strictObject({
+        userId: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+        amount: z
+            .union([
+                z
+                    .union([
+                        z.number(),
+                        z.string(),
+                        z.instanceof(Decimal),
+                        z.instanceof(Prisma.Decimal),
+                        DecimalJsLikeSchema,
+                    ])
+                    .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+                z.lazy(() => DecimalFieldUpdateOperationsInputSchema),
+            ])
+            .optional(),
+        at: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
     });
 
 export const CounterCreateManyOwnerInputSchema: z.ZodType<Prisma.CounterCreateManyOwnerInput> = z.strictObject({
@@ -6660,6 +8333,15 @@ export const EmailOtpCreateManyUserInputSchema: z.ZodType<Prisma.EmailOtpCreateM
     consumedAt: z.coerce.date().optional().nullable(),
     createdAt: z.coerce.date().optional(),
 });
+
+export const CounterActivityCreateManyUserInputSchema: z.ZodType<Prisma.CounterActivityCreateManyUserInput> =
+    z.strictObject({
+        counterId: z.string(),
+        amount: z
+            .union([z.number(), z.string(), z.instanceof(Decimal), z.instanceof(Prisma.Decimal), DecimalJsLikeSchema])
+            .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+        at: z.coerce.date().optional(),
+    });
 
 export const CounterUpdateWithoutOwnerInputSchema: z.ZodType<Prisma.CounterUpdateWithoutOwnerInput> = z.strictObject({
     id: z.union([z.uuid(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
@@ -6710,6 +8392,7 @@ export const CounterUpdateWithoutOwnerInputSchema: z.ZodType<Prisma.CounterUpdat
     createdAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
     updatedAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
     shares: z.lazy(() => CounterShareUpdateManyWithoutCounterNestedInputSchema).optional(),
+    activity: z.lazy(() => CounterActivityUpdateManyWithoutCounterNestedInputSchema).optional(),
 });
 
 export const CounterUncheckedUpdateWithoutOwnerInputSchema: z.ZodType<Prisma.CounterUncheckedUpdateWithoutOwnerInput> =
@@ -6762,6 +8445,7 @@ export const CounterUncheckedUpdateWithoutOwnerInputSchema: z.ZodType<Prisma.Cou
         createdAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
         updatedAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
         shares: z.lazy(() => CounterShareUncheckedUpdateManyWithoutCounterNestedInputSchema).optional(),
+        activity: z.lazy(() => CounterActivityUncheckedUpdateManyWithoutCounterNestedInputSchema).optional(),
     });
 
 export const CounterUncheckedUpdateManyWithoutOwnerInputSchema: z.ZodType<Prisma.CounterUncheckedUpdateManyWithoutOwnerInput> =
@@ -6949,6 +8633,66 @@ export const EmailOtpUncheckedUpdateManyWithoutUserInputSchema: z.ZodType<Prisma
         createdAt: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
     });
 
+export const CounterActivityUpdateWithoutUserInputSchema: z.ZodType<Prisma.CounterActivityUpdateWithoutUserInput> =
+    z.strictObject({
+        amount: z
+            .union([
+                z
+                    .union([
+                        z.number(),
+                        z.string(),
+                        z.instanceof(Decimal),
+                        z.instanceof(Prisma.Decimal),
+                        DecimalJsLikeSchema,
+                    ])
+                    .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+                z.lazy(() => DecimalFieldUpdateOperationsInputSchema),
+            ])
+            .optional(),
+        at: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
+        counter: z.lazy(() => CounterUpdateOneRequiredWithoutActivityNestedInputSchema).optional(),
+    });
+
+export const CounterActivityUncheckedUpdateWithoutUserInputSchema: z.ZodType<Prisma.CounterActivityUncheckedUpdateWithoutUserInput> =
+    z.strictObject({
+        counterId: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+        amount: z
+            .union([
+                z
+                    .union([
+                        z.number(),
+                        z.string(),
+                        z.instanceof(Decimal),
+                        z.instanceof(Prisma.Decimal),
+                        DecimalJsLikeSchema,
+                    ])
+                    .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+                z.lazy(() => DecimalFieldUpdateOperationsInputSchema),
+            ])
+            .optional(),
+        at: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
+    });
+
+export const CounterActivityUncheckedUpdateManyWithoutUserInputSchema: z.ZodType<Prisma.CounterActivityUncheckedUpdateManyWithoutUserInput> =
+    z.strictObject({
+        counterId: z.union([z.string(), z.lazy(() => StringFieldUpdateOperationsInputSchema)]).optional(),
+        amount: z
+            .union([
+                z
+                    .union([
+                        z.number(),
+                        z.string(),
+                        z.instanceof(Decimal),
+                        z.instanceof(Prisma.Decimal),
+                        DecimalJsLikeSchema,
+                    ])
+                    .refine((v) => isValidDecimalInput(v), { message: 'Must be a Decimal' }),
+                z.lazy(() => DecimalFieldUpdateOperationsInputSchema),
+            ])
+            .optional(),
+        at: z.union([z.coerce.date(), z.lazy(() => DateTimeFieldUpdateOperationsInputSchema)]).optional(),
+    });
+
 /////////////////////////////////////////
 // ARGS
 /////////////////////////////////////////
@@ -7036,6 +8780,113 @@ export const CounterFindUniqueOrThrowArgsSchema: z.ZodType<Prisma.CounterFindUni
         select: CounterSelectSchema.optional(),
         include: CounterIncludeSchema.optional(),
         where: CounterWhereUniqueInputSchema,
+    })
+    .strict();
+
+export const CounterActivityFindFirstArgsSchema: z.ZodType<Prisma.CounterActivityFindFirstArgs> = z
+    .object({
+        select: CounterActivitySelectSchema.optional(),
+        include: CounterActivityIncludeSchema.optional(),
+        where: CounterActivityWhereInputSchema.optional(),
+        orderBy: z
+            .union([
+                CounterActivityOrderByWithRelationInputSchema.array(),
+                CounterActivityOrderByWithRelationInputSchema,
+            ])
+            .optional(),
+        cursor: CounterActivityWhereUniqueInputSchema.optional(),
+        take: z.number().optional(),
+        skip: z.number().optional(),
+        distinct: z
+            .union([CounterActivityScalarFieldEnumSchema, CounterActivityScalarFieldEnumSchema.array()])
+            .optional(),
+    })
+    .strict();
+
+export const CounterActivityFindFirstOrThrowArgsSchema: z.ZodType<Prisma.CounterActivityFindFirstOrThrowArgs> = z
+    .object({
+        select: CounterActivitySelectSchema.optional(),
+        include: CounterActivityIncludeSchema.optional(),
+        where: CounterActivityWhereInputSchema.optional(),
+        orderBy: z
+            .union([
+                CounterActivityOrderByWithRelationInputSchema.array(),
+                CounterActivityOrderByWithRelationInputSchema,
+            ])
+            .optional(),
+        cursor: CounterActivityWhereUniqueInputSchema.optional(),
+        take: z.number().optional(),
+        skip: z.number().optional(),
+        distinct: z
+            .union([CounterActivityScalarFieldEnumSchema, CounterActivityScalarFieldEnumSchema.array()])
+            .optional(),
+    })
+    .strict();
+
+export const CounterActivityFindManyArgsSchema: z.ZodType<Prisma.CounterActivityFindManyArgs> = z
+    .object({
+        select: CounterActivitySelectSchema.optional(),
+        include: CounterActivityIncludeSchema.optional(),
+        where: CounterActivityWhereInputSchema.optional(),
+        orderBy: z
+            .union([
+                CounterActivityOrderByWithRelationInputSchema.array(),
+                CounterActivityOrderByWithRelationInputSchema,
+            ])
+            .optional(),
+        cursor: CounterActivityWhereUniqueInputSchema.optional(),
+        take: z.number().optional(),
+        skip: z.number().optional(),
+        distinct: z
+            .union([CounterActivityScalarFieldEnumSchema, CounterActivityScalarFieldEnumSchema.array()])
+            .optional(),
+    })
+    .strict();
+
+export const CounterActivityAggregateArgsSchema: z.ZodType<Prisma.CounterActivityAggregateArgs> = z
+    .object({
+        where: CounterActivityWhereInputSchema.optional(),
+        orderBy: z
+            .union([
+                CounterActivityOrderByWithRelationInputSchema.array(),
+                CounterActivityOrderByWithRelationInputSchema,
+            ])
+            .optional(),
+        cursor: CounterActivityWhereUniqueInputSchema.optional(),
+        take: z.number().optional(),
+        skip: z.number().optional(),
+    })
+    .strict();
+
+export const CounterActivityGroupByArgsSchema: z.ZodType<Prisma.CounterActivityGroupByArgs> = z
+    .object({
+        where: CounterActivityWhereInputSchema.optional(),
+        orderBy: z
+            .union([
+                CounterActivityOrderByWithAggregationInputSchema.array(),
+                CounterActivityOrderByWithAggregationInputSchema,
+            ])
+            .optional(),
+        by: CounterActivityScalarFieldEnumSchema.array(),
+        having: CounterActivityScalarWhereWithAggregatesInputSchema.optional(),
+        take: z.number().optional(),
+        skip: z.number().optional(),
+    })
+    .strict();
+
+export const CounterActivityFindUniqueArgsSchema: z.ZodType<Prisma.CounterActivityFindUniqueArgs> = z
+    .object({
+        select: CounterActivitySelectSchema.optional(),
+        include: CounterActivityIncludeSchema.optional(),
+        where: CounterActivityWhereUniqueInputSchema,
+    })
+    .strict();
+
+export const CounterActivityFindUniqueOrThrowArgsSchema: z.ZodType<Prisma.CounterActivityFindUniqueOrThrowArgs> = z
+    .object({
+        select: CounterActivitySelectSchema.optional(),
+        include: CounterActivityIncludeSchema.optional(),
+        where: CounterActivityWhereUniqueInputSchema,
     })
     .strict();
 
@@ -7629,6 +9480,78 @@ export const CounterUpdateManyAndReturnArgsSchema: z.ZodType<Prisma.CounterUpdat
 export const CounterDeleteManyArgsSchema: z.ZodType<Prisma.CounterDeleteManyArgs> = z
     .object({
         where: CounterWhereInputSchema.optional(),
+        limit: z.number().optional(),
+    })
+    .strict();
+
+export const CounterActivityCreateArgsSchema: z.ZodType<Prisma.CounterActivityCreateArgs> = z
+    .object({
+        select: CounterActivitySelectSchema.optional(),
+        include: CounterActivityIncludeSchema.optional(),
+        data: z.union([CounterActivityCreateInputSchema, CounterActivityUncheckedCreateInputSchema]),
+    })
+    .strict();
+
+export const CounterActivityUpsertArgsSchema: z.ZodType<Prisma.CounterActivityUpsertArgs> = z
+    .object({
+        select: CounterActivitySelectSchema.optional(),
+        include: CounterActivityIncludeSchema.optional(),
+        where: CounterActivityWhereUniqueInputSchema,
+        create: z.union([CounterActivityCreateInputSchema, CounterActivityUncheckedCreateInputSchema]),
+        update: z.union([CounterActivityUpdateInputSchema, CounterActivityUncheckedUpdateInputSchema]),
+    })
+    .strict();
+
+export const CounterActivityCreateManyArgsSchema: z.ZodType<Prisma.CounterActivityCreateManyArgs> = z
+    .object({
+        data: z.union([CounterActivityCreateManyInputSchema, CounterActivityCreateManyInputSchema.array()]),
+        skipDuplicates: z.boolean().optional(),
+    })
+    .strict();
+
+export const CounterActivityCreateManyAndReturnArgsSchema: z.ZodType<Prisma.CounterActivityCreateManyAndReturnArgs> = z
+    .object({
+        data: z.union([CounterActivityCreateManyInputSchema, CounterActivityCreateManyInputSchema.array()]),
+        skipDuplicates: z.boolean().optional(),
+    })
+    .strict();
+
+export const CounterActivityDeleteArgsSchema: z.ZodType<Prisma.CounterActivityDeleteArgs> = z
+    .object({
+        select: CounterActivitySelectSchema.optional(),
+        include: CounterActivityIncludeSchema.optional(),
+        where: CounterActivityWhereUniqueInputSchema,
+    })
+    .strict();
+
+export const CounterActivityUpdateArgsSchema: z.ZodType<Prisma.CounterActivityUpdateArgs> = z
+    .object({
+        select: CounterActivitySelectSchema.optional(),
+        include: CounterActivityIncludeSchema.optional(),
+        data: z.union([CounterActivityUpdateInputSchema, CounterActivityUncheckedUpdateInputSchema]),
+        where: CounterActivityWhereUniqueInputSchema,
+    })
+    .strict();
+
+export const CounterActivityUpdateManyArgsSchema: z.ZodType<Prisma.CounterActivityUpdateManyArgs> = z
+    .object({
+        data: z.union([CounterActivityUpdateManyMutationInputSchema, CounterActivityUncheckedUpdateManyInputSchema]),
+        where: CounterActivityWhereInputSchema.optional(),
+        limit: z.number().optional(),
+    })
+    .strict();
+
+export const CounterActivityUpdateManyAndReturnArgsSchema: z.ZodType<Prisma.CounterActivityUpdateManyAndReturnArgs> = z
+    .object({
+        data: z.union([CounterActivityUpdateManyMutationInputSchema, CounterActivityUncheckedUpdateManyInputSchema]),
+        where: CounterActivityWhereInputSchema.optional(),
+        limit: z.number().optional(),
+    })
+    .strict();
+
+export const CounterActivityDeleteManyArgsSchema: z.ZodType<Prisma.CounterActivityDeleteManyArgs> = z
+    .object({
+        where: CounterActivityWhereInputSchema.optional(),
         limit: z.number().optional(),
     })
     .strict();

@@ -8,6 +8,8 @@ import {
     join,
     removeShare,
     share,
+    members,
+    presence,
 } from '../controllers/counter.controller.js';
 import { jwt } from '../../middleware/auth.middleware.js';
 import { verifiedEmail } from '../../middleware/verified-email.middleware.js';
@@ -28,6 +30,8 @@ router.use(jwt);
 
 router.post('/', validate(createCounterSchema), post);
 router.get('/', getAllByUser);
+router.get('/presence', presence);
+router.get('/:counterId/members', validate(getCounterSchema), members);
 router.delete('/:counterId', validate(deleteCounterSchema), remove);
 router.put('/update/:counterId', validate(updateCounterSchema), put);
 

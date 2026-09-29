@@ -71,7 +71,13 @@ describe('Counter actions', () => {
             body: {
                 success: true,
                 data: {
-                    user: { id: counter.userId, email: 'premium@example.com', tier: 'PREMIUM', emailVerified: true },
+                    user: {
+                        id: counter.userId,
+                        username: 'premium_user',
+                        email: 'premium@example.com',
+                        tier: 'PREMIUM',
+                        emailVerified: true,
+                    },
                 },
             },
         });
@@ -159,6 +165,7 @@ describe('Counter actions', () => {
                         user: {
                             id: isOwner ? ownerId : memberId,
                             email: 'basic@example.com',
+                            username: 'basic_user',
                             tier: 'BASIC',
                             emailVerified: false,
                         },

@@ -9,6 +9,7 @@ import { CounterProvider } from '../contexts/counter-context';
 import { initSentry, withSentry } from '../infra/monitoring/sentry';
 import { SessionProvider, useSession } from '../contexts/session-context';
 import { Snackbar } from '../components/shared/snackbar';
+import { UsernameSetup } from '../components/auth/username-setup';
 
 initSentry();
 if (Platform.OS !== 'web') Appearance.setColorScheme('dark');
@@ -55,6 +56,7 @@ function Navigator() {
                     <Stack.Screen name='forgot-password' options={{ title: 'Tally | Reset Password' }} />
                 </Stack.Protected>
             </Stack>
+            {session.user && !session.user.username && <UsernameSetup key={session.user.id} />}
             <Snackbar message={session.notice} onDismiss={session.dismissNotice} />
         </>
     );

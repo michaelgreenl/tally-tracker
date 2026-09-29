@@ -29,6 +29,7 @@ type CounterCardProps = {
     onEdit: (counter: ClientCounter) => void;
     onEditIncrement: (counter: ClientCounter) => void;
     onEditCount: (counter: ClientCounter) => void;
+    onMembers: (counter: ClientCounter) => void;
     onIncrement: (counterId: string, amount: number) => void;
     onNotice: (message: string) => void;
     canReorder: boolean;
@@ -43,6 +44,7 @@ export function CounterCard({
     onEdit,
     onEditIncrement,
     onEditCount,
+    onMembers,
     onIncrement,
     onNotice,
     canReorder,
@@ -51,11 +53,15 @@ export function CounterCard({
 }: CounterCardProps) {
     const { isPremium, user } = useSession();
     const router = useRouter();
-    const { shareCounter, failedCounterIds } = useCounters();
+    const { shareCounter, failedCounterIds, onlineUserIds } = useCounters();
     const [sharing, setSharing] = useState(false);
     const increment = counter.increment ?? 1;
     const alreadyShared = Boolean(counter.inviteCode && counter.shares?.some((share) => share.status === 'ACCEPTED'));
     const canShare = isPremium || alreadyShared;
+    const otherMemberOnline = [
+        counter.userId,
+        ...(counter.shares ?? []).filter((share) => share.status === 'ACCEPTED').map((share) => share.userId),
+    ].some((id) => id !== user?.id && onlineUserIds.has(id));
 
     async function share() {
         if (!canShare || sharing) return;
@@ -163,14 +169,21 @@ export function CounterCard({
 
                         <View style={styles.footer}>
                             {counter.type === 'SHARED' && (
-                                <View accessible accessibilityLabel='Shared counter' accessibilityRole='image'>
+                                <Pressable
+                                    accessibilityRole='button'
+                                    accessibilityLabel={`Members of ${counter.title}${otherMemberOnline ? ', someone is online' : ''}`}
+                                    onPress={() => onMembers(counter)}
+                                    style={({ pressed }) => [styles.membersButton, pressed && styles.incrementPressed]}
+                                    testID={`counter-${counter.id}-members`}
+                                >
                                     <Svg
                                         aria-hidden
                                         width={20}
                                         height={20}
                                         viewBox='0 0 24 24'
                                         fill='none'
-                                        stroke={colors.muted}
+                                        stroke={otherMemberOnline ? colors.link : colors.muted}
+                                        testID={`counter-${counter.id}-presence`}
                                         strokeWidth={1.8}
                                         strokeLinecap='round'
                                         strokeLinejoin='round'
@@ -178,7 +191,7 @@ export function CounterCard({
                                         <Circle cx={9} cy={8} r={3} />
                                         <Path d='M3 20v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6M18 14a5 5 0 0 1 3 4v2' />
                                     </Svg>
-                                </View>
+                                </Pressable>
                             )}
                             <Pressable
                                 accessibilityLabel={`Change increment for ${counter.title}, currently ${increment}`}
@@ -269,6 +282,14 @@ const styles = StyleSheet.create({
         marginLeft: 'auto',
         minWidth: 48,
         minHeight: 48,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 10,
+    },
+    membersButton: {
+        minWidth: 48,
+        minHeight: 48,
+        marginLeft: -14,
         alignItems: 'center',
         justifyContent: 'center',
         borderRadius: 10,

@@ -2,7 +2,7 @@ import prisma from '../prisma.js';
 import { Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 
-import type { ShareStatusType, CounterTypeType as CounterType } from '@tally/core';
+import type { ShareStatusType, CounterTypeType as CounterType, CounterMember } from '@tally/core';
 
 type DbClient = typeof prisma | Prisma.TransactionClient;
 
@@ -139,6 +139,51 @@ export const getParticipants = async (counterId: string, db: DbClient = prisma) 
     const sharedIds = counter.shares.map((s) => s.userId);
 
     return [ownerId, ...sharedIds];
+};
+
+export const getSharedParticipantIds = async (userId: string) => {
+    const counters = await prisma.counter.findMany({
+        where: {
+            type: 'SHARED',
+            OR: [{ userId }, { shares: { some: { userId, status: 'ACCEPTED' } } }],
+        },
+        select: { userId: true, shares: { where: { status: 'ACCEPTED' }, select: { userId: true } } },
+    });
+    return [
+        ...new Set([
+            userId,
+            ...counters.flatMap((counter) => [counter.userId, ...counter.shares.map((share) => share.userId)]),
+        ]),
+    ];
+};
+
+export const getMembers = async (counterId: string, userId: string): Promise<CounterMember[] | null> => {
+    const counter = await prisma.counter.findFirst({
+        where: {
+            id: counterId,
+            type: 'SHARED',
+            OR: [{ userId }, { shares: { some: { userId, status: 'ACCEPTED' } } }],
+        },
+        select: {
+            owner: { select: { id: true, username: true } },
+            shares: {
+                where: { status: 'ACCEPTED' },
+                orderBy: { createdAt: 'asc' },
+                select: { user: { select: { id: true, username: true } } },
+            },
+            activity: true,
+        },
+    });
+    if (!counter) return null;
+    const actions = new Map(counter.activity.map((action) => [action.userId, action]));
+    return [counter.owner, ...counter.shares.map((share) => share.user)].map((member) => {
+        const action = actions.get(member.id);
+        return {
+            ...member,
+            isOwner: member.id === counter.owner.id,
+            lastAction: action ? { amount: Number(action.amount), at: action.at.toISOString() } : null,
+        };
+    });
 };
 
 export const put = async (

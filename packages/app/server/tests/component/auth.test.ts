@@ -26,6 +26,7 @@ vi.mock('../../src/middleware/auth.middleware', () => ({
 }));
 
 vi.mock('../../src/db/repositories/user.repository', () => ({
+    setUsername: vi.fn(),
     createUser: vi.fn(),
     getUserByEmail: vi.fn(),
     getUserById: vi.fn(),
@@ -38,6 +39,10 @@ vi.mock('../../src/db/repositories/email-otp.repository', () => ({
     issue: vi.fn(),
     verifyEmail: vi.fn(),
     resetPassword: vi.fn(),
+}));
+
+vi.mock('../../src/db/repositories/counter.repository', () => ({
+    getSharedParticipantIds: async () => [TEST_USER_ID],
 }));
 
 vi.mock('../../src/services/email-otp.service', () => ({
