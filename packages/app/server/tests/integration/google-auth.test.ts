@@ -44,6 +44,28 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllEnvs());
 
+it('finishes Google registration with a unique username and keeps it on later sign-ins', async () => {
+    const response = await google().expect(200);
+    const authorization = `Bearer ${response.body.data.accessToken}`;
+    expect(response.body.data.user.username).toBeNull();
+    await request(app).post('/users/username').set('Authorization', authorization).send({ username: 'ab' }).expect(422);
+    await request(app)
+        .post('/users/username')
+        .set('Authorization', authorization)
+        .send({ username: 'Google_user' })
+        .expect(200);
+    // A retry on another device cannot replace the completed choice.
+    await request(app)
+        .post('/users/username')
+        .set('Authorization', authorization)
+        .send({ username: 'Other_name' })
+        .expect(200);
+    expect((await google().expect(200)).body.data.user).toMatchObject({
+        id: response.body.data.user.id,
+        username: 'Google_user',
+    });
+});
+
 it('connects Google to the current account without replacing its email, counters, or session', async () => {
     const { user, accessToken } = await existingAccount();
     const counter = await prisma.counter.create({ data: { userId: user.id, title: 'Water' } });

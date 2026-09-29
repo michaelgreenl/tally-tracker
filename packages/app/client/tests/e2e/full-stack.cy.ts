@@ -13,18 +13,20 @@ describe('Expo full-stack counter journey', () => {
     it('persists a counter across sessions and deletes the account', () => {
         const suffix = `${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 8)}`;
         const email = `expo-cypress-${suffix}@example.com`;
+        const username = `counter_${suffix.replaceAll('-', '_')}`;
         const title = `Expo E2E ${suffix}`;
         let counterId = '';
 
         cy.intercept('POST', '**/users').as('registerUser');
         cy.visit('/register');
+        cy.get('[data-testid="auth-username"]').type(username);
         cy.get('[data-testid="auth-email"]').type(email);
         cy.get('[data-testid="auth-password"]').type(PASSWORD);
         cy.get('[data-testid="auth-confirm-password"]').type(PASSWORD);
         cy.get('[data-testid="auth-submit"]').click();
 
         cy.wait('@registerUser').then(({ request, response }) => {
-            expect(request.body).to.deep.equal({ email, password: PASSWORD });
+            expect(request.body).to.deep.equal({ email, password: PASSWORD, username });
             expect(response?.statusCode).to.eq(CREATED);
         });
         cy.location('pathname').should('eq', '/verify-email');
@@ -48,9 +50,9 @@ describe('Expo full-stack counter journey', () => {
         });
         cy.location('pathname').should('eq', '/home');
 
-        cy.get('[data-testid="username-input"]').type(`counter_${suffix.replaceAll('-', '_')}`);
-        cy.get('[data-testid="username-submit"]').click();
-        cy.get('[data-testid="username-setup"]').should('not.exist');
+        cy.get('[data-testid="home-settings-link"]').click();
+        cy.get('[data-testid="settings-username"]').should('contain.text', username);
+        cy.get('[data-testid="settings-back"]').click();
 
         cy.intercept('POST', '**/counters').as('createCounter');
         cy.get('[data-testid="add-counter-button"]').click();
@@ -129,7 +131,7 @@ describe('Expo full-stack counter journey', () => {
         cy.get('[data-testid="auth-submit"]').click();
         cy.wait('@loginUser').its('response.statusCode').should('eq', OK);
         cy.wait('@getCounters').its('response.statusCode').should('eq', OK);
-        cy.get('[data-testid="username-setup"]').should('not.exist');
+        cy.get('[data-testid="auth-username"]').should('not.exist');
 
         let refreshPhase = 'before-reload';
         cy.intercept('POST', '**/users/refresh', (request) => {

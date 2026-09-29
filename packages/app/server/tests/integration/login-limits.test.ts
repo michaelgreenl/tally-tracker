@@ -20,7 +20,10 @@ describe('Production login limits', () => {
     it('shares an account limit across casing and IPs, counts success, and permits login after expiry', async () => {
         const email = `limits.${randomUUID()}@example.com`;
         const password = 'New-password123';
-        await request(app).post('/users').send({ email, password }).expect(201);
+        await request(app)
+            .post('/users')
+            .send({ email, password, username: randomUUID().replaceAll('-', '') })
+            .expect(201);
         vi.stubEnv('NODE_ENV', 'production');
         for (let attempt = 1; attempt <= 9; attempt++) {
             await request(app)

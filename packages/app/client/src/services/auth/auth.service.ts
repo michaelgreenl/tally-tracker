@@ -10,6 +10,7 @@ import type { SessionScope } from '../session/session-scope';
 
 import type {
     AuthRequest,
+    RegisterRequest,
     AuthResponse,
     GoogleLoginRequest,
     AppleLoginRequest,
@@ -74,6 +75,15 @@ export const AuthService = {
         return apiFetch<AuthResponse, { username: string }>('/users/username', {
             method: 'POST',
             body: { username },
+        });
+    },
+
+    usernameAvailability(username: string, signal: AbortSignal) {
+        return apiFetch<ApiResponse<{ available: boolean }>, { username: string }>('/users/username/availability', {
+            method: 'POST',
+            body: { username },
+            requiresAuth: false,
+            signal,
         });
     },
 
@@ -161,8 +171,8 @@ export const AuthService = {
         }
     },
 
-    register(data: AuthRequest) {
-        return apiFetch<AuthResponse, AuthRequest>('/users', { method: 'POST', body: data, requiresAuth: false });
+    register(data: RegisterRequest) {
+        return apiFetch<AuthResponse, RegisterRequest>('/users', { method: 'POST', body: data, requiresAuth: false });
     },
 
     requestEmailVerification(data: EmailAddressRequest) {

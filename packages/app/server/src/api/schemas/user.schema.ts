@@ -8,6 +8,7 @@ export const createUserSchema = z.object({
         .object({
             email: emailSchema,
             password: passwordSchema,
+            username: usernameSchema,
         })
         .refine((data) => data.email, {
             message: 'Email is required to login',

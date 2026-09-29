@@ -41,21 +41,35 @@ const withCurrentTier = <T extends Pick<User, 'tier' | 'premiumExpiresAt' | 'bil
         ? { ...user, tier: 'BASIC' }
         : user;
 
-export const createUser = async ({ email, password }: { email: string; password: string }) =>
+// A fixed-size key keeps long usernames within PostgreSQL's unique-index limit.
+const usernameKey = (username: string) => createHash('sha256').update(username.toLowerCase()).digest('hex');
+
+export const isUsernameAvailable = async (username: string) =>
+    !(await prisma.user.findUnique({ where: { usernameKey: usernameKey(username) }, select: { id: true } }));
+
+export const createUser = async ({
+    email,
+    password,
+    username,
+}: {
+    email: string;
+    password: string;
+    username: string;
+}) =>
     prisma.user.create({
         data: {
             email,
             password,
+            username,
+            usernameKey: usernameKey(username),
         },
     });
 
 export const setUsername = (userId: string, username: string) =>
     withLockedUser(userId, async (user, tx) => {
         if (!user) return null;
-        // A fixed-size key keeps long usernames within PostgreSQL's unique-index limit.
-        const usernameKey = createHash('sha256').update(username.toLowerCase()).digest('hex');
         if (user.username) return user;
-        return tx.user.update({ where: { id: userId }, data: { username, usernameKey } });
+        return tx.user.update({ where: { id: userId }, data: { username, usernameKey: usernameKey(username) } });
     });
 
 export const deleteAccount = async (userId: string) =>

@@ -43,7 +43,7 @@ export function Dialog({
     children,
 }: DialogProps) {
     const { width } = useWindowDimensions();
-    const hasHeaderActions = Boolean(leadingAction || trailingAction);
+    const hasEditorActions = Boolean(leadingAction);
 
     return (
         <Modal animationType='fade' onRequestClose={onRequestClose} onShow={onShow} transparent visible={visible}>
@@ -53,27 +53,31 @@ export function Dialog({
                         accessibilityViewIsModal
                         style={[
                             styles.card,
-                            hasHeaderActions && styles.editorCard,
-                            hasHeaderActions && width >= 600 && styles.narrowCard,
+                            hasEditorActions && styles.editorCard,
+                            hasEditorActions && width >= 600 && styles.narrowCard,
                             contentGap !== undefined && { gap: contentGap },
                         ]}
                         testID={testID}
                     >
-                        <View style={{ gap: descriptionGap ?? (hasHeaderActions ? 4 : 16) }}>
-                            <View style={[styles.header, hasHeaderActions && styles.editorHeader]}>
+                        <View style={{ gap: descriptionGap ?? (hasEditorActions ? 4 : 16) }}>
+                            <View style={[styles.header, hasEditorActions && styles.editorHeader]}>
                                 {leadingAction && <View style={styles.headerAction}>{leadingAction}</View>}
                                 <Text
                                     accessibilityRole='header'
                                     aria-level={2}
-                                    style={[styles.title, hasHeaderActions && styles.centeredTitle]}
+                                    style={[styles.title, hasEditorActions && styles.centeredTitle]}
                                     testID={testID ? `${testID}-title` : undefined}
                                 >
                                     {title}
                                 </Text>
-                                {trailingAction && <View style={styles.headerAction}>{trailingAction}</View>}
+                                {trailingAction && (
+                                    <View style={hasEditorActions ? styles.headerAction : styles.closeAction}>
+                                        {trailingAction}
+                                    </View>
+                                )}
                             </View>
                             {description && (
-                                <MessageText style={[styles.description, hasHeaderActions && styles.editorDescription]}>
+                                <MessageText style={[styles.description, hasEditorActions && styles.editorDescription]}>
                                     {description}
                                 </MessageText>
                             )}
@@ -115,6 +119,7 @@ const styles = StyleSheet.create({
     editorCard: { gap: 12, padding: 16, paddingBottom: 32 },
     narrowCard: { width: '60%' },
     title: {
+        flex: 1,
         color: colors.text,
         fontSize: 22,
         fontWeight: '800',
@@ -122,6 +127,7 @@ const styles = StyleSheet.create({
     header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     editorHeader: { paddingTop: 24 },
     headerAction: { transform: [{ translateY: '-50%' }] },
+    closeAction: { alignSelf: 'flex-start' },
     centeredTitle: { flex: 1, fontSize: 24, fontWeight: '600', textAlign: 'center' },
     description: {
         color: colors.muted,

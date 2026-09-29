@@ -35,8 +35,8 @@ afterAll(async () => {
     await new Promise<void>((resolve) => io.close(() => resolve()));
 });
 
-async function account() {
-    const credentials = { email: `member-${randomUUID()}@example.com`, password: 'Member-password1' };
+async function account(username = randomUUID().replaceAll('-', '')) {
+    const credentials = { email: `member-${randomUUID()}@example.com`, password: 'Member-password1', username };
     await request(app).post('/users').send(credentials).expect(201);
     const login = await request(app).post('/users/login').send(credentials).expect(200);
     return {
@@ -46,66 +46,47 @@ async function account() {
     };
 }
 
-it('claims a case-insensitive username once under concurrent requests and returns it on later sign-ins', async () => {
-    const accounts = await Promise.all([account(), account()]);
-    const results = await Promise.all(
-        accounts.map((user, index) =>
-            request(app)
-                .post('/users/username')
-                .set('Authorization', user.authorization)
-                .send({ username: index ? 'aLeX_1' : 'Alex_1' }),
-        ),
-    );
-    expect(results.map((result) => result.status).sort()).toEqual([200, 409]);
-    const winner = accounts[results.findIndex((result) => result.status === 200)];
-    const username = results.find((result) => result.status === 200)!.body.data.user.username;
-    for (const response of [
-        await request(app).post('/users/login').send(winner.credentials).expect(200),
-        await request(app).get('/users/check-auth').set('Authorization', winner.authorization).expect(200),
-    ]) {
-        expect(response.body.data.user.username).toBe(username);
-        expect(response.body.data.user).not.toHaveProperty('usernameKey');
+it('checks availability before registration and rejects a concurrent case-insensitive claim', async () => {
+    const credentials = ['Alex_1', 'aLeX_1'].map((username) => ({
+        email: `signup-${randomUUID()}@example.com`,
+        password: 'Member-password1',
+        username,
+    }));
+    for (const { username } of credentials) {
+        const response = await request(app).post('/users/username/availability').send({ username }).expect(200);
+        expect(response.body.data).toEqual({ available: true });
     }
-    // Another device completing setup must not overwrite the first device's choice.
-    const retry = await request(app)
-        .post('/users/username')
-        .set('Authorization', winner.authorization)
-        .send({ username: 'Other_name' })
-        .expect(200);
-    expect(retry.body.data.user.username).toBe(username);
+    const results = await Promise.all(credentials.map((data) => request(app).post('/users').send(data)));
+    expect(results.map(({ status }) => status).sort()).toEqual([201, 409]);
+    const winner = credentials[results.findIndex(({ status }) => status === 201)];
+    const login = await request(app).post('/users/login').send(winner).expect(200);
+    expect(login.body.data.user.username).toBe(winner.username);
+    expect(login.body.data.user).not.toHaveProperty('usernameKey');
+    expect(await prisma.user.count({ where: { email: { in: credentials.map(({ email }) => email) } } })).toBe(1);
+    const response = await request(app).post('/users/username/availability').send({ username: 'ALEX_1' }).expect(200);
+    expect(response.body.data).toEqual({ available: false });
 });
 
-it('enforces the username boundary without imposing a short length limit', async () => {
-    const user = await account();
-    const claim = (username: string) =>
-        request(app).post('/users/username').set('Authorization', user.authorization).send({ username });
-    for (const username of ['ab', 'abc def', 'abc!', 'abc\nxyz']) await claim(username).expect(422);
-    expect(
-        (await request(app).get('/users/check-auth').set('Authorization', user.authorization)).body.data.user.username,
-    ).toBeNull();
-    const username = `abc${'def'.repeat(2000)}`;
-    expect((await claim(username).expect(200)).body.data.user.username).toBe(username);
-    const other = await account();
-    const minimum = await request(app)
-        .post('/users/username')
-        .set('Authorization', other.authorization)
-        .send({ username: 'abc' })
-        .expect(200);
-    expect(minimum.body.data.user.username).toBe('abc');
+it('requires a valid username at registration without imposing a short length limit', async () => {
+    const email = `boundary-${randomUUID()}@example.com`;
+    const password = 'Member-password1';
+    for (const username of [undefined, 'ab', 'abc def', 'abc!', 'abc\nxyz']) {
+        await request(app).post('/users').send({ email, password, username }).expect(422);
+        await request(app).post('/users/username/availability').send({ username }).expect(422);
+    }
+    expect(await prisma.user.findUnique({ where: { email } })).toBeNull();
+    for (const username of ['abc', `abc${'def'.repeat(2000)}`]) {
+        const user = await account(username);
+        const response = await request(app)
+            .get('/users/check-auth')
+            .set('Authorization', user.authorization)
+            .expect(200);
+        expect(response.body.data.user.username).toBe(username);
+    }
 });
 
 it('exposes only accepted members and their latest action on this counter, without replaying activity', async () => {
-    const [owner, member, outsider] = await Promise.all([account(), account(), account()]);
-    for (const [user, username] of [
-        [owner, 'Owner_name'],
-        [member, 'Member_name'],
-    ] as const) {
-        await request(app)
-            .post('/users/username')
-            .set('Authorization', user.authorization)
-            .send({ username })
-            .expect(200);
-    }
+    const [owner, member, outsider] = await Promise.all([account('Owner_name'), account('Member_name'), account()]);
     const counter = await prisma.counter.create({
         data: {
             title: 'Water',

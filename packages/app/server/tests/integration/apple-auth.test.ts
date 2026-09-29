@@ -50,6 +50,29 @@ beforeEach(() => {
     vi.mocked(revokeAppleToken).mockResolvedValue(undefined);
 });
 
+it('finishes Apple registration without a password and rejects a username claimed by another account', async () => {
+    await request(app)
+        .post('/users')
+        .send({ email: 'taken@example.com', password: 'Member-password1', username: 'Taken_name' })
+        .expect(201);
+    const response = await apple().expect(200);
+    const authorization = `Bearer ${response.body.data.accessToken}`;
+    await request(app)
+        .post('/users/username')
+        .set('Authorization', authorization)
+        .send({ username: 'TAKEN_NAME' })
+        .expect(409);
+    await request(app)
+        .post('/users/username')
+        .set('Authorization', authorization)
+        .send({ username: 'Apple_user' })
+        .expect(200);
+    expect((await apple().expect(200)).body.data.user).toMatchObject({
+        id: response.body.data.user.id,
+        username: 'Apple_user',
+    });
+});
+
 it('creates one account across concurrent sign-ins and recognizes it without another email claim', async () => {
     const [first, second] = await Promise.all([apple().expect(200), apple().expect(200)]);
     const { user, accessToken, refreshToken } = first.body.data;

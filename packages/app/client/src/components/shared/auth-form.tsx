@@ -8,39 +8,48 @@ import { unstable_styles as webStyles } from './auth-form.module.css';
 import type { LinkProps } from 'expo-router';
 import type { PressableProps, StyleProp, TextInputProps, TextProps, TextStyle } from 'react-native';
 
-export const FormField = forwardRef<TextInput, TextInputProps & { help?: string; label: string }>(function FormField(
-    { help, label, ...inputProps },
-    ref,
-) {
-    const [focused, setFocused] = useState(false);
+export const FormField = forwardRef<TextInput, TextInputProps & { help?: string; invalid?: boolean; label: string }>(
+    function FormField({ help, invalid, label, ...inputProps }, ref) {
+        const [focused, setFocused] = useState(false);
 
-    return (
-        <View style={styles.field}>
-            <Text style={styles.label}>{label}</Text>
-            <TextInput
-                {...inputProps}
-                accessibilityLabel={label}
-                onBlur={(event) => {
-                    setFocused(false);
-                    inputProps.onBlur?.(event);
-                }}
-                onFocus={(event) => {
-                    setFocused(true);
-                    inputProps.onFocus?.(event);
-                }}
-                placeholderTextColor={colors.muted}
-                ref={ref}
-                style={[
-                    styles.input,
-                    focused && styles.inputFocused,
-                    Platform.OS === 'web' && webStyles.textInput,
-                    inputProps.style,
-                ]}
-            />
-            {help && <Text style={styles.helpText}>{help}</Text>}
-        </View>
-    );
-});
+        return (
+            <View style={styles.field}>
+                <Text style={styles.label}>{label}</Text>
+                <TextInput
+                    {...inputProps}
+                    accessibilityLabel={label}
+                    accessibilityHint={help}
+                    aria-invalid={invalid}
+                    onBlur={(event) => {
+                        setFocused(false);
+                        inputProps.onBlur?.(event);
+                    }}
+                    onFocus={(event) => {
+                        setFocused(true);
+                        inputProps.onFocus?.(event);
+                    }}
+                    placeholderTextColor={colors.muted}
+                    ref={ref}
+                    style={[
+                        styles.input,
+                        focused && styles.inputFocused,
+                        Platform.OS === 'web' && webStyles.textInput,
+                        inputProps.style,
+                    ]}
+                />
+                {help && (
+                    <Text
+                        accessibilityLiveRegion='polite'
+                        testID={inputProps.testID && `${inputProps.testID}-help`}
+                        style={[styles.helpText, invalid && { color: colors.danger }]}
+                    >
+                        {help}
+                    </Text>
+                )}
+            </View>
+        );
+    },
+);
 
 type AuthLinkProps = Pick<PressableProps, 'accessibilityLabel' | 'hitSlop' | 'style' | 'testID'> &
     Pick<TextProps, 'allowFontScaling'> & {

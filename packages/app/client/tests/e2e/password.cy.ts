@@ -57,6 +57,12 @@ describe('New password requirements', () => {
             }).as('verifyCode');
 
             cy.visit(isRegister ? '/register' : '/forgot-password');
+            if (isRegister) {
+                cy.intercept('POST', '**/users/username/availability', {
+                    body: { success: true, data: { available: true } },
+                });
+                cy.get('[data-testid="auth-username"]').type('password_test');
+            }
             cy.get(`[data-testid="${prefix}-email"]`).type(email);
             if (!isRegister) {
                 cy.get('[data-testid="email-auth-request"]').click();
@@ -82,6 +88,7 @@ describe('New password requirements', () => {
                 .should('deep.equal', {
                     email,
                     password: validPassword,
+                    ...(isRegister && { username: 'password_test' }),
                     ...(!isRegister && { code: '123456' }),
                 });
             if (isRegister) cy.location('pathname').should('eq', '/verify-email');

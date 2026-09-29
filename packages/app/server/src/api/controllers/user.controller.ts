@@ -16,7 +16,7 @@ import { Prisma } from '@prisma/client';
 
 import type { Request, Response } from 'express';
 import type { ApiResponse, AuthResponse, ClientUser, SignInMethods } from '@tally/core';
-import type { AuthRequest, RefreshRequest } from '@tally/core';
+import type { AuthRequest, RegisterRequest, RefreshRequest } from '@tally/core';
 import type { User } from '@prisma/client';
 import type { Server } from 'socket.io';
 
@@ -31,6 +31,11 @@ const toClientUser = (user: Pick<User, 'id' | 'email' | 'username' | 'tier' | 'e
     tier: user.tier,
     emailVerified: Boolean(user.emailVerifiedAt),
 });
+
+export const usernameAvailability = async (req: Request, res: Response<ApiResponse<{ available: boolean }>>) => {
+    const available = await userRepository.isUsernameAvailable(req.body.username);
+    res.json({ success: true, data: { available } });
+};
 
 export const setUsername = async (req: Request, res: Response<AuthResponse>) => {
     try {
@@ -78,16 +83,16 @@ const sanitizeEmail = (email: string): string => {
 };
 
 export const post = async (
-    req: Request<Record<string, never>, AuthResponse, AuthRequest>,
+    req: Request<Record<string, never>, AuthResponse, RegisterRequest>,
     res: Response<AuthResponse>,
 ) => {
     try {
-        const { email, password } = req.body;
+        const { email, password, username } = req.body;
 
         const sanitizedEmail = sanitizeEmail(email);
 
         const hash = await hashPassword(password);
-        const user = await userRepository.createUser({ email: sanitizedEmail, password: hash });
+        const user = await userRepository.createUser({ email: sanitizedEmail, password: hash, username });
         void issueEmailOtp(user, 'EMAIL_VERIFICATION').catch((error: unknown) => {
             captureServerError(error, { req, source: 'user.post.emailVerification' });
         });
@@ -95,6 +100,9 @@ export const post = async (
         res.status(CREATED).json({ success: true });
     } catch (error: unknown) {
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+            if (!(await userRepository.isUsernameAvailable(req.body.username))) {
+                return res.status(CONFLICT).json({ success: false, message: 'That username is taken.' });
+            }
             // P2002 = unique constraint violation
             res.status(UNPROCESSABLE_ENTITY).json({
                 success: false,

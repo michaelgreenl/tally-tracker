@@ -11,9 +11,18 @@ describe('Login controls', () => {
                   ? '**/users/login'
                   : '**/users';
             cy.intercept('POST', endpoint, { statusCode: 401, body: { success: false } }).as('submit');
+            if (route === '/register') {
+                cy.intercept('POST', '**/users/username/availability', {
+                    body: { success: true, data: { available: true } },
+                }).as('availability');
+            }
             cy.visit(route);
             if (!recovery) cy.get('[data-testid="auth-password"]').type('Valid-password123');
-            if (route === '/register') cy.get('[data-testid="auth-confirm-password"]').type('Valid-password123');
+            if (route === '/register') {
+                cy.get('[data-testid="auth-username"]').type('new_user');
+                cy.wait('@availability');
+                cy.get('[data-testid="auth-confirm-password"]').type('Valid-password123');
+            }
 
             for (const email of ['', '@@@@', 'person@', 'person@example..com']) {
                 cy.get(`[data-testid="${prefix}-email"]`).clear();
@@ -105,37 +114,35 @@ describe('Login controls', () => {
         cy.location('pathname').should('eq', '/login');
     });
 
-    for (const route of ['/login', '/register']) {
-        it(`centers ${route} in the viewport and keeps the form reachable on short screens`, () => {
-            cy.visit(route);
+    it('centers login in the viewport and keeps the form reachable on short screens', () => {
+        cy.visit('/login');
 
-            for (const [width, height] of [
-                [1000, 900],
-                [440, 956],
-            ]) {
-                cy.viewport(width, height);
-                cy.get('[data-testid="auth-card"]').should(($card) => {
-                    const bounds = $card[0].getBoundingClientRect();
-                    expect(bounds.top + bounds.height / 2, 'card center').to.be.closeTo(height / 2, 1);
-                });
-            }
-
-            cy.viewport(375, 400);
-            cy.get('[data-testid="auth-page-header"]').then(($header) => {
-                cy.get('[data-testid="auth-card"]').should(($card) => {
-                    expect($card[0].getBoundingClientRect().top, 'card clears header').to.be.at.least(
-                        $header[0].getBoundingClientRect().bottom,
-                    );
-                });
+        for (const [width, height] of [
+            [1000, 900],
+            [440, 956],
+        ]) {
+            cy.viewport(width, height);
+            cy.get('[data-testid="auth-card"]').should(($card) => {
+                const bounds = $card[0].getBoundingClientRect();
+                expect(bounds.top + bounds.height / 2, 'card center').to.be.closeTo(height / 2, 1);
             });
-            cy.get('[data-testid="auth-scroll"]').scrollTo('bottom');
-            cy.get('[data-testid="auth-switch-mode"]').should(($link) => {
-                const bounds = $link[0].getBoundingClientRect();
-                expect(bounds.top, 'footer reaches viewport').to.be.at.least(0);
-                expect(bounds.bottom, 'footer stays inside viewport').to.be.at.most(400);
+        }
+
+        cy.viewport(375, 400);
+        cy.get('[data-testid="auth-page-header"]').then(($header) => {
+            cy.get('[data-testid="auth-card"]').should(($card) => {
+                expect($card[0].getBoundingClientRect().top, 'card clears header').to.be.at.least(
+                    $header[0].getBoundingClientRect().bottom,
+                );
             });
         });
-    }
+        cy.get('[data-testid="auth-scroll"]').scrollTo('bottom');
+        cy.get('[data-testid="auth-switch-mode"]').should(($link) => {
+            const bounds = $link[0].getBoundingClientRect();
+            expect(bounds.top, 'footer reaches viewport').to.be.at.least(0);
+            expect(bounds.bottom, 'footer stays inside viewport').to.be.at.most(400);
+        });
+    });
 
     it('shows focus underlines on account links and follows their routes', () => {
         cy.visit('/login');

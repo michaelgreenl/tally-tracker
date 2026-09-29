@@ -8,10 +8,17 @@ import { usePurchaseSync } from '../hooks/use-purchase-sync';
 import { restoreSession } from '../services/session/restore-session';
 import { assertSession, changeSession, getSessionScope } from '../services/session/session-scope';
 
-import type { AuthRequest, GoogleLoginRequest, AppleLoginRequest, ClientUser } from '@tally/core/client';
+import type {
+    AuthRequest,
+    RegisterRequest,
+    GoogleLoginRequest,
+    AppleLoginRequest,
+    ClientUser,
+} from '@tally/core/client';
 import type { PropsWithChildren } from 'react';
 
-type ActionResult = { success: true } | { success: false; message: string; code?: 'GOOGLE_LINK_REQUIRED' };
+type ActionResult =
+    { success: true } | { success: false; message: string; code?: 'GOOGLE_LINK_REQUIRED' | 'USERNAME_TAKEN' };
 
 type SessionContextValue = {
     sessionId: number;
@@ -20,7 +27,7 @@ type SessionContextValue = {
     isAuthenticated: boolean;
     isPremium: boolean;
     login: (request: AuthRequest | GoogleLoginRequest | AppleLoginRequest) => Promise<ActionResult>;
-    register: (request: AuthRequest) => Promise<ActionResult>;
+    register: (request: RegisterRequest) => Promise<ActionResult>;
     setUsername: (username: string) => Promise<ActionResult>;
     logout: (allDevices?: boolean) => Promise<ActionResult>;
     deleteAccount: () => Promise<ActionResult>;
@@ -155,13 +162,16 @@ export function SessionProvider({ children }: PropsWithChildren) {
         }
     }
 
-    async function register(request: AuthRequest): Promise<ActionResult> {
+    async function register(request: RegisterRequest): Promise<ActionResult> {
         if (!request.email) return fail('Registration requires email as input');
 
         try {
             const response = await AuthService.register(request);
             return response.success ? ok() : fail(response.message || 'Registration failed');
         } catch (error: unknown) {
+            if (error instanceof ApiError && error.status === 409) {
+                return { success: false, message: error.message, code: 'USERNAME_TAKEN' };
+            }
             return fail(getErrorMessage(error, 'Registration failed'));
         }
     }
@@ -192,6 +202,9 @@ export function SessionProvider({ children }: PropsWithChildren) {
             setUser(updated);
             return ok();
         } catch (error) {
+            if (error instanceof ApiError && error.status === 409) {
+                return { success: false, message: error.message, code: 'USERNAME_TAKEN' };
+            }
             return fail(getErrorMessage(error, 'Could not save username.'));
         }
     }

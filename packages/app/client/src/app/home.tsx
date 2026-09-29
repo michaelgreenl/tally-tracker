@@ -1,4 +1,4 @@
-import { Link, useRouter } from 'expo-router';
+import { Link, Redirect, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { useNetworkState } from 'expo-network';
 import { useState } from 'react';
@@ -11,7 +11,7 @@ import { CounterCard } from '../components/counters/counter-card';
 import { CounterForm } from '../components/counters/counter-form';
 import { CounterValueDialog } from '../components/counters/counter-value-dialog';
 import { CounterList } from '../components/counters/counter-list';
-import { CounterMembersSheet } from '../components/counters/counter-members-sheet';
+import { CounterMembersDialog } from '../components/counters/counter-members-dialog';
 import { Dialog } from '../components/shared/dialog';
 import { Snackbar } from '../components/shared/snackbar';
 import { SyncIndicator } from '../components/counters/sync-indicator';
@@ -45,6 +45,8 @@ export default function HomeScreen() {
     const [removing, setRemoving] = useState(false);
     const ownsCounterToRemove = counterToRemove?.userId === session.user?.id;
     const reordering = reorderDraft !== null;
+
+    if (session.user && !session.user.username) return <Redirect href='/register' />;
 
     function openCreateForm() {
         if (!session.isAuthenticated && counterState.eligibleCount >= GUEST_COUNTER_CAP) {
@@ -241,7 +243,7 @@ export default function HomeScreen() {
 
                 {valueToEdit && <CounterValueDialog {...valueToEdit} onClose={() => setValueToEdit(null)} />}
 
-                <CounterMembersSheet
+                <CounterMembersDialog
                     counter={counterState.counters.find((counter) => counter.id === membersCounterId)}
                     onClose={() => setMembersCounterId(null)}
                 />

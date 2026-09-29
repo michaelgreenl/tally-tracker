@@ -17,15 +17,16 @@ describe('Counter sync recovery', () => {
     beforeEach(() => {
         cy.clearCookies();
         cy.clearLocalStorage();
-        const credentials = { email: `sync-${crypto.randomUUID()}@example.com`, password: 'New-password123' };
+        const credentials = {
+            email: `sync-${crypto.randomUUID()}@example.com`,
+            password: 'New-password123',
+            username: `sync_${crypto.randomUUID().replaceAll('-', '')}`,
+        };
         cy.request('POST', '/users', credentials);
-        cy.request('POST', '/users/login', credentials);
-        cy.request('POST', '/users/username', { username: `sync_${crypto.randomUUID().replaceAll('-', '')}` }).then(
-            ({ body }) => {
-                user = body.data.user;
-                openAccount(user);
-            },
-        );
+        cy.request('POST', '/users/login', credentials).then(({ body }) => {
+            user = body.data.user;
+            openAccount(user);
+        });
     });
 
     afterEach(() => {

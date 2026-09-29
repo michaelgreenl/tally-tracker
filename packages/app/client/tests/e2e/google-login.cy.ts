@@ -88,12 +88,38 @@ describe('Google sign-in', () => {
         });
     });
 
-    it('allows Google registration without filling the password form', () => {
-        cy.intercept('POST', '**/users/google', { body: { success: true, data: { user } } }).as('googleLogin');
-        cy.visit('/register');
+    it('finishes a new Google account on sign-up without a password and preserves its invitation', () => {
+        let profile: typeof user | (Omit<typeof user, 'username'> & { username: null }) = { ...user, username: null };
+        cy.intercept('GET', '**/users/check-auth', (req) => req.reply({ success: true, data: { user: profile } }));
+        cy.intercept('POST', '**/users/google', (req) => req.reply({ success: true, data: { user: profile } })).as(
+            'googleLogin',
+        );
+        cy.intercept('POST', '**/users/username/availability', {
+            body: { success: true, data: { available: true } },
+        }).as('availability');
+        cy.intercept('POST', '**/users/username', (req) => {
+            profile = { ...user, username: req.body.username };
+            req.reply({ success: true, data: { user: profile } });
+        }).as('username');
+        cy.intercept('POST', '**/counters/join', { body: { success: false, message: 'Test invitation ended.' } }).as(
+            'join',
+        );
+        cy.visit('/login?inviteCode=test-invitation');
         cy.get('[data-testid="google-provider-button"]').click();
         cy.wait('@googleLogin');
+        cy.location('pathname').should('eq', '/register');
+        cy.location('search').should('include', 'inviteCode=test-invitation');
+        cy.get('[data-testid="auth-password"]').should('not.exist');
+        cy.get('[data-testid="auth-email"]').should('not.exist');
+        cy.reload();
+        cy.get('[data-testid="auth-username"]').type('Google_username');
+        cy.wait('@availability');
+        cy.get('[data-testid="auth-submit"]').click();
+        cy.wait('@username').its('request.body').should('deep.equal', { username: 'Google_username' });
+        cy.wait('@join').its('request.body').should('deep.equal', { inviteCode: 'test-invitation' });
         cy.location('pathname').should('eq', '/home');
+        cy.get('[data-testid="home-settings-link"]').click();
+        cy.get('[data-testid="settings-username"]').should('contain.text', 'Google_username');
     });
 
     it('connects Google from Settings without replacing the signed-in account', () => {
@@ -150,7 +176,7 @@ describe('Google sign-in', () => {
         cy.intercept('POST', '**/users/google', { body: { success: true, data: { user } } }).as('googleLogin');
         cy.visit('/login');
         cy.get('[data-testid="auth-switch-mode"]').click();
-        cy.get('[data-testid="google-provider-button"]').should('be.visible');
+        cy.get('[data-testid="google-provider-button"]').scrollIntoView().should('be.visible');
         cy.get('[data-testid="auth-register-back"]').click();
         cy.location('pathname').should('eq', '/login');
         cy.get('[data-testid="google-provider-button"]').should('have.length', 1).click();

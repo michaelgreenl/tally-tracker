@@ -25,9 +25,9 @@ function Section({ title, children }: PropsWithChildren<{ title: string }>) {
     );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({ label, value, testID }: { label: string; value: string; testID?: string }) {
     return (
-        <View style={styles.row}>
+        <View style={styles.row} testID={testID}>
             <Text style={styles.rowLabel}>{label}</Text>
             <Text style={styles.rowValue}>{value}</Text>
         </View>
@@ -81,6 +81,11 @@ export default function SettingsScreen() {
                         <Section title='Account'>
                             {session.isAuthenticated ? (
                                 <>
+                                    <Row
+                                        label='Username'
+                                        value={session.user?.username || 'Not set'}
+                                        testID='settings-username'
+                                    />
                                     <Row label='Email' value={session.user?.email || 'Unknown account'} />
                                     <Row label='Tier' value={session.isPremium ? 'Premium' : 'Basic'} />
                                     <SignInMethods

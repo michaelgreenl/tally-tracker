@@ -9,13 +9,13 @@ for (const allDevices of [false, true]) {
             email: `logout-choice-${crypto.randomUUID()}@example.com`,
             password: 'Abcdef12',
             rememberMe: true,
+            username: `logout_${crypto.randomUUID().replaceAll('-', '')}`,
         };
         let otherDeviceToken: string;
         cy.request('POST', '/users', account);
         cy.request('POST', '/users/login', account).then(({ body }) => {
             otherDeviceToken = body.data.accessToken;
         });
-        cy.request('POST', '/users/username', { username: `logout_${crypto.randomUUID().replaceAll('-', '')}` });
         cy.request('POST', '/users/login', account).then(({ body }) => {
             cy.visit('/settings', {
                 onBeforeLoad: (win) => win.localStorage.setItem('auth_user_profile', JSON.stringify(body.data.user)),
@@ -53,13 +53,13 @@ for (const action of ['logout', 'deletion'] as const) {
         const credentials = (name: string) => ({
             email: `${name}-${crypto.randomUUID()}@example.com`,
             password: 'New-password123',
+            username: `session_${crypto.randomUUID().replaceAll('-', '')}`,
         });
         const a = credentials('logout-a');
         const b = credentials('login-b');
         cy.request('POST', '/users', a);
         cy.request('POST', '/users', b);
         cy.request('POST', '/users/login', a).then(({ body }) => {
-            cy.request('POST', '/users/username', { username: `session_${crypto.randomUUID().replaceAll('-', '')}` });
             cy.visit('/settings', {
                 onBeforeLoad: (win) => win.localStorage.setItem('auth_user_profile', JSON.stringify(body.data.user)),
             });
@@ -128,10 +128,10 @@ it('refreshes expired access before deleting an account without holding its own 
         email: `delete-${crypto.randomUUID()}@example.com`,
         password: 'New-password123',
         rememberMe: true,
+        username: `delete_${crypto.randomUUID().replaceAll('-', '')}`,
     };
-    cy.request('POST', '/users', { email: account.email, password: account.password });
+    cy.request('POST', '/users', account);
     cy.request('POST', '/users/login', account).then(({ body }) => {
-        cy.request('POST', '/users/username', { username: `delete_${crypto.randomUUID().replaceAll('-', '')}` });
         cy.visit('/settings', {
             onBeforeLoad: (win) => win.localStorage.setItem('auth_user_profile', JSON.stringify(body.data.user)),
         });

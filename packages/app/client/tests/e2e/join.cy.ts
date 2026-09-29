@@ -42,9 +42,14 @@ describe('Shared counter invitations', () => {
 
                 if (flow === 'register') {
                     cy.intercept('POST', '**/users', { statusCode: 201, body: { success: true } });
+                    cy.intercept('POST', '**/users/username/availability', {
+                        body: { success: true, data: { available: true } },
+                    }).as('availability');
                     cy.intercept('POST', '**/users/verify-email', { body: { success: true } });
                     cy.get('[data-testid="auth-switch-mode"]').click();
                     cy.location('pathname').should('eq', '/register');
+                    cy.get('[data-testid="auth-username"]').type(user.username);
+                    cy.wait('@availability');
                     cy.get('[data-testid="auth-email"]').filter(':visible').type('recipient@example.com');
                     cy.get('[data-testid="auth-password"]').filter(':visible').type('New-password123');
                     cy.get('[data-testid="auth-confirm-password"]').type('New-password123');

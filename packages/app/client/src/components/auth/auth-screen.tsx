@@ -1,7 +1,13 @@
-import { emailSchema, loginPasswordSchema, PASSWORD_REQUIREMENTS, passwordSchema } from '@tally/core/client';
+import {
+    emailSchema,
+    loginPasswordSchema,
+    PASSWORD_REQUIREMENTS,
+    passwordSchema,
+    usernameSchema,
+} from '@tally/core/client';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
-import { Fragment, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     KeyboardAvoidingView,
@@ -17,6 +23,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { colors } from '../../theme/colors';
 import { useSession } from '../../contexts/session-context';
+import { AuthService } from '../../services/auth/auth.service';
 import { unstable_styles as webStyles } from '../shared/auth-form.module.css';
 import { AuthLink, FormField, styles as formStyles } from '../shared/auth-form';
 import { BackButton } from '../shared/back-button';
@@ -45,9 +52,22 @@ export function AuthScreen({ mode }: AuthScreenProps) {
     const insets = useSafeAreaInsets();
     const [headerHeight, setHeaderHeight] = useState(0);
     const isLogin = mode === 'login';
+    const completingRegistration = !isLogin && Boolean(session.user);
+    const emailInputRef = useRef<TextInput>(null);
+    const usernameInputRef = useRef<TextInput>(null);
     const passwordInputRef = useRef<TextInput>(null);
     const confirmPasswordInputRef = useRef<TextInput>(null);
     const [email, setEmail] = useState(emailParameter);
+    const [username, setUsername] = useState('');
+    const [availability, setAvailability] = useState<{
+        username: string;
+        available?: boolean;
+        failed?: boolean;
+    } | null>(null);
+    const parsedUsername = usernameSchema.safeParse(username);
+    const currentAvailability = availability?.username === username ? availability : null;
+    const usernamePending = !isLogin && parsedUsername.success && !currentAvailability;
+    const usernameTaken = currentAvailability?.available === false;
     const [previousEmailParameter, setPreviousEmailParameter] = useState(emailParameter);
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -60,6 +80,37 @@ export function AuthScreen({ mode }: AuthScreenProps) {
     const loading = passwordLoading || googleLoading || appleLoading;
     const [errorMessage, setErrorMessage] = useState('');
 
+    useEffect(() => {
+        if (isLogin || !usernameSchema.safeParse(username).success) return;
+        const controller = new AbortController();
+        const timer = setTimeout(async () => {
+            try {
+                const response = await AuthService.usernameAvailability(username, controller.signal);
+                if (!response.success || !response.data) throw new Error('Availability check failed');
+                if (!controller.signal.aborted) setAvailability({ username, available: response.data.available });
+            } catch {
+                if (!controller.signal.aborted) setAvailability({ username, failed: true });
+            }
+        }, 350);
+        return () => {
+            clearTimeout(timer);
+            controller.abort();
+        };
+    }, [isLogin, username]);
+
+    const usernameHelp = !username
+        ? undefined
+        : !parsedUsername.success
+          ? parsedUsername.error.issues[0].message
+          : usernamePending
+            ? 'Checking availability…'
+            : usernameTaken
+              ? 'That username is taken.'
+              : currentAvailability?.failed
+                ? 'Could not check availability.'
+                : 'Username available';
+    const submitDisabled = loading || usernamePending || usernameTaken;
+
     if (emailParameter !== previousEmailParameter) {
         setPreviousEmailParameter(emailParameter);
         setEmail(emailParameter);
@@ -69,7 +120,25 @@ export function AuthScreen({ mode }: AuthScreenProps) {
     }
 
     async function submit() {
-        if (loading) return;
+        if (submitDisabled) return;
+        if (!isLogin && !parsedUsername.success) {
+            setErrorMessage(parsedUsername.error.issues[0].message);
+            usernameInputRef.current?.focus();
+            return;
+        }
+        if (completingRegistration) {
+            setPasswordLoading(true);
+            setErrorMessage('');
+            const result = await session.setUsername(username);
+            setPasswordLoading(false);
+            if (!result.success) {
+                if (result.code === 'USERNAME_TAKEN') setAvailability({ username, available: false });
+                setErrorMessage(result.message);
+                return;
+            }
+            router.replace(inviteCode ? { pathname: '/join', params: { code: inviteCode } } : '/home');
+            return;
+        }
         const emailResult = emailSchema.safeParse(email);
         if (!emailResult.success) {
             setErrorMessage(emailResult.error.issues[0].message);
@@ -92,10 +161,11 @@ export function AuthScreen({ mode }: AuthScreenProps) {
 
         const result = isLogin
             ? await session.login({ email: emailResult.data, password, rememberMe })
-            : await session.register({ email: emailResult.data, password });
+            : await session.register({ email: emailResult.data, password, username });
 
         setPasswordLoading(false);
         if (!result.success) {
+            if (result.code === 'USERNAME_TAKEN') setAvailability({ username, available: false });
             setErrorMessage(result.message);
             return;
         }
@@ -120,11 +190,13 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                 >
                     <BackButton
                         onPress={() =>
-                            router.canGoBack()
-                                ? router.back()
-                                : router.replace(
-                                      isLogin ? '/home' : { pathname: '/login', params: { email, inviteCode } },
-                                  )
+                            completingRegistration
+                                ? void session.logout()
+                                : router.canGoBack()
+                                  ? router.back()
+                                  : router.replace(
+                                        isLogin ? '/home' : { pathname: '/login', params: { email, inviteCode } },
+                                    )
                         }
                         testID={`auth-${mode}-back`}
                     />
@@ -138,13 +210,15 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                         contentContainerStyle={[
                             styles.scrollContent,
                             // Balance the header and safe areas to center in the viewport, not below the header.
-                            {
-                                paddingBottom:
-                                    formStyles.scrollContent.paddingVertical +
-                                    headerHeight +
-                                    insets.top -
-                                    insets.bottom,
-                            },
+                            isLogin
+                                ? {
+                                      paddingBottom:
+                                          formStyles.scrollContent.paddingVertical +
+                                          headerHeight +
+                                          insets.top -
+                                          insets.bottom,
+                                  }
+                                : styles.registerContent,
                         ]}
                         keyboardDismissMode={Platform.select({
                             ios: 'interactive',
@@ -174,111 +248,148 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                     <Text accessibilityRole='header' aria-level={2} style={styles.title}>
                                         Create Account
                                     </Text>
-                                    <MessageText style={styles.subtitle}>Get started with Tally</MessageText>
+                                    {!completingRegistration && (
+                                        <MessageText style={styles.subtitle}>Get started with Tally</MessageText>
+                                    )}
                                 </View>
                             )}
-
-                            <FormField
-                                autoCapitalize='none'
-                                autoComplete='email'
-                                editable={!loading}
-                                keyboardType='email-address'
-                                label='Email Address'
-                                onChangeText={setEmail}
-                                onSubmitEditing={() => passwordInputRef.current?.focus()}
-                                placeholder='name@example.com'
-                                returnKeyType='next'
-                                testID='auth-email'
-                                textContentType='emailAddress'
-                                value={email}
-                            />
-
-                            <View style={[styles.field, isLogin && styles.loginPasswordField]}>
-                                <Text style={styles.label}>Password</Text>
-                                <View
-                                    testID='auth-password-field'
-                                    style={[
-                                        styles.passwordInput,
-                                        passwordFocused && styles.inputFocused,
-                                        loading && styles.inputDisabled,
-                                    ]}
-                                >
-                                    <TextInput
-                                        accessibilityLabel='Password'
-                                        autoCapitalize='none'
-                                        autoComplete={isLogin ? 'current-password' : 'new-password'}
-                                        editable={!loading}
-                                        onBlur={() => setPasswordFocused(false)}
-                                        onChangeText={setPassword}
-                                        onFocus={() => setPasswordFocused(true)}
-                                        onSubmitEditing={() => {
-                                            if (isLogin) void submit();
-                                            else confirmPasswordInputRef.current?.focus();
-                                        }}
-                                        placeholderTextColor={colors.muted}
-                                        ref={passwordInputRef}
-                                        returnKeyType={isLogin ? 'done' : 'next'}
-                                        secureTextEntry={!showPassword}
-                                        style={[styles.passwordTextInput, Platform.OS === 'web' && webStyles.textInput]}
-                                        testID='auth-password'
-                                        textContentType={isLogin ? 'password' : 'newPassword'}
-                                        value={password}
-                                    />
-                                    <Pressable
-                                        accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
-                                        accessibilityRole='button'
-                                        hitSlop={8}
-                                        onPress={() => setShowPassword((visible) => !visible)}
-                                        style={({ pressed }) => pressed && styles.linkPressed}
-                                    >
-                                        <Text style={styles.passwordToggle}>{showPassword ? 'Hide' : 'Show'}</Text>
-                                    </Pressable>
-                                </View>
-                                {!isLogin && <Text style={styles.helpText}>{PASSWORD_REQUIREMENTS}</Text>}
-                            </View>
 
                             {!isLogin && (
                                 <FormField
+                                    label='Username'
                                     autoCapitalize='none'
-                                    autoComplete='new-password'
+                                    autoCorrect={false}
+                                    autoComplete='username-new'
+                                    textContentType='username'
                                     editable={!loading}
-                                    label='Confirm Password'
-                                    onChangeText={setConfirmPassword}
-                                    onSubmitEditing={() => void submit()}
-                                    ref={confirmPasswordInputRef}
-                                    returnKeyType='done'
-                                    secureTextEntry
-                                    testID='auth-confirm-password'
-                                    textContentType='newPassword'
-                                    value={confirmPassword}
+                                    value={username}
+                                    onChangeText={(value) => {
+                                        setUsername(value);
+                                        setAvailability(null);
+                                        setErrorMessage('');
+                                    }}
+                                    ref={usernameInputRef}
+                                    returnKeyType={completingRegistration ? 'done' : 'next'}
+                                    onSubmitEditing={() =>
+                                        completingRegistration ? void submit() : emailInputRef.current?.focus()
+                                    }
+                                    invalid={Boolean(username) && (!parsedUsername.success || usernameTaken)}
+                                    help={usernameHelp}
+                                    testID='auth-username'
                                 />
                             )}
 
-                            {isLogin && (
-                                <View style={styles.loginOptions}>
-                                    {Platform.OS === 'web' && (
-                                        <View style={styles.rememberControl}>
-                                            <Checkbox
-                                                label='Remember me'
-                                                value={rememberMe}
-                                                testID='auth-remember-me'
-                                                disabled={loading}
-                                                onValueChange={setRememberMe}
+                            {!completingRegistration && (
+                                <>
+                                    <FormField
+                                        autoCapitalize='none'
+                                        autoComplete='email'
+                                        editable={!loading}
+                                        keyboardType='email-address'
+                                        label='Email Address'
+                                        onChangeText={setEmail}
+                                        onSubmitEditing={() => passwordInputRef.current?.focus()}
+                                        placeholder='name@example.com'
+                                        returnKeyType='next'
+                                        testID='auth-email'
+                                        textContentType='emailAddress'
+                                        value={email}
+                                        ref={emailInputRef}
+                                    />
+
+                                    <View style={[styles.field, isLogin && styles.loginPasswordField]}>
+                                        <Text style={styles.label}>Password</Text>
+                                        <View
+                                            testID='auth-password-field'
+                                            style={[
+                                                styles.passwordInput,
+                                                passwordFocused && styles.inputFocused,
+                                                loading && styles.inputDisabled,
+                                            ]}
+                                        >
+                                            <TextInput
+                                                accessibilityLabel='Password'
+                                                autoCapitalize='none'
+                                                autoComplete={isLogin ? 'current-password' : 'new-password'}
+                                                editable={!loading}
+                                                onBlur={() => setPasswordFocused(false)}
+                                                onChangeText={setPassword}
+                                                onFocus={() => setPasswordFocused(true)}
+                                                onSubmitEditing={() => {
+                                                    if (isLogin) void submit();
+                                                    else confirmPasswordInputRef.current?.focus();
+                                                }}
+                                                placeholderTextColor={colors.muted}
+                                                ref={passwordInputRef}
+                                                returnKeyType={isLogin ? 'done' : 'next'}
+                                                secureTextEntry={!showPassword}
+                                                style={[
+                                                    styles.passwordTextInput,
+                                                    Platform.OS === 'web' && webStyles.textInput,
+                                                ]}
+                                                testID='auth-password'
+                                                textContentType={isLogin ? 'password' : 'newPassword'}
+                                                value={password}
                                             />
-                                            <Text style={styles.rememberLabel} testID='auth-remember-me-label'>
-                                                Remember me
-                                            </Text>
+                                            <Pressable
+                                                accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                                                accessibilityRole='button'
+                                                hitSlop={8}
+                                                onPress={() => setShowPassword((visible) => !visible)}
+                                                style={({ pressed }) => pressed && styles.linkPressed}
+                                            >
+                                                <Text style={styles.passwordToggle}>
+                                                    {showPassword ? 'Hide' : 'Show'}
+                                                </Text>
+                                            </Pressable>
+                                        </View>
+                                        {!isLogin && <Text style={styles.helpText}>{PASSWORD_REQUIREMENTS}</Text>}
+                                    </View>
+
+                                    {!isLogin && (
+                                        <FormField
+                                            autoCapitalize='none'
+                                            autoComplete='new-password'
+                                            editable={!loading}
+                                            label='Confirm Password'
+                                            onChangeText={setConfirmPassword}
+                                            onSubmitEditing={() => void submit()}
+                                            ref={confirmPasswordInputRef}
+                                            returnKeyType='done'
+                                            secureTextEntry
+                                            testID='auth-confirm-password'
+                                            textContentType='newPassword'
+                                            value={confirmPassword}
+                                        />
+                                    )}
+
+                                    {isLogin && (
+                                        <View style={styles.loginOptions}>
+                                            {Platform.OS === 'web' && (
+                                                <View style={styles.rememberControl}>
+                                                    <Checkbox
+                                                        label='Remember me'
+                                                        value={rememberMe}
+                                                        testID='auth-remember-me'
+                                                        disabled={loading}
+                                                        onValueChange={setRememberMe}
+                                                    />
+                                                    <Text style={styles.rememberLabel} testID='auth-remember-me-label'>
+                                                        Remember me
+                                                    </Text>
+                                                </View>
+                                            )}
+                                            <AuthLink
+                                                href={{ pathname: '/forgot-password', params: { email, inviteCode } }}
+                                                style={styles.forgotPassword}
+                                                textStyle={styles.loginOptionLink}
+                                                testID='auth-forgot-password'
+                                            >
+                                                Forgot password?
+                                            </AuthLink>
                                         </View>
                                     )}
-                                    <AuthLink
-                                        href={{ pathname: '/forgot-password', params: { email, inviteCode } }}
-                                        style={styles.forgotPassword}
-                                        textStyle={styles.loginOptionLink}
-                                        testID='auth-forgot-password'
-                                    >
-                                        Forgot password?
-                                    </AuthLink>
-                                </View>
+                                </>
                             )}
 
                             {Boolean(errorMessage) && (
@@ -296,68 +407,90 @@ export function AuthScreen({ mode }: AuthScreenProps) {
 
                             <Pressable
                                 accessibilityRole='button'
-                                accessibilityState={{ disabled: loading, busy: passwordLoading }}
-                                disabled={loading}
+                                accessibilityState={{ disabled: submitDisabled, busy: passwordLoading }}
+                                disabled={submitDisabled}
                                 onPress={() => void submit()}
                                 style={({ pressed }) => [
                                     styles.primaryButton,
                                     pressed && styles.primaryButtonPressed,
-                                    loading && styles.primaryButtonDisabled,
+                                    submitDisabled && styles.primaryButtonDisabled,
                                 ]}
                                 testID='auth-submit'
                             >
                                 {passwordLoading ? (
                                     <ActivityIndicator color={colors.onPrimary} testID='auth-submit-loading' />
                                 ) : (
-                                    <Text style={styles.primaryButtonText}>{isLogin ? 'Login' : 'Register'}</Text>
+                                    <Text style={styles.primaryButtonText}>
+                                        {isLogin ? 'Login' : completingRegistration ? 'Finish sign up' : 'Register'}
+                                    </Text>
                                 )}
                             </Pressable>
 
-                            <GoogleSignIn
-                                disabled={loading}
-                                busy={googleLoading}
-                                rememberMe={rememberMe}
-                                onBusyChange={setGoogleLoading}
-                                onError={setErrorMessage}
-                                onSuccess={() =>
-                                    router.replace(
-                                        inviteCode ? { pathname: '/join', params: { code: inviteCode } } : '/home',
-                                    )
-                                }
-                            />
+                            {!completingRegistration && (
+                                <>
+                                    <GoogleSignIn
+                                        disabled={loading}
+                                        busy={googleLoading}
+                                        rememberMe={rememberMe}
+                                        onBusyChange={setGoogleLoading}
+                                        onError={setErrorMessage}
+                                        onSuccess={() =>
+                                            router.replace(
+                                                inviteCode
+                                                    ? { pathname: '/join', params: { code: inviteCode } }
+                                                    : '/home',
+                                            )
+                                        }
+                                    />
 
-                            <AppleSignIn
-                                disabled={loading}
-                                rememberMe={rememberMe}
-                                onBusyChange={setAppleLoading}
-                                onError={setErrorMessage}
-                                onSuccess={() =>
-                                    router.replace(
-                                        inviteCode ? { pathname: '/join', params: { code: inviteCode } } : '/home',
-                                    )
-                                }
-                            />
+                                    <AppleSignIn
+                                        disabled={loading}
+                                        rememberMe={rememberMe}
+                                        onBusyChange={setAppleLoading}
+                                        onError={setErrorMessage}
+                                        onSuccess={() =>
+                                            router.replace(
+                                                inviteCode
+                                                    ? { pathname: '/join', params: { code: inviteCode } }
+                                                    : '/home',
+                                            )
+                                        }
+                                    />
+                                </>
+                            )}
 
                             <View style={styles.footer}>
-                                <View style={styles.signupRow}>
-                                    <Text style={styles.rememberLabel}>
-                                        {isLogin ? "Don't have an account?" : 'Already have an account?'}
-                                    </Text>
-                                    <AuthLink
-                                        href={{
-                                            pathname: isLogin ? '/register' : '/login',
-                                            params: { email, inviteCode },
-                                        }}
-                                        hitSlop={8}
-                                        testID='auth-switch-mode'
+                                {completingRegistration ? (
+                                    <Pressable
+                                        accessibilityRole='button'
+                                        onPress={() => void session.logout()}
+                                        disabled={loading}
+                                        testID='auth-registration-logout'
                                     >
-                                        {isLogin ? 'Sign up' : 'Sign in'}
-                                    </AuthLink>
-                                </View>
+                                        <Text style={styles.link}>Log out</Text>
+                                    </Pressable>
+                                ) : (
+                                    <View style={styles.signupRow}>
+                                        <Text style={styles.rememberLabel}>
+                                            {isLogin ? "Don't have an account?" : 'Already have an account?'}
+                                        </Text>
+                                        <AuthLink
+                                            href={{
+                                                pathname: isLogin ? '/register' : '/login',
+                                                params: { email, inviteCode },
+                                            }}
+                                            hitSlop={8}
+                                            testID='auth-switch-mode'
+                                        >
+                                            {isLogin ? 'Sign up' : 'Sign in'}
+                                        </AuthLink>
+                                    </View>
+                                )}
                                 <View
                                     accessibilityLabel='Legal links'
                                     accessibilityRole='summary'
                                     style={styles.legalLinks}
+                                    testID='auth-legal-links'
                                 >
                                     {legalLinks.map((link, index) => (
                                         <Fragment key={link.document}>
@@ -402,6 +535,10 @@ const styles = StyleSheet.create({
     scrollContent: {
         ...formStyles.scrollContent,
         justifyContent: 'center',
+    },
+    registerContent: {
+        justifyContent: 'flex-start',
+        paddingTop: 12,
     },
     brand: {
         fontSize: 28,

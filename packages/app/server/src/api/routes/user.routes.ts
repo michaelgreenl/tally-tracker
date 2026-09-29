@@ -8,6 +8,7 @@ import {
     refresh,
     signInMethods,
     setUsername,
+    usernameAvailability,
 } from '../controllers/user.controller.js';
 import { jwt } from '../../middleware/auth.middleware.js';
 import { googleLogin, verifyGoogle, connectGoogle } from '../controllers/google-auth.controller.js';
@@ -38,6 +39,7 @@ import {
 const router = express.Router();
 
 router.get('/check-auth', jwt, checkAuth);
+router.post('/username/availability', validate(setUsernameSchema), usernameAvailability);
 router.post('/username', jwt, validate(setUsernameSchema), setUsername);
 router.post('/', emailAuthLimiter, validate(createUserSchema), post);
 router.delete('/', jwt, remove);

@@ -17,9 +17,12 @@ export default function JoinScreen() {
 
     useEffect(() => {
         if (handled.current || counters.loading) return;
-        if (session.user && !session.user.username) return;
         handled.current = true;
         const code = Array.isArray(params.code) ? params.code[0] : params.code;
+        if (session.user && !session.user.username) {
+            router.replace({ pathname: '/register', params: { inviteCode: code } });
+            return;
+        }
 
         void (async () => {
             if (!code) {
