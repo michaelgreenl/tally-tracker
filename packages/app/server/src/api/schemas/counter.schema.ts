@@ -33,6 +33,12 @@ export const getCounterSchema = z.object({
     }),
 });
 
+export const removeMemberSchema = z.object({
+    params: getCounterSchema.shape.params.extend({
+        memberId: z.string().uuid('Invalid participant ID'),
+    }),
+});
+
 export const updateCounterSchema = z.object({
     params: z.object({
         counterId: z.string().uuid('Invalid Counter ID'),

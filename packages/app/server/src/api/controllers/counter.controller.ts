@@ -340,7 +340,7 @@ export const join = async (
 };
 
 export const removeShare = async (
-    req: Request<{ counterId: string }, CounterResponse, UpdateShareRequest>,
+    req: Request<{ counterId: string; memberId?: string }, CounterResponse, UpdateShareRequest>,
     res: Response,
 ) => {
     let participants: string[] = [];
@@ -358,15 +358,23 @@ export const removeShare = async (
             return { status: NOT_FOUND, body: { success: false, message: 'Counter not found' } };
         }
 
-        if (counter.userId === userId) {
+        const memberId = req.params.memberId ?? userId;
+        if (req.params.memberId && counter.userId !== userId) {
+            return { status: FORBIDDEN, body: { success: false, message: 'Only the owner can remove participants.' } };
+        }
+
+        if (counter.userId === memberId) {
             return { status: CONFLICT, body: { success: false, message: 'User owns this counter' } };
         }
 
         participants = await counterRepository.getParticipants(counter.id, tx);
+        if (!participants.includes(memberId)) {
+            return { status: NOT_FOUND, body: { success: false, message: 'Participant not found' } };
+        }
         await counterRepository.updateShare(
             {
                 counterId: counter.id,
-                userId,
+                userId: memberId,
                 status: 'REJECTED' as ShareStatusType,
             },
             tx,

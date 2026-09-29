@@ -77,6 +77,7 @@ describe('Usernames and counter members', () => {
             cy.wait('@members');
             const row = `[data-testid="counter-member-${memberId}"]`;
             cy.get(row).should('contain.text', '+1').and('contain.text', '5s ago');
+            cy.get('[data-testid="counter-members-list"]').should('have.css', 'border-top-width', '1px');
             cy.get(`[data-testid="counter-member-${memberId}-presence"]`)
                 .should('have.attr', 'aria-label', 'Online')
                 .and('have.css', 'background-color', 'rgb(74, 222, 128)');
@@ -111,7 +112,19 @@ describe('Usernames and counter members', () => {
                         const age = $row[0]
                             .querySelector(`[data-testid="counter-member-${memberId}-age"]`)!
                             .getBoundingClientRect();
-                        expect(presence.left - name.right, 'presence is beside the username').to.be.within(4, 8);
+                        const amountElement = $row[0].querySelector(
+                            `[data-testid="counter-member-${memberId}-amount"]`,
+                        )!;
+                        const amount = amountElement.getBoundingClientRect();
+                        const window = $row[0].ownerDocument.defaultView!;
+                        const ageElement = $row[0].querySelector(`[data-testid="counter-member-${memberId}-age"]`)!;
+                        for (const label of [ageElement, amountElement]) {
+                            expect(label.scrollWidth, 'action text is not clipped').to.be.at.most(label.clientWidth);
+                        }
+                        expect(window.getComputedStyle(amountElement).fontSize, 'matching action sizes').to.equal(
+                            window.getComputedStyle(ageElement).fontSize,
+                        );
+                        expect(presence.left - name.right, 'even identity spacing').to.be.closeTo(16, 1);
                         expect(presence.top + presence.height / 2, 'presence stays on the row').to.be.closeTo(
                             name.top + name.height / 2,
                             1,
@@ -120,8 +133,21 @@ describe('Usernames and counter members', () => {
                             name.top + name.height / 2,
                             1,
                         );
-                        expect(age.right, 'last action reaches the right edge').to.be.closeTo(bounds.right, 1);
+                        expect(amount.left - age.right, 'amount follows the timestamp').to.be.closeTo(12, 1);
+                        expect(amount.top + amount.height / 2, 'amount is centered in the row').to.be.closeTo(
+                            bounds.top + bounds.height / 2,
+                            1,
+                        );
+                        expect(amount.right, 'last action reaches the right edge').to.be.closeTo(bounds.right, 1);
                     });
+                cy.get(`[data-testid="counter-member-${user.id}-owner"]`).should(($icon) => {
+                    const icon = $icon[0].getBoundingClientRect();
+                    const name = $icon[0].ownerDocument
+                        .querySelector(`[data-testid="counter-member-${user.id}-username"]`)!
+                        .getBoundingClientRect();
+                    expect(icon.width, 'owner icon keeps its size').to.equal(20);
+                    expect(name.left - icon.right, 'matching identity gaps').to.be.closeTo(16, 1);
+                });
             }
             cy.viewport(375, 812);
             cy.get('[data-testid="counter-members-dialog"]').screenshot('counter-members');
@@ -141,4 +167,92 @@ describe('Usernames and counter members', () => {
             cy.get(row).should('contain.text', '6s ago');
         });
     });
+
+    for (const isOwner of [true, false]) {
+        it(
+            isOwner
+                ? 'confirms removal and retains the participant after a failed request'
+                : 'does not offer removal to a participant',
+            () => {
+                signIn(`reader_${crypto.randomUUID().replaceAll('-', '')}`).then((user) => {
+                    const counterId = crypto.randomUUID();
+                    const ownerId = isOwner ? user.id : crypto.randomUUID();
+                    const memberId = isOwner ? crypto.randomUUID() : user.id;
+                    let removed = false;
+                    let attempts = 0;
+                    cy.intercept('GET', '**/counters', {
+                        body: {
+                            success: true,
+                            data: {
+                                counters: [
+                                    {
+                                        id: counterId,
+                                        title: 'Water',
+                                        count: 10,
+                                        increment: 1,
+                                        type: 'SHARED',
+                                        userId: ownerId,
+                                        shares: [{ userId: memberId, status: 'ACCEPTED' }],
+                                    },
+                                ],
+                            },
+                        },
+                    });
+                    cy.intercept('GET', `**/counters/${counterId}/members`, (req) =>
+                        req.reply({
+                            success: true,
+                            data: [
+                                { id: ownerId, username: 'Alex', isOwner: true, lastAction: null },
+                                ...(removed
+                                    ? []
+                                    : [{ id: memberId, username: 'Jamie', isOwner: false, lastAction: null }]),
+                            ],
+                        }),
+                    );
+                    cy.intercept('DELETE', `**/counters/${counterId}/members/${memberId}`, (req) => {
+                        if (++attempts === 1) req.reply({ statusCode: 503, body: { success: false } });
+                        else {
+                            removed = true;
+                            req.reply({ success: true });
+                        }
+                    }).as('removeParticipant');
+                    openHome(user);
+                    cy.get(`[data-testid="counter-${counterId}-members"]`).click();
+                    cy.get(`[data-testid="counter-member-${ownerId}"]`).should('have.attr', 'aria-disabled', 'true');
+                    const row = `[data-testid="counter-member-${memberId}"]`;
+                    if (!isOwner) {
+                        cy.get(row).should('have.attr', 'aria-disabled', 'true');
+                        cy.get('[data-testid="participant-remove-confirm"]').should('not.exist');
+                        cy.get('@removeParticipant.all').should('have.length', 0);
+                        return;
+                    }
+                    cy.get(row).trigger('mousedown', { eventConstructor: 'MouseEvent', button: 0, buttons: 1 });
+                    cy.wait(600); // Exercise the long-press threshold, not a click.
+                    cy.get(row).trigger('mouseup', {
+                        eventConstructor: 'MouseEvent',
+                        button: 0,
+                        buttons: 0,
+                        force: true,
+                    });
+                    cy.get('[data-testid="participant-remove-confirm"]').should('be.visible');
+                    cy.get('[data-testid="participant-remove-cancel"]').click();
+                    cy.get(row).should('be.visible');
+                    cy.get('@removeParticipant.all').should('have.length', 0);
+                    // Desktop activation reaches the same confirmation without a long press.
+                    cy.get(row).focus().should('have.focus').click();
+                    cy.get('[data-testid="participant-remove-confirm"]').should('be.visible');
+                    cy.get('[data-testid="participant-remove-confirm"]').screenshot('participant-remove-confirm');
+                    cy.get('[data-testid="participant-remove-submit"]').click();
+                    cy.wait('@removeParticipant').its('response.statusCode').should('eq', 503);
+                    cy.get('[data-testid="participant-remove-error"]').should('be.visible');
+                    cy.get(row).should('exist');
+                    cy.get('[data-testid="participant-remove-submit"]').click();
+                    cy.wait('@removeParticipant').its('response.statusCode').should('eq', 200);
+                    cy.get('[data-testid="participant-remove-confirm"]').should('not.exist');
+                    cy.get(row).should('not.exist');
+                    cy.get(`[data-testid="counter-member-${ownerId}"]`).should('be.visible');
+                });
+            },
+        );
+    }
 });

@@ -123,7 +123,7 @@ describe('PostgreSQL integration', () => {
         },
     );
 
-    it('notifies other devices when shared membership or a counter is removed', async () => {
+    it.each(['leave', 'remove'])('notifies other devices when shared membership ends (%s)', async (action) => {
         const owner = await sharingAccount('PREMIUM');
         const member = await sharingAccount('BASIC');
         const counter = await prisma.counter.create({
@@ -159,10 +159,15 @@ describe('PostgreSQL integration', () => {
                 socket.once('counters-changed', arrived);
                 return arrived;
             });
-            await request(app)
-                .put(`/counters/remove-shared/${counter.id}`)
-                .set('Authorization', member.authorization)
-                .expect(200);
+            await (
+                action === 'leave'
+                    ? request(app)
+                          .put(`/counters/remove-shared/${counter.id}`)
+                          .set('Authorization', member.authorization)
+                    : request(app)
+                          .delete(`/counters/${counter.id}/members/${member.id}`)
+                          .set('Authorization', owner.authorization)
+            ).expect(200);
             await vi.waitFor(() => left.forEach((arrived) => expect(arrived).toHaveBeenCalled()));
             const afterLeave = await request(app)
                 .get('/counters')

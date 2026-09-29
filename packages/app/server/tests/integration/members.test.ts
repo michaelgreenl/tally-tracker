@@ -139,6 +139,52 @@ it('exposes only accepted members and their latest action on this counter, witho
     expect(await prisma.counterActivity.count()).toBe(0);
 });
 
+it('lets only the owner remove an accepted participant without removing the counter', async () => {
+    const [owner, member, outsider] = await Promise.all([account(), account(), account()]);
+    const counter = await prisma.counter.create({
+        data: {
+            title: 'Shared counter',
+            userId: owner.id,
+            type: 'SHARED',
+            count: 12,
+            shares: {
+                create: [
+                    { userId: member.id, status: 'ACCEPTED' },
+                    { userId: outsider.id, status: 'PENDING' },
+                ],
+            },
+        },
+    });
+    const path = (id: string) => `/counters/${counter.id}/members/${id}`;
+    await request(app).delete(path(member.id)).expect(401);
+    for (const [actor, target, status] of [
+        [member, member.id, 403],
+        [member, owner.id, 403],
+        [outsider, member.id, 404],
+        [owner, owner.id, 409],
+        [owner, outsider.id, 404],
+        [owner, randomUUID(), 404],
+        [owner, 'invalid-id', 422],
+    ] as const) {
+        await request(app).delete(path(target)).set('Authorization', actor.authorization).expect(status);
+    }
+    const members = () => request(app).get(`/counters/${counter.id}/members`).set('Authorization', owner.authorization);
+    expect((await members()).body.data.map((row: CounterMember) => row.id)).toEqual([owner.id, member.id]);
+
+    await request(app).delete(path(member.id)).set('Authorization', owner.authorization).expect(200);
+    expect((await members()).body.data.map((row: CounterMember) => row.id)).toEqual([owner.id]);
+    const removedCounters = await request(app).get('/counters').set('Authorization', member.authorization).expect(200);
+    expect(removedCounters.body.data.counters).toEqual([]);
+    await request(app).get(`/counters/${counter.id}/members`).set('Authorization', member.authorization).expect(404);
+    await request(app)
+        .put(`/counters/increment/${counter.id}`)
+        .set('Authorization', member.authorization)
+        .send({ amount: 1 })
+        .expect(404);
+    const retained = await prisma.counter.findUniqueOrThrow({ where: { id: counter.id } });
+    expect({ userId: retained.userId, count: Number(retained.count) }).toEqual({ userId: owner.id, count: 12 });
+});
+
 it('reports foreground presence across devices without exposing unrelated or departed members', async () => {
     const [owner, member, outsider] = await Promise.all([account(), account(), account()]);
     const counter = await prisma.counter.create({

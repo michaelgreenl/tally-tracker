@@ -49,6 +49,13 @@ export const CounterService = {
         });
     },
 
+    removeMember(counterId: string, memberId: string, sessionScope = getSessionScope()) {
+        return apiFetch<ApiResponse<null>>(`/counters/${counterId}/members/${memberId}`, {
+            method: 'DELETE',
+            sessionScope,
+        });
+    },
+
     presence(sessionScope = getSessionScope()) {
         return apiFetch<ApiResponse<string[]>>('/counters/presence', { method: 'GET', sessionScope });
     },

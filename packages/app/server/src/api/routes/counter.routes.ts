@@ -22,6 +22,7 @@ import {
     joinCounterSchema,
     updateShareSchema,
     getCounterSchema,
+    removeMemberSchema,
 } from '../schemas/counter.schema.js';
 
 const router = express.Router();
@@ -32,6 +33,7 @@ router.post('/', validate(createCounterSchema), post);
 router.get('/', getAllByUser);
 router.get('/presence', presence);
 router.get('/:counterId/members', validate(getCounterSchema), members);
+router.delete('/:counterId/members/:memberId', validate(removeMemberSchema), removeShare);
 router.delete('/:counterId', validate(deleteCounterSchema), remove);
 router.put('/update/:counterId', validate(updateCounterSchema), put);
 
