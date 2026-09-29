@@ -33,6 +33,27 @@ describe('Counter sync recovery', () => {
         cy.request('DELETE', '/users');
     });
 
+    it('saves changes and shows synced when the network flag incorrectly reports offline', () => {
+        cy.request('POST', '/counters', { title: 'Water', count: 2 }).then(({ body }) => {
+            const counter: ClientCounter = body.data.counter;
+            cy.get(`[data-testid="counter-${counter.id}-count"]`).should('have.text', '2');
+            cy.window().then((win) => {
+                Object.defineProperty(win.navigator, 'onLine', { configurable: true, get: () => false });
+                win.dispatchEvent(new Event('offline'));
+            });
+            cy.intercept('PUT', `**/counters/increment/${counter.id}`).as('increment');
+            cy.get(`[data-testid="counter-${counter.id}-increase"]`).click();
+            cy.wait('@increment');
+            cy.get('[data-testid="home-sync-synced-icon"]').should('be.visible');
+            cy.request('GET', '/counters').then(({ body }) => {
+                expect(body.data.counters.find((item: ClientCounter) => item.id === counter.id).count).to.equal(3);
+            });
+            cy.window().should((win) => {
+                expect(JSON.parse(win.localStorage.getItem('app_sync_queue') || '[]')).to.deep.equal([]);
+            });
+        });
+    });
+
     it('resets the latest count and keeps zero after syncing and clearing the local cache', () => {
         cy.request('POST', '/counters', { title: 'Water', increment: 0.5, count: 2 }).then(({ body }) => {
             const counter: ClientCounter = body.data.counter;

@@ -90,9 +90,8 @@ export const SyncManager = {
         if (commands.length === 0) return true;
 
         onStatusChange?.('syncing');
-        const status = await Network.getNetworkStateAsync();
-        if (status.isConnected === false) return false;
 
+        // Network flags are advisory; only a failed request should stop queued writes.
         const blocked = new Map<string, number>();
         const importing = new Set(pendingWidgetTaps().map((tap) => tap.id));
         for (const queued of commands) {

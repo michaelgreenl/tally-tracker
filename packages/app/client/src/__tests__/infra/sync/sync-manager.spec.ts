@@ -62,13 +62,17 @@ describe('SyncManager', () => {
         authService.getCachedUser.mockResolvedValue({ id: 'user-1' });
     });
 
-    it('leaves the queue untouched while offline', async () => {
+    it('sends queued changes when the network flag is offline but the API is reachable', async () => {
         network.getNetworkStateAsync.mockResolvedValue({ isConnected: false });
-        await SyncQueue.save([command('offline')]);
+        apiFetch.mockResolvedValue({ success: true });
+        await SyncQueue.save([command('reachable')]);
 
-        await expect(SyncManager.processQueuePass()).resolves.toBe(false);
-        expect(await SyncQueue.get()).toEqual([command('offline')]);
-        expect(apiFetch).not.toHaveBeenCalled();
+        await expect(SyncManager.processQueuePass()).resolves.toBe(true);
+        expect(apiFetch).toHaveBeenCalledWith(
+            '/counters',
+            expect.objectContaining({ method: 'POST', body: { title: 'reachable' } }),
+        );
+        expect(await SyncQueue.get()).toEqual([]);
     });
 
     it('processes only commands queued by the current user', async () => {

@@ -127,11 +127,11 @@ export default function HomeScreen() {
                                 status={
                                     counterState.loading || counterState.refreshing || pulling
                                         ? 'syncing'
-                                        : network.isConnected === false
-                                          ? 'offline'
-                                          : counterState.syncError
-                                            ? 'error'
-                                            : 'synced'
+                                        : counterState.syncError
+                                          ? network.isConnected === false
+                                              ? 'offline'
+                                              : 'error'
+                                          : 'synced'
                                 }
                             />
                             <Link href='/settings' asChild>
