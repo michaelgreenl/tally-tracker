@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { GestureDetector, GestureHandlerRootView, usePanGesture } from 'react-native-gesture-handler';
+import Swipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Svg, { Path } from 'react-native-svg';
 
 import { useCounters } from '../../contexts/counter-context';
 import { useSession } from '../../contexts/session-context';
 import { getErrorMessage } from '../../infra/http/api';
+import { hapticFeedback } from '../../infra/feedback/haptics';
 import { subscribeToCounterUpdates } from '../../infra/socket/socket';
 import { CounterService } from '../../services/counters/counter.service';
 import { getSessionScope } from '../../services/session/session-scope';
@@ -99,12 +102,16 @@ export function CounterMembersDialog({ counter, onClose }: { counter?: ClientCou
             onShow={() => setOpenedAt(Date.now())}
             dismissOnBackdropPress
             title='Participants'
+            contentGap={20}
             testID='counter-members-dialog'
             trailingAction={
                 <ToolbarButton label='Close' icon='close' onPress={onClose} testID='counter-members-close' />
             }
         >
-            <View style={!loading && !error && styles.list} testID='counter-members-list'>
+            <GestureHandlerRootView
+                style={[styles.gestureRoot, !loading && !error && styles.list]}
+                testID='counter-members-list'
+            >
                 {loading ? (
                     <ActivityIndicator color={colors.link} accessibilityLabel='Loading members' />
                 ) : error ? (
@@ -130,38 +137,35 @@ export function CounterMembersDialog({ counter, onClose }: { counter?: ClientCou
                         const action = member.lastAction;
                         const age = action ? relativeTime(action.at, openedAt) : null;
                         const amount = action ? `${action.amount > 0 ? '+' : ''}${action.amount}` : null;
-                        const canRemove = Boolean(user && counter?.userId === user.id && !member.isOwner);
+                        const canRemove = Boolean(
+                            user && counter?.userId === user.id && member.id !== user.id && !member.isOwner,
+                        );
                         const confirmRemoval = () => {
+                            hapticFeedback('impact');
                             setRemoveError('');
                             setMemberToRemove(member);
                         };
-                        return (
-                            <Pressable
-                                key={member.id}
-                                disabled={!canRemove || removing}
-                                accessible={canRemove}
-                                accessibilityRole={canRemove ? 'button' : undefined}
-                                accessibilityLabel={
-                                    canRemove
-                                        ? [member.username ?? 'Member', online ? 'Online' : 'Offline', age, amount]
-                                              .filter(Boolean)
-                                              .join(', ')
-                                        : undefined
-                                }
-                                accessibilityHint={canRemove ? 'Touch and hold to remove this participant.' : undefined}
-                                accessibilityActions={
-                                    canRemove ? [{ name: 'remove', label: 'Remove participant' }] : []
-                                }
-                                onAccessibilityAction={({ nativeEvent }) => {
-                                    if (canRemove && nativeEvent.actionName === 'remove') confirmRemoval();
-                                }}
-                                onAccessibilityTap={canRemove ? confirmRemoval : undefined}
-                                onLongPress={confirmRemoval}
-                                onPress={Platform.OS === 'web' ? confirmRemoval : undefined}
-                                style={({ pressed }) => [styles.member, pressed && styles.pressed]}
-                                testID={`counter-member-${member.id}`}
-                            >
+                        const row = (
+                            <View key={member.id} style={styles.member} testID={`counter-member-${member.id}`}>
                                 <View style={styles.identity}>
+                                    <View
+                                        accessible
+                                        accessibilityRole='image'
+                                        accessibilityLabel={online ? 'Online' : 'Offline'}
+                                        style={[styles.dot, online && styles.onlineDot]}
+                                        testID={`counter-member-${member.id}-presence`}
+                                    />
+                                    <Text
+                                        numberOfLines={1}
+                                        style={[
+                                            styles.username,
+                                            member.id === user?.id && styles.currentUsername,
+                                            styles.opticalAlignment,
+                                        ]}
+                                        testID={`counter-member-${member.id}-username`}
+                                    >
+                                        {member.username ?? 'Member'}
+                                    </Text>
                                     {member.isOwner && (
                                         <Svg
                                             accessibilityLabel='Owner'
@@ -176,44 +180,43 @@ export function CounterMembersDialog({ counter, onClose }: { counter?: ClientCou
                                             <Path d='M17.0016031,15.2440856 L17.0009052,21.2451182 C17.0009052,21.8527788 16.3161092,22.2081862 15.8192057,21.8584172 L12.0007623,19.1706254 L8.18435794,21.8583162 C7.68747081,22.2082475 7.00251516,21.8528589 7.00251516,21.2451182 L7.00069412,15.2459273 C8.37018531,16.3435035 10.1084262,17 12,17 C13.8926316,17 15.6317588,16.3427691 17.0016031,15.2440856 Z M12,2 C15.8659932,2 19,5.13400675 19,9 C19,12.8659932 15.8659932,16 12,16 C8.13400675,16 5,12.8659932 5,9 C5,5.13400675 8.13400675,2 12,2 Z' />
                                         </Svg>
                                     )}
-                                    <Text
-                                        numberOfLines={1}
-                                        style={styles.username}
-                                        testID={`counter-member-${member.id}-username`}
-                                    >
-                                        {member.username ?? 'Member'}
-                                    </Text>
-                                    <View
-                                        accessible
-                                        accessibilityRole='image'
-                                        accessibilityLabel={online ? 'Online' : 'Offline'}
-                                        style={[styles.dot, online && styles.onlineDot]}
-                                        testID={`counter-member-${member.id}-presence`}
-                                    />
                                 </View>
                                 {action && (
                                     <View style={styles.action}>
                                         <Text
                                             numberOfLines={1}
-                                            style={[styles.actionText, styles.age]}
+                                            style={[styles.actionText, styles.age, styles.opticalAlignment]}
                                             testID={`counter-member-${member.id}-age`}
                                         >
                                             {age}
                                         </Text>
                                         <Text
                                             numberOfLines={1}
-                                            style={[styles.actionText, styles.amount]}
+                                            style={[styles.actionText, styles.amount, styles.opticalAlignment]}
                                             testID={`counter-member-${member.id}-amount`}
                                         >
                                             {amount}
                                         </Text>
                                     </View>
                                 )}
-                            </Pressable>
+                            </View>
+                        );
+                        return canRemove ? (
+                            <RemovableParticipant
+                                key={member.id}
+                                username={member.username ?? 'participant'}
+                                disabled={removing}
+                                onRemove={confirmRemoval}
+                                testID={`counter-member-${member.id}-remove`}
+                            >
+                                {row}
+                            </RemovableParticipant>
+                        ) : (
+                            row
                         );
                     })
                 )}
-            </View>
+            </GestureHandlerRootView>
             {memberToRemove && (
                 <Dialog
                     visible
@@ -243,6 +246,7 @@ export function CounterMembersDialog({ counter, onClose }: { counter?: ClientCou
                         />
                         <ToolbarButton
                             label={removing ? 'Removing…' : 'Remove'}
+                            role='destructive'
                             disabled={removing}
                             onPress={() => void removeMember()}
                             testID='participant-remove-submit'
@@ -254,23 +258,123 @@ export function CounterMembersDialog({ counter, onClose }: { counter?: ClientCou
     );
 }
 
+function RemovableParticipant({
+    children,
+    username,
+    disabled,
+    onRemove,
+    testID,
+}: {
+    children: ReactNode;
+    username: string;
+    disabled: boolean;
+    onRemove: () => void;
+    testID: string;
+}) {
+    const swipeable = useRef<SwipeableMethods>(null);
+    const rowWidth = useRef(0);
+    const [open, setOpen] = useState(false);
+    const confirmRemoval = () => {
+        if (disabled) return;
+        swipeable.current?.close();
+        onRemove();
+    };
+    const fullSwipe = usePanGesture({
+        enabled: !disabled,
+        runOnJS: true,
+        activeOffsetX: -10,
+        failOffsetY: [-10, 10],
+        onDeactivate: ({ canceled, translationX }) => {
+            if (!canceled && rowWidth.current > 0 && translationX < -rowWidth.current * 0.7) confirmRemoval();
+        },
+    });
+    return (
+        <GestureDetector gesture={fullSwipe} touchAction='pan-y'>
+            <View
+                collapsable={false}
+                onLayout={({ nativeEvent }) => {
+                    rowWidth.current = nativeEvent.layout.width;
+                }}
+            >
+                <Swipeable
+                    ref={swipeable}
+                    enabled={!disabled}
+                    simultaneousWith={fullSwipe}
+                    overshootLeft={false}
+                    overshootRight
+                    enableTrackpadTwoFingerGesture
+                    onSwipeableWillOpen={() => {
+                        setOpen(true);
+                        hapticFeedback();
+                    }}
+                    onSwipeableClose={() => setOpen(false)}
+                    childrenContainerStyle={styles.rowSurface}
+                    renderRightActions={() => (
+                        <Pressable
+                            accessibilityRole='button'
+                            accessibilityLabel={`Remove ${username}`}
+                            accessibilityElementsHidden={Platform.OS !== 'web' && !open}
+                            importantForAccessibility={open ? 'auto' : 'no-hide-descendants'}
+                            disabled={disabled}
+                            onFocus={() => swipeable.current?.openRight()}
+                            onPress={confirmRemoval}
+                            style={({ pressed }) => [styles.removeButton, pressed && styles.pressed]}
+                            testID={testID}
+                        >
+                            <Text style={styles.removeText}>Remove</Text>
+                        </Pressable>
+                    )}
+                >
+                    <View
+                        accessible
+                        accessibilityActions={disabled ? [] : [{ name: 'remove', label: 'Remove participant' }]}
+                        onAccessibilityAction={({ nativeEvent }) => {
+                            if (nativeEvent.actionName === 'remove') confirmRemoval();
+                        }}
+                    >
+                        {children}
+                    </View>
+                </Swipeable>
+            </View>
+        </GestureDetector>
+    );
+}
+
 const styles = StyleSheet.create({
+    gestureRoot: { flex: 0 },
     list: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.divider },
+    rowSurface: { backgroundColor: colors.surface },
     member: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingVertical: 14,
+        minHeight: 56,
+        paddingVertical: 4,
         borderBottomWidth: StyleSheet.hairlineWidth,
         borderBottomColor: colors.divider,
         gap: 16,
     },
-    identity: { flexDirection: 'row', alignItems: 'center', gap: 16, flexShrink: 1, minWidth: 0 },
+    identity: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1, minWidth: 0 },
+    // iOS centers the font's line box; lift its visible letters slightly beside the icons.
+    opticalAlignment: { transform: [{ translateY: Platform.OS === 'ios' ? -1 : 0 }] },
     owner: { flexShrink: 0 },
     username: { flexShrink: 1, color: colors.text, fontSize: 18, lineHeight: 24, fontWeight: '600' },
+    currentUsername: { fontWeight: '700' },
     dot: { width: 8, height: 8, borderRadius: 4, borderWidth: 1, borderColor: colors.muted, flexShrink: 0 },
     onlineDot: { backgroundColor: colors.success, borderColor: colors.success },
-    action: { flexDirection: 'row', alignItems: 'center', gap: 12, flexShrink: 0, maxWidth: '60%' },
+    action: { flexDirection: 'row', alignItems: 'center', gap: 12, flexShrink: 0, maxWidth: '65%' },
+    removeButton: {
+        backgroundColor: colors.dangerButton,
+        borderRadius: 999,
+        minWidth: 88,
+        minHeight: 48,
+        marginHorizontal: 8,
+        marginVertical: 4,
+        paddingHorizontal: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    removeText: { color: colors.onPrimary, fontSize: 16, fontWeight: '600' },
     actionText: { fontSize: 16, lineHeight: 24, fontWeight: '600', fontVariant: ['tabular-nums'] },
     amount: { color: colors.link, flexShrink: 1 },
     age: { color: colors.muted, flexShrink: 1 },

@@ -2,11 +2,12 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import { colors } from '../../theme/colors';
+import { hapticFeedback } from '../../infra/feedback/haptics';
 
 export type ToolbarButtonProps = {
     label: string;
     icon?: 'close' | 'check';
-    role?: 'cancel';
+    role?: 'cancel' | 'destructive';
     disabled?: boolean;
     onPress: () => void;
     testID: string;
@@ -18,10 +19,14 @@ export function ToolbarButton({ label, icon, role, disabled, onPress, testID }: 
             accessibilityRole='button'
             accessibilityLabel={label}
             disabled={disabled}
-            onPress={onPress}
+            onPress={() => {
+                hapticFeedback();
+                onPress();
+            }}
             style={({ pressed }) => [
                 styles.button,
                 role === 'cancel' && styles.cancel,
+                role === 'destructive' && styles.destructive,
                 icon && styles.iconButton,
                 (pressed || disabled) && styles.dimmed,
             ]}
@@ -66,6 +71,7 @@ const styles = StyleSheet.create({
         backgroundColor: colors.primary,
     },
     cancel: { backgroundColor: colors.input },
+    destructive: { backgroundColor: colors.dangerButton },
     dimmed: { opacity: 0.5 },
     label: { color: colors.onPrimary, fontSize: 17, fontWeight: '600' },
 });

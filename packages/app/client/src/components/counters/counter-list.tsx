@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Platform, Pressable, RefreshControl, StyleSheet, Vibration, View } from 'react-native';
+import { Platform, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAnimatedScrollHandler, useReducedMotion } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ReorderableList, { reorderItems, useIsActive, useReorderableDrag } from 'react-native-reorderable-list';
 
 import { colors } from '../../theme/colors';
+import { hapticFeedback } from '../../infra/feedback/haptics';
 import { counterLayoutTransition } from './counter-card';
 
 import type { ClientCounter } from '@tally/core/client';
@@ -41,7 +42,7 @@ function DraggableCard({
     const drag = useReorderableDrag();
     const active = useIsActive();
     function startDrag() {
-        if (Platform.OS === 'android') Vibration.vibrate(10);
+        hapticFeedback('impact');
         drag();
     }
     return (

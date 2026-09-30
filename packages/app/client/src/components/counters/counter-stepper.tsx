@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import { colors } from '../../theme/colors';
+import { hapticFeedback } from '../../infra/feedback/haptics';
 import { CounterNumber } from './counter-number';
 
 import type { ReactNode } from 'react';
@@ -38,7 +39,10 @@ export function CounterStepper({
                 accessibilityLabel={`${direction < 0 ? 'Decrease' : 'Increase'} ${label} by ${increment}`}
                 accessibilityRole='button'
                 disabled={unavailable}
-                onPress={() => onIncrement(direction * increment)}
+                onPress={() => {
+                    hapticFeedback();
+                    onIncrement(direction * increment);
+                }}
                 style={({ pressed }) => [styles.button, pressed && styles.pressed, unavailable && styles.disabled]}
                 testID={`${testID}-${direction < 0 ? 'decrease' : 'increase'}`}
             >
@@ -61,7 +65,10 @@ export function CounterStepper({
                 <Pressable
                     accessibilityRole='button'
                     accessibilityLabel={`Edit ${label}, currently ${value}`}
-                    onPress={onEditValue}
+                    onPress={() => {
+                        hapticFeedback();
+                        onEditValue();
+                    }}
                     disabled={disabled}
                     style={({ pressed }) => [styles.valueButton, pressed && styles.valuePressed]}
                     testID={`${testID}-edit-value`}

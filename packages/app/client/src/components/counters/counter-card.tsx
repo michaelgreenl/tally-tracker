@@ -15,6 +15,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 
 import { colors } from '../../theme/colors';
 import { REQUEST_FAILED_MESSAGE } from '../../infra/http/api';
+import { hapticFeedback } from '../../infra/feedback/haptics';
 import { useCounters } from '../../contexts/counter-context';
 import { useSession } from '../../contexts/session-context';
 import { CounterMenu } from './counter-menu';
@@ -137,6 +138,7 @@ export function CounterCard({
                                 busy={sharing}
                                 canReorder={canReorder}
                                 onAction={(action) => {
+                                    hapticFeedback();
                                     if (action === 'edit') onEdit(counter);
                                     else if (action === 'reset') onReset(counter);
                                     else if (action === 'delete') onDelete(counter);
@@ -172,7 +174,10 @@ export function CounterCard({
                                 <Pressable
                                     accessibilityRole='button'
                                     accessibilityLabel={`Members of ${counter.title}${otherMemberOnline ? ', someone is online' : ''}`}
-                                    onPress={() => onMembers(counter)}
+                                    onPress={() => {
+                                        hapticFeedback();
+                                        onMembers(counter);
+                                    }}
                                     style={({ pressed }) => [styles.membersButton, pressed && styles.incrementPressed]}
                                     testID={`counter-${counter.id}-members`}
                                 >
@@ -196,7 +201,10 @@ export function CounterCard({
                             <Pressable
                                 accessibilityLabel={`Change increment for ${counter.title}, currently ${increment}`}
                                 accessibilityRole='button'
-                                onPress={() => onEditIncrement(counter)}
+                                onPress={() => {
+                                    hapticFeedback();
+                                    onEditIncrement(counter);
+                                }}
                                 style={({ pressed }) => [styles.incrementButton, pressed && styles.incrementPressed]}
                                 testID={`counter-${counter.id}-increment`}
                             >

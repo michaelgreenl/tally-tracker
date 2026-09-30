@@ -25,6 +25,7 @@ vi.mock('react-native', () => ({
         createElement('button', { onClick: onRefresh, 'data-testid': 'refresh-control' }),
 }));
 vi.mock('react-native-gesture-handler', () => ({ GestureHandlerRootView: 'div' }));
+vi.mock('expo-haptics', () => ({}));
 vi.mock('react-native-safe-area-context', () => ({ useSafeAreaInsets: () => ({ bottom: 0 }) }));
 vi.mock('../../../components/counters/counter-card', () => ({ counterLayoutTransition: undefined }));
 // Stub the native event transport, not the list's pull-state handlers.

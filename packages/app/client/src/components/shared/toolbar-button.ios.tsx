@@ -11,6 +11,7 @@ import {
 import { Platform } from 'react-native';
 
 import { colors } from '../../theme/colors';
+import { hapticFeedback } from '../../infra/feedback/haptics';
 
 import type { ToolbarButtonProps } from './toolbar-button';
 
@@ -21,8 +22,11 @@ export function ToolbarButton({ label, icon, role, disabled: unavailable, onPres
         <Host matchContents colorScheme='dark' ignoreSafeArea='all'>
             <Button
                 label={icon ? undefined : label}
-                role={cancel ? 'cancel' : 'default'}
-                onPress={onPress}
+                role={cancel ? 'cancel' : (role ?? 'default')}
+                onPress={() => {
+                    hapticFeedback();
+                    onPress();
+                }}
                 testID={testID}
                 modifiers={[
                     accessibilityLabel(label),
@@ -32,7 +36,7 @@ export function ToolbarButton({ label, icon, role, disabled: unavailable, onPres
                         cancel ? (glass ? 'glass' : 'bordered') : glass ? 'glassProminent' : 'borderedProminent',
                     ),
                     buttonBorderShape(icon ? 'circle' : 'capsule'),
-                    tint(cancel ? colors.text : colors.primary),
+                    tint(cancel ? colors.text : role === 'destructive' ? colors.dangerButton : colors.primary),
                     frame(icon ? { width: 48, height: 48 } : { minWidth: 48, minHeight: 48 }),
                 ]}
             >

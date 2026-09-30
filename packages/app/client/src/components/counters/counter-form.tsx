@@ -4,6 +4,7 @@ import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-n
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors } from '../../theme/colors';
+import { hapticFeedback } from '../../infra/feedback/haptics';
 import { useCounters } from '../../contexts/counter-context';
 import { FormField } from '../shared/auth-form';
 import { CounterSheet } from './counter-sheet';
@@ -48,6 +49,7 @@ export function CounterForm({ visible, counter, onCancel, onDone }: CounterFormP
             return;
         }
 
+        hapticFeedback();
         setLoading(true);
         setErrorMessage('');
         const result = counter
@@ -73,7 +75,10 @@ export function CounterForm({ visible, counter, onCancel, onDone }: CounterFormP
                     <Pressable
                         accessibilityRole='button'
                         disabled={loading}
-                        onPress={dismiss}
+                        onPress={() => {
+                            hapticFeedback();
+                            dismiss();
+                        }}
                         style={({ pressed }) => [styles.secondaryButton, pressed && styles.secondaryPressed]}
                         testID='counter-form-cancel'
                     >

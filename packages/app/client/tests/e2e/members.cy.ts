@@ -14,6 +14,37 @@ function openHome(user: ClientUser) {
     cy.visit('/home', { onBeforeLoad: (win) => win.localStorage.setItem('auth_user_profile', JSON.stringify(user)) });
 }
 
+function swipeLeft(memberId: string, distance = 0.4) {
+    cy.get(`[data-testid="counter-member-${memberId}"]`).then(($row) => {
+        const bounds = $row[0].getBoundingClientRect();
+        const pointer = {
+            eventConstructor: 'PointerEvent',
+            pointerId: 1,
+            pointerType: 'touch',
+            button: 0,
+            buttons: 1,
+            clientY: bounds.top + bounds.height / 2,
+        };
+        cy.wrap($row).trigger('pointerdown', { ...pointer, clientX: bounds.right - 24 });
+        for (let step = 1; step <= 12; step++) {
+            cy.wrap($row).trigger('pointermove', {
+                ...pointer,
+                clientX: bounds.right - 24 - (bounds.width * distance * step) / 12,
+                force: true,
+            });
+            cy.window().then(
+                (win) => new Cypress.Promise<void>((resolve) => win.requestAnimationFrame(() => resolve())),
+            );
+        }
+        cy.wrap($row).trigger('pointerup', {
+            ...pointer,
+            buttons: 0,
+            clientX: bounds.right - 24 - bounds.width * distance,
+            force: true,
+        });
+    });
+}
+
 describe('Usernames and counter members', () => {
     beforeEach(() => {
         cy.clearCookies();
@@ -91,6 +122,13 @@ describe('Usernames and counter members', () => {
                 cy.get('[data-testid="counter-members-dialog"]').should(($dialog) => {
                     const box = $dialog[0].getBoundingClientRect();
                     expect(box.top + box.height / 2, 'popup is vertically centered').to.be.closeTo(height / 2, 1);
+                    const close = $dialog[0]
+                        .querySelector('[data-testid="counter-members-close"]')!
+                        .getBoundingClientRect();
+                    const list = $dialog[0]
+                        .querySelector('[data-testid="counter-members-list"]')!
+                        .getBoundingClientRect();
+                    expect(list.top - close.bottom, 'header has four extra points below it').to.be.closeTo(20, 1);
                 });
                 cy.get(row)
                     .scrollIntoView()
@@ -99,6 +137,7 @@ describe('Usernames and counter members', () => {
                         expect(bounds.left).to.be.at.least(0);
                         expect(bounds.right).to.be.at.most(width);
                         for (const child of Array.from($row[0].querySelectorAll('*'))) {
+                            if (!child.getClientRects().length) continue;
                             const box = child.getBoundingClientRect();
                             expect(box.right).to.be.at.most(bounds.right + 1);
                             expect(box.left).to.be.at.least(bounds.left - 1);
@@ -124,7 +163,7 @@ describe('Usernames and counter members', () => {
                         expect(window.getComputedStyle(amountElement).fontSize, 'matching action sizes').to.equal(
                             window.getComputedStyle(ageElement).fontSize,
                         );
-                        expect(presence.left - name.right, 'even identity spacing').to.be.closeTo(16, 1);
+                        expect(name.left - presence.right, 'presence sits close to the username').to.be.closeTo(8, 1);
                         expect(presence.top + presence.height / 2, 'presence stays on the row').to.be.closeTo(
                             name.top + name.height / 2,
                             1,
@@ -146,7 +185,7 @@ describe('Usernames and counter members', () => {
                         .querySelector(`[data-testid="counter-member-${user.id}-username"]`)!
                         .getBoundingClientRect();
                     expect(icon.width, 'owner icon keeps its size').to.equal(20);
-                    expect(name.left - icon.right, 'matching identity gaps').to.be.closeTo(16, 1);
+                    expect(icon.left - name.right, 'owner follows the username').to.be.closeTo(8, 1);
                 });
             }
             cy.viewport(375, 812);
@@ -171,13 +210,14 @@ describe('Usernames and counter members', () => {
     for (const isOwner of [true, false]) {
         it(
             isOwner
-                ? 'confirms removal and retains the participant after a failed request'
+                ? 'reveals removal with a swipe, confirms it, and retains the participant after a failed request'
                 : 'does not offer removal to a participant',
             () => {
                 signIn(`reader_${crypto.randomUUID().replaceAll('-', '')}`).then((user) => {
                     const counterId = crypto.randomUUID();
                     const ownerId = isOwner ? user.id : crypto.randomUUID();
                     const memberId = isOwner ? crypto.randomUUID() : user.id;
+                    const otherMemberId = crypto.randomUUID();
                     let removed = false;
                     let attempts = 0;
                     cy.intercept('GET', '**/counters', {
@@ -192,7 +232,10 @@ describe('Usernames and counter members', () => {
                                         increment: 1,
                                         type: 'SHARED',
                                         userId: ownerId,
-                                        shares: [{ userId: memberId, status: 'ACCEPTED' }],
+                                        shares: [memberId, otherMemberId].map((userId) => ({
+                                            userId,
+                                            status: 'ACCEPTED',
+                                        })),
                                     },
                                 ],
                             },
@@ -206,6 +249,7 @@ describe('Usernames and counter members', () => {
                                 ...(removed
                                     ? []
                                     : [{ id: memberId, username: 'Jamie', isOwner: false, lastAction: null }]),
+                                { id: otherMemberId, username: 'Taylor', isOwner: false, lastAction: null },
                             ],
                         }),
                     );
@@ -218,29 +262,83 @@ describe('Usernames and counter members', () => {
                     }).as('removeParticipant');
                     openHome(user);
                     cy.get(`[data-testid="counter-${counterId}-members"]`).click();
-                    cy.get(`[data-testid="counter-member-${ownerId}"]`).should('have.attr', 'aria-disabled', 'true');
+                    cy.get(`[data-testid="counter-member-${user.id}-username"]`).should(
+                        'have.css',
+                        'font-weight',
+                        '700',
+                    );
+                    cy.get(`[data-testid="counter-member-${isOwner ? memberId : ownerId}-username"]`).should(
+                        'have.css',
+                        'font-weight',
+                        '600',
+                    );
                     const row = `[data-testid="counter-member-${memberId}"]`;
+                    const remove = `[data-testid="counter-member-${memberId}-remove"]`;
+                    swipeLeft(ownerId);
+                    cy.get(`[data-testid="counter-member-${ownerId}-remove"]`).should('not.exist');
                     if (!isOwner) {
-                        cy.get(row).should('have.attr', 'aria-disabled', 'true');
+                        for (const id of [memberId, otherMemberId]) {
+                            swipeLeft(id);
+                            cy.get(`[data-testid="counter-member-${id}-remove"]`).should('not.exist');
+                        }
                         cy.get('[data-testid="participant-remove-confirm"]').should('not.exist');
                         cy.get('@removeParticipant.all').should('have.length', 0);
                         return;
                     }
-                    cy.get(row).trigger('mousedown', { eventConstructor: 'MouseEvent', button: 0, buttons: 1 });
-                    cy.wait(600); // Exercise the long-press threshold, not a click.
-                    cy.get(row).trigger('mouseup', {
-                        eventConstructor: 'MouseEvent',
-                        button: 0,
-                        buttons: 0,
-                        force: true,
+                    swipeLeft(memberId);
+                    cy.get(remove).should(($button) => {
+                        const button = $button[0].getBoundingClientRect();
+                        const content = $button[0].ownerDocument.querySelector(row)!.getBoundingClientRect();
+                        expect(button.width, 'remove has a usable touch width').to.be.at.least(48);
+                        expect(button.height, 'remove has a usable touch height').to.be.at.least(48);
+                        expect(button.left - content.right, 'remove has space beside the row content').to.be.closeTo(
+                            8,
+                            1,
+                        );
+                        expect(button.top - content.top, 'remove has space above it').to.be.closeTo(4, 1);
+                        expect(content.bottom - button.bottom, 'remove has space below it').to.be.closeTo(4, 1);
+                        expect(
+                            parseFloat(getComputedStyle($button[0]).borderRadius),
+                            'remove is rounded',
+                        ).to.be.at.least(button.height / 2);
                     });
+                    cy.get('[data-testid="counter-members-dialog"]').screenshot('participant-swipe-remove');
+                    // A short swipe reveals Remove without opening confirmation or sending a request.
+                    cy.get('[data-testid="participant-remove-confirm"]').should('not.exist');
+                    cy.get('@removeParticipant.all').should('have.length', 0);
+                    cy.get(remove).click();
                     cy.get('[data-testid="participant-remove-confirm"]').should('be.visible');
                     cy.get('[data-testid="participant-remove-cancel"]').click();
                     cy.get(row).should('be.visible');
                     cy.get('@removeParticipant.all').should('have.length', 0);
-                    // Desktop activation reaches the same confirmation without a long press.
-                    cy.get(row).focus().should('have.focus').click();
+                    cy.get(row).click('right');
+                    cy.get(row).should(($row) => {
+                        const list = $row[0].ownerDocument.querySelector('[data-testid="counter-members-list"]')!;
+                        expect(
+                            $row[0].getBoundingClientRect().right,
+                            'tapping the row closes its action',
+                        ).to.be.closeTo(list.getBoundingClientRect().right, 1);
+                    });
+                    swipeLeft(memberId, 0.8);
                     cy.get('[data-testid="participant-remove-confirm"]').should('be.visible');
+                    cy.get('@removeParticipant.all').should('have.length', 0);
+                    cy.get('[data-testid="participant-remove-cancel"]').click();
+                    // Keyboard focus reveals the same action without a swipe gesture.
+                    cy.get(remove).focus().should('have.focus');
+                    for (const type of ['keyDown', 'keyUp']) {
+                        cy.then(() =>
+                            Cypress.automation('remote:debugger:protocol', {
+                                command: 'Input.dispatchKeyEvent',
+                                params: { type, key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, text: '\r' },
+                            }),
+                        );
+                    }
+                    cy.get('[data-testid="participant-remove-confirm"]').should('be.visible');
+                    cy.get('[data-testid="participant-remove-submit"]').should(
+                        'have.css',
+                        'background-color',
+                        'rgb(180, 35, 24)',
+                    );
                     cy.get('[data-testid="participant-remove-confirm"]').screenshot('participant-remove-confirm');
                     cy.get('[data-testid="participant-remove-submit"]').click();
                     cy.wait('@removeParticipant').its('response.statusCode').should('eq', 503);
@@ -251,6 +349,7 @@ describe('Usernames and counter members', () => {
                     cy.get('[data-testid="participant-remove-confirm"]').should('not.exist');
                     cy.get(row).should('not.exist');
                     cy.get(`[data-testid="counter-member-${ownerId}"]`).should('be.visible');
+                    cy.get(`[data-testid="counter-member-${otherMemberId}"]`).should('be.visible');
                 });
             },
         );
