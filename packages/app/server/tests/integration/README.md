@@ -8,8 +8,8 @@ From the repository root, run:
 bun run test:db:start
 bun --filter=@tally/core run generate:client
 bun run test:db:migrate
-bun --filter=@tally/core run migrate:check
-bun run test:integration
+POSTGRES_URL=postgresql://tally_test_user:tally_test_password@127.0.0.1:5433/tally_tracker_test bun --filter=@tally/core run migrate:check
+VITEST_MAX_WORKERS=1 bun run test:integration
 bun run test:db:stop
 ```
 

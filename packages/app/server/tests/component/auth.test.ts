@@ -8,6 +8,8 @@ import app from '../../src/app.js';
 import { buildUser } from '../fixtures/user.fixture.js';
 import { buildRefreshToken, TEST_USER_ID, TEST_REFRESH_TOKEN_ID } from '../fixtures/counter.fixture.js';
 
+const createRefreshToken = vi.fn();
+
 vi.mock('../../src/middleware/auth.middleware', () => ({
     jwt: (req: Request, res: Response, next: NextFunction) => {
         if (req.headers.authorization === 'Bearer invalid-token') {
@@ -51,10 +53,6 @@ vi.mock('../../src/services/email-otp.service', () => ({
 }));
 
 vi.mock('../../src/db/repositories/token.repository', () => ({
-    create: vi.fn(),
-    get: vi.fn(),
-    remove: vi.fn(),
-    removeAllForUser: vi.fn(),
     rotate: vi.fn(),
     revokeSession: vi.fn(),
 }));
@@ -70,11 +68,11 @@ describe('Auth Routes', () => {
         vi.mocked(issueEmailOtp).mockResolvedValue();
         vi.mocked(userRepository.withLockedUser).mockImplementation(async (_id, action) =>
             action(buildUser(), {
-                refreshToken: { create: tokenRepository.create },
+                refreshToken: { create: createRefreshToken },
             } as unknown as Prisma.TransactionClient),
         );
         vi.mocked(tokenRepository.rotate).mockResolvedValue(null);
-        vi.mocked(tokenRepository.create).mockResolvedValue(buildRefreshToken());
+        createRefreshToken.mockResolvedValue(buildRefreshToken());
         vi.mocked(tokenRepository.revokeSession).mockResolvedValue(null);
     });
 
@@ -181,7 +179,7 @@ describe('Auth Routes', () => {
 
         it('should login with valid email and return tokens', async () => {
             vi.mocked(userRepository.getUserByEmail).mockResolvedValue(buildUser());
-            vi.mocked(tokenRepository.create).mockResolvedValue(buildRefreshToken());
+            createRefreshToken.mockResolvedValue(buildRefreshToken());
 
             const res = await request(app).post('/users/login').send({
                 email: 'test@test.com',
@@ -212,7 +210,7 @@ describe('Auth Routes', () => {
 
         it('should set cookies on login', async () => {
             vi.mocked(userRepository.getUserByEmail).mockResolvedValue(buildUser());
-            vi.mocked(tokenRepository.create).mockResolvedValue(buildRefreshToken());
+            createRefreshToken.mockResolvedValue(buildRefreshToken());
 
             const res = await request(app).post('/users/login').send({
                 email: 'test@test.com',

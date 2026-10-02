@@ -18,9 +18,11 @@ Tally is a React Native counter app for Android, iOS, and web. It supports guest
 
 The client writes counter changes to React state first. It saves local state and queues authenticated mutations for later replay.
 
-Shared counter increments use Socket.io. The server sends `counter-update` events to the owner and accepted sharers.
+Counter writes use HTTP. The server sends Socket.io `counter-update` events to the owner and accepted participants.
 
-The API supports email/password registration, login, logout, auth checks, refresh token rotation, personal counters, shared counters, invite-code joins, and share removal. `BASIC` users cannot create shared counters and can join one shared counter; `PREMIUM` users can create and join shared counters. The upgrade screen is informational only; billing is not implemented.
+The API supports password, Google, and Apple sign-in, unique usernames, account deletion, personal counters, and shared counters. Basic accounts can join one shared counter. Premium accounts can start sharing and join more counters. Native purchases and restoration use RevenueCat, with server-verified access.
+
+The iOS app includes interactive Home Screen widgets and read-only Lock Screen counters. See the [release checklist](docs/plans/pre-ui-product-roadmap.md) for publication status.
 
 ## Architecture & Key Features
 
@@ -30,9 +32,9 @@ The API supports email/password registration, login, logout, auth checks, refres
 
 - **Local persistence:** AsyncStorage saves guest and authenticated counter lists.
 - **Optimistic updates:** Counter actions update React context state before network confirmation.
-- **Persistent sync queue:** Authenticated mutations are stored in `app_sync_queue` as `CREATE`, `UPDATE`, `SET_COUNT`, `INCREMENT`, `DELETE`, and `REMOVE` commands.
+- **Persistent sync queue:** Authenticated mutations are stored in `app_sync_queue` as `CREATE`, `UPDATE`, `INCREMENT`, `DELETE`, and `REMOVE` commands.
 - **Network replay:** `SyncManager` processes queued commands when Expo Network reports connectivity.
-- **Retry handling:** Network failures, 5xx responses, and expired sessions keep commands queued; non-401 4xx responses are removed to unblock later commands.
+- **Retry handling:** Temporary failures keep commands queued. Rejected commands remain recoverable while unrelated counters continue to synchronize.
 
 #### Cross-Platform Auth
 
@@ -44,21 +46,22 @@ The API supports email/password registration, login, logout, auth checks, refres
 #### Sharing UI
 
 - **Invite links:** Shared counter cards copy `/join?code=...` links to the clipboard.
-- **Tier gating:** The counter form disables shared-counter creation unless the authenticated user is `PREMIUM`.
+- **Tier gating:** Starting sharing requires a verified Premium account. Existing participants can forward the invite without Premium.
+- **Participants:** Shared cards open a participant list with usernames, presence, and last actions. Owners can remove participants after confirmation.
 - **Guest limits:** Guest sessions can create up to three personal counters; existing guest counters remain usable after the cap is reached.
 
 ### Server Side
 
 #### API and Data Model
 
-- **Routes:** Express mounts `/users`, `/counters`, and `/health` routes.
-- **Database:** Prisma targets PostgreSQL and defines `User`, `Counter`, `CounterShare`, `RefreshToken`, and `IdempotencyLog` models.
+- **Routes:** Express mounts `/users`, `/counters`, `/billing`, and `/health` routes.
+- **Database:** Prisma targets PostgreSQL. Models cover accounts, counters, memberships, sessions, email codes, login limits, and mutation receipts.
 - **Sharing model:** `CounterShare` stores `PENDING`, `ACCEPTED`, and `REJECTED` states with a unique `(counterId, userId)` constraint.
 - **Counter access:** Repository queries return owned counters plus counters shared with the user at `ACCEPTED` status.
 
 #### Auth and Validation
 
-- **Password auth:** User passwords are hashed with bcrypt.
+- **Password auth:** New passwords use scrypt. Existing bcrypt hashes remain readable without accepting truncated passwords.
 - **Token handling:** Access tokens are issued as cookies for web clients and response fields for native clients.
 - **Refresh tokens:** Refresh token records are stored in PostgreSQL and rotated during `/users/refresh`.
 - **Request validation:** Zod validates request bodies and route params; `@tally/core` exports shared model, request, and response types.
@@ -68,7 +71,7 @@ The API supports email/password registration, login, logout, auth checks, refres
 - **Socket rooms:** Socket.io clients join rooms keyed by user ID.
 - **Broadcasting:** Shared counter increments use Prisma atomic increments, then emit `counter-update` to the owner and accepted sharers.
 - **Duplicate protection:** Counter routes accept `X-Idempotency-Key`; completed duplicate requests replay the original mutation status and body without running the mutation again. Reusing a key for a different user/request, or while the original request is still processing, returns `409`.
-- **Cleanup jobs:** Server startup begins cleanup for expired refresh tokens and old idempotency logs.
+- **Cleanup jobs:** Server startup begins cleanup for expired refresh tokens and login-rate limits. Mutation receipts remain until account deletion.
 
 ## Tech Stack
 
@@ -103,39 +106,43 @@ Install dependencies:
 bun install
 ```
 
-Start the database, API, and client in separate terminals:
+Copy the environment templates before starting the services:
+
+```bash
+cp packages/app/server/.env.example packages/app/server/.env.development
+cp packages/app/client/.env.example packages/app/client/.env
+```
+
+Set the client's `EXPO_PUBLIC_API_URL` to your local API. The client template targets the deployed API; do not use it for tests.
+Use `http://localhost:3000` in a browser or simulator. A physical phone needs the Mac's LAN address.
+
+Start the database, generate Prisma files, and apply migrations:
 
 ```bash
 bun run dev:db
+POSTGRES_URL=postgresql://template_user:template_pass@localhost:5432/template_db bun --filter=@tally/core run generate
+POSTGRES_URL=postgresql://template_user:template_pass@localhost:5432/template_db bun --filter=@tally/core run migrate:deploy
+```
+
+Start the API and client in separate terminals:
+
+```bash
 bun run dev:server
-bun run dev:client
+bun run dev:client -- --max-workers 1
 ```
 
 The API uses port `3000`. Expo uses port `8081` and connects to `EXPO_PUBLIC_API_URL`.
 
-Create the client environment file before you start Expo:
+For an existing iOS development build, start Metro and open the installed app:
 
 ```bash
-cp packages/app/client/.env.example packages/app/client/.env
-```
-
-The example uses the deployed API. This lets a physical device connect without a local network address.
-
-Install and start the iOS development build:
-
-```bash
-bun --filter=@tally/client run ios -- --device
-bun run dev:client -- --dev-client
-```
-
-Install and start the Android development build:
-
-```bash
-bun --filter=@tally/client run android -- --device
-bun run dev:client -- --dev-client
+bun run dev:client -- --dev-client --max-workers 1
 ```
 
 Open the installed Tally development build. Scan the Expo QR code if the app does not connect automatically.
+
+Native builds use the resource limits in [AGENTS.md](AGENTS.md). Run one heavy job at a time and stop above 70% total CPU.
+For Xcode builds, use `-jobs 1 ONLY_ACTIVE_ARCH=YES SWIFT_USE_PARALLEL_WHOLE_MODULE_OPTIMIZATION=NO`.
 
 Rebuild the native app after a native dependency or Expo config change. JavaScript and environment changes only need an Expo restart.
 
@@ -161,8 +168,8 @@ Run checks:
 bun run typecheck
 bun run lint
 bun run format:check
-bun run test:unit
-bun run test:component
+VITEST_MAX_WORKERS=1 bun run test:unit
+VITEST_MAX_WORKERS=1 bun run test:component
 ```
 
 The test taxonomy is:
@@ -180,7 +187,7 @@ Use the dedicated test database workflow from the repository root:
 bun run test:db:start
 bun --filter=@tally/core run generate:client
 bun run test:db:migrate
-bun run test:integration
+VITEST_MAX_WORKERS=1 bun run test:integration
 bun run test:db:stop
 ```
 

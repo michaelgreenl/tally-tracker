@@ -30,8 +30,6 @@
         "build": "bun --filter=@tally/client run build && bun --filter=server run build",
         "render:build": "bun install --frozen-lockfile && bun --filter=@tally/core run generate && bun --filter=server run render:build",
         "render:start": "bun --filter=@tally/core run migrate:deploy && bun --filter=server run render:start",
-        "commit:skip": "SKIP_E2E=1 git commit",
-        "commit:skip:all": "SKIP_ALL=1 git commit",
         "typecheck": "bun --workspaces --sequential --no-exit-on-error typecheck",
         "format": "bun --workspaces --sequential --no-exit-on-error format",
         "format:check": "bun --workspaces --sequential --no-exit-on-error format:check",
@@ -42,9 +40,7 @@
     "devDependencies": {
         "@commitlint/cli": "^20.5.3",
         "@commitlint/config-conventional": "^20.5.3",
-        "@types/ms": "^2.1.0",
         "@vitest/coverage-v8": "4.1.11",
-        "dotenv": "^17.4.2",
         "husky": "^9.1.7",
         "prettier": "^3.9.4",
         "prettier-plugin-prisma": "^5.0.0"
@@ -59,10 +55,6 @@
     ],
     "author": "",
     "license": "ISC",
-    "dependencies": {
-        "bcrypt": "^6.0.0",
-        "ms": "^2.1.3"
-    },
     "overrides": {
         "@babel/core": "^7.29.7",
         "@babel/plugin-transform-modules-systemjs": "^7.29.4",
@@ -71,13 +63,13 @@
         "@tootallnate/once": "^2.0.1",
         "@xmldom/xmldom": "^0.8.15",
         "baseline-browser-mapping": "^2.11.25",
-        "basic-ftp": "^6.0.1",
+        "basic-ftp": "^6.2.1",
         "body-parser": "^2.3.0",
         "brace-expansion": "^5.0.12",
         "browserslist": "^4.29.0",
         "decode-uri-component": "0.5.0",
         "deepmerge-ts": "8.0.2",
-        "dompurify": "^3.4.15",
+        "dompurify": "^3.4.16",
         "engine.io": "^6.6.10",
         "esbuild": "^0.28.1",
         "fast-uri": "^3.1.8",

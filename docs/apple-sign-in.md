@@ -2,9 +2,9 @@
 
 ## Scope
 
-The iOS app uses Apple's native sign-in control. Web and Android keep their existing sign-in methods. The client sends a single-use authorization code and nonce. The API verifies Apple's signed identity token. It reuses Tally's session, billing identity, and counter storage.
+The iOS app opens Apple's native authorization sheet from the shared sign-in button. Web and Android keep their existing sign-in methods. The client sends a single-use authorization code and nonce. The API verifies Apple's signed identity token. It reuses Tally's session, billing identity, and counter storage.
 
-An Apple identity uses its stable subject identifier, not its email address. Matching email addresses never merge accounts automatically. Existing users must sign in first, then select **Connect Apple** in Settings. This preserves their counters, Premium access, and existing email, including when Apple supplies a private relay address. An Apple email does not verify a different Tally email.
+An Apple identity uses its stable subject identifier, not its email address. Matching email addresses never merge accounts automatically. Existing users must sign in first, then connect Apple under **Settings → Sign-in methods**. This preserves their counters, Premium access, and existing email, including when Apple supplies a private relay address. An Apple email does not verify a different Tally email.
 
 ## Configuration
 

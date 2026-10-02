@@ -8,12 +8,12 @@ import type { ApiResponse } from '@tally/core';
 
 export type TransactionClient = Prisma.TransactionClient;
 
-export type IdempotentResponse<TBody = unknown> = {
+type IdempotentResponse<TBody = unknown> = {
     status: number;
     body?: TBody;
 };
 
-export type IdempotentResult<TBody = unknown> = IdempotentResponse<TBody> & {
+type IdempotentResult<TBody = unknown> = IdempotentResponse<TBody> & {
     replayed: boolean;
 };
 

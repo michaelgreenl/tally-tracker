@@ -25,7 +25,7 @@ type CounterFixture = {
 export const TEST_COUNTER_ID = randomUUID();
 export const TEST_USER_ID = randomUUID();
 export const TEST_OTHER_USER_ID = randomUUID();
-export const TEST_SHARE_ID = randomUUID();
+const TEST_SHARE_ID = randomUUID();
 export const TEST_REFRESH_TOKEN_ID = randomUUID();
 
 export const buildCounter = (overrides: Partial<CounterFixture> = {}): CounterFixture => ({

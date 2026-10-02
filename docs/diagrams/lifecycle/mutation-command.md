@@ -1,6 +1,6 @@
 ### Mutation Command Lifecycle
 
-These are conceptual processing phases. `MutationCommand` records do not carry a status field; they are either present in the queue or removed from it.
+These are processing phases. Queued records can carry a `rejected` HTTP status. Rejected work stays on disk for recovery.
 
 ```mermaid
 %%{
@@ -26,17 +26,17 @@ stateDiagram-v2
     state "Queued (record exists)" as Pending
     state "Processing (in flight)" as Processing
     state "Removed (success)" as Completed
-    state "Dropped (fatal 4xx)" as Dropped
+    state "Rejected (retained)" as Rejected
 
     Pending --> Processing: SyncManager.processQueue()
 
-    Processing --> Completed: API returns 200/201
+    Processing --> Completed: API succeeds or removal returns 404
     Processing --> Pending: API returns 500 / network fail
     Processing --> Pending: API returns 401 after refresh fails
-    Processing --> Dropped: API returns non-401 4xx
+    Processing --> Rejected: API returns 400/403/404/409/422
+    Rejected --> Pending: Retry or correct the counter
 
     Completed --> [*]: Removed from Queue
-    Dropped --> [*]: Removed from Queue
 
     note right of Pending
         Persisted in AsyncStorage
@@ -51,10 +51,10 @@ stateDiagram-v2
         There is no max-retry counter.
     end note
 
-    note right of Dropped
-        Logic error (bug).
-        Only non-401 4xx errors
-        are discarded as fatal.
-        Discarded to unblock queue.
+    note right of Rejected
+        Later writes for this counter wait.
+        Other counters can continue.
+        Corrected edits preserve operation order.
+        A 409 keeps its original idempotency key.
     end note
 ```

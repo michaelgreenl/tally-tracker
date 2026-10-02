@@ -29,11 +29,10 @@ sequenceDiagram
     participant API as Backend
 
     User->>View: Click "Create Counter"
-    View->>Store: createCounter("My Title", "SHARED")
+    View->>Store: createCounter({title: "My Title"})
 
     Note right of Store: 1. OPTIMISTIC UPDATE
     Store->>Store: Generate UUID (crypto.randomUUID)
-    Store->>Store: Generate InviteCode (Local)
     Store->>Store: Push to local array
     Store->>Store: saveState() (Persist to Disk)
 
@@ -49,14 +48,17 @@ sequenceDiagram
         Svc->>Manager: processQueue()
 
         par Background Sync
-            Manager->>Queue: getQueue()
+            Manager->>Queue: get()
             Queue-->>Manager: Pending Commands
-            Manager->>API: POST /counters (Payload + InviteCode + Idempotency Key)
+            Manager->>API: POST /counters (Payload + Idempotency Key)
             API-->>Manager: 201 Created or replayed response
-            Manager->>Queue: removeCommand(Command)
+            Manager->>Queue: remove(Command.id)
         end
     else Guest user
         Store-->>Store: Skip CounterService.create()
         Note right of Store: Guest counters stay local<br/>and do not enter SyncQueue.
     end
 ```
+
+New counters are personal. Starting sharing is a separate online action after pending writes finish.
+The server creates the invite after checking ownership, email verification, and Premium access.

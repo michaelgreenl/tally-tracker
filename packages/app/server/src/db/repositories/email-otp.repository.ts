@@ -4,7 +4,7 @@ import type { EmailOtpPurpose, Prisma } from '@prisma/client';
 
 const MAX_ATTEMPTS = 5;
 
-export type PasswordResetResult = 'RESET' | 'INVALID_CODE' | 'REUSED_PASSWORD';
+type PasswordResetResult = 'RESET' | 'INVALID_CODE' | 'REUSED_PASSWORD';
 
 class ReusedPasswordError extends Error {}
 

@@ -19,7 +19,7 @@
 }%%
 
 stateDiagram-v2
-    [*] --> Issued: Login (native or rememberMe)
+    [*] --> Issued: Login creates a revocable session
 
     state "Issued (Active)" as Issued
     state "Rotated (Replaced)" as Rotated
@@ -38,17 +38,20 @@ stateDiagram-v2
     note right of Issued
         Stored in DB on the server.
         Stored in HttpOnly cookie (web)
-        or Expo SecureStore (native).
+        or Expo SecureStore (native)
+        when rememberMe is enabled.
+        Otherwise the refresh secret stays on the server.
     end note
 
     note right of Rotated
-        Old token invalidated in DB.
-        New token inherits a fresh expiry window,
-        keeping active sessions alive indefinitely.
+        Old token cannot rotate again.
+        A retry within 30 seconds returns
+        the same active replacement.
+        The new token receives a fresh expiry.
     end note
 
     note left of Revoked
-        Logout deletes the token from DB.
-        All future refresh attempts fail.
+        Logout deletes this login's token family.
+        All-device logout revokes every login.
     end note
 ```

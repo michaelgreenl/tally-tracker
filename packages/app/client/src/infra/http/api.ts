@@ -12,7 +12,7 @@ import type { SessionScope } from '../../services/session/session-scope';
 
 import type { AuthResponse } from '@tally/core/client';
 
-export interface ApiRequestOptions<T = unknown> extends Omit<RequestInit, 'body'> {
+interface ApiRequestOptions<T = unknown> extends Omit<RequestInit, 'body'> {
     body?: T;
     requiresAuth?: boolean;
     // Logout uses captured credentials after the local session has ended.

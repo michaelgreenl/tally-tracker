@@ -99,7 +99,7 @@ GitHub Pages reads the repository variable `GOOGLE_WEB_CLIENT_ID` during its bui
 The tracked Expo plugin forwards iOS Google callbacks before Expo's existing deep-link handlers.
 
 This flow does not need the Web client secret or Google API access tokens. Never put a client secret in an Expo variable.
-While the Google project is in Testing, use its listed test accounts. Apple sign-in remains separate release work.
+While the Google project is in Testing, use its listed test accounts. See [Apple sign-in](../../../apple-sign-in.md) for the iOS authorization flow.
 
 References: [Expo Google authentication](https://docs.expo.dev/guides/google-authentication/),
 [Google backend verification](https://developers.google.com/identity/sign-in/ios/backend-auth).

@@ -16,7 +16,8 @@ afterEach(() => {
     vi.unstubAllEnvs();
 });
 
-describe('Production login limits', () => {
+// Allow the real password checks to finish when hashing runs on one worker.
+describe('Production login limits', { timeout: 30_000 }, () => {
     it('shares an account limit across casing and IPs, counts success, and permits login after expiry', async () => {
         const email = `limits.${randomUUID()}@example.com`;
         const password = 'New-password123';

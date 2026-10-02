@@ -32,7 +32,7 @@ sequenceDiagram
     Net->>Manager: Expo Network reports connected
     Manager->>Manager: processQueue()
 
-    Manager->>Queue: getQueue()
+    Manager->>Queue: get()
     Queue-->>Manager: Returns [Cmd1, Cmd2]
 
     loop For Each Command
@@ -45,29 +45,28 @@ sequenceDiagram
         alt Success (200/201)
             API-->>Client: 200 OK
             Client-->>Manager: Success
-            Manager->>Queue: removeCommand(Cmd1)
+            Manager->>Queue: remove(Cmd1.id)
             Note right of Manager: Permanent success.<br/>Remove from disk.
 
-        else Fatal Error (non-401 4xx)
+        else Rejected Command (400/403/404/409/422)
             API-->>Client: 400/403/404/409/422
             Client-->>Manager: ApiError (4xx)
-            Manager->>Queue: removeCommand(Cmd1)
-            Note right of Manager: Invalid command (bug).<br/>Remove to unblock queue.
+            Manager->>Queue: reject(Cmd1.id, status)
+            Note right of Manager: Retain this command and block later writes<br/>for this counter. Continue unrelated counters.
 
         else Session Expired (401 after refresh failed)
             API-->>Client: 401 Unauthorized
             Client-->>Manager: ApiError (401)
             Note right of Manager: Session is dead.<br/>Keep commands for after re-auth.
-            Manager->>Manager: Trigger logout
             Manager-->>Manager: Stop Processing (Break Loop)
 
-        else Temporary Error (500/Network)
-            API-->>Client: 500 Server Error
-            Client-->>Manager: ApiError (5xx/0)
+        else Temporary Error (429/5xx/Network)
+            API-->>Client: Temporary failure
+            Client-->>Manager: ApiError
             Note right of Manager: Server is down.<br/>Keep in queue for next retry.
             Manager-->>Manager: Stop Processing (Break Loop)
         end
     end
 
-    Manager-->>Manager: isSyncing = false
+    Manager-->>Manager: Report idle when drained, otherwise error
 ```

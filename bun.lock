@@ -4,16 +4,10 @@
   "workspaces": {
     "": {
       "name": "tally-tracker",
-      "dependencies": {
-        "bcrypt": "^6.0.0",
-        "ms": "^2.1.3",
-      },
       "devDependencies": {
         "@commitlint/cli": "^20.5.3",
         "@commitlint/config-conventional": "^20.5.3",
-        "@types/ms": "^2.1.0",
         "@vitest/coverage-v8": "4.1.11",
-        "dotenv": "^17.4.2",
         "husky": "^9.1.7",
         "prettier": "^3.9.4",
         "prettier-plugin-prisma": "^5.0.0",
@@ -34,6 +28,7 @@
         "expo-constants": "~57.0.19",
         "expo-crypto": "~57.0.2",
         "expo-dev-client": "~57.0.16",
+        "expo-font": "~57.0.4",
         "expo-haptics": "~57.0.3",
         "expo-linking": "~57.0.8",
         "expo-network": "~57.0.1",
@@ -56,6 +51,7 @@
         "react-native-web": "~0.21.0",
         "react-native-worklets": "0.10.1",
         "socket.io-client": "^4.8.3",
+        "zod": "^4.3.5",
       },
       "devDependencies": {
         "@bacons/apple-targets": "5.0.0",
@@ -76,7 +72,6 @@
       "dependencies": {
         "@prisma/adapter-pg": "^7.8.0",
         "@prisma/client": "^7.8.0",
-        "@prisma/config": "^7.8.0",
         "@sentry/node": "^10.64.0",
         "@tally/core": "^0.1.0",
         "bcrypt": "^6.0.0",
@@ -89,13 +84,12 @@
         "helmet": "^8.1.0",
         "jose": "6.2.12",
         "jsonwebtoken": "^9.0.3",
+        "ms": "^2.1.3",
         "pg": "^8.17.0",
         "socket.io": "^4.8.3",
         "zod": "^4.3.5",
       },
       "devDependencies": {
-        "@commitlint/cli": "^20.3.1",
-        "@commitlint/config-conventional": "^20.3.1",
         "@eslint/js": "^10.0.1",
         "@types/bcrypt": "^6.0.0",
         "@types/cookie": "^0.6.0",
@@ -103,6 +97,7 @@
         "@types/cors": "^2.8.19",
         "@types/express": "^5.0.6",
         "@types/jsonwebtoken": "^9.0.10",
+        "@types/ms": "^2.1.0",
         "@types/node": "^25.0.3",
         "@types/pg": "^8.16.0",
         "@types/supertest": "^6.0.3",
@@ -112,15 +107,12 @@
         "eslint-config-prettier": "^10.1.8",
         "eslint-plugin-prettier": "^5.5.4",
         "globals": "^17.0.0",
-        "jsdom": "^28.0.0",
-        "prisma": "^7.8.0",
         "socket.io-client": "^4.8.3",
         "supertest": "^7.2.2",
         "tsup": "^8.5.1",
         "tsx": "^4.21.0",
         "typescript": "^6.0.3",
         "vitest": "^4.1.11",
-        "zod-prisma-types": "^3.3.10",
       },
     },
     "packages/core": {
@@ -135,8 +127,10 @@
         "@eslint/js": "^10.0.1",
         "@prisma/adapter-pg": "^7.8.0",
         "@prisma/config": "^7.8.0",
+        "@types/bcrypt": "^6.0.0",
         "@typescript-eslint/eslint-plugin": "^8.52.0",
         "@typescript-eslint/parser": "^8.52.0",
+        "bcrypt": "^6.0.0",
         "dotenv": "^17.3.1",
         "eslint": "^9.39.2",
         "eslint-config-prettier": "^10.1.8",
@@ -167,13 +161,13 @@
     "@tootallnate/once": "^2.0.1",
     "@xmldom/xmldom": "^0.8.15",
     "baseline-browser-mapping": "^2.11.25",
-    "basic-ftp": "^6.0.1",
+    "basic-ftp": "^6.2.1",
     "body-parser": "^2.3.0",
     "brace-expansion": "^5.0.12",
     "browserslist": "^4.29.0",
     "decode-uri-component": "0.5.0",
     "deepmerge-ts": "8.0.2",
-    "dompurify": "^3.4.15",
+    "dompurify": "^3.4.16",
     "engine.io": "^6.6.10",
     "esbuild": "^0.28.1",
     "fast-uri": "^3.1.8",
@@ -1364,7 +1358,7 @@
 
     "baseline-browser-mapping": ["baseline-browser-mapping@2.11.25", "", { "bin": { "baseline-browser-mapping": "dist/cli.cjs" } }, "sha512-gMmEShwwq7FJqMwvfRwvCl00v4kN+KOfJqXn+f4nrufak5gNHJOksd/60Dvjuz7sI8Y5WiSFBa8FEYr+zoyqCw=="],
 
-    "basic-ftp": ["basic-ftp@6.0.1", "", {}, "sha512-3ilxa3n4276wGQp/ImRAuz4ALdsj/2Wd3FqoZBZlajDYnByCZ0JMb4+26Rde0wGXIbM0G2HWSfr/Fi8b21KX8g=="],
+    "basic-ftp": ["basic-ftp@6.2.1", "", {}, "sha512-bK67isD+lKq46AU8vNtjvMaT2ZqAOAmNCbxUHlFBRD4k15NWxyEjmaKtZPlgce58So4BNTjITGQOVTjL9y0ECA=="],
 
     "bcrypt": ["bcrypt@6.0.0", "", { "dependencies": { "node-addon-api": "^8.3.0", "node-gyp-build": "^4.8.4" } }, "sha512-cU8v/EGSrnH+HnxV2z0J7/blxH8gq7Xh2JFT6Aroax7UohdmiJJlxApMxtKfuI7z68NvvVcmR78k2LbT6efhRg=="],
 
@@ -1698,7 +1692,7 @@
 
     "domhandler": ["domhandler@5.0.3", "", { "dependencies": { "domelementtype": "^2.3.0" } }, "sha512-cgwlv/1iFQiFnU96XXgROh8xTeetsnJiDsTc7TYCLFd9+/WNkIqPTxiM/8pSd8VIrhXGTf1Ny1q1hquVqDJB5w=="],
 
-    "dompurify": ["dompurify@3.4.15", "", { "optionalDependencies": { "@types/trusted-types": "^2.0.7" } }, "sha512-EUBjM+B+lkDE41iE82DDSCfkoPGfXx8IxFxPMjNzm/Uk4xDet77rTN9wqlxlVg71kK7XGuUMv6wUxJUwwv+Xyw=="],
+    "dompurify": ["dompurify@3.4.16", "", { "optionalDependencies": { "@types/trusted-types": "^2.0.7" } }, "sha512-sqo+pNp3qRhCIpbgRi1y8Tgk27Bo2Ry7w0dC1NBeNTdZChWjz9Xb/KOoZbRP/R6pQZ80Qw8YhXw13hWWBbMRnQ=="],
 
     "domutils": ["domutils@3.2.2", "", { "dependencies": { "dom-serializer": "^2.0.0", "domelementtype": "^2.3.0", "domhandler": "^5.0.3" } }, "sha512-6kZKyUajlDuqlHKVX1w7gyslj9MPIXzIFiz/rGu35uC1wMi+kMhQwGhl4lt9unC9Vb9INnY9Z3/ZA3+FhASLaw=="],
 

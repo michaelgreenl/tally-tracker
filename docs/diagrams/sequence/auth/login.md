@@ -36,14 +36,15 @@ sequenceDiagram
     API->>API: Compare password hash
 
     alt Invalid Credentials
-        API-->>Client: 404 or 401
+        API-->>Client: 401
         Client-->>Store: ApiError
     else Valid Credentials
         API->>DB: Lock user and recheck password hash and session version
         API->>API: Generate access token
+        API->>DB: Create a revocable login session
 
         alt rememberMe true or native login
-            API->>DB: Store refresh token record
+            Note over API, DB: The client receives the session's refresh secret.
             API-->>Client: 200 { user, accessToken, refreshToken } + Set-Cookie
             Client-->>Store: Auth response
             Store->>Storage: Store native tokens when present

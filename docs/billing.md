@@ -6,36 +6,26 @@ The native upgrade screen loads RevenueCat's current offering and localized pric
 
 Guests and web users can preview plans, but cannot buy or restore from that screen. Web users retain Premium access through their Tally account. Native Premium users can open the store management URL when RevenueCat supplies one. Lifetime purchases do not need subscription cancellation.
 
-The existing Basic and Premium tiers remain. All three products grant the same entitlement. The Tally Test Store uses `tally_premium`; the server default is `premium`, so set the override below. Monthly and yearly products renew. Lifetime access does not expire.
-
-The Test Store's current `default` offering contains:
-
-| Package        | Product                  | Test price      |
-| -------------- | ------------------------ | --------------- |
-| `$rc_monthly`  | `tally_premium_monthly`  | USD 1 per month |
-| `$rc_annual`   | `tally_premium_yearly`   | USD 10 per year |
-| `$rc_lifetime` | `tally_premium_lifetime` | USD 20 once     |
-
-Store credentials, webhook delivery, and a new native development build remain necessary for manual testing. This integration does not enable production payments.
+All three products grant the same Premium entitlement. Set `REVENUECAT_ENTITLEMENT_ID` to the configured project's entitlement identifier. The server default is `premium`. Monthly and yearly products renew. Lifetime access does not expire.
 
 ## App Store release settings
 
-App Store Connect has these US prices saved as of September 25, 2026:
+The approved US release prices are:
 
 - Free app download.
 - `tally_premium_monthly`: USD 1 per month.
 - `tally_premium_yearly`: USD 10 per year, billed yearly.
 - `tally_premium_lifetime`: USD 30 once, as a non-consumable purchase.
 
-Apple calculates prices in other currencies. The app and all three products select 148 non-EU countries or regions. All 27 EU countries are excluded. Automatic availability in future countries or regions is off.
+Apple calculates prices in other currencies. The initial release excludes EU countries and mainland China. Check the app and all three products when reviewing availability.
 
-These settings do not publish the app or submit products for review. Connect the products to RevenueCat and verify signed-build purchases before release. The separate Test Store still uses the test prices above.
+These settings do not publish the app or submit products for review. The owner confirmed Apple sandbox purchase, cancellation, and expiration behavior. Track the final signed build and submission in the [release checklist](plans/pre-ui-product-roadmap.md).
 
 ## Client configuration
 
 Set `EXPO_PUBLIC_REVENUECAT_TEST_API_KEY` to the Test Store's public SDK key in the client's ignored `.env`. Restart Expo after changes. Test Store keys are accepted only in development builds.
 
-Keep `EXPO_PUBLIC_REVENUECAT_IOS_API_KEY` and `EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY` empty until real store billing is ready. Release builds accept only the matching `appl_` or `goog_` SDK key. Never use a secret API key in the client.
+Set `EXPO_PUBLIC_REVENUECAT_IOS_API_KEY` for iOS store billing. Set `EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY` when configuring Android billing. Release builds accept only the matching `appl_` or `goog_` SDK key. Never use a secret API key in the client.
 
 The SDK uses the Tally account UUID. It does not configure anonymous customers. SDK account changes wait for any open purchase to finish. Tally logout removes listeners; the next signed-in account identifies itself before any store action. The SDK's anonymous logout operation is not used.
 
@@ -50,7 +40,7 @@ Set these server-only values:
 | Variable                    | Value                                                                    |
 | --------------------------- | ------------------------------------------------------------------------ |
 | `REVENUECAT_SECRET_API_KEY` | A RevenueCat secret API key with access to the v1 customer lookup.       |
-| `REVENUECAT_ENTITLEMENT_ID` | `tally_premium` for the configured Tally Test Store.                     |
+| `REVENUECAT_ENTITLEMENT_ID` | The entitlement identifier configured in the RevenueCat project.       |
 | `REVENUECAT_WEBHOOK_SECRET` | At least 32 random characters.                                           |
 | `REVENUECAT_ALLOW_SANDBOX`  | `true` on the test backend. Leave `false` on the public release backend. |
 
@@ -91,7 +81,7 @@ The normal account endpoints and premium feature checks apply expiration rules w
 1. Configure the test backend with the server key, entitlement identifier, sandbox access, and webhook secret.
 2. Configure the matching RevenueCat webhook. Confirm its test event succeeds.
 3. Rebuild the native development app and sign in with a Basic test account.
-4. Open Upgrade. Confirm all three store prices match the table above.
+4. Open Upgrade. Confirm all three prices match that Test Store's offering.
 5. Cancel checkout, then simulate failure. Neither action must grant Premium.
 6. Complete a test purchase. Confirm server-verified Premium and sharing access.
 7. Restart the app and restore the purchase. Confirm no second payment occurs.
@@ -103,7 +93,7 @@ RevenueCat's Test Store simulates payments. It does not charge a payment card. D
 
 Adding the native SDK requires a new development build. Test Store checks do not replace Apple and Google sandbox checks.
 
-Before release, configure both real stores, test signed builds, update privacy disclosures, and verify account deletion with billing data. Deleting a Tally account must not imply that a store subscription was canceled.
+For the iOS release, use Apple sandbox checks on the signed build. Google Play publication is deferred. Deleting a Tally account must not imply that a store subscription was canceled.
 
 ## Verification
 
@@ -111,7 +101,7 @@ Unit tests exercise entitlement parsing, lifetime access, expiration boundaries,
 
 PostgreSQL integration tests exercise authenticated refresh, premium feature access, cancellation, refunds, stale snapshots, provider failures, transfers, and rejected requests. These tests replace only RevenueCat's HTTP response. They do not execute a store purchase.
 
-Live RevenueCat and store verification remain required.
+Keep device results in the release checklist. Automated provider tests do not replace signed-device checks.
 
 ## References
 

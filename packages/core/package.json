@@ -8,11 +8,8 @@
         ".": "./src/index.ts",
         "./client": "./src/client.ts"
     },
-    "prisma": {
-        "seed": "tsx prisma/seeds/index.ts"
-    },
     "scripts": {
-        "generate": "npx prisma generate",
+        "generate": "prisma generate",
         "generate:client": "prisma generate --generator client",
         "migrate:deploy": "prisma migrate deploy",
         "migrate:check": "prisma migrate diff --from-config-datasource --to-schema prisma/schema --exit-code",
@@ -22,7 +19,7 @@
         "format": "prettier --write src/",
         "format:check": "prettier --check src/",
         "lint": "eslint src --ext .ts",
-        "lint:all": "bun typecheck && bun lint"
+        "lint:all": "bun typecheck && bun format:check && bun lint"
     },
     "dependencies": {
         "@prisma/client": "^7.8.0",
@@ -33,6 +30,8 @@
         "@eslint/js": "^10.0.1",
         "@prisma/adapter-pg": "^7.8.0",
         "@prisma/config": "^7.8.0",
+        "@types/bcrypt": "^6.0.0",
+        "bcrypt": "^6.0.0",
         "dotenv": "^17.3.1",
         "pg": "^8.19.0",
         "prisma": "^7.8.0",

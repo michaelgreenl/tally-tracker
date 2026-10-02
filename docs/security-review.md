@@ -1,143 +1,83 @@
-# Security and longevity review
+# Account and data boundaries
 
-Review date: 2026-09-17. Remediation record updated: 2026-09-18.
-Original revision: `49ece1c`. Repairs are local commits on `dev`.
+This document describes the current source contracts.
+It does not certify production configuration or replace device and provider checks.
+Release status belongs in the [iOS release checklist](plans/pre-ui-product-roadmap.md).
 
-This record tracks the source review and its repairs. It is not a release certification or a production penetration test.
-No repair in this review has been pushed or deployed. Production settings and native store transactions remain unverified.
+## Sessions and credentials
 
-### Policy update — 2026-09-27
+- Session scopes stop stale requests, queue work, token writes, and cache writes after an account change.
+- Authenticated requests carry the expected account ID. The server still validates the credential and current session.
+- Web Locks coordinate credential changes across browser tabs.
+- Logout closes private UI immediately and preserves unsent commands under their original account.
+- Default logout revokes only the current login, including its rotated refresh tokens and sockets.
+- Selecting “Log out all devices” revokes every account session. This option is off by default.
+- Failed remote logout does not block local sign-out. The client reports incomplete revocation.
+- Refresh rotation and revocation use account locks and transactions.
+- A rotated token can return the same active replacement for 30 seconds. It cannot create another replacement.
+- Database and network failures preserve the local session and pending work.
 
-The account rules below describe the September review, not the current release policy.
-The user replaced all-device logout with current-session logout. An unchecked “Log out all devices” option retains account-wide logout.
-The password minimum is now eight characters. Uppercase and number requirements remain unchanged.
-New password hashes use scrypt without the former 72-byte limit. Existing bcrypt passwords remain usable.
-The `20260927000000_device_sessions` migration gives each login a stable ID for revocation across token rotations.
+Passwords require eight Unicode code points, an uppercase letter, and a number.
+New hashes use scrypt. Existing bcrypt hashes remain usable without accepting truncated password suffixes.
+Login does not apply registration length rules to existing passwords.
 
-## Findings
+Production login allows 10 attempts per account and 30 per IP during 15 minutes.
+Successful attempts also count. PostgreSQL shares these limits across processes and restarts.
 
-| ID | Original finding | Source repair |
-| --- | --- | --- |
-| F01 | Pending work could cross accounts. | Session scopes stop stale requests, queue work, token writes, and cache writes. Requests carry the expected account ID. |
-| F02 | An old refresh cookie could restore another account. | Login replaces the credential set. Non-remembered login clears the old refresh cookie. Web Locks coordinate cookie changes across tabs. |
-| F03 | Logout left access tokens and sockets valid. | Logout revokes all account sessions and disconnects old sockets. Sockets also stop at token expiry. |
-| F04 | An unused credential endpoint bypassed ownership checks. | The client and API account-update paths were removed. Password recovery remains the supported password-change path. |
-| F05 | Monitoring retained private request data. | Client and server filters exclude bodies, credentials, private error values, extras, and breadcrumbs. |
-| F06 | Runtime dependencies had known vulnerabilities. | Runtime fixes and compatible build-tool updates are installed. Two unpatched development-tool advisories remain; see below. |
-| F07 | Sync retained deleted counters and overwrote local work. | Server snapshots determine current membership and deletions. Pending commands preserve unsent changes. Events request fresh snapshots. |
-| F08 | One rejected command blocked unrelated counters. | Rejections remain visible and recoverable. Independent counters continue to sync. Corrected commands keep operation order. |
-| F09 | Offline retries outlived deduplication records. | Mutation receipts no longer expire after 24 hours. Account deletion still removes its receipts. |
-| F10 | Database failures became authentication failures. | Infrastructure errors use the temporary server-error path. The client keeps its offline session and pending work. |
-| F11 | Validation discarded normalized input. | Controllers receive parsed request values, including normalization and field filtering. |
-| F12 | API failures disclosed internal details. | Unexpected errors use a stable public response and sanitized server monitoring. |
-| F13 | Password and login controls were weak. | Stronger password boundaries, generic credential errors, and persistent account/IP login limits are in place. |
-| F14 | Concurrent joins bypassed the Basic limit. | A database account lock serializes the quota check and membership change. |
-| F15 | Refresh rotation could leave a partial result. | Rotation and revocation share a transaction boundary. A 30-second retry can return the same direct successor. |
-| F16 | Logout lacked confirmation and waited for the server. | A confirmation dialog precedes immediate local sign-out. Failed remote revocation produces a separate notice. |
+## Account deletion
 
-The focused cleanup removed the unused `SET_COUNT` API and queue path, unused repository exports, and three direct server dependencies.
-It also removed a slowdown stage that could not run before the hard request limit rejected the same traffic.
+Confirmed deletion removes server account data and that account's local counters, commands, and saved order.
+Local cleanup waits for started writes and preserves a later account's credentials.
+Failed server deletion preserves local work. Failed local cleanup produces a notice after server deletion.
 
-## Account and data rules
+Apple-linked deletion revokes the Apple token before deleting account data.
+Deleting a Tally account does not cancel an Apple or Google subscription.
 
-- Logout hides private UI immediately. It preserves unsent commands and saved ordering under the original account.
-- Successful remote logout ends all sessions for that account. Offline logout does not claim remote revocation succeeded.
-- Confirmed account deletion removes its cached counters, joined-counter cache, queued commands, and order key on that device.
-- Deletion waits for started writes. A later login cannot cancel account-targeted cleanup or lose its own credentials.
-- Failed server deletion preserves the account and local work. Failed local cleanup produces a notice after server deletion.
-- Browser deletion can refresh expired access without holding the same Web Lock twice.
-- Email verification is required before checkout, starting sharing, or joining. Personal counters remain available.
-- Verification returns to the selected plan or original invite. Users must explicitly submit the code.
-- Restoration and server purchase verification remain available to signed-in users without email verification.
-- Deleting a Tally account does not cancel an Apple or Google subscription.
+## Counter access and synchronization
 
-Passwords require at least 15 Unicode code points, an uppercase letter, and a number. The maximum is 72 UTF-8 bytes.
-The byte limit prevents silent bcrypt truncation. Login accepts existing password lengths; registration and reset enforce the new policy.
+Only owners and accepted participants can read or change a shared counter.
+Starting sharing requires a verified Premium account.
+Owners and accepted participants can forward an established invite without Premium.
+New participants must sign in and verify their email. Basic accounts can join one shared counter.
 
-Production login allows 10 attempts per account and 30 attempts per IP during 15 minutes. Successful attempts also count.
-Postgres shares these limits across server processes and restarts. Development and test environments do not enforce the production limits.
+Premium expiration preserves existing memberships and invites.
+Reopening an accepted invite succeeds even when several memberships remain after expiration.
+The server checks quotas under an account lock.
 
-## Release configuration
+Owner deletion removes the counter for everyone. Leaving or removing a participant changes only that membership.
+Membership events refresh affected clients. Presence and last actions are limited to shared participants.
 
-Production startup validates database, signing, email, frontend, port, and configured billing settings before accepting requests.
-Signing and email-code secrets must differ and contain at least 32 characters. Frontend URLs must use HTTPS.
-Billing API and webhook credentials must be configured together. Errors identify invalid fields without printing their values.
-Development and test environments retain their local defaults. Startup validation does not prove provider credentials are valid.
+Server snapshots determine membership and deletions. Pending commands preserve unsent changes.
+Rejected commands remain recoverable while unrelated counters continue to synchronize.
+Idempotency receipts remain until account deletion because offline retries have no fixed deadline.
 
-Pages deployment now depends on static checks, unit tests, API tests, Postgres integration tests, and browser tests.
-Only a successful `main` run can deploy. Manual deployment uses the CI workflow on `main` with the same checks.
-These workflows pin Bun to 1.3.9. The Render build now uses the frozen lockfile.
-The existing Husky wrapper already stops on the first failed check; no hook change was needed.
+## Billing and email
 
-Apply committed migrations before starting the repaired API. This review added:
+Email verification precedes purchase, new sharing, and joining.
+Restoration and server purchase verification remain available without email verification.
+RevenueCat verification, not client claims, controls Premium access.
+See [billing](billing.md) for credentials, sandbox isolation, and entitlement rules.
 
-- `20260917190000_refresh_rotation`
-- `20260917230000_login_rate_limits`
+Email codes are hashed, expire, have attempt limits, and can be consumed only once.
+A password reset revokes existing sessions. Reusing the current password does not consume a valid recovery code.
 
-The local test database has both migrations. No production migration was applied during this review.
-Do not reset or seed a deployed database to apply these changes.
+## Validation and monitoring
 
-## Approved sharing rules
+Zod passes normalized, filtered values to controllers.
+Unexpected errors use a stable public response.
+Sentry filters omit credentials, request bodies, private error values, extras, and breadcrumbs.
 
-Starting sharing requires a verified Premium account. Once one participant accepts, owners and accepted participants can copy the existing link without Premium.
-Forwarding that link does not require a new email-verification check. Anyone who holds the link can pass it on.
-Recipients must still sign in and verify their email. Basic accounts can join one counter; Premium accounts can join more.
-The API checks ownership or accepted membership before returning a counter or its invite. Other accounts cannot retrieve the link by counter ID.
+Production startup validates required environment fields before listening.
+Signing and email-code secrets must differ and contain at least 32 characters.
+Frontend URLs must use HTTPS. Billing API and webhook credentials must be configured together.
+Startup errors identify fields without exposing values. Validation does not prove credentials work.
 
-The owner's Delete action requires confirmation. Once deletion syncs, it removes the counter for everyone and invalidates its invite.
-Participants see Leave instead of Delete. Their confirmation removes only their membership; the counter remains available to others.
-There is no separate Stop sharing action that converts the counter to private. Join and leave events refresh all affected participants.
+## Verification boundaries
 
-Premium expiration keeps existing memberships and invites valid. Reading, updating, and forwarding established shared counters remain available.
-Basic limits apply only to new joins. Reopening an already-joined invite succeeds, even when several memberships remain after expiration.
-The client no longer rejects this request from its cached quota. The server checks current membership and limits.
+Unit and component checks cover session changes, queue recovery, and error handling.
+PostgreSQL checks cover authorization, quota locks, idempotency, rotation, and deletion.
+Browser checks cover account and counter flows.
+Provider tests replace external HTTP responses; they do not prove live authorization or store purchases.
 
-These rules follow the user's release-policy choices. No source-policy question remains from this review.
-
-## Remaining release checks
-
-- Resolve or explicitly accept the two build-tool advisories in [dependency security](dependency-security.md).
-- Check repository branch protection and Render's deployment gate. They were not inspected or changed.
-- Test backup restoration, database access controls, secret rotation, and production monitoring with redacted events.
-- Confirm the repaired account and sharing flows against the deployed API after release approval.
-- Test signed iOS and Android builds. Browser checks do not prove native keyboard, sheet, menu, or accessibility behavior.
-- Test real Apple and Google checkout, restoration, cancellation, refunds, expiration, and account transfer.
-- Disable sandbox grants on the public release backend. Keep test billing and production billing separate.
-- Finish OAuth and the store requirements in the [release roadmap](plans/pre-ui-product-roadmap.md).
-
-## Verification
-
-The review uses an isolated Postgres database with fixture data. It does not use the user's development database.
-The completed source repairs passed these local checks:
-
-| Check | Result |
-| --- | --- |
-| Type checking, lint, and formatting | Passed. Eight existing generated-type warnings remain. |
-| Client unit tests | 111 passed. |
-| Server unit tests | 53 passed. |
-| API component tests | 76 passed. |
-| Postgres integration tests | 38 passed. |
-| Browser tests | 44 passed. |
-| API build and web, iOS, Android exports | Passed. Exports are not signed device builds. |
-| Prisma client and Zod generation, schema validation | Passed. |
-| Invalid production startup | Rejected before listening; fixture secrets were absent from errors. |
-| Frozen dependency install | Passed without lockfile changes. |
-| Workflow syntax and deployment dependencies | Local checks passed. GitHub execution remains unverified. |
-| Dependency audit | Failed on the two unpatched development-tool advisories. |
-
-The 322 automated tests include the approved sharing rules.
-New checks reproduced blocked Basic forwarding, missing membership notifications, and the cached-quota rejection before repair.
-Real Postgres checks cover denied outsiders, participant departure, owner deletion, invalidated invites, and retained access after expiration.
-Browser checks cover forwarding, cancellation, deletion versus departure, and stable dialog content during its exit animation.
-The first final browser run passed 43 of 44 checks. The deletion-expiry fixture could refresh during background sync before deletion.
-The fixture now expires only the first deletion request. Two focused reruns passed with real rejection, refresh, and deletion responses.
-Test review verdict: KEEP. These checks protect permissions, saved data, and session boundaries without replacing the tested behavior with mocks.
-The upgrade layout was also checked in Chrome at desktop, 390px, and 320px widths.
-Its compact account section has matching dividers. The smaller note wraps into balanced lines at 320px.
-
-Tests cover real session transitions, persisted state, API authorization, queue recovery, and database concurrency.
-Store tests replace the provider boundary. No simulator, new signed build, or live store purchase was used during this review.
-
-The security review guides the trust boundaries. Ponytail guides minimal implementation and confirmed dead-code removal.
-WIO guides test placement and assertions. Impeccable guides the verification and failed-sync UI refinements.
-Authorization checks use current server state, consistent with [OWASP authorization guidance](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html).
+Apply committed migrations before starting the API. Never reset or seed a deployed database.
+Check current dependency findings in [dependency security](dependency-security.md).

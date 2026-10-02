@@ -1,273 +1,56 @@
-# Pre-Release Product Roadmap
+# iOS release checklist
 
-This plan ends when Tally is publicly available on the iOS App Store.
+Status checked: October 1, 2026. This checklist ends with the first public iOS release.
+Android remains supported. Google Play publication is deferred.
 
-That release is the checkpoint for starting the broader product roadmap.
+## Release choices
 
-Google Play publication is deferred. Keep Android support and Google sign-in; neither requires an Android store launch.
+- App Store name: **Tally | Counters & More**.
+- Bundle identifier: `com.tallytracker.app`. App version: `1.0.0`.
+- Free download, guest counters, and Basic accounts.
+- Premium: USD 1 monthly, USD 10 yearly, or USD 30 lifetime.
+- Exclude EU countries and mainland China from the initial release.
+- Public support: `tallysupportcontact1@gmail.com`.
 
-## Release Definition
+## Completed work
 
-The first public release is complete when:
+These entries record implementation or reported verification, not App Review approval.
 
-- Apple approves the app.
-- Users can install the app from the App Store.
-- Production authentication, counters, synchronization, legal links, and account deletion work.
-- OAuth, purchases, restoration, and premium access work.
-- Production errors reach Sentry.
-- Store privacy answers match the app and its third-party services.
-- A tested release and recovery process exists.
+- Apple Developer membership and the App Store Connect app record are active.
+- Password, Google, and Apple sign-in are implemented. The owner confirmed device sign-in and account linking.
+- Usernames, Participants, presence, counter reset, and number editing are implemented.
+- Home Screen widgets, rectangular and compact Lock Screen counters, and the launcher are implemented.
+- The owner approved the latest phone UI and screenshot composition.
+- The approved combined widget screenshot was exported as an opaque 1320 × 2868 PNG.
+- Purchases and restoration are implemented. The owner confirmed purchase, cancellation, and expiration behavior in Apple's sandbox.
+- Legal pages and account deletion are implemented. The reviewer account and contact form were completed by the owner.
+- App Privacy answers were approved by the owner. Check their saved status in App Store Connect before submission.
+- Production Sentry verification recorded `TALLY-SERVER-1` and `TALLY-CLIENT-1` on September 28.
+- Build 3 uploaded source maps and native debug symbols during that verification.
+- Local type, format, lint, unit/component, PostgreSQL, browser, and native widget checks passed.
 
-## Version 1 Scope
+Render's `EMAIL_FROM` is configured and does not use Resend's restricted test sender, checked October 1.
+The old restricted-sender note was stale. Configuration alone does not prove delivery to every recipient.
 
-- Basic access requires a free account.
-- Premium is the only paid tier.
-- Monthly, yearly, and lifetime purchases unlock the same premium entitlement.
-- OAuth, payments, entitlements, and the upgrade UI block release.
-- Password recovery blocks release. Email verification can ship with it.
-- Apple and Google sign-in remain required for the iOS release.
+## Submission work
 
-## Product Foundation
+1. Archive and upload a signed release build from the final verified commit.
+2. Select the processed build and attach the first in-app purchases.
+3. Upload the approved screenshots and check privacy answers, regions, review access, and required store fields.
+4. Submit for App Review.
 
-### 1. Settings, Legal Links, and Account Deletion
+App Store Connect currently requires sign-in. No final build selection or submission was verified on October 1.
 
-- [x] implementation complete
-- [ ] production verification complete
+Use one CPU-heavy job at a time. Follow the worker and CPU limits in [AGENTS.md](../../AGENTS.md).
+Do not reset or seed production data. Do not treat a Debug phone install as an App Store archive.
 
-- Add a Settings page.
-- Link to the Privacy Policy, Terms of Service, support, and account deletion help.
-- Add an in-app account deletion action.
-- Remove server account data and clear local device state during deletion.
-- Keep public legal pages available outside the app.
-- Verify the production deletion flow before store submission.
+## References
 
-### 2. Sentry Crash and Error Reporting
+- [Billing configuration and verification](../billing.md)
+- [Apple sign-in](../apple-sign-in.md)
+- [Widget architecture and checks](../ios-widgets.md)
+- [App assets](../app-assets.md)
+- [Dependency advisories](../dependency-security.md)
 
-- [x] implementation complete
-- [x] production verification complete
-
-- Report client, native, and server errors.
-- Upload production source maps.
-- Keep diagnostic collection consistent with the Privacy Policy.
-- Verify one controlled production event before store submission.
-
-Verified September 28, 2026:
-
-- The production API reported controlled event `TALLY-SERVER-1` and stayed healthy.
-- The release simulator reported native event `TALLY-CLIENT-1`, tagged `production` and version `1.0.0 (3)`.
-- Build 3 uploaded its JavaScript source maps and native debug symbols. The archive is not yet on TestFlight.
-- Local release settings use `.env.production.local` and `.env.sentry-build-plugin` in `packages/app/client`. Both files stay outside Git.
-- Render stores the API DSN and production environment. The upload token is not in the app bundle.
-
-### 3. Email Verification and Forgot Password
-
-- [x] implementation complete
-- [x] phone verification complete
-- [ ] Verify email delivery from an owned sender domain before public release.
-
-The shared code and email foundation includes:
-
-- Hashed one-time codes with expiration, attempt limits, and consumption tracking.
-- Rate limits and generic responses for email requests.
-- Session invalidation after a password reset.
-- Rejection of the current password without consuming a valid recovery code.
-- Explicit code submission, visible errors, and completion actions.
-
-Phone tests used Render and Resend's restricted test sender. Public delivery still needs an owned sender domain.
-
-### 4. Apple and Google OAuth
-
-- [ ] complete
-- [x] required for version 1
-
-Treat OAuth as an identity-model change:
-
-- Add provider identities.
-- Support multiple identities for one account.
-- Do not create fake passwords for OAuth-only accounts.
-- Validate provider tokens on the server.
-- Issue the existing access and refresh tokens after validation.
-
-If Google sign-in ships on iOS, ship Sign in with Apple in the same release.
-
-### 5. Payment and Entitlement Foundation
-
-- [ ] complete
-- [x] required for version 1
-- [x] Server-side RevenueCat verification and lifecycle webhook handling implemented.
-- [ ] Connect the RevenueCat project and verify Test Store purchases.
-- [ ] Connect native purchases, restoration, and subscription management.
-
-See [billing setup and remaining work](../billing.md). The server foundation does not enable purchases by itself.
-
-Use RevenueCat or an equivalent entitlement service:
-
-- Configure monthly, yearly, and lifetime products.
-- Map paid products to one premium entitlement.
-- Sync entitlements to the server.
-- Keep the server authoritative for premium access.
-- Add purchase restoration and subscription management.
-
-Monthly and yearly plans are subscriptions. Lifetime access is a non-consumable purchase.
-
-US release prices are 1 USD monthly, 10 USD yearly, and 30 USD lifetime.
-
-### 6. Upgrade UI Replacement
-
-- [ ] complete
-- [x] required for version 1
-
-Replace the placeholder after entitlement behavior is reliable:
-
-- Show available plans.
-- Support purchase and restoration.
-- Show the current entitlement state.
-- Link to platform subscription management.
-- Keep server tier checks authoritative.
-
-## Store Publication
-
-Start Apple account enrollment alongside OAuth work.
-
-Only iOS publication blocks this release. Android-specific store, billing, testing, and submission tasks below are deferred. Keep shared code and Android build support intact. Recheck Google's requirements if Play publication resumes.
-
-### 7. Developer Accounts and App Records
-
-- [ ] Enroll in the Apple Developer Program.
-- [ ] Choose an Apple individual or organization account.
-- [ ] Create a Google Play Console account.
-- [ ] Confirm whether Google's closed-test rule applies.
-- [ ] Recruit 12 Android testers if the rule applies.
-- [ ] Create the Expo EAS project.
-- [ ] Create the App Store Connect app record.
-- [ ] Create the Play Console app record.
-
-Apple charges 99 USD each year. Google Play charges a one-time 25 USD fee.
-
-Apple displays the legal name for individual accounts. Organization enrollment needs a D-U-N-S Number.
-
-Google personal accounts created after November 13, 2023 require 12 testers for 14 continuous days.
-
-### 8. Release Identity and Assets
-
-- [ ] Confirm the app name and store availability.
-- [ ] Confirm `com.tallytracker.app` before the first store upload.
-- [x] Replace all Expo starter icons and splash assets. See [App assets](../app-assets.md).
-- [ ] Check icons and the launch screen in installed iOS and Android release builds.
-- [ ] Set the public release version.
-- [ ] Confirm supported devices, operating systems, and portrait orientation.
-- [ ] Remove or hide incomplete version 1 entry points.
-- [ ] Confirm public support, privacy, terms, and deletion URLs.
-- [ ] Replace placeholder support text with a working contact.
-- [ ] Add a web deletion request path that works without app access.
-
-Do not change the bundle identifier or Android package after publication.
-
-### 9. Production Build Configuration
-
-- [x] Apply committed database migrations during server startup, without reset or seeding.
-- [x] Baseline the existing Render database without deleting account data.
-- [ ] Add the minimum `eas.json` production build and submit profiles.
-- [ ] Link the project to the correct Expo account.
-- [ ] Configure production API and Sentry environment values.
-- [ ] Let EAS manage signing credentials unless a store credential already exists.
-- [ ] Set automatic iOS build numbers and Android version codes.
-- [ ] Build iOS with the iOS 26 SDK or later.
-- [ ] Target Android 16, API level 36, or later.
-- [ ] Run Expo Doctor before each release candidate.
-- [ ] Produce signed iOS and Android production builds.
-
-Use EAS Build and EAS Submit first. Add release automation only after manual releases become repetitive.
-
-### 10. Store Metadata and Compliance
-
-- [ ] Write the app name, subtitle, short description, and full description.
-- [ ] Select store categories, regions, age groups, and content ratings.
-- [ ] Capture final iPhone and Android screenshots.
-- [ ] Add support and privacy URLs to both store records.
-- [ ] Complete Apple's App Privacy answers.
-- [ ] Complete Google's Data safety form.
-- [ ] Include server and Sentry data in both privacy disclosures.
-- [ ] Add Google's account deletion web URL.
-- [ ] Declare ads, target audience, and app access details.
-- [ ] Create a stable reviewer account and clear review instructions.
-- [ ] Complete export, trader, and other applicable declarations.
-
-EAS Submit uploads binaries. It does not complete store metadata or screenshots.
-
-### 11. Beta and Release Testing
-
-- [ ] Distribute the iOS build through TestFlight.
-- [ ] Distribute the Android build through an internal test.
-- [ ] Start the required Android closed test, if applicable.
-- [ ] Keep 12 Android testers opted in for 14 continuous days, if required.
-- [ ] Test on at least one physical iPhone and one physical Android phone.
-- [ ] Test install, registration, login, token refresh, logout, and password recovery.
-- [ ] Test counter creation, updates, deletion, and synchronization.
-- [ ] Test Basic limits and Premium shared-counter access.
-- [ ] Test offline recovery, app restart, and network failure behavior.
-- [ ] Test legal links, account deletion, and local data clearing.
-- [ ] Confirm Sentry receives release events with readable source maps.
-- [ ] Fix release blockers and repeat affected checks.
-
-Do not add broad test coverage here. Add tests only for real contracts and discovered regressions.
-
-### 12. Submission and Public Release
-
-- [ ] Freeze version 1 scope.
-- [ ] Build the final signed binaries from the release commit.
-- [ ] Upload both binaries with EAS Submit.
-- [ ] Complete each store's final review checklist.
-- [ ] Submit the iOS build for App Review.
-- [ ] Apply for Google production access after required testing.
-- [ ] Submit the Android release for review.
-- [ ] Resolve review feedback without unrelated changes.
-- [ ] Use manual release control for the first launch.
-- [ ] Publish both approved releases.
-- [ ] Tag the released commit with the public version.
-
-### 13. Launch Verification
-
-- [ ] Install each public store build.
-- [ ] Run the critical account and counter flows against production.
-- [ ] Monitor Sentry and Render during the first release window.
-- [ ] Confirm support and deletion requests reach the correct destination.
-- [ ] Record the final build, submission, and recovery commands.
-- [ ] Move unfinished product items into the post-release roadmap.
-
-## Immediate Next Work
-
-1. Merge the verified security repairs into `main` and check the deployed API.
-2. Complete Apple Developer enrollment and configure Apple and Google OAuth.
-3. Connect App Store products to RevenueCat and verify purchase and restoration flows.
-4. Prepare signed iOS builds, production checks, and TestFlight testing.
-5. Complete App Store metadata and submit the release.
-
-Billing, restoration, the upgrade UI, and app assets are implemented. Real-store and signed-release verification remain required.
-
-## Suggested Branch Slices
-
-- `feat/email-verification-reset`
-- `feat/oauth-identities`
-- `feat/premium-entitlements`
-- `feat/upgrade-paywall`
-- `chore/app-release-assets`
-- `chore/eas-store-builds`
-- `chore/store-metadata`
-- `fix/release-candidate`
-
-Each slice must contain one concern and no unrelated cleanup.
-
-## Official References
-
-- [Expo production builds](https://docs.expo.dev/deploy/build-project/)
-- [Expo store submission](https://docs.expo.dev/deploy/submit-to-app-stores/)
-- [Apple submission requirements](https://developer.apple.com/app-store/submitting/)
-- [Apple App Privacy](https://developer.apple.com/help/app-store-connect/manage-app-information/manage-app-privacy/)
-- [Apple account deletion](https://developer.apple.com/support/offering-account-deletion-in-your-app/)
-- [Google Play app setup](https://support.google.com/googleplay/android-developer/answer/9859152?hl=en)
-- [Google Play review preparation](https://support.google.com/googleplay/android-developer/answer/9859455?hl=en)
-- [Google Play Data safety](https://support.google.com/googleplay/android-developer/answer/10787469)
-- [Google Play account deletion](https://support.google.com/googleplay/android-developer/answer/13327111?hl=en)
-- [Google Play closed testing](https://support.google.com/googleplay/android-developer/answer/14151465?hl=en-GB)
-- [Google Play target API rules](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en)
+After approval, install the public build and check sign-in, counters, purchases, and support links.
+Record the released commit and build number. Keep later feature work outside this release.

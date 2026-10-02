@@ -158,7 +158,7 @@ export const legalDocuments = {
     },
 } as const;
 
-export type LegalDocumentKey = keyof typeof legalDocuments;
+type LegalDocumentKey = keyof typeof legalDocuments;
 export const legalDocumentKeys = Object.keys(legalDocuments) as LegalDocumentKey[];
 
 export function isLegalDocumentKey(value: string): value is LegalDocumentKey {
