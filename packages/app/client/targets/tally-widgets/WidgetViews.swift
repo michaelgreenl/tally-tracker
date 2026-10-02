@@ -34,6 +34,10 @@ struct CounterWidgetView: View {
   @ScaledMetric(relativeTo: .largeTitle) private var countFontSize = 34.0
   @ScaledMetric(relativeTo: .largeTitle) private var lockScreenCountFontSize = 42.0
 
+  private var isLockScreen: Bool {
+    family == .accessoryCircular || family == .accessoryRectangular
+  }
+
   var body: some View {
     Group {
       if let counter = entry.counter, let owner = entry.owner {
@@ -58,11 +62,24 @@ struct CounterWidgetView: View {
             }
           } else if family == .accessoryRectangular {
             header(counter)
+          } else if family == .accessoryCircular {
+            VStack(spacing: 0) {
+              Text(counter.title)
+                .font(.system(size: 12, weight: .semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+              value(counter)
+            }
+            .padding(.horizontal, 2)
+            .accessibilityElement(children: .combine)
           } else {
             smallCounter(counter, owner: owner)
           }
         }
         .privacySensitive()
+      } else if family == .accessoryCircular {
+        TallyMark().frame(width: 32, height: 32)
+          .accessibilityLabel("Open Tally to choose a counter")
       } else {
         VStack(spacing: 8) {
           TallyMark().frame(width: 32, height: 32)
@@ -78,12 +95,14 @@ struct CounterWidgetView: View {
       family == .systemSmall
         ? EdgeInsets(top: 16, leading: 18, bottom: 12, trailing: 12) : contentMargins
     )
-    .dynamicTypeSize(family == .systemSmall ? .large : dynamicTypeSize)
-    .foregroundStyle(family == .accessoryRectangular ? Color.primary : .white)
+    .dynamicTypeSize(
+      family == .systemSmall || family == .accessoryCircular ? .large : dynamicTypeSize
+    )
+    .foregroundStyle(isLockScreen ? Color.primary : .white)
     .widgetURL(tallyURL)
     .containerBackground(
-      family == .accessoryRectangular
-        ? Color.clear : Color(red: 37 / 255, green: 41 / 255, blue: 46 / 255), for: .widget)
+      isLockScreen ? Color.clear : Color(red: 37 / 255, green: 41 / 255, blue: 46 / 255),
+      for: .widget)
   }
 
   private func smallCounter(_ counter: WidgetCounter, owner: String) -> some View {
@@ -170,9 +189,13 @@ struct CounterWidgetView: View {
   }
 
   private func value(_ counter: WidgetCounter) -> some View {
-    let size =
-      family == .systemSmall
-      ? 64 : (family == .accessoryRectangular ? lockScreenCountFontSize : countFontSize)
+    let size: CGFloat
+    switch family {
+    case .systemSmall: size = 64
+    case .accessoryCircular: size = 28
+    case .accessoryRectangular: size = lockScreenCountFontSize
+    default: size = countFontSize
+    }
     let baseFont = UIFont.monospacedDigitSystemFont(
       ofSize: size, weight: family == .systemSmall ? .semibold : .bold)
     let font = UIFont(

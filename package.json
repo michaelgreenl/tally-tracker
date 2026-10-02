@@ -115,6 +115,7 @@
     "patchedDependencies": {
         "query-string@7.1.3": "patches/query-string@7.1.3.patch",
         "react-native-reorderable-list@0.18.1": "patches/react-native-reorderable-list@0.18.1.patch",
-        "zod-prisma-types@3.3.11": "patches/zod-prisma-types@3.3.11.patch"
+        "zod-prisma-types@3.3.11": "patches/zod-prisma-types@3.3.11.patch",
+        "@expo/ui@57.0.14": "patches/@expo%2Fui@57.0.14.patch"
     }
 }

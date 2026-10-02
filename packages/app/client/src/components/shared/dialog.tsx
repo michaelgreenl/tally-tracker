@@ -9,11 +9,12 @@ import {
     useWindowDimensions,
     View,
 } from 'react-native';
+import Animated from 'react-native-reanimated';
 
 import { colors } from '../../theme/colors';
 import { MessageText } from './message-text';
 
-import type { PropsWithChildren, ReactNode } from 'react';
+import type { ComponentProps, PropsWithChildren, ReactNode } from 'react';
 import type { ModalProps } from 'react-native';
 
 type DialogProps = PropsWithChildren<
@@ -22,6 +23,7 @@ type DialogProps = PropsWithChildren<
         description?: string;
         descriptionGap?: number;
         contentGap?: number;
+        layout?: ComponentProps<typeof Animated.View>['layout'];
         dismissOnBackdropPress?: boolean;
         leadingAction?: ReactNode;
         trailingAction?: ReactNode;
@@ -37,6 +39,7 @@ export function Dialog({
     description,
     descriptionGap,
     contentGap,
+    layout,
     dismissOnBackdropPress = false,
     leadingAction,
     trailingAction,
@@ -49,8 +52,9 @@ export function Dialog({
         <Modal animationType='fade' onRequestClose={onRequestClose} onShow={onShow} transparent visible={visible}>
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboard}>
                 <ScrollView keyboardShouldPersistTaps='handled' contentContainerStyle={styles.overlay}>
-                    <View
+                    <Animated.View
                         accessibilityViewIsModal
+                        layout={layout}
                         style={[
                             styles.card,
                             hasEditorActions && styles.editorCard,
@@ -83,7 +87,7 @@ export function Dialog({
                             )}
                         </View>
                         {children}
-                    </View>
+                    </Animated.View>
                     {dismissOnBackdropPress && (
                         <Pressable
                             accessible={false}

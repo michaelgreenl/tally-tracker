@@ -414,7 +414,7 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
                                             accessibilityRole='link'
                                             hitSlop={8}
                                             style={({ pressed }) => pressed && styles.linkPressed}
-                                            testID='email-auth-login'
+                                            testID='email-auth-back'
                                         >
                                             <Text style={styles.link}>
                                                 {resumeSession ? 'Cancel' : 'Back to login'}

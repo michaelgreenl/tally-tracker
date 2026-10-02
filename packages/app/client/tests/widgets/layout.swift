@@ -127,6 +127,26 @@ struct WidgetLayoutChecks {
       }
     }
 
+    // The one-slot counter has only a fitted name above the count, even when a metric exists.
+    for size in [52.0, 64.0] {
+      for (name, count) in [("Water", 48.0), ("Pushups", -12.0), ("Daily water intake", 16.9)] {
+        let pixels = render(
+          .accessoryCircular, title: name, metric: "fl oz", count: count,
+          width: size, height: size)
+        let text = pixels.bands(matching: neutral)
+        precondition(text.count == 2, "Circular counter must show two text lines: \(text)")
+        precondition(
+          text.allSatisfy {
+            $0.minX >= 2 && $0.maxX <= size - 2 && $0.minY > 0 && $0.maxY < size
+              && abs($0.midX - size / 2) <= 1
+          } && text[1].height > text[0].height,
+          "Circular name and count must fit, centered, with a larger count: \(text)")
+        precondition(
+          pixels.bands(matching: blue).isEmpty,
+          "Circular counters must not include Home Screen controls")
+      }
+    }
+
     for value in [0.0, 16.9] {
       var metricNameHeight: CGFloat = 0
       for metric in ["fl-oz", nil] as [String?] {

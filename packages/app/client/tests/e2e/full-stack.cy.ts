@@ -30,7 +30,7 @@ describe('Expo full-stack counter journey', () => {
             expect(response?.statusCode).to.eq(CREATED);
         });
         cy.location('pathname').should('eq', '/verify-email');
-        cy.get('[data-testid="email-auth-login"]').click();
+        cy.get('[data-testid="email-auth-back"]').click();
         cy.location('pathname').should('eq', '/login');
 
         cy.intercept('POST', '**/users/login').as('loginUser');

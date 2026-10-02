@@ -197,3 +197,7 @@ Cypress tests use `http://localhost:8081`:
 ```bash
 bun run test:e2e
 ```
+
+Cypress checks Metro's API target before running. Both the site and API must use local HTTP addresses.
+Start Expo with `EXPO_PUBLIC_API_URL=http://localhost:3000 bun start --max-workers 1` from `packages/app/client`.
+Set `CYPRESS_BASE_URL` when using another local Expo port.

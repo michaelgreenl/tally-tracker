@@ -176,7 +176,7 @@ describe('Password recovery', () => {
         cy.get('[data-testid="email-auth-change-email"]').click();
         cy.get('[data-testid="email-auth-code"]').should('not.exist');
         cy.get('[data-testid="email-auth-email"]').should('have.value', 'second@example.invalid');
-        cy.get('[data-testid="email-auth-login"]').click();
+        cy.get('[data-testid="email-auth-back"]').click();
         cy.get('[data-testid="auth-email"]').filter(':visible').should('have.value', 'second@example.invalid');
     });
 });

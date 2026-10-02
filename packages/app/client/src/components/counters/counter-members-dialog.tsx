@@ -1,7 +1,15 @@
-import { type ReactNode, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import { GestureDetector, GestureHandlerRootView, usePanGesture } from 'react-native-gesture-handler';
-import Swipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
+import { useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    AppState,
+    Platform,
+    Pressable,
+    StyleSheet,
+    Text,
+    useWindowDimensions,
+    View,
+} from 'react-native';
+import Animated, { Easing, FadeIn, FadeOut, LinearTransition, useReducedMotion } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 
 import { useCounters } from '../../contexts/counter-context';
@@ -16,17 +24,33 @@ import { relativeTime } from '../../utils/relative-time';
 import { MessageText } from '../shared/message-text';
 import { ToolbarButton } from '../shared/toolbar-button';
 import { Dialog } from '../shared/dialog';
+import { CounterMembersList, CounterMembersListRow, getCounterMemberRowHeight } from './counter-members-list';
 
 import type { ClientCounter, CounterMember } from '@tally/core/client';
 
-export function CounterMembersDialog({ counter, onClose }: { counter?: ClientCounter; onClose: () => void }) {
+const popupLayout = LinearTransition.duration(280).easing(Easing.out(Easing.cubic));
+const spinnerEntering = FadeIn.duration(160).delay(120);
+const contentEntering = FadeIn.duration(180).delay(80);
+const contentExiting = FadeOut.duration(120);
+
+export function CounterMembersDialog({
+    counter,
+    openedAt,
+    onClose,
+}: {
+    counter?: ClientCounter;
+    openedAt: number;
+    onClose: () => void;
+}) {
     const { onlineUserIds, refreshCounters } = useCounters();
     const { user } = useSession();
+    const { fontScale } = useWindowDimensions();
+    const reduceMotion = useReducedMotion();
+    const rowHeight = getCounterMemberRowHeight(fontScale);
     const [members, setMembers] = useState<CounterMember[]>([]);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(true);
     const [retry, setRetry] = useState(0);
-    const [openedAt, setOpenedAt] = useState(Date.now);
     const [memberToRemove, setMemberToRemove] = useState<CounterMember | null>(null);
     const [removing, setRemoving] = useState(false);
     const [removeError, setRemoveError] = useState('');
@@ -99,7 +123,7 @@ export function CounterMembersDialog({ counter, onClose }: { counter?: ClientCou
         <Dialog
             visible={Boolean(counter)}
             onRequestClose={onClose}
-            onShow={() => setOpenedAt(Date.now())}
+            layout={reduceMotion ? undefined : popupLayout}
             dismissOnBackdropPress
             title='Participants'
             contentGap={20}
@@ -108,8 +132,14 @@ export function CounterMembersDialog({ counter, onClose }: { counter?: ClientCou
                 <ToolbarButton label='Close' icon='close' onPress={onClose} testID='counter-members-close' />
             }
         >
-            <GestureHandlerRootView
-                style={[styles.gestureRoot, !loading && !error && styles.list]}
+            <Animated.View
+                key={loading ? 'loading' : error ? 'error' : 'members'}
+                entering={reduceMotion ? undefined : loading ? spinnerEntering : contentEntering}
+                exiting={reduceMotion ? undefined : contentExiting}
+                style={[
+                    loading && { minHeight: rowHeight, justifyContent: 'center' },
+                    !loading && !error && styles.list,
+                ]}
                 testID='counter-members-list'
             >
                 {loading ? (
@@ -132,91 +162,95 @@ export function CounterMembersDialog({ counter, onClose }: { counter?: ClientCou
                         </Pressable>
                     </View>
                 ) : (
-                    members.map((member) => {
-                        const online = onlineUserIds.has(member.id);
-                        const action = member.lastAction;
-                        const age = action ? relativeTime(action.at, openedAt) : null;
-                        const amount = action ? `${action.amount > 0 ? '+' : ''}${action.amount}` : null;
-                        const canRemove = Boolean(
-                            user && counter?.userId === user.id && member.id !== user.id && !member.isOwner,
-                        );
-                        const confirmRemoval = () => {
-                            hapticFeedback('impact');
-                            setRemoveError('');
-                            setMemberToRemove(member);
-                        };
-                        const row = (
-                            <View key={member.id} style={styles.member} testID={`counter-member-${member.id}`}>
-                                <View style={styles.identity}>
-                                    <View
-                                        accessible
-                                        accessibilityRole='image'
-                                        accessibilityLabel={online ? 'Online' : 'Offline'}
-                                        style={[styles.dot, online && styles.onlineDot]}
-                                        testID={`counter-member-${member.id}-presence`}
-                                    />
-                                    <Text
-                                        numberOfLines={1}
-                                        style={[
-                                            styles.username,
-                                            member.id === user?.id && styles.currentUsername,
-                                            styles.opticalAlignment,
-                                        ]}
-                                        testID={`counter-member-${member.id}-username`}
-                                    >
-                                        {member.username ?? 'Member'}
-                                    </Text>
-                                    {member.isOwner && (
-                                        <Svg
-                                            accessibilityLabel='Owner'
+                    <CounterMembersList height={members.length * rowHeight}>
+                        {members.map((member) => {
+                            const online = onlineUserIds.has(member.id);
+                            const action = member.lastAction;
+                            const age = action ? relativeTime(action.at, openedAt) : null;
+                            const amount = action ? `${action.amount > 0 ? '+' : ''}${action.amount}` : null;
+                            const canRemove = Boolean(
+                                user && counter?.userId === user.id && member.id !== user.id && !member.isOwner,
+                            );
+                            const confirmRemoval = () => {
+                                hapticFeedback('impact');
+                                setRemoveError('');
+                                setMemberToRemove(member);
+                            };
+                            const row = (
+                                <View
+                                    style={[styles.member, { height: rowHeight }]}
+                                    testID={`counter-member-${member.id}`}
+                                >
+                                    <View style={styles.identity}>
+                                        <View
+                                            accessible
                                             accessibilityRole='image'
-                                            width={20}
-                                            height={20}
-                                            viewBox='0 0 24 24'
-                                            fill={colors.text}
-                                            style={styles.owner}
-                                            testID={`counter-member-${member.id}-owner`}
+                                            accessibilityLabel={online ? 'Online' : 'Offline'}
+                                            style={[styles.dot, online && styles.onlineDot]}
+                                            testID={`counter-member-${member.id}-presence`}
+                                        />
+                                        <Text
+                                            numberOfLines={1}
+                                            style={[
+                                                styles.username,
+                                                member.id === user?.id && styles.currentUsername,
+                                                styles.opticalAlignment,
+                                            ]}
+                                            testID={`counter-member-${member.id}-username`}
                                         >
-                                            <Path d='M17.0016031,15.2440856 L17.0009052,21.2451182 C17.0009052,21.8527788 16.3161092,22.2081862 15.8192057,21.8584172 L12.0007623,19.1706254 L8.18435794,21.8583162 C7.68747081,22.2082475 7.00251516,21.8528589 7.00251516,21.2451182 L7.00069412,15.2459273 C8.37018531,16.3435035 10.1084262,17 12,17 C13.8926316,17 15.6317588,16.3427691 17.0016031,15.2440856 Z M12,2 C15.8659932,2 19,5.13400675 19,9 C19,12.8659932 15.8659932,16 12,16 C8.13400675,16 5,12.8659932 5,9 C5,5.13400675 8.13400675,2 12,2 Z' />
-                                        </Svg>
+                                            {member.username ?? 'Member'}
+                                        </Text>
+                                        {member.isOwner && (
+                                            <Svg
+                                                accessibilityLabel='Owner'
+                                                accessibilityRole='image'
+                                                width={20}
+                                                height={20}
+                                                viewBox='0 0 24 24'
+                                                fill={colors.text}
+                                                style={styles.owner}
+                                                testID={`counter-member-${member.id}-owner`}
+                                            >
+                                                <Path d='M17.0016031,15.2440856 L17.0009052,21.2451182 C17.0009052,21.8527788 16.3161092,22.2081862 15.8192057,21.8584172 L12.0007623,19.1706254 L8.18435794,21.8583162 C7.68747081,22.2082475 7.00251516,21.8528589 7.00251516,21.2451182 L7.00069412,15.2459273 C8.37018531,16.3435035 10.1084262,17 12,17 C13.8926316,17 15.6317588,16.3427691 17.0016031,15.2440856 Z M12,2 C15.8659932,2 19,5.13400675 19,9 C19,12.8659932 15.8659932,16 12,16 C8.13400675,16 5,12.8659932 5,9 C5,5.13400675 8.13400675,2 12,2 Z' />
+                                            </Svg>
+                                        )}
+                                    </View>
+                                    {action && (
+                                        <View style={styles.action}>
+                                            <Text
+                                                numberOfLines={1}
+                                                style={[styles.actionText, styles.age, styles.opticalAlignment]}
+                                                testID={`counter-member-${member.id}-age`}
+                                            >
+                                                {age}
+                                            </Text>
+                                            <Text
+                                                numberOfLines={1}
+                                                style={[styles.actionText, styles.amount, styles.opticalAlignment]}
+                                                testID={`counter-member-${member.id}-amount`}
+                                            >
+                                                {amount}
+                                            </Text>
+                                        </View>
                                     )}
                                 </View>
-                                {action && (
-                                    <View style={styles.action}>
-                                        <Text
-                                            numberOfLines={1}
-                                            style={[styles.actionText, styles.age, styles.opticalAlignment]}
-                                            testID={`counter-member-${member.id}-age`}
-                                        >
-                                            {age}
-                                        </Text>
-                                        <Text
-                                            numberOfLines={1}
-                                            style={[styles.actionText, styles.amount, styles.opticalAlignment]}
-                                            testID={`counter-member-${member.id}-amount`}
-                                        >
-                                            {amount}
-                                        </Text>
-                                    </View>
-                                )}
-                            </View>
-                        );
-                        return canRemove ? (
-                            <RemovableParticipant
-                                key={member.id}
-                                username={member.username ?? 'participant'}
-                                disabled={removing}
-                                onRemove={confirmRemoval}
-                                testID={`counter-member-${member.id}-remove`}
-                            >
-                                {row}
-                            </RemovableParticipant>
-                        ) : (
-                            row
-                        );
-                    })
+                            );
+                            return (
+                                <CounterMembersListRow
+                                    key={member.id}
+                                    username={member.username ?? 'participant'}
+                                    disabled={removing}
+                                    onRemove={canRemove ? confirmRemoval : undefined}
+                                    height={rowHeight}
+                                    testID={`counter-member-${member.id}-remove`}
+                                >
+                                    {row}
+                                </CounterMembersListRow>
+                            );
+                        })}
+                    </CounterMembersList>
                 )}
-            </GestureHandlerRootView>
+            </Animated.View>
             {memberToRemove && (
                 <Dialog
                     visible
@@ -258,98 +292,12 @@ export function CounterMembersDialog({ counter, onClose }: { counter?: ClientCou
     );
 }
 
-function RemovableParticipant({
-    children,
-    username,
-    disabled,
-    onRemove,
-    testID,
-}: {
-    children: ReactNode;
-    username: string;
-    disabled: boolean;
-    onRemove: () => void;
-    testID: string;
-}) {
-    const swipeable = useRef<SwipeableMethods>(null);
-    const rowWidth = useRef(0);
-    const [open, setOpen] = useState(false);
-    const confirmRemoval = () => {
-        if (disabled) return;
-        swipeable.current?.close();
-        onRemove();
-    };
-    const fullSwipe = usePanGesture({
-        enabled: !disabled,
-        runOnJS: true,
-        activeOffsetX: -10,
-        failOffsetY: [-10, 10],
-        onDeactivate: ({ canceled, translationX }) => {
-            if (!canceled && rowWidth.current > 0 && translationX < -rowWidth.current * 0.7) confirmRemoval();
-        },
-    });
-    return (
-        <GestureDetector gesture={fullSwipe} touchAction='pan-y'>
-            <View
-                collapsable={false}
-                onLayout={({ nativeEvent }) => {
-                    rowWidth.current = nativeEvent.layout.width;
-                }}
-            >
-                <Swipeable
-                    ref={swipeable}
-                    enabled={!disabled}
-                    simultaneousWith={fullSwipe}
-                    overshootLeft={false}
-                    overshootRight
-                    enableTrackpadTwoFingerGesture
-                    onSwipeableWillOpen={() => {
-                        setOpen(true);
-                        hapticFeedback();
-                    }}
-                    onSwipeableClose={() => setOpen(false)}
-                    childrenContainerStyle={styles.rowSurface}
-                    renderRightActions={() => (
-                        <Pressable
-                            accessibilityRole='button'
-                            accessibilityLabel={`Remove ${username}`}
-                            accessibilityElementsHidden={Platform.OS !== 'web' && !open}
-                            importantForAccessibility={open ? 'auto' : 'no-hide-descendants'}
-                            disabled={disabled}
-                            onFocus={() => swipeable.current?.openRight()}
-                            onPress={confirmRemoval}
-                            style={({ pressed }) => [styles.removeButton, pressed && styles.pressed]}
-                            testID={testID}
-                        >
-                            <Text style={styles.removeText}>Remove</Text>
-                        </Pressable>
-                    )}
-                >
-                    <View
-                        accessible
-                        accessibilityActions={disabled ? [] : [{ name: 'remove', label: 'Remove participant' }]}
-                        onAccessibilityAction={({ nativeEvent }) => {
-                            if (nativeEvent.actionName === 'remove') confirmRemoval();
-                        }}
-                    >
-                        {children}
-                    </View>
-                </Swipeable>
-            </View>
-        </GestureDetector>
-    );
-}
-
 const styles = StyleSheet.create({
-    gestureRoot: { flex: 0 },
     list: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.divider },
-    rowSurface: { backgroundColor: colors.surface },
     member: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        minHeight: 56,
-        paddingVertical: 4,
         borderBottomWidth: StyleSheet.hairlineWidth,
         borderBottomColor: colors.divider,
         gap: 16,
@@ -363,18 +311,6 @@ const styles = StyleSheet.create({
     dot: { width: 8, height: 8, borderRadius: 4, borderWidth: 1, borderColor: colors.muted, flexShrink: 0 },
     onlineDot: { backgroundColor: colors.success, borderColor: colors.success },
     action: { flexDirection: 'row', alignItems: 'center', gap: 12, flexShrink: 0, maxWidth: '65%' },
-    removeButton: {
-        backgroundColor: colors.dangerButton,
-        borderRadius: 999,
-        minWidth: 88,
-        minHeight: 48,
-        marginHorizontal: 8,
-        marginVertical: 4,
-        paddingHorizontal: 16,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    removeText: { color: colors.onPrimary, fontSize: 16, fontWeight: '600' },
     actionText: { fontSize: 16, lineHeight: 24, fontWeight: '600', fontVariant: ['tabular-nums'] },
     amount: { color: colors.link, flexShrink: 1 },
     age: { color: colors.muted, flexShrink: 1 },

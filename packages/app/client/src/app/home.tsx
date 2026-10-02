@@ -31,7 +31,7 @@ export default function HomeScreen() {
     const insets = useSafeAreaInsets();
     const [formOpen, setFormOpen] = useState(false);
     const [counterToEdit, setCounterToEdit] = useState<ClientCounter | null>(null);
-    const [membersCounterId, setMembersCounterId] = useState<string | null>(null);
+    const [membersDialog, setMembersDialog] = useState<{ counterId: string; openedAt: number } | null>(null);
     const [valueToEdit, setValueToEdit] = useState<{ counter: ClientCounter; field: 'count' | 'increment' } | null>(
         null,
     );
@@ -200,7 +200,7 @@ export default function HomeScreen() {
                             }}
                             onEditIncrement={(counter) => setValueToEdit({ counter, field: 'increment' })}
                             onEditCount={(counter) => setValueToEdit({ counter, field: 'count' })}
-                            onMembers={(counter) => setMembersCounterId(counter.id)}
+                            onMembers={(counter) => setMembersDialog({ counterId: counter.id, openedAt: Date.now() })}
                             onIncrement={(id, amount) => void incrementCounter(id, amount)}
                             onNotice={setNotice}
                             canReorder={counterState.counters.length > 1}
@@ -244,8 +244,9 @@ export default function HomeScreen() {
                 {valueToEdit && <CounterValueDialog {...valueToEdit} onClose={() => setValueToEdit(null)} />}
 
                 <CounterMembersDialog
-                    counter={counterState.counters.find((counter) => counter.id === membersCounterId)}
-                    onClose={() => setMembersCounterId(null)}
+                    counter={counterState.counters.find((counter) => counter.id === membersDialog?.counterId)}
+                    openedAt={membersDialog?.openedAt ?? 0}
+                    onClose={() => setMembersDialog(null)}
                 />
 
                 <Dialog

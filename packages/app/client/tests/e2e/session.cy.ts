@@ -69,14 +69,17 @@ for (const action of ['logout', 'deletion'] as const) {
         // A same-origin frame has its own app session, but shares cookies and Web Locks like another tab.
         // Prepare it before holding the response; app startup is not part of the lock assertion.
         let frame: HTMLIFrameElement;
-        cy.window().then((win) => {
+        cy.window().then({ timeout: Cypress.config('pageLoadTimeout') }, (win) => {
             // Model a second context signing in without changing the first context's active session.
             win.localStorage.removeItem('auth_user_profile');
             frame = win.document.createElement('iframe');
             frame.src = '/login';
             frame.width = '500';
             frame.height = '800';
-            win.document.body.append(frame);
+            return new Cypress.Promise<void>((resolve) => {
+                frame.addEventListener('load', () => resolve(), { once: true });
+                win.document.body.append(frame);
+            });
         });
         const field = (id: string) =>
             cy

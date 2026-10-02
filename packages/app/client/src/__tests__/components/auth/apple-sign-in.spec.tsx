@@ -51,6 +51,7 @@ vi.mock('react-native', () => ({
         children?: ReactNode;
     }) => createElement('button', { onClick: onPress, 'data-testid': testID, disabled }, children),
 }));
+vi.mock('react-native-reanimated', async () => ({ default: { View: (await import('react-native')).View } }));
 vi.mock('react-native-svg', () => ({ default: () => null, Path: () => null, Rect: () => null }));
 vi.mock('expo-router', () => ({
     useFocusEffect: (effect: () => void | (() => void)) => {

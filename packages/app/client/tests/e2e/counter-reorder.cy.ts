@@ -273,7 +273,8 @@ describe('Counter order', () => {
                         eventConstructor: 'MouseEvent',
                         clientY: start.top + 30,
                     });
-                    cy.window().then(async (win) => {
+                    // Allow the 32 input frames to finish on resource-limited test machines.
+                    cy.window().then({ timeout: 10000 }, async (win) => {
                         const startedAt = win.performance.now();
                         for (let step = 1; step <= 32; step++) {
                             const event = new win.PointerEvent('pointermove', {

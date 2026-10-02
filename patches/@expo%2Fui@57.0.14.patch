@@ -1,0 +1,53 @@
+diff --git a/build/swift-ui/modifiers/environment.d.ts b/build/swift-ui/modifiers/environment.d.ts
+index ddd15439ce9b4c73c5e8b2d1b2e3b3841960dc70..28b1b735be3d6abf70ab7a81d7491783b67e14f9 100644
+--- a/build/swift-ui/modifiers/environment.d.ts
++++ b/build/swift-ui/modifiers/environment.d.ts
+@@ -11,6 +11,9 @@ export type EnvironmentConfig = {
+ } | {
+     key: 'timeZone';
+     value: string;
++} | {
++    key: 'defaultMinListRowHeight';
++    value: string;
+ };
+ /**
+  * Sets a SwiftUI environment value.
+diff --git a/ios/Modifiers/EnvironmentModifier.swift b/ios/Modifiers/EnvironmentModifier.swift
+index 71e01933ff5e2b8b339b81acbfe51f6f36f459ed..e973acd6c0d208227a1d9615255580e3c712cc53 100644
+--- a/ios/Modifiers/EnvironmentModifier.swift
++++ b/ios/Modifiers/EnvironmentModifier.swift
+@@ -8,6 +8,7 @@ internal enum EnvironmentKeyType: String, Enumerable {
+   case colorScheme
+   case locale
+   case timeZone
++  case defaultMinListRowHeight
+ }
+ 
+ internal enum EditModeType: String, Enumerable {
+@@ -72,6 +73,12 @@ internal struct EnvironmentModifier: ViewModifier, Record {
+       } else {
+         content
+       }
++    case .defaultMinListRowHeight:
++      if let height = Double(value), height.isFinite, height >= 0 {
++        content.environment(\.defaultMinListRowHeight, CGFloat(height))
++      } else {
++        content
++      }
+     }
+   }
+ }
+diff --git a/src/swift-ui/modifiers/environment.ts b/src/swift-ui/modifiers/environment.ts
+index 8503672a0797bd3e36dbcea0053bc5053ef79afc..0d31a8f6756aabc07cc7ba6147231d4be19e013b 100644
+--- a/src/swift-ui/modifiers/environment.ts
++++ b/src/swift-ui/modifiers/environment.ts
+@@ -4,7 +4,8 @@ export type EnvironmentConfig =
+   | { key: 'editMode'; value: 'active' | 'inactive' | 'transient' }
+   | { key: 'colorScheme'; value: 'light' | 'dark' }
+   | { key: 'locale'; value: string }
+-  | { key: 'timeZone'; value: string };
++  | { key: 'timeZone'; value: string }
++  | { key: 'defaultMinListRowHeight'; value: string };
+ 
+ /**
+  * Sets a SwiftUI environment value.

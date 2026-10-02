@@ -61,6 +61,8 @@ describe('Usernames and counter members', () => {
         const title = 'A shared reading counter with a long name';
         let online = true;
         let amount = 1;
+        let releaseMembers: (() => void) | undefined;
+        let holdMembers = true;
         const now = Date.now();
         cy.clock(now, ['Date', 'setInterval', 'clearInterval']);
         signIn(`reader_${crypto.randomUUID().replaceAll('-', '')}`).then((user: ClientUser) => {
@@ -88,23 +90,78 @@ describe('Usernames and counter members', () => {
             cy.intercept('GET', '**/counters/presence', (req) =>
                 req.reply({ success: true, data: online ? [user.id, memberId] : [user.id] }),
             );
-            cy.intercept('GET', `**/counters/${counterId}/members`, (req) =>
-                req.reply({
-                    success: true,
-                    data: [
-                        { id: user.id, username: user.username, isOwner: true, lastAction: null },
-                        {
-                            id: memberId,
-                            username: 'A_very_long_username_that_must_not_push_status_off_screen',
-                            isOwner: false,
-                            lastAction: { amount, at: new Date(now - 5000).toISOString() },
-                        },
-                    ],
-                }),
-            ).as('members');
+            cy.intercept('GET', `**/counters/${counterId}/members`, (req) => {
+                const reply = () =>
+                    req.reply({
+                        success: true,
+                        data: [
+                            { id: user.id, username: user.username, isOwner: true, lastAction: null },
+                            {
+                                id: memberId,
+                                username: 'A_very_long_username_that_must_not_push_status_off_screen',
+                                isOwner: false,
+                                lastAction: { amount, at: new Date(now - 5000).toISOString() },
+                            },
+                        ],
+                    });
+                if (!holdMembers) return reply();
+                holdMembers = false;
+                return new Promise<void>((resolve) => {
+                    releaseMembers = () => {
+                        reply();
+                        resolve();
+                    };
+                });
+            }).as('members');
             openHome(user);
             cy.get(`[data-testid="counter-${counterId}-presence"]`).should('have.attr', 'stroke', '#70c8e3');
             cy.get(`[data-testid="counter-${counterId}-members"]`).click();
+            cy.get('[data-testid="counter-members-list"]').should('have.css', 'opacity', '1');
+            cy.get('[data-testid="counter-members-dialog"]').then(($dialog) => {
+                const dialog = $dialog[0];
+                const win = dialog.ownerDocument.defaultView!;
+                const initialHeight = dialog.getBoundingClientRect().height;
+                let middleHeight: number | undefined;
+                let middleOpacity: number | undefined;
+                return new Cypress.Promise<void>((resolve) => {
+                    const sample = (event: AnimationEvent) => {
+                        const target = event.target as HTMLElement;
+                        if (
+                            target !== dialog &&
+                            !(
+                                target.dataset.testid === 'counter-members-list' &&
+                                target.querySelector(`[data-testid="counter-member-${memberId}"]`)
+                            )
+                        )
+                            return;
+                        const animation = target
+                            .getAnimations()
+                            .find((animation) => (animation as CSSAnimation).animationName === event.animationName);
+                        if (!animation?.effect) return;
+                        const timing = animation.effect.getTiming();
+                        const currentTime = animation.currentTime;
+                        // Sample the rendered midpoint without relying on the machine's frame rate.
+                        animation.pause();
+                        animation.currentTime = (timing.delay ?? 0) + Number(timing.duration) / 2;
+                        if (target === dialog) middleHeight = dialog.getBoundingClientRect().height;
+                        else middleOpacity = Number(win.getComputedStyle(target).opacity);
+                        animation.currentTime = currentTime;
+                        animation.play();
+                        if (middleHeight !== undefined && middleOpacity !== undefined) {
+                            dialog.removeEventListener('animationstart', sample);
+                            resolve();
+                        }
+                    };
+                    dialog.addEventListener('animationstart', sample);
+                    releaseMembers!();
+                }).then(() => {
+                    expect(middleHeight, 'popup grows instead of snapping').to.be.within(
+                        initialHeight + 1,
+                        dialog.offsetHeight - 1,
+                    );
+                    expect(middleOpacity, 'participant rows fade into view').to.be.within(0.01, 0.99);
+                });
+            });
             cy.wait('@members');
             const row = `[data-testid="counter-member-${memberId}"]`;
             cy.get(row).should('contain.text', '+1').and('contain.text', '5s ago');
@@ -134,6 +191,7 @@ describe('Usernames and counter members', () => {
                     .scrollIntoView()
                     .should(($row) => {
                         const bounds = $row[0].getBoundingClientRect();
+                        expect(bounds.height, 'rows leave room above and below their content').to.be.at.least(64);
                         expect(bounds.left).to.be.at.least(0);
                         expect(bounds.right).to.be.at.most(width);
                         for (const child of Array.from($row[0].querySelectorAll('*'))) {
@@ -295,8 +353,8 @@ describe('Usernames and counter members', () => {
                             8,
                             1,
                         );
-                        expect(button.top - content.top, 'remove has space above it').to.be.closeTo(4, 1);
-                        expect(content.bottom - button.bottom, 'remove has space below it').to.be.closeTo(4, 1);
+                        expect(button.top - content.top, 'remove has space above it').to.be.closeTo(8, 1);
+                        expect(content.bottom - button.bottom, 'remove has space below it').to.be.closeTo(8, 1);
                         expect(
                             parseFloat(getComputedStyle($button[0]).borderRadius),
                             'remove is rounded',

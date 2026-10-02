@@ -10,7 +10,7 @@ struct TallyCounterWidget: Widget {
     }
     .configurationDisplayName("Counter")
     .description("Count without opening Tally. Changes sync when the app opens.")
-    .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular])
+    .supportedFamilies([.systemSmall, .systemMedium, .accessoryCircular, .accessoryRectangular])
     .contentMarginsDisabled()
   }
 }

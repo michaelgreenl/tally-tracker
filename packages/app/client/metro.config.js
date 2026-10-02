@@ -11,6 +11,10 @@ config.server.enhanceMiddleware = (middleware, server) => {
     const metro = enhanceMiddleware ? enhanceMiddleware(middleware, server) : middleware;
 
     return (req, res, next) => {
+        if (req.url === '/__tally_dev__/api-origin') {
+            res.writeHead(200, { 'Content-Type': 'text/plain', 'Cache-Control': 'no-store' });
+            return res.end(target.origin);
+        }
         if (!/^\/(users|counters|billing|health|socket\.io)(\/|\?|$)/.test(req.url)) return metro(req, res, next);
 
         // Only the dev site's requests may use its authenticated proxy.
