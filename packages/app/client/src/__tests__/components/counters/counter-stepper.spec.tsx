@@ -23,11 +23,14 @@ vi.mock('react-native-svg', () => ({ default: 'svg', Path: 'path' }));
 vi.mock('../../../components/counters/counter-number', () => ({
     CounterNumber: ({ value }: { value: number }) => value,
 }));
-vi.mock('expo-haptics', () => ({ selectionAsync: vi.fn() }));
+vi.mock('expo-haptics', () => ({
+    impactAsync: vi.fn(),
+    ImpactFeedbackStyle: { Medium: 'medium', Heavy: 'heavy' },
+}));
 
 it('gives feedback only for enabled presses and keeps counting when haptics are unavailable', async () => {
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
-    vi.mocked(Haptics.selectionAsync).mockRejectedValue(new Error('Haptics unavailable'));
+    vi.mocked(Haptics.impactAsync).mockRejectedValue(new Error('Haptics unavailable'));
     const container = document.createElement('div');
     const root = createRoot(container);
     let count = 0;
@@ -46,13 +49,13 @@ it('gives feedback only for enabled presses and keeps counting when haptics are 
         });
         container.querySelector<HTMLButtonElement>('[data-testid="stepper-decrease"]')!.click();
         expect(count).toBe(0);
-        expect(Haptics.selectionAsync).not.toHaveBeenCalled();
+        expect(Haptics.impactAsync).not.toHaveBeenCalled();
 
         await act(async () => {
             container.querySelector<HTMLButtonElement>('[data-testid="stepper-increase"]')!.click();
         });
         expect(count).toBe(1);
-        expect(Haptics.selectionAsync).toHaveBeenCalledOnce();
+        expect(Haptics.impactAsync).toHaveBeenCalledExactlyOnceWith(Haptics.ImpactFeedbackStyle.Medium);
     } finally {
         await act(async () => root.unmount());
         vi.unstubAllGlobals();

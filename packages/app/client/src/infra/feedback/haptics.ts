@@ -8,9 +8,9 @@ export function hapticFeedback(kind: 'selection' | 'impact' = 'selection') {
             ? Haptics.performAndroidHapticsAsync(
                   kind === 'impact' ? Haptics.AndroidHaptics.Long_Press : Haptics.AndroidHaptics.Segment_Tick,
               )
-            : kind === 'impact'
-              ? Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-              : Haptics.selectionAsync();
+            : Haptics.impactAsync(
+                  kind === 'impact' ? Haptics.ImpactFeedbackStyle.Heavy : Haptics.ImpactFeedbackStyle.Medium,
+              );
     // Unavailable haptics must not interrupt the action or reject without a handler.
     void feedback.catch(() => {});
 }
