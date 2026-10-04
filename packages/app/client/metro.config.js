@@ -1,8 +1,16 @@
 const { getSentryExpoConfig } = require('@sentry/react-native/metro');
+const { createHash } = require('node:crypto');
 const http = require('node:http');
 const https = require('node:https');
 
 const config = getSentryExpoConfig(__dirname);
+// Production transforms inline public values, even when CI reuses Metro's cache.
+const publicEnv = Object.keys(process.env)
+    .filter((key) => key.startsWith('EXPO_PUBLIC_'))
+    .sort()
+    .map((key) => [key, process.env[key]]);
+config.cacheVersion += createHash('sha256').update(JSON.stringify(publicEnv)).digest('hex');
+
 const target = new URL(process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000');
 const transport = target.protocol === 'https:' ? https : http;
 const enhanceMiddleware = config.server.enhanceMiddleware;
