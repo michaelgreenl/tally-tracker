@@ -27,8 +27,8 @@ describe('Guest counters', () => {
         cy.get('[data-testid="guest-limit-modal"]').should('not.exist');
 
         cy.get('[data-testid="add-counter-button"]').click();
-        cy.get('[data-testid="guest-limit-modal-upgrade"]').click();
-        cy.location('pathname').should('eq', '/upgrade');
+        cy.get('[data-testid="guest-limit-modal-sign-in"]').click();
+        cy.location('pathname').should('eq', '/login');
         cy.get('[data-testid="guest-limit-modal"]').should('not.exist');
     });
 });

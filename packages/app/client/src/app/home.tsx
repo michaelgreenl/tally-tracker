@@ -291,7 +291,7 @@ export default function HomeScreen() {
                     visible={guestLimitOpen}
                     testID='guest-limit-modal'
                     title={GUEST_COUNTER_LIMIT_MESSAGE}
-                    description={`Guest sessions can create up to ${GUEST_COUNTER_CAP} counters. Your existing counters remain usable.`}
+                    description={`Guest sessions can create up to ${GUEST_COUNTER_CAP} counters, sign in or sign up to create more.`}
                     descriptionGap={8}
                 >
                     <View style={styles.modalActions}>
@@ -306,12 +306,12 @@ export default function HomeScreen() {
                             accessibilityRole='button'
                             onPress={() => {
                                 setGuestLimitOpen(false);
-                                router.push('/upgrade');
+                                router.push('/login');
                             }}
                             style={styles.modalPrimary}
-                            testID='guest-limit-modal-upgrade'
+                            testID='guest-limit-modal-sign-in'
                         >
-                            <Text style={styles.modalPrimaryText}>Upgrade</Text>
+                            <Text style={styles.modalPrimaryText}>Sign in</Text>
                         </Pressable>
                     </View>
                 </Dialog>
