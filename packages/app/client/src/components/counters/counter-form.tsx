@@ -117,7 +117,7 @@ export function CounterForm({ visible, counter, onCancel, onDone }: CounterFormP
                         maxLength={COUNTER_TITLE_MAX_LENGTH}
                         onChangeText={setTitle}
                         onSubmitEditing={() => void submit()}
-                        placeholder='What are you counting?'
+                        placeholder='Counter name'
                         returnKeyType='done'
                         testID='counter-title'
                         value={title}
@@ -128,7 +128,7 @@ export function CounterForm({ visible, counter, onCancel, onDone }: CounterFormP
                         label='Metric (optional)'
                         value={metric}
                         onChangeText={setMetric}
-                        placeholder='e.g. 16oz water bottle'
+                        placeholder='Unit'
                         maxLength={80}
                         returnKeyType='done'
                         onSubmitEditing={() => void submit()}
