@@ -45,7 +45,8 @@ async function appleRequest(path: 'token' | 'revoke', parameters: Record<string,
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({ ...parameters, client_id: clientId, client_secret: secret }),
-            signal: AbortSignal.timeout(3000),
+            // Leave time for verification and session creation within the app's ten-second request limit.
+            signal: AbortSignal.timeout(8000),
             redirect: 'error',
         });
         if (!response.ok) {

@@ -1,3 +1,4 @@
+import { setTimeout as delay } from 'node:timers/promises';
 import { exportJWK, exportPKCS8, generateKeyPair, jwtVerify, SignJWT } from 'jose';
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from 'vitest';
 import { exchangeAppleCode, revokeAppleToken, verifyAppleNotification } from '../../src/services/apple-auth.service.js';
@@ -12,6 +13,7 @@ let publicKey: object;
 let claims: JWTPayload;
 let signingKey: CryptoKey;
 let failProvider = false;
+let providerDelay = 0;
 const usedCodes = new Set<string>();
 const revoked: string[] = [];
 
@@ -34,6 +36,7 @@ beforeAll(async () => {
         vi.fn(async (url: string, options?: Parameters<typeof fetch>[1]) => {
             if (url === 'https://appleid.apple.com/auth/keys') return Response.json({ keys: [publicKey] });
             if (failProvider) return Response.json({ error: 'server_error' }, { status: 500 });
+            if (providerDelay) await delay(providerDelay, undefined, { signal: options?.signal ?? undefined });
             const body = new URLSearchParams(String(options?.body));
             // Validate the actual outgoing client credential, not a mock of the signing helper.
             expect(body.get('client_id')).toBe(audience);
@@ -63,6 +66,7 @@ beforeEach(() => {
     usedCodes.clear();
     revoked.length = 0;
     failProvider = false;
+    providerDelay = 0;
     const now = Math.floor(Date.now() / 1000);
     claims = {
         sub: 'apple-subject',
@@ -129,6 +133,19 @@ it('treats an Apple outage as unavailable, not invalid account credentials', asy
     failProvider = true;
     await expect(exchangeAppleCode('code', nonce)).rejects.toMatchObject({ status: 503 });
 });
+
+it('accepts a valid Apple response that takes longer than three seconds', async () => {
+    providerDelay = 3500;
+    await expect(exchangeAppleCode('code', nonce)).resolves.toMatchObject({
+        subject: 'apple-subject',
+        emailVerified: true,
+    });
+}, 10_000);
+
+it('stops a stalled Apple exchange before the app request times out', async () => {
+    providerDelay = 15_000;
+    await expect(exchangeAppleCode('code', nonce)).rejects.toMatchObject({ status: 503 });
+}, 9500);
 
 it.each(['not-json', JSON.stringify({ id_token: 'missing-refresh-token' })])(
     'rejects malformed token responses without storing credentials',
