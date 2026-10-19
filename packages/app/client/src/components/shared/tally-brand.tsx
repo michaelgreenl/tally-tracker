@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../theme/colors';
+import { fonts } from '../../theme/fonts';
 import { TallyLogo } from './tally-logo';
 
 import type { TextProps } from 'react-native';
@@ -27,10 +28,11 @@ export function TallyBrand({ style, children = 'Tally' }: Pick<TextProps, 'style
 const styles = StyleSheet.create({
     brand: {
         flexDirection: 'row',
-        alignItems: 'center',
+        alignItems: 'baseline',
     },
     title: {
         color: colors.text,
+        fontFamily: fonts.display,
         fontWeight: '700',
     },
 });

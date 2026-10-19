@@ -14,6 +14,7 @@ import Animated, {
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import { colors } from '../../theme/colors';
+import { fonts } from '../../theme/fonts';
 import { REQUEST_FAILED_MESSAGE } from '../../infra/http/api';
 import { hapticFeedback } from '../../infra/feedback/haptics';
 import { useCounters } from '../../contexts/counter-context';
@@ -270,6 +271,7 @@ const styles = StyleSheet.create({
     title: {
         flexShrink: 1,
         color: colors.text,
+        fontFamily: fonts.display,
         fontSize: 24,
         fontWeight: '700',
     },

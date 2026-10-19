@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '../../theme/colors';
+import { fonts } from '../../theme/fonts';
 import { isLegalDocumentKey, legalDocumentKeys, legalDocuments } from '../../content/legal-documents';
 
 export function generateStaticParams() {
@@ -84,12 +85,14 @@ const styles = StyleSheet.create({
         alignSelf: 'flex-start',
         marginBottom: 28,
         color: colors.link,
+        fontFamily: fonts.display,
         fontSize: 16,
         fontWeight: '700',
         textDecorationLine: 'underline',
     },
     title: {
         color: colors.text,
+        fontFamily: fonts.display,
         fontSize: 36,
         fontWeight: '800',
         lineHeight: 42,
@@ -106,6 +109,7 @@ const styles = StyleSheet.create({
     sectionTitle: {
         marginBottom: 8,
         color: colors.text,
+        fontFamily: fonts.display,
         fontSize: 21,
         fontWeight: '700',
     },

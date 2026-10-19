@@ -5,6 +5,7 @@ import Swipeable, { type SwipeableMethods } from 'react-native-gesture-handler/R
 
 import { hapticFeedback } from '../../infra/feedback/haptics';
 import { colors } from '../../theme/colors';
+import { fonts } from '../../theme/fonts';
 
 export type CounterMembersListProps = { children: ReactNode; height: number };
 export type CounterMembersListRowProps = {
@@ -111,6 +112,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    removeText: { color: colors.onPrimary, fontSize: 16, fontWeight: '600' },
+    removeText: { color: colors.onPrimary, fontFamily: fonts.display, fontSize: 16, fontWeight: '600' },
     pressed: { opacity: 0.7 },
 });

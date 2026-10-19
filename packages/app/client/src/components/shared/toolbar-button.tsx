@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 import { colors } from '../../theme/colors';
+import { fonts } from '../../theme/fonts';
 import { hapticFeedback } from '../../infra/feedback/haptics';
 
 export type ToolbarButtonProps = {
@@ -73,5 +74,5 @@ const styles = StyleSheet.create({
     cancel: { backgroundColor: colors.input },
     destructive: { backgroundColor: colors.dangerButton },
     dimmed: { opacity: 0.5 },
-    label: { color: colors.onPrimary, fontSize: 17, fontWeight: '600' },
+    label: { color: colors.onPrimary, fontFamily: fonts.display, fontSize: 17, fontWeight: '600' },
 });

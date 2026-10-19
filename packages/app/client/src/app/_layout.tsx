@@ -1,11 +1,11 @@
 import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
-import { useFonts } from 'expo-font';
 import Head from 'expo-router/head';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, Appearance, Platform, StyleSheet, View } from 'react-native';
 
 import { colors } from '../theme/colors';
 import { CounterProvider } from '../contexts/counter-context';
+import { useAppFonts } from '../hooks/use-app-fonts';
 import { initSentry, withSentry } from '../infra/monitoring/sentry';
 import { SessionProvider, useSession } from '../contexts/session-context';
 import { Snackbar } from '../components/shared/snackbar';
@@ -27,9 +27,7 @@ const navigationTheme = {
 
 function Navigator() {
     const session = useSession();
-    const [fontsLoaded, fontError] = useFonts(
-        Platform.OS === 'web' ? {} : { GoogleSansMedium: require('../../assets/fonts/GoogleSans-Medium.ttf') },
-    );
+    const [fontsLoaded, fontError] = useAppFonts();
 
     if (!session.ready || (!fontsLoaded && !fontError)) {
         return (

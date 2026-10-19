@@ -5,6 +5,7 @@ import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '../theme/colors';
+import { fonts } from '../theme/fonts';
 import { useCounters } from '../contexts/counter-context';
 import { useSession } from '../contexts/session-context';
 
@@ -80,6 +81,7 @@ const styles = StyleSheet.create({
     },
     title: {
         color: colors.text,
+        fontFamily: fonts.display,
         fontSize: 22,
         fontWeight: '700',
     },

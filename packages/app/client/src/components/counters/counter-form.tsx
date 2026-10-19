@@ -4,6 +4,7 @@ import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-n
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors } from '../../theme/colors';
+import { fonts } from '../../theme/fonts';
 import { hapticFeedback } from '../../infra/feedback/haptics';
 import { useCounters } from '../../contexts/counter-context';
 import { FormField } from '../shared/auth-form';
@@ -159,6 +160,7 @@ const styles = StyleSheet.create({
     heading: {
         padding: 22,
         color: colors.text,
+        fontFamily: fonts.display,
         fontSize: 24,
         fontWeight: '800',
         textAlign: 'center',
@@ -198,6 +200,7 @@ const styles = StyleSheet.create({
     },
     primaryText: {
         color: colors.onPrimary,
+        fontFamily: fonts.display,
         fontSize: 15,
         fontWeight: '700',
     },
@@ -215,6 +218,7 @@ const styles = StyleSheet.create({
     },
     secondaryText: {
         color: colors.text,
+        fontFamily: fonts.display,
         fontSize: 15,
         fontWeight: '700',
     },

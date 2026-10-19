@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import { colors } from '../theme/colors';
+import { fonts } from '../theme/fonts';
 import { AuthLink, styles as formStyles } from '../components/shared/auth-form';
 import { BackButton } from '../components/shared/back-button';
 import { Snackbar } from '../components/shared/snackbar';
@@ -394,7 +395,7 @@ const styles = StyleSheet.create({
     scrollContent: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 24 },
     content: { width: '100%', maxWidth: 480, alignSelf: 'center', gap: 28 },
     intro: { gap: 8, paddingTop: 8 },
-    title: { fontSize: 34, flexShrink: 1 },
+    title: { fontFamily: fonts.display, fontSize: 34, flexShrink: 1 },
     subtitle: { color: colors.muted, fontSize: 18, lineHeight: 26 },
     benefits: { gap: 14 },
     benefit: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -407,7 +408,7 @@ const styles = StyleSheet.create({
         borderColor: colors.divider,
     },
     accountAction: { minHeight: Platform.select({ web: 32, ios: 44, default: 48 }) },
-    sectionTitle: { color: colors.text, fontSize: 18, fontWeight: '600' },
+    sectionTitle: { color: colors.text, fontFamily: fonts.display, fontSize: 18, fontWeight: '600' },
     copy: { color: colors.muted, fontSize: 14, lineHeight: 20 },
     signIn: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 6 },
     planSection: { gap: 10 },
@@ -449,7 +450,7 @@ const styles = StyleSheet.create({
         alignSelf: 'flex-start',
     },
     restoreButton: { minHeight: 48, alignItems: 'center', justifyContent: 'center' },
-    restoreText: { color: colors.link, fontSize: 15, fontWeight: '600' },
+    restoreText: { color: colors.link, fontFamily: fonts.display, fontSize: 15, fontWeight: '600' },
     legalLinks: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 },
     legalText: { color: colors.muted, fontSize: 13, fontWeight: '400' },
 });

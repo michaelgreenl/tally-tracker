@@ -7,6 +7,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import { colors } from '../theme/colors';
+import { fonts } from '../theme/fonts';
 import { CounterCard } from '../components/counters/counter-card';
 import { CounterForm } from '../components/counters/counter-form';
 import { CounterValueDialog } from '../components/counters/counter-value-dialog';
@@ -343,6 +344,7 @@ const styles = StyleSheet.create({
         gap: 10,
     },
     brand: {
+        fontFamily: fonts.display,
         fontSize: 24,
     },
     headerAction: {
@@ -365,6 +367,7 @@ const styles = StyleSheet.create({
     },
     headerActionText: {
         color: colors.onPrimary,
+        fontFamily: fonts.display,
         fontSize: 14,
         fontWeight: '700',
     },
@@ -400,6 +403,7 @@ const styles = StyleSheet.create({
     },
     emptyTitle: {
         color: colors.muted,
+        fontFamily: fonts.display,
         fontSize: 18,
         fontWeight: '500',
     },

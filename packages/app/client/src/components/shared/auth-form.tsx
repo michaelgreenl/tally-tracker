@@ -3,6 +3,7 @@ import { forwardRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { colors } from '../../theme/colors';
+import { fonts } from '../../theme/fonts';
 import { unstable_styles as webStyles } from './auth-form.module.css';
 
 import type { LinkProps } from 'expo-router';
@@ -110,6 +111,7 @@ export const styles = StyleSheet.create({
     title: {
         marginBottom: 8,
         color: colors.text,
+        fontFamily: fonts.display,
         fontSize: 28,
         fontWeight: '700',
         textAlign: 'center',
@@ -192,6 +194,7 @@ export const styles = StyleSheet.create({
     },
     primaryButtonText: {
         color: colors.onPrimary,
+        fontFamily: fonts.display,
         fontSize: 16,
         fontWeight: '700',
     },

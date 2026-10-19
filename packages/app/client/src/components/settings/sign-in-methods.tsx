@@ -5,6 +5,7 @@ import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from '
 
 import { getErrorMessage } from '../../infra/http/api';
 import { colors } from '../../theme/colors';
+import { fonts } from '../../theme/fonts';
 import { AuthService } from '../../services/auth/auth.service';
 import { getSessionScope } from '../../services/session/session-scope';
 import { AppleSignIn } from '../auth/apple-sign-in';
@@ -205,6 +206,6 @@ const styles = StyleSheet.create({
     error: { color: colors.danger, fontSize: 14 },
     action: { minHeight: 44, minWidth: 44, justifyContent: 'center' },
     done: { alignSelf: 'flex-end' },
-    actionText: { color: colors.link, fontSize: 16, fontWeight: '700' },
+    actionText: { color: colors.link, fontFamily: fonts.display, fontSize: 16, fontWeight: '700' },
     dimmed: { opacity: 0.55 },
 });

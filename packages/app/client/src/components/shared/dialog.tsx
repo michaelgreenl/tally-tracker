@@ -12,6 +12,7 @@ import {
 import Animated from 'react-native-reanimated';
 
 import { colors } from '../../theme/colors';
+import { fonts } from '../../theme/fonts';
 import { MessageText } from './message-text';
 
 import type { ComponentProps, PropsWithChildren, ReactNode } from 'react';
@@ -125,6 +126,7 @@ const styles = StyleSheet.create({
     title: {
         flex: 1,
         color: colors.text,
+        fontFamily: fonts.display,
         fontSize: 22,
         fontWeight: '800',
     },
@@ -132,7 +134,7 @@ const styles = StyleSheet.create({
     editorHeader: { paddingTop: 24 },
     headerAction: { transform: [{ translateY: '-50%' }] },
     closeAction: { alignSelf: 'flex-start' },
-    centeredTitle: { flex: 1, fontSize: 24, fontWeight: '600', textAlign: 'center' },
+    centeredTitle: { flex: 1, fontFamily: fonts.display, fontSize: 24, fontWeight: '600', textAlign: 'center' },
     description: {
         color: colors.muted,
         fontSize: 16,

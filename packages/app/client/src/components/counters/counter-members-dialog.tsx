@@ -20,6 +20,7 @@ import { subscribeToCounterUpdates } from '../../infra/socket/socket';
 import { CounterService } from '../../services/counters/counter.service';
 import { getSessionScope } from '../../services/session/session-scope';
 import { colors } from '../../theme/colors';
+import { fonts } from '../../theme/fonts';
 import { relativeTime } from '../../utils/relative-time';
 import { MessageText } from '../shared/message-text';
 import { ToolbarButton } from '../shared/toolbar-button';
@@ -306,7 +307,13 @@ const styles = StyleSheet.create({
     // iOS centers the font's line box; lift its visible letters slightly beside the icons.
     opticalAlignment: { transform: [{ translateY: Platform.OS === 'ios' ? -1 : 0 }] },
     owner: { flexShrink: 0 },
-    username: { flexShrink: 1, color: colors.text, fontSize: 18, lineHeight: 24, fontWeight: '600' },
+    username: {
+        flexShrink: 1,
+        color: colors.text,
+        fontSize: 18,
+        lineHeight: 24,
+        fontWeight: '600',
+    },
     currentUsername: { fontWeight: '700' },
     dot: { width: 8, height: 8, borderRadius: 4, borderWidth: 1, borderColor: colors.muted, flexShrink: 0 },
     onlineDot: { backgroundColor: colors.success, borderColor: colors.success },
@@ -319,5 +326,5 @@ const styles = StyleSheet.create({
     errorText: { color: colors.danger, fontSize: 15 },
     retry: { minHeight: 48, justifyContent: 'center', paddingHorizontal: 16 },
     pressed: { opacity: 0.7 },
-    retryText: { color: colors.link, fontSize: 16, fontWeight: '600' },
+    retryText: { color: colors.link, fontFamily: fonts.display, fontSize: 16, fontWeight: '600' },
 });

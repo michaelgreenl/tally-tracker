@@ -22,6 +22,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors } from '../../theme/colors';
+import { fonts } from '../../theme/fonts';
 import { useSession } from '../../contexts/session-context';
 import { AuthService } from '../../services/auth/auth.service';
 import { unstable_styles as webStyles } from '../shared/auth-form.module.css';
@@ -541,6 +542,7 @@ const styles = StyleSheet.create({
         paddingTop: 12,
     },
     brand: {
+        fontFamily: fonts.display,
         fontSize: 28,
         lineHeight: 34,
     },
@@ -556,6 +558,7 @@ const styles = StyleSheet.create({
     guestLinkText: {
         color: colors.text,
         flexShrink: 1,
+        fontFamily: fonts.display,
         fontSize: 18,
         lineHeight: 24,
         textAlign: 'right',

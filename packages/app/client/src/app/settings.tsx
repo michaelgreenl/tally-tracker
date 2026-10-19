@@ -5,6 +5,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '../theme/colors';
+import { fonts } from '../theme/fonts';
 import { BackButton } from '../components/shared/back-button';
 import { Dialog } from '../components/shared/dialog';
 import { Checkbox } from '../components/shared/checkbox';
@@ -285,6 +286,7 @@ const styles = StyleSheet.create({
     },
     headerTitle: {
         color: colors.onPrimary,
+        fontFamily: fonts.display,
         fontSize: 20,
         fontWeight: '800',
     },
