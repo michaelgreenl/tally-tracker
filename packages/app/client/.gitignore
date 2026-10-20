@@ -27,6 +27,7 @@ yarn-debug.*
 yarn-error.*
 
 # Cypress
+cypress/downloads/
 cypress/screenshots/
 cypress/videos/
 
