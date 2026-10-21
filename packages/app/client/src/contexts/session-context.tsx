@@ -79,8 +79,9 @@ export function SessionProvider({ children }: PropsWithChildren) {
 
     useEffect(() => {
         return setUnauthorizedHandler(async () => {
+            const wasAuthenticated = Boolean(userRef.current);
             await clearSession();
-            router.replace('/login');
+            if (wasAuthenticated) router.replace('/login');
         });
     }, [clearSession, router]);
 

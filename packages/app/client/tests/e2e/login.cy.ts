@@ -98,18 +98,23 @@ describe('Login controls', () => {
         }
     });
 
-    it('shows Back only when login has history and preserves registration navigation', () => {
+    it('opens Home first and preserves login and registration Back navigation', () => {
         cy.visit('/');
+        cy.location('pathname').should('eq', '/home');
+        cy.get('[data-testid="home-login"]').click();
         cy.location('pathname').should('eq', '/login');
-        cy.get('[data-testid="auth-login-back"]').should('not.exist');
         cy.get('[data-testid="auth-switch-mode"]').click();
         cy.get('[data-testid="auth-register-back"]').click();
         cy.location('pathname').should('eq', '/login');
-        cy.get('[data-testid="auth-login-back"]').should('not.exist');
+        cy.get('[data-testid="auth-login-back"]').filter(':visible').click();
+        cy.location('pathname').should('eq', '/home');
+
+        cy.get('[data-testid="home-login"]').click();
         cy.get('[data-testid="continue-as-guest"]').click();
         cy.location('pathname').should('eq', '/home');
-        cy.get('[data-testid="home-login"]').click();
-        cy.get('[data-testid="auth-login-back"]').filter(':visible').click();
+
+        cy.visit('/login');
+        cy.get('[data-testid="auth-login-back"]').click();
         cy.location('pathname').should('eq', '/home');
 
         cy.visit('/register');
@@ -118,6 +123,22 @@ describe('Login controls', () => {
         cy.location('pathname').should('eq', '/register');
         cy.get('[data-testid="auth-register-back"]').click();
         cy.location('pathname').should('eq', '/login');
+    });
+
+    it('opens Home as a guest when a saved session has expired', () => {
+        cy.intercept('GET', '**/users/check-auth', { statusCode: 401, body: { success: false } }).as('checkAuth');
+        cy.intercept('POST', '**/users/refresh', { statusCode: 401, body: { success: false } }).as('refresh');
+        cy.visit('/', {
+            onBeforeLoad: (win) =>
+                win.localStorage.setItem(
+                    'auth_user_profile',
+                    JSON.stringify({ id: 'expired-user', email: 'expired@example.com', username: 'expired' }),
+                ),
+        });
+        cy.wait('@checkAuth');
+        cy.wait('@refresh');
+        cy.location('pathname').should('eq', '/home');
+        cy.get('[data-testid="home-login"]').should('be.visible');
     });
 
     it('centers login in the viewport and keeps the form reachable on short screens', () => {

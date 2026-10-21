@@ -7,7 +7,6 @@ import {
 } from '@tally/core/client';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
-import { useNavigationState } from 'expo-router/react-navigation';
 import { Fragment, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
@@ -47,7 +46,6 @@ const legalLinks = [
 
 export function AuthScreen({ mode }: AuthScreenProps) {
     const router = useRouter();
-    const canGoBack = useNavigationState((state) => state.index > 0);
     const params = useLocalSearchParams<{ email?: string | string[]; inviteCode?: string | string[] }>();
     const inviteCode = typeof params.inviteCode === 'string' ? params.inviteCode : undefined;
     const emailParameter = typeof params.email === 'string' ? params.email : params.email?.[0] || '';
@@ -191,20 +189,18 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                     style={styles.pageHeader}
                     testID='auth-page-header'
                 >
-                    {!isLogin || canGoBack ? (
-                        <BackButton
-                            onPress={() =>
-                                completingRegistration
-                                    ? void session.logout()
-                                    : canGoBack
-                                      ? router.back()
-                                      : router.replace({ pathname: '/login', params: { email, inviteCode } })
-                            }
-                            testID={`auth-${mode}-back`}
-                        />
-                    ) : (
-                        <View style={styles.backButtonPlaceholder} />
-                    )}
+                    <BackButton
+                        onPress={() =>
+                            completingRegistration
+                                ? void session.logout()
+                                : router.canGoBack()
+                                  ? router.back()
+                                  : router.replace(
+                                        isLogin ? '/home' : { pathname: '/login', params: { email, inviteCode } },
+                                    )
+                        }
+                        testID={`auth-${mode}-back`}
+                    />
                     <TallyBrand style={styles.brand} />
                 </View>
                 <KeyboardAvoidingView
@@ -536,9 +532,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 32,
         paddingTop: 12,
         paddingBottom: 12,
-    },
-    backButtonPlaceholder: {
-        height: 44,
     },
     scrollContent: {
         ...formStyles.scrollContent,
