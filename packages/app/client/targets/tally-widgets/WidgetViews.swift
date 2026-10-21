@@ -84,16 +84,19 @@ struct CounterWidgetView: View {
       } else {
         VStack(spacing: 8) {
           TallyMark().frame(width: 32, height: 32)
-          Text("Open Tally").font(.headline)
+          Text("Open Tally")
+            .font(family == .systemSmall ? .system(size: 19, weight: .semibold) : .headline)
           if family != .accessoryRectangular {
-            Text("Add or choose a counter.").font(.caption).multilineTextAlignment(.center)
+            Text("Add or choose a counter.")
+              .font(family == .systemSmall ? .system(size: 14) : .caption)
+              .multilineTextAlignment(.center)
           }
         }
       }
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .padding(
-      family == .systemSmall
+      family == .systemSmall && entry.counter != nil && entry.owner != nil
         ? EdgeInsets(top: 16, leading: 18, bottom: 12, trailing: 12) : contentMargins
     )
     .dynamicTypeSize(
