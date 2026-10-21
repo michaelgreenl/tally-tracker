@@ -367,7 +367,6 @@ const styles = StyleSheet.create({
     },
     headerActionText: {
         color: colors.onPrimary,
-        fontFamily: fonts.display,
         fontSize: 14,
         fontWeight: '700',
     },

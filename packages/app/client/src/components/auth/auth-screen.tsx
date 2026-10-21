@@ -558,7 +558,6 @@ const styles = StyleSheet.create({
     guestLinkText: {
         color: colors.text,
         flexShrink: 1,
-        fontFamily: fonts.display,
         fontSize: 18,
         lineHeight: 24,
         textAlign: 'right',

@@ -218,7 +218,6 @@ const styles = StyleSheet.create({
     },
     secondaryText: {
         color: colors.text,
-        fontFamily: fonts.display,
         fontSize: 15,
         fontWeight: '700',
     },

@@ -4,7 +4,6 @@ import { useFocusEffect } from 'expo-router';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../theme/colors';
-import { fonts } from '../../theme/fonts';
 import { getErrorMessage } from '../../infra/http/api';
 import { AuthService } from '../../services/auth/auth.service';
 import { useSession } from '../../contexts/session-context';
@@ -197,5 +196,5 @@ const styles = StyleSheet.create({
     line: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.divider },
     or: { color: colors.muted, fontSize: 14 },
     cancel: { minHeight: 48, alignItems: 'center', justifyContent: 'center' },
-    cancelText: { color: colors.link, fontWeight: '600', fontFamily: fonts.display, fontSize: 16 },
+    cancelText: { color: colors.link, fontWeight: '600', fontSize: 16 },
 });
