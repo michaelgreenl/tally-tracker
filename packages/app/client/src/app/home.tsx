@@ -161,7 +161,7 @@ export default function HomeScreen() {
                         </View>
                     ) : (
                         <Link href='/login' asChild>
-                            <Pressable accessibilityRole='link' style={styles.headerAction}>
+                            <Pressable accessibilityRole='link' style={styles.headerAction} testID='home-login'>
                                 <Text style={styles.headerActionText}>Login</Text>
                             </Pressable>
                         </Link>

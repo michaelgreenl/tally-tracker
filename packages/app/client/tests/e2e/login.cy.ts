@@ -98,12 +98,18 @@ describe('Login controls', () => {
         }
     });
 
-    it('goes back through auth history and provides a destination for direct links', () => {
-        cy.visit('/login');
+    it('shows Back only when login has history and preserves registration navigation', () => {
+        cy.visit('/');
+        cy.location('pathname').should('eq', '/login');
+        cy.get('[data-testid="auth-login-back"]').should('not.exist');
         cy.get('[data-testid="auth-switch-mode"]').click();
         cy.get('[data-testid="auth-register-back"]').click();
         cy.location('pathname').should('eq', '/login');
-        cy.get('[data-testid="auth-login-back"]').click();
+        cy.get('[data-testid="auth-login-back"]').should('not.exist');
+        cy.get('[data-testid="continue-as-guest"]').click();
+        cy.location('pathname').should('eq', '/home');
+        cy.get('[data-testid="home-login"]').click();
+        cy.get('[data-testid="auth-login-back"]').filter(':visible').click();
         cy.location('pathname').should('eq', '/home');
 
         cy.visit('/register');
