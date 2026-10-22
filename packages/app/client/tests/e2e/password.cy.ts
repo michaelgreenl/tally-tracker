@@ -72,8 +72,16 @@ describe('New password requirements', () => {
                 cy.wait('@verifyCode');
             }
 
-            for (const password of ['Abcdef1', 'abcdefghijklmno1', 'Abcdefghijklmnop']) {
+            for (const [password, unmetRule] of [
+                ['Abcdef1', 'length'],
+                ['abcdefghijklmno1', 'uppercase'],
+                ['Abcdefghijklmnop', 'number'],
+            ]) {
                 cy.get(`[data-testid="${prefix}-password"]`).clear().type(password);
+                for (const rule of ['length', 'uppercase', 'number']) {
+                    const state = rule === unmetRule ? 'unmet' : 'met';
+                    cy.get(`[data-testid="password-rule-${rule}-${state}"]`).should('be.visible');
+                }
                 cy.get(`[data-testid="${prefix}-confirm-password"]`).clear().type(password);
                 cy.get(`[data-testid="${prefix}-submit"]`).click();
                 cy.get(`[data-testid="${prefix}-error"]`).should('be.visible');

@@ -1,10 +1,4 @@
-import {
-    emailSchema,
-    loginPasswordSchema,
-    PASSWORD_REQUIREMENTS,
-    passwordSchema,
-    usernameSchema,
-} from '@tally/core/client';
+import { emailSchema, loginPasswordSchema, passwordSchema, usernameSchema } from '@tally/core/client';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { Fragment, useEffect, useRef, useState } from 'react';
@@ -32,6 +26,7 @@ import { Checkbox } from '../shared/checkbox';
 import { TallyBrand } from '../shared/tally-brand';
 import { GoogleSignIn } from './google-sign-in';
 import { AppleSignIn } from './apple-sign-in';
+import { PasswordRequirements } from './password-requirements';
 import { MessageText } from '../shared/message-text';
 
 type AuthScreenProps = {
@@ -344,7 +339,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                                 </Text>
                                             </Pressable>
                                         </View>
-                                        {!isLogin && <Text style={styles.helpText}>{PASSWORD_REQUIREMENTS}</Text>}
+                                        {!isLogin && <PasswordRequirements password={password} />}
                                     </View>
 
                                     {!isLogin && (
