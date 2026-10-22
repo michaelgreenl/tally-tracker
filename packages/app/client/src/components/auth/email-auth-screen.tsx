@@ -420,7 +420,11 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
                                             testID='email-auth-back'
                                         >
                                             <Text style={styles.link}>
-                                                {resumeSession ? 'Cancel' : 'Back to login'}
+                                                {resumeSession
+                                                    ? params.returnTo
+                                                        ? 'Cancel'
+                                                        : 'Skip for now'
+                                                    : 'Back to login'}
                                             </Text>
                                         </Pressable>
                                     </Link>

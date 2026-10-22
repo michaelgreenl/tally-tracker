@@ -772,7 +772,7 @@ describe('PostgreSQL integration', () => {
             .post('/users')
             .send({ email, password, username: randomUUID().replaceAll('-', '') });
         expect(registration.status).toBe(201);
-        expect(registration.body).toEqual({ success: true });
+        expect(registration.body.data.user.email).toBe(email.toLowerCase());
 
         const login = await request(app).post('/users/login').send({ email: email.toUpperCase(), password });
         expect(login.status).toBe(200);

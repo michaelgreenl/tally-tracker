@@ -10,6 +10,7 @@ import { assertSession, changeSession, getSessionScope } from '../services/sessi
 
 import type {
     AuthRequest,
+    AuthResponse,
     RegisterRequest,
     GoogleLoginRequest,
     AppleLoginRequest,
@@ -123,31 +124,37 @@ export function SessionProvider({ children }: PropsWithChildren) {
         return () => window.removeEventListener('storage', changed);
     }, [setUser]);
 
+    // Login and registration both return a session for the account.
+    async function startSession<T extends { rememberMe?: boolean }>(
+        send: (request: T) => Promise<AuthResponse>,
+        request: T,
+        failure: string,
+    ): Promise<ActionResult> {
+        await AuthService.waitForLogout();
+        const scope = getSessionScope();
+        setNotice('');
+        const response = await send({ ...request, rememberMe: Platform.OS === 'web' ? request.rememberMe : true });
+        const authenticatedUser = response.data?.user;
+
+        if (!response.success || !authenticatedUser) return fail(response.message || failure);
+
+        assertSession(scope);
+        const nextScope = changeSession(authenticatedUser.id);
+        try {
+            await AuthService.saveLogin(response.data!, nextScope);
+        } catch (error) {
+            if (nextScope === getSessionScope()) await clearSession();
+            throw error;
+        }
+        assertSession(nextScope);
+        setSessionId(nextScope.id);
+        setUser(authenticatedUser);
+        return ok();
+    }
+
     async function login(request: AuthRequest | GoogleLoginRequest | AppleLoginRequest): Promise<ActionResult> {
         try {
-            await AuthService.waitForLogout();
-            const scope = getSessionScope();
-            setNotice('');
-            const response = await AuthService.login({
-                ...request,
-                rememberMe: Platform.OS === 'web' ? request.rememberMe : true,
-            });
-            const authenticatedUser = response.data?.user;
-
-            if (!response.success || !authenticatedUser) return fail(response.message || 'Login Failed');
-
-            assertSession(scope);
-            const nextScope = changeSession(authenticatedUser.id);
-            try {
-                await AuthService.saveLogin(response.data!, nextScope);
-            } catch (error) {
-                if (nextScope === getSessionScope()) await clearSession();
-                throw error;
-            }
-            assertSession(nextScope);
-            setSessionId(nextScope.id);
-            setUser(authenticatedUser);
-            return ok();
+            return await startSession(AuthService.login, request, 'Login Failed');
         } catch (error: unknown) {
             if (
                 error instanceof ApiError &&
@@ -167,8 +174,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
         if (!request.email) return fail('Registration requires email as input');
 
         try {
-            const response = await AuthService.register(request);
-            return response.success ? ok() : fail(response.message || 'Registration failed');
+            return await startSession(AuthService.register, request, 'Registration failed');
         } catch (error: unknown) {
             if (error instanceof ApiError && error.status === 409) {
                 return { success: false, message: error.message, code: 'USERNAME_TAKEN' };

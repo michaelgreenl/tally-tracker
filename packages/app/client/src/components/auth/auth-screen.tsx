@@ -149,7 +149,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
 
         const result = isLogin
             ? await session.login({ email: emailResult.data, password, rememberMe })
-            : await session.register({ email: emailResult.data, password, username });
+            : await session.register({ email: emailResult.data, password, username, rememberMe });
 
         setPasswordLoading(false);
         if (!result.success) {
@@ -161,7 +161,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
         if (isLogin) {
             router.replace(inviteCode ? { pathname: '/join', params: { code: inviteCode } } : '/home');
         } else {
-            router.replace({ pathname: '/verify-email', params: { email, inviteCode } });
+            router.replace({ pathname: '/verify-email', params: { inviteCode } });
         }
     }
 

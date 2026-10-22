@@ -36,27 +36,33 @@ describe('Shared counter invitations', () => {
                         win.localStorage.setItem('auth_user_profile', JSON.stringify(user));
                     },
                 });
+            } else if (flow === 'register') {
+                cy.visit(`/join?code=${inviteCode}`);
+                cy.location('pathname').should('eq', '/login');
+                cy.intercept('POST', '**/users', {
+                    statusCode: 201,
+                    body: { success: true, data: { user: { ...user, emailVerified: false } } },
+                });
+                cy.intercept('POST', '**/users/username/availability', {
+                    body: { success: true, data: { available: true } },
+                }).as('availability');
+                cy.intercept('POST', '**/users/verify-email', { body: { success: true } });
+                cy.intercept('GET', '**/users/check-auth', { body: { success: true, data: { user } } });
+                cy.get('[data-testid="auth-switch-mode"]').click();
+                cy.location('pathname').should('eq', '/register');
+                cy.get('[data-testid="auth-username"]').type(user.username);
+                cy.wait('@availability');
+                cy.get('[data-testid="auth-email"]').filter(':visible').type('recipient@example.com');
+                cy.get('[data-testid="auth-password"]').filter(':visible').type('New-password123');
+                cy.get('[data-testid="auth-submit"]').filter(':visible').click();
+                cy.get('[data-testid="email-auth-code"]').type('123456');
+                cy.get('[data-testid="email-auth-submit"]').click();
+                cy.get('[data-testid="email-auth-login"]').click();
             } else {
                 cy.visit(`/join?code=${inviteCode}`);
                 cy.location('pathname').should('eq', '/login');
 
-                if (flow === 'register') {
-                    cy.intercept('POST', '**/users', { statusCode: 201, body: { success: true } });
-                    cy.intercept('POST', '**/users/username/availability', {
-                        body: { success: true, data: { available: true } },
-                    }).as('availability');
-                    cy.intercept('POST', '**/users/verify-email', { body: { success: true } });
-                    cy.get('[data-testid="auth-switch-mode"]').click();
-                    cy.location('pathname').should('eq', '/register');
-                    cy.get('[data-testid="auth-username"]').type(user.username);
-                    cy.wait('@availability');
-                    cy.get('[data-testid="auth-email"]').filter(':visible').type('recipient@example.com');
-                    cy.get('[data-testid="auth-password"]').filter(':visible').type('New-password123');
-                    cy.get('[data-testid="auth-submit"]').filter(':visible').click();
-                    cy.get('[data-testid="email-auth-code"]').type('123456');
-                    cy.get('[data-testid="email-auth-submit"]').click();
-                    cy.get('[data-testid="email-auth-login"]').click();
-                } else if (flow === 'reset') {
+                if (flow === 'reset') {
                     cy.intercept('POST', '**/users/reset-password/request', { body: { success: true } });
                     cy.intercept('POST', '**/users/reset-password/verify', { body: { success: true } });
                     cy.intercept('POST', '**/users/reset-password', { body: { success: true } });

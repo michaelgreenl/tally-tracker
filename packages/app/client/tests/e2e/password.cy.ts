@@ -42,11 +42,13 @@ describe('New password requirements', () => {
             const prefix = isRegister ? 'auth' : 'email-auth';
             const email = 'password-rules@example.invalid';
             const validPassword = isRegister ? 'Abcdef12' : `Ab1${'é'.repeat(100)}`;
+            const user = { id: 'password-test', username: 'password_test', email, tier: 'BASIC', emailVerified: false };
 
             cy.intercept('POST', isRegister ? '**/users' : '**/users/reset-password', {
                 statusCode: isRegister ? 201 : 200,
-                body: { success: true },
+                body: isRegister ? { success: true, data: { user } } : { success: true },
             }).as('submitPassword');
+            cy.intercept('GET', '**/counters', { body: { success: true, data: { counters: [] } } });
             cy.intercept('POST', '**/users/reset-password/request', {
                 statusCode: 200,
                 body: { success: true },
@@ -96,7 +98,7 @@ describe('New password requirements', () => {
                 .should('deep.equal', {
                     email,
                     password: validPassword,
-                    ...(isRegister && { username: 'password_test' }),
+                    ...(isRegister && { username: 'password_test', rememberMe: false }),
                     ...(!isRegister && { code: '123456' }),
                 });
             if (isRegister) cy.location('pathname').should('eq', '/verify-email');

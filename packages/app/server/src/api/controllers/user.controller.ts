@@ -87,7 +87,7 @@ export const post = async (
     res: Response<AuthResponse>,
 ) => {
     try {
-        const { email, password, username } = req.body;
+        const { email, password, username, rememberMe } = req.body;
 
         const sanitizedEmail = sanitizeEmail(email);
 
@@ -97,7 +97,9 @@ export const post = async (
             captureServerError(error, { req, source: 'user.post.emailVerification' });
         });
 
-        res.status(CREATED).json({ success: true });
+        // Sign the new account in. Login does not require a verified email; sharing, joining, and billing do.
+        res.status(CREATED);
+        await sendSession(user, rememberMe, res);
     } catch (error: unknown) {
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
             if (!(await userRepository.isUsernameAvailable(req.body.username))) {

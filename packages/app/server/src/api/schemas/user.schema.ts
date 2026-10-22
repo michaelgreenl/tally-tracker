@@ -9,6 +9,7 @@ export const createUserSchema = z.object({
             email: emailSchema,
             password: passwordSchema,
             username: usernameSchema,
+            rememberMe: z.boolean().optional(),
         })
         .refine((data) => data.email, {
             message: 'Email is required to login',

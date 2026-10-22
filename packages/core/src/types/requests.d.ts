@@ -24,7 +24,7 @@ export interface AuthRequest {
     rememberMe?: boolean;
 }
 
-export interface RegisterRequest extends Pick<AuthRequest, 'email' | 'password'> {
+export interface RegisterRequest extends AuthRequest {
     username: string;
 }
 
