@@ -83,17 +83,17 @@ const sanitizeEmail = (email: string): string => {
 };
 
 export const post = async (
-    req: Request<Record<string, never>, AuthResponse, AuthRequest>,
+    req: Request<Record<string, never>, AuthResponse, AuthRequest & { username?: string }>,
     res: Response<AuthResponse>,
 ) => {
     try {
-        const { email, password, rememberMe } = req.body;
+        const { email, password, username, rememberMe } = req.body;
 
         const sanitizedEmail = sanitizeEmail(email);
 
         const hash = await hashPassword(password);
-        // New accounts choose a username after sign-up, like Google and Apple accounts.
-        const user = await userRepository.createUser({ email: sanitizedEmail, password: hash });
+        // New accounts choose a username after sign-up, like Google and Apple accounts. Build 4 still sends one here.
+        const user = await userRepository.createUser({ email: sanitizedEmail, password: hash, username });
         void issueEmailOtp(user, 'EMAIL_VERIFICATION').catch((error: unknown) => {
             captureServerError(error, { req, source: 'user.post.emailVerification' });
         });
@@ -103,6 +103,9 @@ export const post = async (
         await sendSession(user, rememberMe, res);
     } catch (error: unknown) {
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+            if (req.body.username && !(await userRepository.isUsernameAvailable(req.body.username))) {
+                return res.status(CONFLICT).json({ success: false, message: 'That username is taken.' });
+            }
             // P2002 = unique constraint violation
             res.status(UNPROCESSABLE_ENTITY).json({
                 success: false,

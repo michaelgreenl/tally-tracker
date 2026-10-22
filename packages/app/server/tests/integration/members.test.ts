@@ -75,6 +75,19 @@ it('checks availability before choosing a username and rejects a concurrent case
     expect(response.body.data).toEqual({ available: false });
 });
 
+it('keeps a username sent at sign-up by app build 4 and rejects a case-insensitive duplicate', async () => {
+    const password = 'Member-password1';
+    const registration = await request(app)
+        .post('/users')
+        .send({ email: `legacy-${randomUUID()}@example.com`, password, username: 'Legacy_name' })
+        .expect(201);
+    expect(registration.body.data.user.username).toBe('Legacy_name');
+    await request(app)
+        .post('/users')
+        .send({ email: `legacy-${randomUUID()}@example.com`, password, username: 'LEGACY_NAME' })
+        .expect(409);
+});
+
 it('requires a valid username without imposing a short length limit', async () => {
     const user = await register();
     for (const username of [undefined, 'ab', 'abc def', 'abc!', 'abc\nxyz']) {
