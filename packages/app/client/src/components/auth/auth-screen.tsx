@@ -52,7 +52,6 @@ export function AuthScreen({ mode }: AuthScreenProps) {
     const emailInputRef = useRef<TextInput>(null);
     const usernameInputRef = useRef<TextInput>(null);
     const passwordInputRef = useRef<TextInput>(null);
-    const confirmPasswordInputRef = useRef<TextInput>(null);
     const [email, setEmail] = useState(emailParameter);
     const [username, setUsername] = useState('');
     const [availability, setAvailability] = useState<{
@@ -66,7 +65,6 @@ export function AuthScreen({ mode }: AuthScreenProps) {
     const usernameTaken = currentAvailability?.available === false;
     const [previousEmailParameter, setPreviousEmailParameter] = useState(emailParameter);
     const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
     const [rememberMe, setRememberMe] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [passwordFocused, setPasswordFocused] = useState(false);
@@ -111,7 +109,6 @@ export function AuthScreen({ mode }: AuthScreenProps) {
         setPreviousEmailParameter(emailParameter);
         setEmail(emailParameter);
         setPassword('');
-        setConfirmPassword('');
         setErrorMessage('');
     }
 
@@ -144,11 +141,6 @@ export function AuthScreen({ mode }: AuthScreenProps) {
         const passwordResult = (isLogin ? loginPasswordSchema : passwordSchema).safeParse(password);
         if (!passwordResult.success) {
             setErrorMessage(passwordResult.error.issues[0].message);
-            return;
-        }
-
-        if (!isLogin && password !== confirmPassword) {
-            setErrorMessage("Passwords don't match.");
             return;
         }
 
@@ -311,13 +303,10 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                                 onBlur={() => setPasswordFocused(false)}
                                                 onChangeText={setPassword}
                                                 onFocus={() => setPasswordFocused(true)}
-                                                onSubmitEditing={() => {
-                                                    if (isLogin) void submit();
-                                                    else confirmPasswordInputRef.current?.focus();
-                                                }}
+                                                onSubmitEditing={() => void submit()}
                                                 placeholderTextColor={colors.muted}
                                                 ref={passwordInputRef}
-                                                returnKeyType={isLogin ? 'done' : 'next'}
+                                                returnKeyType='done'
                                                 secureTextEntry={!showPassword}
                                                 style={[
                                                     styles.passwordTextInput,
@@ -341,23 +330,6 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                         </View>
                                         {!isLogin && <PasswordRequirements password={password} />}
                                     </View>
-
-                                    {!isLogin && (
-                                        <FormField
-                                            autoCapitalize='none'
-                                            autoComplete='new-password'
-                                            editable={!loading}
-                                            label='Confirm Password'
-                                            onChangeText={setConfirmPassword}
-                                            onSubmitEditing={() => void submit()}
-                                            ref={confirmPasswordInputRef}
-                                            returnKeyType='done'
-                                            secureTextEntry
-                                            testID='auth-confirm-password'
-                                            textContentType='newPassword'
-                                            value={confirmPassword}
-                                        />
-                                    )}
 
                                     {isLogin && (
                                         <View style={styles.loginOptions}>

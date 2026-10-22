@@ -21,7 +21,6 @@ describe('Login controls', () => {
             if (route === '/register') {
                 cy.get('[data-testid="auth-username"]').type('new_user');
                 cy.wait('@availability');
-                cy.get('[data-testid="auth-confirm-password"]').type('Valid-password123');
             }
 
             for (const email of ['', '@@@@', 'person@', 'person@example..com']) {

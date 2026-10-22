@@ -52,7 +52,6 @@ describe('Shared counter invitations', () => {
                     cy.wait('@availability');
                     cy.get('[data-testid="auth-email"]').filter(':visible').type('recipient@example.com');
                     cy.get('[data-testid="auth-password"]').filter(':visible').type('New-password123');
-                    cy.get('[data-testid="auth-confirm-password"]').type('New-password123');
                     cy.get('[data-testid="auth-submit"]').filter(':visible').click();
                     cy.get('[data-testid="email-auth-code"]').type('123456');
                     cy.get('[data-testid="email-auth-submit"]').click();

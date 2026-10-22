@@ -29,7 +29,6 @@ describe('Sign-up username', () => {
         cy.wait('@availability');
         cy.get('[data-testid="auth-email"]').type('signup@example.invalid');
         cy.get('[data-testid="auth-password"]').type('Abcdef12');
-        cy.get('[data-testid="auth-confirm-password"]').type('Abcdef12');
         cy.get('[data-testid="auth-submit"]').click();
         cy.wait('@register');
         cy.get('[data-testid="auth-username"]')

@@ -82,14 +82,14 @@ describe('New password requirements', () => {
                     const state = rule === unmetRule ? 'unmet' : 'met';
                     cy.get(`[data-testid="password-rule-${rule}-${state}"]`).should('be.visible');
                 }
-                cy.get(`[data-testid="${prefix}-confirm-password"]`).clear().type(password);
+                if (!isRegister) cy.get('[data-testid="email-auth-confirm-password"]').clear().type(password);
                 cy.get(`[data-testid="${prefix}-submit"]`).click();
                 cy.get(`[data-testid="${prefix}-error"]`).should('be.visible');
                 cy.get('@submitPassword.all').should('have.length', 0);
             }
 
             cy.get(`[data-testid="${prefix}-password"]`).clear().type(validPassword);
-            cy.get(`[data-testid="${prefix}-confirm-password"]`).clear().type(validPassword);
+            if (!isRegister) cy.get('[data-testid="email-auth-confirm-password"]').clear().type(validPassword);
             cy.get(`[data-testid="${prefix}-submit"]`).click();
             cy.wait('@submitPassword')
                 .its('request.body')

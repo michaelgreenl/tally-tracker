@@ -22,7 +22,6 @@ describe('Expo full-stack counter journey', () => {
         cy.get('[data-testid="auth-username"]').type(username);
         cy.get('[data-testid="auth-email"]').type(email);
         cy.get('[data-testid="auth-password"]').type(PASSWORD);
-        cy.get('[data-testid="auth-confirm-password"]').type(PASSWORD);
         cy.get('[data-testid="auth-submit"]').click();
 
         cy.wait('@registerUser').then(({ request, response }) => {
