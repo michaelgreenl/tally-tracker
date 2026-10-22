@@ -232,7 +232,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                             {!isLogin && (
                                 <View style={styles.header}>
                                     <Text accessibilityRole='header' aria-level={2} style={styles.title}>
-                                        Create Account
+                                        {completingRegistration ? 'Choose a Username' : 'Create Account'}
                                     </Text>
                                     {!completingRegistration && (
                                         <MessageText style={styles.subtitle}>Get started with Tally</MessageText>
