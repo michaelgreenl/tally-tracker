@@ -23,6 +23,7 @@ const { platform, sdk } = vi.hoisted(() => ({
 }));
 
 vi.mock('react-native', () => ({ Platform: platform }));
+vi.mock('expo-constants', () => ({ default: {} }));
 vi.mock('react-native-purchases', () => ({ default: sdk }));
 vi.mock('../../../infra/http/api', async (original) => ({
     ...(await original<typeof import('../../../infra/http/api')>()),

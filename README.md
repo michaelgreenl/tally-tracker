@@ -113,8 +113,8 @@ cp packages/app/server/.env.example packages/app/server/.env.development
 cp packages/app/client/.env.example packages/app/client/.env
 ```
 
-Set the client's `EXPO_PUBLIC_API_URL` to your local API. The client template targets the deployed API; do not use it for tests.
-Use `http://localhost:3000` in a browser or simulator. A physical phone needs the Mac's LAN address.
+The client template points development at the local API, `http://localhost:3000`. On a physical phone, development builds replace `localhost` with the address the phone uses to reach Metro. The phone and the Mac must be on the same network.
+Release builds and web exports read the deployed API from `packages/app/client/.env.production`.
 
 Start the database, generate Prisma files, and apply migrations:
 

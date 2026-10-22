@@ -17,6 +17,7 @@ const { fetchMock, tokens, tokenStorage } = vi.hoisted(() => ({
 }));
 
 vi.mock('react-native', () => ({ Platform: { OS: 'ios' } }));
+vi.mock('expo-constants', () => ({ default: {} }));
 vi.mock('../../../infra/storage/token-storage', () => ({ tokenStorage }));
 
 const jsonResponse = (body: unknown, status = OK) =>
