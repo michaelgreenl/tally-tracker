@@ -47,23 +47,8 @@ const usernameKey = (username: string) => createHash('sha256').update(username.t
 export const isUsernameAvailable = async (username: string) =>
     !(await prisma.user.findUnique({ where: { usernameKey: usernameKey(username) }, select: { id: true } }));
 
-export const createUser = async ({
-    email,
-    password,
-    username,
-}: {
-    email: string;
-    password: string;
-    username: string;
-}) =>
-    prisma.user.create({
-        data: {
-            email,
-            password,
-            username,
-            usernameKey: usernameKey(username),
-        },
-    });
+export const createUser = async ({ email, password }: { email: string; password: string }) =>
+    prisma.user.create({ data: { email, password } });
 
 export const setUsername = (userId: string, username: string) =>
     withLockedUser(userId, async (user, tx) => {

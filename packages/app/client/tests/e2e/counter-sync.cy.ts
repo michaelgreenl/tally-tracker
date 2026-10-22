@@ -23,6 +23,7 @@ describe('Counter sync recovery', () => {
             username: `sync_${crypto.randomUUID().replaceAll('-', '')}`,
         };
         cy.request('POST', '/users', credentials);
+        cy.request('POST', '/users/username', { username: credentials.username });
         cy.request('POST', '/users/login', credentials).then(({ body }) => {
             user = body.data.user;
             openAccount(user);

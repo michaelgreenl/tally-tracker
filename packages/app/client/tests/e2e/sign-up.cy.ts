@@ -1,6 +1,25 @@
 /// <reference types="cypress" />
 
 describe('Sign-up username', () => {
+    const user = {
+        id: 'new-user',
+        email: 'signup@example.invalid',
+        username: null,
+        tier: 'BASIC',
+        emailVerified: true,
+    };
+
+    // New accounts choose a username after sign-up.
+    function visitUsernameStep() {
+        cy.intercept('GET', '**/users/check-auth', { body: { success: true, data: { user } } });
+        cy.intercept('GET', '**/counters', { body: { success: true, data: { counters: [] } } });
+        cy.visit('/register', {
+            onBeforeLoad(win) {
+                win.localStorage.setItem('auth_user_profile', JSON.stringify(user));
+            },
+        });
+    }
+
     beforeEach(() => {
         cy.clearCookies();
         cy.clearLocalStorage();
@@ -10,11 +29,11 @@ describe('Sign-up username', () => {
         cy.intercept('POST', '**/users/username/availability', (req) =>
             req.reply({ success: true, data: { available: req.body.username !== 'taken_name' } }),
         ).as('availability');
-        cy.intercept('POST', '**/users', {
+        cy.intercept('POST', '**/users/username', {
             statusCode: 409,
             body: { success: false, message: 'That username is taken.' },
-        }).as('register');
-        cy.visit('/register');
+        }).as('setUsername');
+        visitUsernameStep();
         cy.get('[data-testid="auth-username"]').type('ab');
         cy.get('[data-testid="auth-submit"]').click();
         cy.get('[data-testid="auth-username"]').should('have.focus').and('have.attr', 'aria-invalid', 'true');
@@ -23,19 +42,16 @@ describe('Sign-up username', () => {
         cy.wait('@availability');
         cy.get('[data-testid="auth-username"]').should('have.attr', 'aria-invalid', 'true');
         cy.get('[data-testid="auth-submit"]').should('be.disabled');
-        cy.get('@register.all').should('have.length', 0);
+        cy.get('@setUsername.all').should('have.length', 0);
 
         cy.get('[data-testid="auth-username"]').clear().type('new_name');
         cy.wait('@availability');
-        cy.get('[data-testid="auth-email"]').type('signup@example.invalid');
-        cy.get('[data-testid="auth-password"]').type('Abcdef12');
         cy.get('[data-testid="auth-submit"]').click();
-        cy.wait('@register');
+        cy.wait('@setUsername');
         cy.get('[data-testid="auth-username"]')
             .should('have.value', 'new_name')
             .and('have.attr', 'aria-invalid', 'true');
         cy.get('[data-testid="auth-submit"]').should('be.disabled');
-        cy.get('[data-testid="auth-password"]').should('have.value', 'Abcdef12');
         cy.get('[data-testid="auth-username"]').type('_2');
         cy.wait('@availability');
         cy.get('[data-testid="auth-submit"]').should('not.be.disabled');
@@ -49,7 +65,7 @@ describe('Sign-up username', () => {
             req.alias = old ? 'oldName' : 'currentName';
             req.reply({ delay: old ? 1500 : 0, body: { success: true, data: { available: !old } } });
         });
-        cy.visit('/register');
+        visitUsernameStep();
         cy.get('[data-testid="auth-username"]').type('old_name');
         cy.get('[data-testid="auth-username-help"]').should('contain.text', 'Checking');
         cy.wrap(null).should(() => expect(oldRequestStarted, 'first request is in flight').to.equal(true));

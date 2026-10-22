@@ -11,17 +11,8 @@ describe('Login controls', () => {
                   ? '**/users/login'
                   : '**/users';
             cy.intercept('POST', endpoint, { statusCode: 401, body: { success: false } }).as('submit');
-            if (route === '/register') {
-                cy.intercept('POST', '**/users/username/availability', {
-                    body: { success: true, data: { available: true } },
-                }).as('availability');
-            }
             cy.visit(route);
             if (!recovery) cy.get('[data-testid="auth-password"]').type('Valid-password123');
-            if (route === '/register') {
-                cy.get('[data-testid="auth-username"]').type('new_user');
-                cy.wait('@availability');
-            }
 
             for (const email of ['', '@@@@', 'person@', 'person@example..com']) {
                 cy.get(`[data-testid="${prefix}-email"]`).clear();

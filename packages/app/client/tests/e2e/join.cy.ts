@@ -37,27 +37,31 @@ describe('Shared counter invitations', () => {
                     },
                 });
             } else if (flow === 'register') {
+                const unnamed = { ...user, username: null };
                 cy.visit(`/join?code=${inviteCode}`);
                 cy.location('pathname').should('eq', '/login');
                 cy.intercept('POST', '**/users', {
                     statusCode: 201,
-                    body: { success: true, data: { user: { ...user, emailVerified: false } } },
+                    body: { success: true, data: { user: { ...unnamed, emailVerified: false } } },
                 });
+                cy.intercept('POST', '**/users/verify-email', { body: { success: true } });
+                cy.intercept('GET', '**/users/check-auth', { body: { success: true, data: { user: unnamed } } });
                 cy.intercept('POST', '**/users/username/availability', {
                     body: { success: true, data: { available: true } },
                 }).as('availability');
-                cy.intercept('POST', '**/users/verify-email', { body: { success: true } });
-                cy.intercept('GET', '**/users/check-auth', { body: { success: true, data: { user } } });
+                cy.intercept('POST', '**/users/username', { body: { success: true, data: { user } } });
                 cy.get('[data-testid="auth-switch-mode"]').click();
                 cy.location('pathname').should('eq', '/register');
-                cy.get('[data-testid="auth-username"]').type(user.username);
-                cy.wait('@availability');
                 cy.get('[data-testid="auth-email"]').filter(':visible').type('recipient@example.com');
                 cy.get('[data-testid="auth-password"]').filter(':visible').type('New-password123');
                 cy.get('[data-testid="auth-submit"]').filter(':visible').click();
                 cy.get('[data-testid="email-auth-code"]').type('123456');
                 cy.get('[data-testid="email-auth-submit"]').click();
                 cy.get('[data-testid="email-auth-login"]').click();
+                // New accounts choose a username after verification.
+                cy.get('[data-testid="auth-username"]').filter(':visible').type(user.username);
+                cy.wait('@availability');
+                cy.get('[data-testid="auth-submit"]').filter(':visible').click();
             } else {
                 cy.visit(`/join?code=${inviteCode}`);
                 cy.location('pathname').should('eq', '/login');

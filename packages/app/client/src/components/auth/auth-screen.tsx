@@ -49,7 +49,6 @@ export function AuthScreen({ mode }: AuthScreenProps) {
     const [headerHeight, setHeaderHeight] = useState(0);
     const isLogin = mode === 'login';
     const completingRegistration = !isLogin && Boolean(session.user);
-    const emailInputRef = useRef<TextInput>(null);
     const usernameInputRef = useRef<TextInput>(null);
     const passwordInputRef = useRef<TextInput>(null);
     const [email, setEmail] = useState(emailParameter);
@@ -61,7 +60,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
     } | null>(null);
     const parsedUsername = usernameSchema.safeParse(username);
     const currentAvailability = availability?.username === username ? availability : null;
-    const usernamePending = !isLogin && parsedUsername.success && !currentAvailability;
+    const usernamePending = completingRegistration && parsedUsername.success && !currentAvailability;
     const usernameTaken = currentAvailability?.available === false;
     const [previousEmailParameter, setPreviousEmailParameter] = useState(emailParameter);
     const [password, setPassword] = useState('');
@@ -75,7 +74,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
     const [errorMessage, setErrorMessage] = useState('');
 
     useEffect(() => {
-        if (isLogin || !usernameSchema.safeParse(username).success) return;
+        if (!completingRegistration || !usernameSchema.safeParse(username).success) return;
         const controller = new AbortController();
         const timer = setTimeout(async () => {
             try {
@@ -90,7 +89,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
             clearTimeout(timer);
             controller.abort();
         };
-    }, [isLogin, username]);
+    }, [completingRegistration, username]);
 
     const usernameHelp = !username
         ? undefined
@@ -114,12 +113,12 @@ export function AuthScreen({ mode }: AuthScreenProps) {
 
     async function submit() {
         if (submitDisabled) return;
-        if (!isLogin && !parsedUsername.success) {
-            setErrorMessage(parsedUsername.error.issues[0].message);
-            usernameInputRef.current?.focus();
-            return;
-        }
         if (completingRegistration) {
+            if (!parsedUsername.success) {
+                setErrorMessage(parsedUsername.error.issues[0].message);
+                usernameInputRef.current?.focus();
+                return;
+            }
             setPasswordLoading(true);
             setErrorMessage('');
             const result = await session.setUsername(username);
@@ -149,11 +148,10 @@ export function AuthScreen({ mode }: AuthScreenProps) {
 
         const result = isLogin
             ? await session.login({ email: emailResult.data, password, rememberMe })
-            : await session.register({ email: emailResult.data, password, username, rememberMe });
+            : await session.register({ email: emailResult.data, password, rememberMe });
 
         setPasswordLoading(false);
         if (!result.success) {
-            if (result.code === 'USERNAME_TAKEN') setAvailability({ username, available: false });
             setErrorMessage(result.message);
             return;
         }
@@ -242,7 +240,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                 </View>
                             )}
 
-                            {!isLogin && (
+                            {completingRegistration && (
                                 <FormField
                                     label='Username'
                                     autoCapitalize='none'
@@ -257,10 +255,8 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                         setErrorMessage('');
                                     }}
                                     ref={usernameInputRef}
-                                    returnKeyType={completingRegistration ? 'done' : 'next'}
-                                    onSubmitEditing={() =>
-                                        completingRegistration ? void submit() : emailInputRef.current?.focus()
-                                    }
+                                    returnKeyType='done'
+                                    onSubmitEditing={() => void submit()}
                                     invalid={Boolean(username) && (!parsedUsername.success || usernameTaken)}
                                     help={usernameHelp}
                                     testID='auth-username'
@@ -282,7 +278,6 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                         testID='auth-email'
                                         textContentType='emailAddress'
                                         value={email}
-                                        ref={emailInputRef}
                                     />
 
                                     <View style={[styles.field, isLogin && styles.loginPasswordField]}>

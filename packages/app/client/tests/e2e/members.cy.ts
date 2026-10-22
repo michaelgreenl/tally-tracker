@@ -5,6 +5,7 @@ import type { ClientUser } from '@tally/core/client' with { 'resolution-mode': '
 function signIn(username: string): Cypress.Chainable<ClientUser> {
     const credentials = { email: `members-${crypto.randomUUID()}@example.com`, password: 'Member-password1', username };
     cy.request('POST', '/users', credentials);
+    cy.request('POST', '/users/username', { username });
     return cy.request('POST', '/users/login', credentials).then(({ body }) => {
         return cy.wrap(body.data.user as ClientUser, { log: false });
     });

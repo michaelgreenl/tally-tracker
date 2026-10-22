@@ -223,7 +223,7 @@ it('signs a new account in with a remembered native session', async () => {
     const created = { ...basic, id: 'account-new', emailVerified: false };
     auth.register.mockResolvedValue({ success: true, data: { user: created, refreshToken: 'refresh' } });
     await act(async () => {
-        await session.register({ email: created.email, password: 'Password1', username: 'new_user' });
+        await session.register({ email: created.email, password: 'Password1' });
     });
     expect(auth.register).toHaveBeenCalledWith(expect.objectContaining({ rememberMe: true }));
     expect(auth.saveLogin).toHaveBeenCalledWith(

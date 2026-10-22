@@ -20,14 +20,14 @@ describe('Expo full-stack counter journey', () => {
         cy.intercept('POST', '**/users').as('registerUser');
         cy.intercept('POST', '**/users/login').as('loginUser');
         cy.intercept('GET', '**/counters').as('getCounters');
+        cy.intercept('POST', '**/users/username/availability').as('availability');
         cy.visit('/register');
-        cy.get('[data-testid="auth-username"]').type(username);
         cy.get('[data-testid="auth-email"]').type(email);
         cy.get('[data-testid="auth-password"]').type(PASSWORD);
         cy.get('[data-testid="auth-submit"]').click();
 
         cy.wait('@registerUser').then(({ request, response }) => {
-            expect(request.body).to.deep.equal({ email, password: PASSWORD, username, rememberMe: false });
+            expect(request.body).to.deep.equal({ email, password: PASSWORD, rememberMe: false });
             expect(response?.statusCode).to.eq(CREATED);
         });
         // Registration signs the account in, so verification can wait.
@@ -38,6 +38,11 @@ describe('Expo full-stack counter journey', () => {
         });
         cy.location('pathname').should('eq', '/verify-email');
         cy.get('[data-testid="email-auth-back"]').click();
+        // New accounts choose a username after verification.
+        cy.location('pathname').should('eq', '/register');
+        cy.get('[data-testid="auth-username"]').type(username);
+        cy.wait('@availability');
+        cy.get('[data-testid="auth-submit"]').should('not.be.disabled').click();
         cy.location('pathname').should('eq', '/home');
 
         cy.get('[data-testid="home-settings-link"]').click();

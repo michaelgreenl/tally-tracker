@@ -42,7 +42,7 @@ describe('New password requirements', () => {
             const prefix = isRegister ? 'auth' : 'email-auth';
             const email = 'password-rules@example.invalid';
             const validPassword = isRegister ? 'Abcdef12' : `Ab1${'é'.repeat(100)}`;
-            const user = { id: 'password-test', username: 'password_test', email, tier: 'BASIC', emailVerified: false };
+            const user = { id: 'password-test', username: null, email, tier: 'BASIC', emailVerified: false };
 
             cy.intercept('POST', isRegister ? '**/users' : '**/users/reset-password', {
                 statusCode: isRegister ? 201 : 200,
@@ -59,12 +59,6 @@ describe('New password requirements', () => {
             }).as('verifyCode');
 
             cy.visit(isRegister ? '/register' : '/forgot-password');
-            if (isRegister) {
-                cy.intercept('POST', '**/users/username/availability', {
-                    body: { success: true, data: { available: true } },
-                });
-                cy.get('[data-testid="auth-username"]').type('password_test');
-            }
             cy.get(`[data-testid="${prefix}-email"]`).type(email);
             if (!isRegister) {
                 cy.get('[data-testid="email-auth-request"]').click();
@@ -98,7 +92,7 @@ describe('New password requirements', () => {
                 .should('deep.equal', {
                     email,
                     password: validPassword,
-                    ...(isRegister && { username: 'password_test', rememberMe: false }),
+                    ...(isRegister && { rememberMe: false }),
                     ...(!isRegister && { code: '123456' }),
                 });
             if (isRegister) cy.location('pathname').should('eq', '/verify-email');

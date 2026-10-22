@@ -8,14 +8,7 @@ import { usePurchaseSync } from '../hooks/use-purchase-sync';
 import { restoreSession } from '../services/session/restore-session';
 import { assertSession, changeSession, getSessionScope } from '../services/session/session-scope';
 
-import type {
-    AuthRequest,
-    AuthResponse,
-    RegisterRequest,
-    GoogleLoginRequest,
-    AppleLoginRequest,
-    ClientUser,
-} from '@tally/core/client';
+import type { AuthRequest, AuthResponse, GoogleLoginRequest, AppleLoginRequest, ClientUser } from '@tally/core/client';
 import type { PropsWithChildren } from 'react';
 
 type ActionResult =
@@ -28,7 +21,7 @@ type SessionContextValue = {
     isAuthenticated: boolean;
     isPremium: boolean;
     login: (request: AuthRequest | GoogleLoginRequest | AppleLoginRequest) => Promise<ActionResult>;
-    register: (request: RegisterRequest) => Promise<ActionResult>;
+    register: (request: AuthRequest) => Promise<ActionResult>;
     setUsername: (username: string) => Promise<ActionResult>;
     logout: (allDevices?: boolean) => Promise<ActionResult>;
     deleteAccount: () => Promise<ActionResult>;
@@ -170,15 +163,12 @@ export function SessionProvider({ children }: PropsWithChildren) {
         }
     }
 
-    async function register(request: RegisterRequest): Promise<ActionResult> {
+    async function register(request: AuthRequest): Promise<ActionResult> {
         if (!request.email) return fail('Registration requires email as input');
 
         try {
             return await startSession(AuthService.register, request, 'Registration failed');
         } catch (error: unknown) {
-            if (error instanceof ApiError && error.status === 409) {
-                return { success: false, message: error.message, code: 'USERNAME_TAKEN' };
-            }
             return fail(getErrorMessage(error, 'Registration failed'));
         }
     }

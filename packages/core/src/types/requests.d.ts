@@ -24,10 +24,6 @@ export interface AuthRequest {
     rememberMe?: boolean;
 }
 
-export interface RegisterRequest extends AuthRequest {
-    username: string;
-}
-
 export interface GoogleLoginRequest {
     idToken: string;
     password?: string;

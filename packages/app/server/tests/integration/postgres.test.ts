@@ -45,10 +45,7 @@ afterAll(async () => {
 async function sharingAccount(tier: 'BASIC' | 'PREMIUM') {
     const email = `sharing.${randomUUID()}@example.com`;
     const password = 'Integration-password1';
-    await request(app)
-        .post('/users')
-        .send({ email, password, username: randomUUID().replaceAll('-', '') })
-        .expect(201);
+    await request(app).post('/users').send({ email, password }).expect(201);
     const login = await request(app).post('/users/login').send({ email, password }).expect(200);
     const { user, accessToken } = login.body.data;
     await prisma.user.update({ where: { id: user.id }, data: { tier, emailVerifiedAt: new Date() } });
@@ -111,10 +108,7 @@ describe('PostgreSQL integration', () => {
         'registers and verifies the complete password: %s',
         async (password) => {
             const email = `password-length.${randomUUID()}@example.com`;
-            await request(app)
-                .post('/users')
-                .send({ email, password, username: randomUUID().replaceAll('-', '') })
-                .expect(201);
+            await request(app).post('/users').send({ email, password }).expect(201);
             await request(app).post('/users/login').send({ email, password }).expect(200);
             await request(app)
                 .post('/users/login')
@@ -768,9 +762,7 @@ describe('PostgreSQL integration', () => {
         const email = `Mixed.${randomUUID()}@Example.COM`;
         const password = 'Integration-password1';
 
-        const registration = await request(app)
-            .post('/users')
-            .send({ email, password, username: randomUUID().replaceAll('-', '') });
+        const registration = await request(app).post('/users').send({ email, password });
         expect(registration.status).toBe(201);
         expect(registration.body.data.user.email).toBe(email.toLowerCase());
 
@@ -778,9 +770,7 @@ describe('PostgreSQL integration', () => {
         expect(login.status).toBe(200);
         expect(login.body.data.user.email).toBe(email.toLowerCase());
 
-        const duplicate = await request(app)
-            .post('/users')
-            .send({ email: email.toUpperCase(), password, username: randomUUID().replaceAll('-', '') });
+        const duplicate = await request(app).post('/users').send({ email: email.toUpperCase(), password });
         expect(duplicate.status).toBe(422);
         expect(duplicate.body).toEqual({ success: false, message: 'Account is already in use.' });
         expect(await prisma.user.count({ where: { email: email.toLowerCase() } })).toBe(1);
@@ -793,9 +783,7 @@ describe('PostgreSQL integration', () => {
         const verificationCode = '123456';
         const resetCode = '654321';
 
-        const registration = await request(app)
-            .post('/users')
-            .send({ email, password, username: randomUUID().replaceAll('-', '') });
+        const registration = await request(app).post('/users').send({ email, password });
         expect(registration.status).toBe(201);
 
         const user = await prisma.user.findUniqueOrThrow({ where: { email } });
@@ -889,9 +877,7 @@ describe('PostgreSQL integration', () => {
         const newPassword = 'New-integration-password1';
         const resetCode = '654321';
 
-        const registration = await request(app)
-            .post('/users')
-            .send({ email, password, username: randomUUID().replaceAll('-', '') });
+        const registration = await request(app).post('/users').send({ email, password });
         expect(registration.status).toBe(201);
 
         const user = await prisma.user.findUniqueOrThrow({ where: { email } });
@@ -922,10 +908,7 @@ describe('PostgreSQL integration', () => {
         const email = `reset-attempts.${randomUUID()}@example.com`;
         const password = 'Integration-password1';
         const code = '123456';
-        await request(app)
-            .post('/users')
-            .send({ email, password, username: randomUUID().replaceAll('-', '') })
-            .expect(201);
+        await request(app).post('/users').send({ email, password }).expect(201);
         const user = await prisma.user.findUniqueOrThrow({ where: { email } });
         const where = { userId_purpose: { userId: user.id, purpose: 'PASSWORD_RESET' as const } };
         await prisma.emailOtp.create({
@@ -955,9 +938,7 @@ describe('PostgreSQL integration', () => {
         const password = 'Integration-password1';
         const code = '123456';
 
-        const registration = await request(app)
-            .post('/users')
-            .send({ email, password, username: randomUUID().replaceAll('-', '') });
+        const registration = await request(app).post('/users').send({ email, password });
         expect(registration.status).toBe(201);
 
         const user = await prisma.user.findUniqueOrThrow({ where: { email } });
@@ -1000,9 +981,7 @@ describe('PostgreSQL integration', () => {
         const idempotencyKey = `create-personal-${suffix}`;
         const agent = request.agent(app);
 
-        const registration = await agent
-            .post('/users')
-            .send({ email, password, username: randomUUID().replaceAll('-', '') });
+        const registration = await agent.post('/users').send({ email, password });
         expect(registration.status).toBe(201);
 
         const login = await agent.post('/users/login').send({ email, password, rememberMe: true });
@@ -1073,12 +1052,8 @@ describe('PostgreSQL integration', () => {
         const ownerAgent = request.agent(app);
         const memberAgent = request.agent(app);
 
-        const ownerRegistration = await ownerAgent
-            .post('/users')
-            .send({ email: ownerEmail, password, username: randomUUID().replaceAll('-', '') });
-        const memberRegistration = await memberAgent
-            .post('/users')
-            .send({ email: memberEmail, password, username: randomUUID().replaceAll('-', '') });
+        const ownerRegistration = await ownerAgent.post('/users').send({ email: ownerEmail, password });
+        const memberRegistration = await memberAgent.post('/users').send({ email: memberEmail, password });
         expect(ownerRegistration.status).toBe(201);
         expect(memberRegistration.status).toBe(201);
 

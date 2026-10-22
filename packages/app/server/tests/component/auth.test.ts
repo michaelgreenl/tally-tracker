@@ -117,7 +117,6 @@ describe('Auth Routes', () => {
             const res = await request(app).post('/users').send({
                 email: 'new@test.com',
                 password: 'New-password123',
-                username: 'New_user',
                 rememberMe: true,
             });
 
@@ -127,9 +126,7 @@ describe('Auth Routes', () => {
                 accessToken: expect.any(String),
                 refreshToken: TEST_REFRESH_TOKEN_ID,
             });
-            expect(userRepository.createUser).toHaveBeenCalledWith(
-                expect.objectContaining({ email: 'new@test.com', username: 'New_user' }),
-            );
+            expect(userRepository.createUser).toHaveBeenCalledWith(expect.objectContaining({ email: 'new@test.com' }));
             expect(issueEmailOtp).toHaveBeenCalledWith(
                 expect.objectContaining({ email: 'test@test.com' }),
                 'EMAIL_VERIFICATION',
@@ -139,7 +136,6 @@ describe('Auth Routes', () => {
         it('should reject registration without email', async () => {
             const res = await request(app).post('/users').send({
                 password: 'New-password123',
-                username: 'New_user',
             });
 
             expect(res.status).toBe(UNPROCESSABLE_ENTITY);

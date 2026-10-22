@@ -8,7 +8,6 @@ export const createUserSchema = z.object({
         .object({
             email: emailSchema,
             password: passwordSchema,
-            username: usernameSchema,
             rememberMe: z.boolean().optional(),
         })
         .refine((data) => data.email, {
