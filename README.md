@@ -22,7 +22,7 @@ Counter writes use HTTP. The server sends Socket.io `counter-update` events to t
 
 The API supports password, Google, and Apple sign-in, unique usernames, account deletion, personal counters, and shared counters. Basic accounts can join one shared counter. Premium accounts can start sharing and join more counters. Native purchases and restoration use RevenueCat, with server-verified access.
 
-The iOS app includes interactive Home Screen widgets and read-only Lock Screen counters. See the [release checklist](docs/plans/pre-ui-product-roadmap.md) for publication status.
+The iOS app includes interactive Home Screen widgets and read-only Lock Screen counters. See [Releasing](docs/releasing.md) for the release steps.
 
 ## Architecture & Key Features
 

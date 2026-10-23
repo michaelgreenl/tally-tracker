@@ -58,6 +58,7 @@
         "ios": "SENTRY_DISABLE_AUTO_UPLOAD=true expo run:ios",
         "web": "expo start --web",
         "build": "expo export --platform web",
+        "archive:ios": "sh scripts/archive-ios.sh",
         "test:e2e": "TS_NODE_PROJECT=tsconfig.cypress.json cypress run --browser chrome",
         "test:unit": "vitest run",
         "test:widgets": "sh scripts/test-widgets.sh",
