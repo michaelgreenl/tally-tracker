@@ -11,6 +11,13 @@ function openAccount(user: ClientUser) {
     cy.get('[data-testid="home-sync-synced-icon"]').should('be.visible');
 }
 
+// The synced icon stays visible during background writes; an empty queue means the server has them.
+function waitForSyncQueue() {
+    cy.window().should((win) => {
+        expect(JSON.parse(win.localStorage.getItem('app_sync_queue') || '[]')).to.deep.equal([]);
+    });
+}
+
 describe('Counter sync recovery', () => {
     let user: ClientUser;
 
@@ -49,9 +56,7 @@ describe('Counter sync recovery', () => {
             cy.request('GET', '/counters').then(({ body }) => {
                 expect(body.data.counters.find((item: ClientCounter) => item.id === counter.id).count).to.equal(3);
             });
-            cy.window().should((win) => {
-                expect(JSON.parse(win.localStorage.getItem('app_sync_queue') || '[]')).to.deep.equal([]);
-            });
+            waitForSyncQueue();
         });
     });
 
@@ -64,6 +69,7 @@ describe('Counter sync recovery', () => {
             cy.get(`[data-testid="counter-${counter.id}-reset"]`).click();
             cy.get(`[data-testid="counter-${counter.id}-count"]`).should('have.text', '0');
             cy.get('[data-testid="home-sync-synced-icon"]').should('be.visible');
+            waitForSyncQueue();
             cy.request('GET', '/counters').then(({ body }) => {
                 expect(body.data.counters.find((item: ClientCounter) => item.id === counter.id).count).to.equal(0);
             });
@@ -132,6 +138,7 @@ describe('Counter sync recovery', () => {
         cy.get('[data-testid="counter-form-submit"]').click();
         cy.wait('@created').its('response.statusCode').should('eq', 201);
         cy.get('[data-testid="home-sync-synced-icon"]').should('be.visible');
+        waitForSyncQueue();
         cy.request('GET', '/counters').then(({ body }) => {
             expect(body.data.counters).to.have.length(1);
             expect(body.data.counters[0]).to.include({
@@ -140,9 +147,6 @@ describe('Counter sync recovery', () => {
                 metric: '16oz bottle',
                 title: 'Water corrected',
             });
-        });
-        cy.window().should((win) => {
-            expect(JSON.parse(win.localStorage.getItem('app_sync_queue') || '[]')).to.deep.equal([]);
         });
         cy.clearLocalStorage();
         cy.then(() => openAccount(user));
@@ -178,6 +182,7 @@ describe('Counter sync recovery', () => {
             cy.get('[data-testid="counter-count-save"]').click();
             cy.get(`[data-testid="counter-${counter.id}-count"]`).should('have.text', '10.5');
             cy.get('[data-testid="home-sync-synced-icon"]').should('be.visible');
+            waitForSyncQueue();
             cy.request('GET', '/counters').then(({ body }) => {
                 expect(body.data.counters.find((item: ClientCounter) => item.id === counter.id).count).to.equal(10.5);
             });
