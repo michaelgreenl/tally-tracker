@@ -167,7 +167,7 @@ describe('Counter actions', () => {
                             email: 'basic@example.com',
                             username: 'basic_user',
                             tier: 'BASIC',
-                            emailVerified: false,
+                            emailVerified: true,
                         },
                     },
                 },

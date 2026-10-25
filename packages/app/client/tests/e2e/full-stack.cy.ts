@@ -1,5 +1,7 @@
 /// <reference types="cypress" />
 
+import { reportAccountsVerified } from './verified-accounts.ts';
+
 const PASSWORD = 'New-password123';
 const OK = 200;
 const CREATED = 201;
@@ -42,11 +44,7 @@ describe('Expo full-stack counter journey', () => {
         cy.get('[data-testid="email-auth-code"]').type('123456');
         cy.get('[data-testid="email-auth-submit"]').click();
         cy.wait('@verifyEmail');
-        cy.intercept({ method: 'GET', url: '**/users/check-auth', times: 1 }, (request) =>
-            request.continue((response) => {
-                response.body.data.user.emailVerified = true;
-            }),
-        );
+        reportAccountsVerified();
         cy.get('[data-testid="email-auth-login"]').click();
         // New accounts choose a username after verification.
         cy.location('pathname').should('eq', '/register');

@@ -403,7 +403,21 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
                                 </View>
                             )}
 
-                            {/* A new account has no way past verification; Cancel only returns to a gated feature. */}
+                            {/* Home sends unverified accounts here, so without a gated feature to return to, the only exit is Log out. */}
+                            {!complete && resumeSession && !params.returnTo && (
+                                <View style={styles.footer}>
+                                    <Pressable
+                                        accessibilityRole='button'
+                                        disabled={loading}
+                                        hitSlop={8}
+                                        onPress={() => void session.logout()}
+                                        style={({ pressed }) => pressed && styles.linkPressed}
+                                        testID='email-auth-logout'
+                                    >
+                                        <Text style={styles.link}>Log out</Text>
+                                    </Pressable>
+                                </View>
+                            )}
                             {!complete && (!resumeSession || Boolean(params.returnTo)) && (
                                 <View style={styles.footer}>
                                     <Link

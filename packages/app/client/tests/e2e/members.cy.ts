@@ -2,6 +2,10 @@
 
 import type { ClientUser } from '@tally/core/client' with { 'resolution-mode': 'import' };
 
+import { reportAccountsVerified } from './verified-accounts.ts';
+
+beforeEach(reportAccountsVerified);
+
 function signIn(username: string): Cypress.Chainable<ClientUser> {
     const credentials = { email: `members-${crypto.randomUUID()}@example.com`, password: 'Member-password1', username };
     cy.request('POST', '/users', credentials);

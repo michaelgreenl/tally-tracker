@@ -100,4 +100,19 @@ describe('Sign-up username', () => {
                 });
         }
     });
+
+    it('keeps an unverified account on email verification until it logs out', () => {
+        const unverified = { ...user, username: 'unverified_user', emailVerified: false };
+        cy.intercept('GET', '**/users/check-auth', { body: { success: true, data: { user: unverified } } });
+        cy.intercept('GET', '**/counters', { body: { success: true, data: { counters: [] } } });
+        cy.intercept('POST', '**/users/logout', { body: { success: true } });
+        cy.visit('/home', {
+            onBeforeLoad(win) {
+                win.localStorage.setItem('auth_user_profile', JSON.stringify(unverified));
+            },
+        });
+        cy.location('pathname').should('eq', '/verify-email');
+        cy.get('[data-testid="email-auth-logout"]').click();
+        cy.location('pathname').should('eq', '/login');
+    });
 });

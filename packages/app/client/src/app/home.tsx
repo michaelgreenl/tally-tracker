@@ -47,6 +47,7 @@ export default function HomeScreen() {
     const ownsCounterToRemove = counterToRemove?.userId === session.user?.id;
     const reordering = reorderDraft !== null;
 
+    if (session.user && !session.user.emailVerified) return <Redirect href='/verify-email' />;
     if (session.user && !session.user.username) return <Redirect href='/register' />;
 
     function openCreateForm() {
