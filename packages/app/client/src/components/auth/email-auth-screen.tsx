@@ -403,7 +403,8 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
                                 </View>
                             )}
 
-                            {!complete && (
+                            {/* A new account has no way past verification; Cancel only returns to a gated feature. */}
+                            {!complete && (!resumeSession || Boolean(params.returnTo)) && (
                                 <View style={styles.footer}>
                                     <Link
                                         href={
@@ -420,11 +421,7 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
                                             testID='email-auth-back'
                                         >
                                             <Text style={styles.link}>
-                                                {resumeSession
-                                                    ? params.returnTo
-                                                        ? 'Cancel'
-                                                        : 'Skip for now'
-                                                    : 'Back to login'}
+                                                {resumeSession ? 'Cancel' : 'Back to login'}
                                             </Text>
                                         </Pressable>
                                     </Link>
