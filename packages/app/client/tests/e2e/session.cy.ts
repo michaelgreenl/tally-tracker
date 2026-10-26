@@ -1,9 +1,5 @@
 /// <reference types="cypress" />
 
-import { reportAccountsVerified } from './verified-accounts.ts';
-
-beforeEach(reportAccountsVerified);
-
 for (const allDevices of [false, true]) {
     it(`uses the logout checkbox to select the sessions to end (all devices: ${allDevices})`, () => {
         cy.clearCookies();

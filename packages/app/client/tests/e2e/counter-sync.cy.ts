@@ -2,10 +2,6 @@
 
 import type { ClientCounter, ClientUser } from '@tally/core/client' with { 'resolution-mode': 'import' };
 
-import { reportAccountsVerified } from './verified-accounts.ts';
-
-beforeEach(reportAccountsVerified);
-
 function openAccount(user: ClientUser) {
     cy.visit('/home', {
         onBeforeLoad(win) {

@@ -1,7 +1,5 @@
 /// <reference types="cypress" />
 
-import { reportAccountsVerified } from './verified-accounts.ts';
-
 const PASSWORD = 'New-password123';
 const OK = 200;
 const CREATED = 201;
@@ -32,20 +30,14 @@ describe('Expo full-stack counter journey', () => {
             expect(request.body).to.deep.equal({ email, password: PASSWORD, rememberMe: false });
             expect(response?.statusCode).to.eq(CREATED);
         });
-        // Registration signs the account in before email verification.
+        // Registration signs the account in, so verification can wait.
         cy.wait('@getCounters').then(({ request, response }) => {
             expect(new URL(request.url).origin).to.eq(new URL(Cypress.config('baseUrl')!).origin);
             expect(request.headers.cookie).to.include('access_token=');
             expect(response?.statusCode).to.eq(OK);
         });
         cy.location('pathname').should('eq', '/verify-email');
-        // The server keeps only a digest of the emailed code, so stand in for verification.
-        cy.intercept('POST', '**/users/verify-email', { body: { success: true } }).as('verifyEmail');
-        cy.get('[data-testid="email-auth-code"]').type('123456');
-        cy.get('[data-testid="email-auth-submit"]').click();
-        cy.wait('@verifyEmail');
-        reportAccountsVerified();
-        cy.get('[data-testid="email-auth-login"]').click();
+        cy.get('[data-testid="email-auth-back"]').click();
         // New accounts choose a username after verification.
         cy.location('pathname').should('eq', '/register');
         cy.get('[data-testid="auth-username"]').type(username);

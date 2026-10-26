@@ -45,7 +45,11 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
     const isVerification = mode === 'verify';
     const resumeSession = isVerification && session.isAuthenticated;
     const returnTo =
-        params.returnTo === '/upgrade' ? { pathname: '/upgrade' as const, params: { plan: params.plan } } : '/home';
+        params.returnTo === '/upgrade'
+            ? { pathname: '/upgrade' as const, params: { plan: params.plan } }
+            : params.returnTo === '/settings'
+              ? '/settings'
+              : '/home';
     const codeInputRef = useRef<TextInput>(null);
     const passwordInputRef = useRef<TextInput>(null);
     const confirmPasswordInputRef = useRef<TextInput>(null);
@@ -403,22 +407,7 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
                                 </View>
                             )}
 
-                            {/* Home sends unverified accounts here, so without a gated feature to return to, the only exit is Log out. */}
-                            {!complete && resumeSession && !params.returnTo && (
-                                <View style={styles.footer}>
-                                    <Pressable
-                                        accessibilityRole='button'
-                                        disabled={loading}
-                                        hitSlop={8}
-                                        onPress={() => void session.logout()}
-                                        style={({ pressed }) => pressed && styles.linkPressed}
-                                        testID='email-auth-logout'
-                                    >
-                                        <Text style={styles.link}>Log out</Text>
-                                    </Pressable>
-                                </View>
-                            )}
-                            {!complete && (!resumeSession || Boolean(params.returnTo)) && (
+                            {!complete && (
                                 <View style={styles.footer}>
                                     <Link
                                         href={
@@ -435,7 +424,11 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
                                             testID='email-auth-back'
                                         >
                                             <Text style={styles.link}>
-                                                {resumeSession ? 'Cancel' : 'Back to login'}
+                                                {resumeSession
+                                                    ? params.returnTo
+                                                        ? 'Cancel'
+                                                        : 'Skip for now'
+                                                    : 'Back to login'}
                                             </Text>
                                         </Pressable>
                                     </Link>

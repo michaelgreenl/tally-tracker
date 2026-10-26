@@ -47,7 +47,6 @@ export default function HomeScreen() {
     const ownsCounterToRemove = counterToRemove?.userId === session.user?.id;
     const reordering = reorderDraft !== null;
 
-    if (session.user && !session.user.emailVerified) return <Redirect href='/verify-email' />;
     if (session.user && !session.user.username) return <Redirect href='/register' />;
 
     function openCreateForm() {
@@ -168,6 +167,32 @@ export default function HomeScreen() {
                         </Link>
                     )}
                 </View>
+
+                {session.user && !session.user.emailVerified && !reordering && (
+                    <View style={styles.verifyBanner}>
+                        <View style={styles.verifyBannerBody}>
+                            <Text style={styles.verifyBannerText}>
+                                Verify your email to share counters and upgrade.
+                            </Text>
+                            <Link
+                                href={{
+                                    pathname: '/verify-email',
+                                    params: { email: session.user.email, returnTo: '/home' },
+                                }}
+                                asChild
+                            >
+                                <Pressable
+                                    accessibilityRole='link'
+                                    hitSlop={8}
+                                    style={({ pressed }) => pressed && styles.verifyBannerPressed}
+                                    testID='home-verify-email'
+                                >
+                                    <Text style={styles.verifyBannerLink}>Verify</Text>
+                                </Pressable>
+                            </Link>
+                        </View>
+                    </View>
+                )}
 
                 <CounterList
                     counters={reorderDraft ? orderCounters(counterState.counters, reorderDraft) : counterState.counters}
@@ -370,6 +395,35 @@ const styles = StyleSheet.create({
         color: colors.onPrimary,
         fontSize: 14,
         fontWeight: '700',
+    },
+    verifyBanner: {
+        width: '100%',
+        maxWidth: 720,
+        alignSelf: 'center',
+        paddingHorizontal: 20,
+        paddingBottom: 16,
+    },
+    verifyBannerBody: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        padding: 14,
+        borderRadius: 16,
+        backgroundColor: colors.warningSurface,
+    },
+    verifyBannerText: {
+        flex: 1,
+        color: colors.text,
+        fontSize: 14,
+        lineHeight: 20,
+    },
+    verifyBannerLink: {
+        color: colors.warning,
+        fontSize: 14,
+        fontWeight: '700',
+    },
+    verifyBannerPressed: {
+        opacity: 0.7,
     },
     bottomActions: {
         position: 'absolute',
