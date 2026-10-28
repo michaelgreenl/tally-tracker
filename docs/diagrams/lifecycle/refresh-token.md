@@ -19,7 +19,7 @@
 }%%
 
 stateDiagram-v2
-    [*] --> Issued: Login creates a revocable session
+    [*] --> Issued: Login or registration creates a revocable session
 
     state "Issued (Active)" as Issued
     state "Rotated (Replaced)" as Rotated
@@ -37,8 +37,9 @@ stateDiagram-v2
 
     note right of Issued
         Stored in DB on the server.
-        Stored in HttpOnly cookie (web)
-        or Expo SecureStore (native)
+        Native apps always keep it
+        in Expo SecureStore.
+        Web keeps it in an HttpOnly cookie
         when rememberMe is enabled.
         Otherwise the refresh secret stays on the server.
     end note

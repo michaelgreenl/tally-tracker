@@ -18,6 +18,7 @@ src/
 │   ├── counters/
 │   └── session/
 ├── infra/
+│   ├── feedback/
 │   ├── http/
 │   ├── monitoring/
 │   ├── socket/
@@ -25,7 +26,7 @@ src/
 │   ├── sync/
 │   └── widgets/
 ├── utils/                 # Pure rules
-├── theme/                 # Shared colors
+├── theme/                 # Shared colors and fonts
 ├── content/               # Legal documents
 └── __tests__/             # Unit tests, grouped by source location
 ```
@@ -67,6 +68,8 @@ classDiagram
         class LoginScreen
         class RegisterScreen
         class SettingsScreen
+        class VerifyEmailScreen
+        class UpgradeScreen
     }
 
     namespace Contexts {
@@ -81,6 +84,8 @@ classDiagram
             +refreshUser()
             +login()
             +register()
+            +setUsername()
+            +refreshPurchases()
         }
     }
 
@@ -94,6 +99,12 @@ classDiagram
             +checkAuth()
             +login()
             +register()
+            +verifyEmail()
+        }
+        class BillingService {
+            +purchase()
+            +restore()
+            +sync()
         }
     }
 
@@ -122,7 +133,11 @@ classDiagram
     JoinScreen ..> CounterContext : Calls joinCounter()
 
     LoginScreen ..> SessionContext : Calls login()
-    RegisterScreen ..> SessionContext : Calls register()
+    RegisterScreen ..> SessionContext : Calls register() and setUsername()
+    VerifyEmailScreen ..> AuthService : Sends and checks codes
+    VerifyEmailScreen ..> SessionContext : Calls refreshUser()
+    UpgradeScreen ..> BillingService : Purchases and restores
+    UpgradeScreen ..> SessionContext : Calls refreshPurchases()
     SettingsScreen ..> SessionContext : Updates account
 
     CounterContext ..> CounterService : Counter operations
@@ -136,9 +151,11 @@ classDiagram
     SyncManager ..> ExpoNetwork : Watches connectivity
     SyncManager ..> apiFetch : Sends requests
     AuthService ..> apiFetch : Sends requests
+    BillingService ..> apiFetch : Verifies purchases
 
-    Socket ..> CounterContext : Pushes updates
+    CounterContext ..> Socket : Connects after loading counters
+    Socket ..> CounterContext : Signals a refresh
     AuthService ..> AsyncStorage : Caches user
     AuthService ..> SecureStore : Stores native tokens
-    ExpoRouter ..> Screens : Routes URLs
+    ExpoRouter ..> HomeScreen : Routes URLs to each screen
 ```
