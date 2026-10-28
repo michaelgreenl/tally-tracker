@@ -1,3 +1,16 @@
+diff --git a/dist/classes/directoryHelper.js b/dist/classes/directoryHelper.js
+index e0bb07c45e00f0af08a2bc89ff4df406b04e3d0f..ff79b7dec0abc541d0b8331a02cb56daa95926a8 100644
+--- a/dist/classes/directoryHelper.js
++++ b/dist/classes/directoryHelper.js
+@@ -22,7 +22,7 @@ class DirectoryHelper {
+         if (!this.pathOrDirExists(path))
+             return;
+         try {
+-            fs_1.default.rmdirSync(path, { recursive: true });
++            fs_1.default.rmSync(path, { recursive: true, force: true });
+         }
+         catch (err) {
+             if (err instanceof Error)
 diff --git a/dist/classes/extendedDMMFInputType.js b/dist/classes/extendedDMMFInputType.js
 index 863fead34d16cd7efc97c3056679fa0006d6e2af..94ab3bbe5add8f652af340cbea6e92ecd81b85fc 100644
 --- a/dist/classes/extendedDMMFInputType.js
@@ -12,7 +25,7 @@ index 863fead34d16cd7efc97c3056679fa0006d6e2af..94ab3bbe5add8f652af340cbea6e92ec
          const zodImport = "import { z } from 'zod';";
          const fieldImports = [
 diff --git a/dist/functions/writeSingleFileImportStatements.js b/dist/functions/writeSingleFileImportStatements.js
-index 10aa91ce5c8bee6959956715e6fa9e91dca36572..85215c55ecc7f3957eb8e5a3f5b64d0fde6f49b1 100644
+index 10aa91ce5c8bee6959956715e6fa9e91dca36572..6fd418c42df6a8bddaadbd59af87c1efa71e3050 100644
 --- a/dist/functions/writeSingleFileImportStatements.js
 +++ b/dist/functions/writeSingleFileImportStatements.js
 @@ -33,7 +33,7 @@ const writeSingleFileImportStatements = ({ writer, writeImport, }) => {
