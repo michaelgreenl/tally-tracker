@@ -22,9 +22,11 @@ Counter writes use HTTP. The server sends Socket.io `counter-update` events to t
 
 The API supports password, Google, and Apple sign-in, unique usernames, account deletion, personal counters, and shared counters. Basic accounts can join one shared counter. Premium accounts can start sharing and join more counters. Native purchases and restoration use RevenueCat, with server-verified access.
 
-The iOS app includes interactive Home Screen widgets and read-only Lock Screen counters. See [Releasing](docs/releasing.md) for the release steps.
+The iOS app includes interactive Home Screen widgets and read-only Lock Screen counters.
 
 ## Architecture & Key Features
+
+The [diagrams](docs/diagrams) show the data model, the client and server layers, and the main sync, auth, and sharing flows.
 
 ### Client Side
 
@@ -100,111 +102,49 @@ The iOS app includes interactive Home Screen widgets and read-only Lock Screen c
 
 ## Running Locally
 
-Install dependencies:
+Requirements: Bun 1.3, Node.js 22.12 or later, and Docker.
+
+Install dependencies and copy the environment templates:
 
 ```bash
 bun install
-```
-
-Copy the environment templates before starting the services:
-
-```bash
 cp packages/app/server/.env.example packages/app/server/.env.development
 cp packages/app/client/.env.example packages/app/client/.env
 ```
 
-The client template points development at the local API, `http://localhost:3000`. On a physical phone, development builds replace `localhost` with the address the phone uses to reach Metro. The phone and the Mac must be on the same network.
-Release builds and web exports read the deployed API from `packages/app/client/.env.production`.
-
-Start the database, generate Prisma files, and apply migrations:
+Start PostgreSQL, generate the Prisma client, and apply the migrations:
 
 ```bash
 bun run dev:db
-POSTGRES_URL=postgresql://template_user:template_pass@localhost:5432/template_db bun --filter=@tally/core run generate
+bun --filter=@tally/core run generate:client
 POSTGRES_URL=postgresql://template_user:template_pass@localhost:5432/template_db bun --filter=@tally/core run migrate:deploy
 ```
 
-Start the API and client in separate terminals:
+Start the API and the client in separate terminals:
 
 ```bash
 bun run dev:server
-bun run dev:client -- --max-workers 1
+bun run dev:client
 ```
 
-The API uses port `3000`. Expo uses port `8081` and connects to `EXPO_PUBLIC_API_URL`.
+The API uses port `3000`. Open the web app at `http://localhost:8081`. Without `RESEND_API_KEY`, the API writes email verification and password reset codes to its log.
 
-For an existing iOS development build, start Metro and open the installed app:
+Stop the database with `bun run dev:db:stop`.
 
-```bash
-bun run dev:client -- --dev-client --max-workers 1
-```
-
-Open the installed Tally development build. Scan the Expo QR code if the app does not connect automatically.
-
-Native builds use the resource limits in [AGENTS.md](AGENTS.md). Run one heavy job at a time and stop above 70% total CPU.
-For Xcode builds, use `-jobs 1 ONLY_ACTIVE_ARCH=YES SWIFT_USE_PARALLEL_WHOLE_MODULE_OPTIMIZATION=NO`.
-
-Rebuild the native app after a native dependency or Expo config change. JavaScript and environment changes only need an Expo restart.
-
-Sentry stays off when `EXPO_PUBLIC_SENTRY_ENABLED=false` or `EXPO_PUBLIC_SENTRY_DSN` is empty. The local native scripts skip source map uploads. Native release builds use `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT` for uploads.
-
-Reset and seed the local database:
-
-```bash
-bun run dev:db:reset
-```
-
-This command force-resets the local PostgreSQL database. Stop the database with `bun run dev:db:stop`, or delete its local volume with `bun run dev:db:clean`.
-
-Build the client and server:
-
-```bash
-bun run build
-```
-
-Run checks:
+## Checks
 
 ```bash
 bun run typecheck
 bun run lint
 bun run format:check
-VITEST_MAX_WORKERS=1 bun run test:unit
-VITEST_MAX_WORKERS=1 bun run test:component
+bun run test:unit
+bun run test:component
+bun run build
 ```
 
-The test taxonomy is:
+The test lanes are:
 
 - `test:unit`: client and server tests that isolate their subject.
 - `test:component`: server HTTP route tests with mocked application collaborators.
-- `test:integration`: real Express routes, repositories, transactions, and PostgreSQL.
-- `test:e2e`: Cypress flows through the running client and server.
-
-### PostgreSQL integration tests
-
-Use the dedicated test database workflow from the repository root:
-
-```bash
-bun run test:db:start
-bun --filter=@tally/core run generate:client
-bun run test:db:migrate
-VITEST_MAX_WORKERS=1 bun run test:integration
-bun run test:db:stop
-```
-
-Run `test:db:stop` after the tests even when a prior command fails. The test compose file uses the distinct `tally-tracker-test` project and `postgres-test` service. It binds only `127.0.0.1:5433` and stores PostgreSQL data in tmpfs. Set `TALLY_TEST_DB_PORT` on each command if port 5433 is unavailable.
-
-The migration step applies the repository's committed migrations to `tally_tracker_test`; the integration runner then preserves Prisma's `_prisma_migrations` table while clearing only application tables before each test. Before test collection or application imports, the runner refuses to continue unless all of these guardrails hold:
-
-- `NODE_ENV=test`
-- `TALLY_TEST_DB_RESET=1`
-- `POSTGRES_URL` uses `postgres:` or `postgresql:`, targets `localhost` or `127.0.0.1`, has the exact database path `/tally_tracker_test`, and contains no query parameters or URL fragment. The local scripts use port 5433 by default.
-
-Cypress tests use `http://localhost:8081`:
-
-```bash
-bun run test:e2e
-```
-
-Cypress checks Metro's API target before running. Both the site and API must use local HTTP addresses.
-Start Expo with `EXPO_PUBLIC_API_URL=http://localhost:3000 bun start --max-workers 1` from `packages/app/client`.
-Set `CYPRESS_BASE_URL` when using another local Expo port.
+- `test:integration`: real Express routes, repositories, transactions, and PostgreSQL. See [PostgreSQL integration tests](packages/app/server/tests/integration/README.md) for the test database setup.
+- `test:e2e`: Cypress flows in Chrome through the running client and server. Start the API and the client first.
