@@ -35,6 +35,6 @@ The cover uses Arial. Install that font before regenerating it to preserve the t
 
 Icon and launch-screen changes require a new native build. A JavaScript reload cannot replace installed native assets. Check the iOS icon in default, dark, and tinted appearances. Check the Android icon with round, square, and themed launcher masks. Use a preview or release build to verify the launch screen; the development client can show its own screen.
 
-Use screenshots that match the submitted app. Check accepted store dimensions before upload. The feature graphic is artwork, not a replacement for screenshots. Track iOS screenshot approval in the [release checklist](plans/pre-ui-product-roadmap.md); Google Play publication is deferred.
+Use screenshots that match the submitted app. Check accepted store dimensions before upload. The feature graphic is artwork, not a replacement for screenshots. Google Play publication is deferred.
 
 References: [Expo icons and launch screens](https://docs.expo.dev/develop/user-interface/splash-screen-and-app-icon/), [Android adaptive icons](https://developer.android.com/develop/ui/compose/system/icon_design_adaptive), [Google Play preview assets](https://support.google.com/googleplay/android-developer/answer/9866151).

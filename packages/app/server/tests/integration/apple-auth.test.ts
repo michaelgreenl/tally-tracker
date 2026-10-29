@@ -51,10 +51,15 @@ beforeEach(() => {
 });
 
 it('finishes Apple registration without a password and rejects a username claimed by another account', async () => {
-    await request(app)
+    const registration = await request(app)
         .post('/users')
-        .send({ email: 'taken@example.com', password: 'Member-password1', username: 'Taken_name' })
+        .send({ email: 'taken@example.com', password: 'Member-password1' })
         .expect(201);
+    await request(app)
+        .post('/users/username')
+        .set('Authorization', `Bearer ${registration.body.data.accessToken}`)
+        .send({ username: 'Taken_name' })
+        .expect(200);
     const response = await apple().expect(200);
     const authorization = `Bearer ${response.body.data.accessToken}`;
     await request(app)

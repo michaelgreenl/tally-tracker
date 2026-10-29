@@ -10,7 +10,7 @@ import type { LinkProps } from 'expo-router';
 import type { PressableProps, StyleProp, TextInputProps, TextProps, TextStyle } from 'react-native';
 
 export const FormField = forwardRef<TextInput, TextInputProps & { help?: string; invalid?: boolean; label: string }>(
-    function FormField({ help, invalid, label, ...inputProps }, ref) {
+    function FormField({ children, help, invalid, label, ...inputProps }, ref) {
         const [focused, setFocused] = useState(false);
 
         return (
@@ -47,6 +47,7 @@ export const FormField = forwardRef<TextInput, TextInputProps & { help?: string;
                         {help}
                     </Text>
                 )}
+                {children}
             </View>
         );
     },

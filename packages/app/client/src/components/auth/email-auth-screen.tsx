@@ -1,4 +1,4 @@
-import { emailSchema, PASSWORD_REQUIREMENTS, passwordSchema } from '@tally/core/client';
+import { emailSchema, passwordSchema } from '@tally/core/client';
 import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { useRef, useState } from 'react';
@@ -21,6 +21,7 @@ import { AuthService } from '../../services/auth/auth.service';
 import { useSession } from '../../contexts/session-context';
 import { FormField, styles } from '../shared/auth-form';
 import { MessageText } from '../shared/message-text';
+import { PasswordRequirements } from './password-requirements';
 
 type EmailAuthScreenProps = {
     mode: 'verify' | 'reset';
@@ -44,7 +45,11 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
     const isVerification = mode === 'verify';
     const resumeSession = isVerification && session.isAuthenticated;
     const returnTo =
-        params.returnTo === '/upgrade' ? { pathname: '/upgrade' as const, params: { plan: params.plan } } : '/home';
+        params.returnTo === '/upgrade'
+            ? { pathname: '/upgrade' as const, params: { plan: params.plan } }
+            : params.returnTo === '/settings'
+              ? '/settings'
+              : '/home';
     const codeInputRef = useRef<TextInput>(null);
     const passwordInputRef = useRef<TextInput>(null);
     const confirmPasswordInputRef = useRef<TextInput>(null);
@@ -289,7 +294,7 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
                                         autoCapitalize='none'
                                         autoComplete='new-password'
                                         editable={!loading}
-                                        help={`${PASSWORD_REQUIREMENTS} Choose a password that differs from your current password.`}
+                                        help='Choose a password that differs from your current password.'
                                         label='New Password'
                                         onChangeText={setPassword}
                                         onSubmitEditing={() => confirmPasswordInputRef.current?.focus()}
@@ -299,7 +304,9 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
                                         testID='email-auth-password'
                                         textContentType='newPassword'
                                         value={password}
-                                    />
+                                    >
+                                        <PasswordRequirements password={password} />
+                                    </FormField>
                                     <FormField
                                         autoCapitalize='none'
                                         autoComplete='new-password'
@@ -417,7 +424,11 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
                                             testID='email-auth-back'
                                         >
                                             <Text style={styles.link}>
-                                                {resumeSession ? 'Cancel' : 'Back to login'}
+                                                {resumeSession
+                                                    ? params.returnTo
+                                                        ? 'Cancel'
+                                                        : 'Skip for now'
+                                                    : 'Back to login'}
                                             </Text>
                                         </Pressable>
                                     </Link>

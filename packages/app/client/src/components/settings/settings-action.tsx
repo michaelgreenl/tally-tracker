@@ -2,7 +2,6 @@ import { Pressable, StyleSheet, Text } from 'react-native';
 import type { ComponentProps, ReactNode } from 'react';
 
 import { colors } from '../../theme/colors';
-import { fonts } from '../../theme/fonts';
 
 type Props = Omit<ComponentProps<typeof Pressable>, 'children' | 'style'> & {
     label: string;
@@ -43,7 +42,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         gap: 12,
     },
-    label: { fontFamily: fonts.display, fontSize: 15, fontWeight: '700' },
+    label: { fontSize: 15, fontWeight: '700' },
     last: { borderBottomWidth: 0 },
     pressed: { backgroundColor: colors.input },
 });

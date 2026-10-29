@@ -50,4 +50,4 @@ Before release, check these on a signed phone build:
 6. Delete a selected counter, sign out, and switch accounts. Old widgets must not change another account.
 7. Use the Lock Screen shortcuts and both counter sizes. Confirm that they open Tally after the system unlock step. Check the selected name and count, plus the rectangular counter's metric. Check redaction while locked.
 
-Record completed device checks in the [release checklist](plans/pre-ui-product-roadmap.md). Automated checks do not prove native appearance.
+Automated checks do not prove native appearance.

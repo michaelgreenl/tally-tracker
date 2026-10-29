@@ -5,21 +5,22 @@ import WidgetKit
 private let tallyURL = URL(string: "tally://home")!
 private let accent = Color(red: 15 / 255, green: 120 / 255, blue: 153 / 255)
 
+// Same marks as the app logo (src/components/shared/tally-logo.tsx) in its -180 0 1200 740 viewBox.
 struct TallyMark: Shape {
   func path(in rect: CGRect) -> Path {
-    let scale = min(rect.width / 24, rect.height / 24)
-    let origin = CGPoint(x: rect.midX - 12 * scale, y: rect.midY - 12 * scale)
+    let scale = min(rect.width / 1200, rect.height / 740)
+    let origin = CGPoint(x: rect.midX - 420 * scale, y: rect.midY - 370 * scale)
     func point(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
       CGPoint(x: origin.x + x * scale, y: origin.y + y * scale)
     }
     var path = Path()
-    for x in [6.0, 10.0, 14.0, 18.0] {
-      path.move(to: point(x, 5))
-      path.addLine(to: point(x, 19))
+    for x in [60.0, 300.0, 540.0, 780.0] {
+      path.move(to: point(x, 60))
+      path.addLine(to: point(x, 680))
     }
-    path.move(to: point(3, 17))
-    path.addLine(to: point(21, 7))
-    return path.strokedPath(StrokeStyle(lineWidth: 2 * scale, lineCap: .round))
+    path.move(to: point(-120, 600))
+    path.addLine(to: point(960, 140))
+    return path.strokedPath(StrokeStyle(lineWidth: 120 * scale, lineCap: .round))
   }
 }
 
@@ -83,16 +84,19 @@ struct CounterWidgetView: View {
       } else {
         VStack(spacing: 8) {
           TallyMark().frame(width: 32, height: 32)
-          Text("Open Tally").font(.headline)
+          Text("Open Tally")
+            .font(family == .systemSmall ? .system(size: 19, weight: .semibold) : .headline)
           if family != .accessoryRectangular {
-            Text("Add or choose a counter.").font(.caption).multilineTextAlignment(.center)
+            Text("Add or choose a counter.")
+              .font(family == .systemSmall ? .system(size: 14) : .caption)
+              .multilineTextAlignment(.center)
           }
         }
       }
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .padding(
-      family == .systemSmall
+      family == .systemSmall && entry.counter != nil && entry.owner != nil
         ? EdgeInsets(top: 16, leading: 18, bottom: 12, trailing: 12) : contentMargins
     )
     .dynamicTypeSize(
@@ -249,7 +253,8 @@ struct ShortcutView: View {
   var body: some View {
     Group {
       if family == .accessoryCircular {
-        TallyMark()
+        // The logo fills its width, so inset it to keep the slash ends inside the circle.
+        TallyMark().padding(6)
       } else {
         HStack(spacing: 8) {
           TallyMark().frame(width: 44, height: 44)

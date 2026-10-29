@@ -2,7 +2,6 @@
 
 This document describes the current source contracts.
 It does not certify production configuration or replace device and provider checks.
-Release status belongs in the [iOS release checklist](plans/pre-ui-product-roadmap.md).
 
 ## Sessions and credentials
 

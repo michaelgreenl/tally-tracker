@@ -16,7 +16,7 @@ import { Prisma } from '@prisma/client';
 
 import type { Request, Response } from 'express';
 import type { ApiResponse, AuthResponse, ClientUser, SignInMethods } from '@tally/core';
-import type { AuthRequest, RegisterRequest, RefreshRequest } from '@tally/core';
+import type { AuthRequest, RefreshRequest } from '@tally/core';
 import type { User } from '@prisma/client';
 import type { Server } from 'socket.io';
 
@@ -83,24 +83,27 @@ const sanitizeEmail = (email: string): string => {
 };
 
 export const post = async (
-    req: Request<Record<string, never>, AuthResponse, RegisterRequest>,
+    req: Request<Record<string, never>, AuthResponse, AuthRequest & { username?: string }>,
     res: Response<AuthResponse>,
 ) => {
     try {
-        const { email, password, username } = req.body;
+        const { email, password, username, rememberMe } = req.body;
 
         const sanitizedEmail = sanitizeEmail(email);
 
         const hash = await hashPassword(password);
+        // New accounts choose a username after sign-up, like Google and Apple accounts. Build 4 still sends one here.
         const user = await userRepository.createUser({ email: sanitizedEmail, password: hash, username });
         void issueEmailOtp(user, 'EMAIL_VERIFICATION').catch((error: unknown) => {
             captureServerError(error, { req, source: 'user.post.emailVerification' });
         });
 
-        res.status(CREATED).json({ success: true });
+        // Sign the new account in. Login does not require a verified email; sharing, joining, and billing do.
+        res.status(CREATED);
+        await sendSession(user, rememberMe, res);
     } catch (error: unknown) {
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-            if (!(await userRepository.isUsernameAvailable(req.body.username))) {
+            if (req.body.username && !(await userRepository.isUsernameAvailable(req.body.username))) {
                 return res.status(CONFLICT).json({ success: false, message: 'That username is taken.' });
             }
             // P2002 = unique constraint violation

@@ -42,11 +42,13 @@ describe('New password requirements', () => {
             const prefix = isRegister ? 'auth' : 'email-auth';
             const email = 'password-rules@example.invalid';
             const validPassword = isRegister ? 'Abcdef12' : `Ab1${'é'.repeat(100)}`;
+            const user = { id: 'password-test', username: null, email, tier: 'BASIC', emailVerified: false };
 
             cy.intercept('POST', isRegister ? '**/users' : '**/users/reset-password', {
                 statusCode: isRegister ? 201 : 200,
-                body: { success: true },
+                body: isRegister ? { success: true, data: { user } } : { success: true },
             }).as('submitPassword');
+            cy.intercept('GET', '**/counters', { body: { success: true, data: { counters: [] } } });
             cy.intercept('POST', '**/users/reset-password/request', {
                 statusCode: 200,
                 body: { success: true },
@@ -57,12 +59,6 @@ describe('New password requirements', () => {
             }).as('verifyCode');
 
             cy.visit(isRegister ? '/register' : '/forgot-password');
-            if (isRegister) {
-                cy.intercept('POST', '**/users/username/availability', {
-                    body: { success: true, data: { available: true } },
-                });
-                cy.get('[data-testid="auth-username"]').type('password_test');
-            }
             cy.get(`[data-testid="${prefix}-email"]`).type(email);
             if (!isRegister) {
                 cy.get('[data-testid="email-auth-request"]').click();
@@ -72,23 +68,31 @@ describe('New password requirements', () => {
                 cy.wait('@verifyCode');
             }
 
-            for (const password of ['Abcdef1', 'abcdefghijklmno1', 'Abcdefghijklmnop']) {
+            for (const [password, unmetRule] of [
+                ['Abcdef1', 'length'],
+                ['abcdefghijklmno1', 'uppercase'],
+                ['Abcdefghijklmnop', 'number'],
+            ]) {
                 cy.get(`[data-testid="${prefix}-password"]`).clear().type(password);
-                cy.get(`[data-testid="${prefix}-confirm-password"]`).clear().type(password);
+                for (const rule of ['length', 'uppercase', 'number']) {
+                    const state = rule === unmetRule ? 'unmet' : 'met';
+                    cy.get(`[data-testid="password-rule-${rule}-${state}"]`).should('be.visible');
+                }
+                if (!isRegister) cy.get('[data-testid="email-auth-confirm-password"]').clear().type(password);
                 cy.get(`[data-testid="${prefix}-submit"]`).click();
                 cy.get(`[data-testid="${prefix}-error"]`).should('be.visible');
                 cy.get('@submitPassword.all').should('have.length', 0);
             }
 
             cy.get(`[data-testid="${prefix}-password"]`).clear().type(validPassword);
-            cy.get(`[data-testid="${prefix}-confirm-password"]`).clear().type(validPassword);
+            if (!isRegister) cy.get('[data-testid="email-auth-confirm-password"]').clear().type(validPassword);
             cy.get(`[data-testid="${prefix}-submit"]`).click();
             cy.wait('@submitPassword')
                 .its('request.body')
                 .should('deep.equal', {
                     email,
                     password: validPassword,
-                    ...(isRegister && { username: 'password_test' }),
+                    ...(isRegister && { rememberMe: false }),
                     ...(!isRegister && { code: '123456' }),
                 });
             if (isRegister) cy.location('pathname').should('eq', '/verify-email');

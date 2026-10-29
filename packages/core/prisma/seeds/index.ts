@@ -7,6 +7,11 @@ import { seedCounters } from './counters.seeds.ts';
 
 const connectionString = process.env.POSTGRES_URL;
 if (!connectionString) throw new Error('POSTGRES_URL missing in core/.env');
+// Seed accounts share a known password. Never write them to a deployed database.
+const { hostname } = new URL(connectionString);
+if (!['localhost', '127.0.0.1', '[::1]'].includes(hostname)) {
+    throw new Error(`Refusing to seed ${hostname}. Seeds run only against a local database.`);
+}
 
 const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);

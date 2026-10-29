@@ -1,10 +1,4 @@
-import {
-    emailSchema,
-    loginPasswordSchema,
-    PASSWORD_REQUIREMENTS,
-    passwordSchema,
-    usernameSchema,
-} from '@tally/core/client';
+import { emailSchema, loginPasswordSchema, passwordSchema, usernameSchema } from '@tally/core/client';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { Fragment, useEffect, useRef, useState } from 'react';
@@ -32,6 +26,7 @@ import { Checkbox } from '../shared/checkbox';
 import { TallyBrand } from '../shared/tally-brand';
 import { GoogleSignIn } from './google-sign-in';
 import { AppleSignIn } from './apple-sign-in';
+import { PasswordRequirements } from './password-requirements';
 import { MessageText } from '../shared/message-text';
 
 type AuthScreenProps = {
@@ -54,10 +49,8 @@ export function AuthScreen({ mode }: AuthScreenProps) {
     const [headerHeight, setHeaderHeight] = useState(0);
     const isLogin = mode === 'login';
     const completingRegistration = !isLogin && Boolean(session.user);
-    const emailInputRef = useRef<TextInput>(null);
     const usernameInputRef = useRef<TextInput>(null);
     const passwordInputRef = useRef<TextInput>(null);
-    const confirmPasswordInputRef = useRef<TextInput>(null);
     const [email, setEmail] = useState(emailParameter);
     const [username, setUsername] = useState('');
     const [availability, setAvailability] = useState<{
@@ -67,11 +60,10 @@ export function AuthScreen({ mode }: AuthScreenProps) {
     } | null>(null);
     const parsedUsername = usernameSchema.safeParse(username);
     const currentAvailability = availability?.username === username ? availability : null;
-    const usernamePending = !isLogin && parsedUsername.success && !currentAvailability;
+    const usernamePending = completingRegistration && parsedUsername.success && !currentAvailability;
     const usernameTaken = currentAvailability?.available === false;
     const [previousEmailParameter, setPreviousEmailParameter] = useState(emailParameter);
     const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
     const [rememberMe, setRememberMe] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [passwordFocused, setPasswordFocused] = useState(false);
@@ -82,7 +74,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
     const [errorMessage, setErrorMessage] = useState('');
 
     useEffect(() => {
-        if (isLogin || !usernameSchema.safeParse(username).success) return;
+        if (!completingRegistration || !usernameSchema.safeParse(username).success) return;
         const controller = new AbortController();
         const timer = setTimeout(async () => {
             try {
@@ -97,7 +89,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
             clearTimeout(timer);
             controller.abort();
         };
-    }, [isLogin, username]);
+    }, [completingRegistration, username]);
 
     const usernameHelp = !username
         ? undefined
@@ -116,18 +108,17 @@ export function AuthScreen({ mode }: AuthScreenProps) {
         setPreviousEmailParameter(emailParameter);
         setEmail(emailParameter);
         setPassword('');
-        setConfirmPassword('');
         setErrorMessage('');
     }
 
     async function submit() {
         if (submitDisabled) return;
-        if (!isLogin && !parsedUsername.success) {
-            setErrorMessage(parsedUsername.error.issues[0].message);
-            usernameInputRef.current?.focus();
-            return;
-        }
         if (completingRegistration) {
+            if (!parsedUsername.success) {
+                setErrorMessage(parsedUsername.error.issues[0].message);
+                usernameInputRef.current?.focus();
+                return;
+            }
             setPasswordLoading(true);
             setErrorMessage('');
             const result = await session.setUsername(username);
@@ -152,21 +143,15 @@ export function AuthScreen({ mode }: AuthScreenProps) {
             return;
         }
 
-        if (!isLogin && password !== confirmPassword) {
-            setErrorMessage("Passwords don't match.");
-            return;
-        }
-
         setPasswordLoading(true);
         setErrorMessage('');
 
         const result = isLogin
             ? await session.login({ email: emailResult.data, password, rememberMe })
-            : await session.register({ email: emailResult.data, password, username });
+            : await session.register({ email: emailResult.data, password, rememberMe });
 
         setPasswordLoading(false);
         if (!result.success) {
-            if (result.code === 'USERNAME_TAKEN') setAvailability({ username, available: false });
             setErrorMessage(result.message);
             return;
         }
@@ -174,7 +159,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
         if (isLogin) {
             router.replace(inviteCode ? { pathname: '/join', params: { code: inviteCode } } : '/home');
         } else {
-            router.replace({ pathname: '/verify-email', params: { email, inviteCode } });
+            router.replace({ pathname: '/verify-email', params: { inviteCode } });
         }
     }
 
@@ -247,7 +232,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                             {!isLogin && (
                                 <View style={styles.header}>
                                     <Text accessibilityRole='header' aria-level={2} style={styles.title}>
-                                        Create Account
+                                        {completingRegistration ? 'Choose a Username' : 'Create Account'}
                                     </Text>
                                     {!completingRegistration && (
                                         <MessageText style={styles.subtitle}>Get started with Tally</MessageText>
@@ -255,7 +240,7 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                 </View>
                             )}
 
-                            {!isLogin && (
+                            {completingRegistration && (
                                 <FormField
                                     label='Username'
                                     autoCapitalize='none'
@@ -270,10 +255,8 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                         setErrorMessage('');
                                     }}
                                     ref={usernameInputRef}
-                                    returnKeyType={completingRegistration ? 'done' : 'next'}
-                                    onSubmitEditing={() =>
-                                        completingRegistration ? void submit() : emailInputRef.current?.focus()
-                                    }
+                                    returnKeyType='done'
+                                    onSubmitEditing={() => void submit()}
                                     invalid={Boolean(username) && (!parsedUsername.success || usernameTaken)}
                                     help={usernameHelp}
                                     testID='auth-username'
@@ -295,7 +278,6 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                         testID='auth-email'
                                         textContentType='emailAddress'
                                         value={email}
-                                        ref={emailInputRef}
                                     />
 
                                     <View style={[styles.field, isLogin && styles.loginPasswordField]}>
@@ -316,13 +298,10 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                                 onBlur={() => setPasswordFocused(false)}
                                                 onChangeText={setPassword}
                                                 onFocus={() => setPasswordFocused(true)}
-                                                onSubmitEditing={() => {
-                                                    if (isLogin) void submit();
-                                                    else confirmPasswordInputRef.current?.focus();
-                                                }}
+                                                onSubmitEditing={() => void submit()}
                                                 placeholderTextColor={colors.muted}
                                                 ref={passwordInputRef}
-                                                returnKeyType={isLogin ? 'done' : 'next'}
+                                                returnKeyType='done'
                                                 secureTextEntry={!showPassword}
                                                 style={[
                                                     styles.passwordTextInput,
@@ -344,25 +323,8 @@ export function AuthScreen({ mode }: AuthScreenProps) {
                                                 </Text>
                                             </Pressable>
                                         </View>
-                                        {!isLogin && <Text style={styles.helpText}>{PASSWORD_REQUIREMENTS}</Text>}
+                                        {!isLogin && <PasswordRequirements password={password} />}
                                     </View>
-
-                                    {!isLogin && (
-                                        <FormField
-                                            autoCapitalize='none'
-                                            autoComplete='new-password'
-                                            editable={!loading}
-                                            label='Confirm Password'
-                                            onChangeText={setConfirmPassword}
-                                            onSubmitEditing={() => void submit()}
-                                            ref={confirmPasswordInputRef}
-                                            returnKeyType='done'
-                                            secureTextEntry
-                                            testID='auth-confirm-password'
-                                            textContentType='newPassword'
-                                            value={confirmPassword}
-                                        />
-                                    )}
 
                                     {isLogin && (
                                         <View style={styles.loginOptions}>
@@ -558,7 +520,6 @@ const styles = StyleSheet.create({
     guestLinkText: {
         color: colors.text,
         flexShrink: 1,
-        fontFamily: fonts.display,
         fontSize: 18,
         lineHeight: 24,
         textAlign: 'right',

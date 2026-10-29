@@ -13,7 +13,7 @@ xcrun swiftc -typecheck -module-cache-path "$widget_check_dir/cache" \
 
 # Supply WidgetKit's host-only environment values when rendering through Mac Catalyst.
 sed -e 's/@Environment(\\.widgetFamily) private var family/let family: WidgetFamily/' \
-    -e 's/: contentMargins$/: (family == .systemMedium ? EdgeInsets(top: 16, leading: 16, bottom: 16, trailing: 16) : contentMargins)/' \
+    -e 's/: contentMargins$/: (family == .systemSmall || family == .systemMedium ? EdgeInsets(top: 16, leading: 16, bottom: 16, trailing: 16) : contentMargins)/' \
     targets/tally-widgets/WidgetViews.swift > "$widget_check_dir/WidgetViews.swift"
 widget_mac_sdk=$(xcrun --sdk macosx --show-sdk-path)
 xcrun swiftc -parse-as-library -module-cache-path "$widget_check_dir/cache" \

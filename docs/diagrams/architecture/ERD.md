@@ -27,6 +27,7 @@ COMPLETED COMPLETED
             EMAIL_VERIFICATION EMAIL_VERIFICATION
 PASSWORD_RESET PASSWORD_RESET
         }
+    
 
 
         UserTier {
@@ -37,8 +38,8 @@ BASIC BASIC
   "counters" {
     String id "PK"
     String title 
-    Decimal count
-    Decimal increment
+    Decimal count 
+    Decimal increment 
     String metric "nullable"
     String color "nullable"
     CounterType type 
@@ -46,6 +47,14 @@ BASIC BASIC
     String user_id 
     DateTime created_at 
     DateTime updated_at 
+    }
+  
+
+  "counter_activity" {
+    String counter_id 
+    String user_id 
+    Decimal amount 
+    DateTime at 
     }
   
 
@@ -74,7 +83,7 @@ BASIC BASIC
   "refresh_tokens" {
     String id "PK"
     String user_id 
-    String session_id
+    String session_id 
     DateTime expires_at 
     DateTime created_at 
     DateTime rotated_at "nullable"
@@ -84,37 +93,47 @@ BASIC BASIC
 
   "email_otps" {
     String id "PK"
-    String user_id
-    EmailOtpPurpose purpose
-    String digest
-    Int attempts
-    DateTime expires_at
+    String user_id 
+    EmailOtpPurpose purpose 
+    String digest 
+    Int attempts 
+    DateTime expires_at 
     DateTime consumed_at "nullable"
-    DateTime created_at
+    DateTime created_at 
     }
+  
 
   "login_rate_limits" {
     String key "PK"
-    Int hits
-    DateTime reset_at
+    Int hits 
+    DateTime reset_at 
     }
+  
 
   "users" {
     String id "PK"
     String email 
-    String password 
+    String username "nullable"
+    String username_key "nullable"
+    String password "nullable"
+    String google_subject "nullable"
+    String apple_subject "nullable"
+    String apple_refresh_token "nullable"
+    DateTime apple_credential_updated_at "nullable"
     UserTier tier 
     DateTime email_verified_at "nullable"
-    Int session_version
+    Int session_version 
     DateTime premium_expires_at "nullable"
     DateTime billing_checked_at "nullable"
-    Boolean billing_sandbox
+    Boolean billing_sandbox 
     DateTime created_at 
     DateTime updated_at 
     }
   
     "counters" |o--|| "CounterType" : "enum:type"
     "counters" }o--|| users : "owner"
+    "counter_activity" }o--|| counters : "counter"
+    "counter_activity" }o--|| users : "user"
     "counter_shares" |o--|| "ShareStatus" : "enum:status"
     "counter_shares" }o--|| counters : "counter"
     "counter_shares" }o--|| users : "user"

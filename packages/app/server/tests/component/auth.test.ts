@@ -111,20 +111,22 @@ describe('Auth Routes', () => {
     });
 
     describe('POST /users (register)', () => {
-        it('should create a user and return 201', async () => {
+        it('creates a user, sends a verification code, and signs the user in', async () => {
             vi.mocked(userRepository.createUser).mockResolvedValue(buildUser());
 
             const res = await request(app).post('/users').send({
                 email: 'new@test.com',
                 password: 'New-password123',
-                username: 'New_user',
+                rememberMe: true,
             });
 
             expect(res.status).toBe(CREATED);
-            expect(res.body.success).toBe(true);
-            expect(userRepository.createUser).toHaveBeenCalledWith(
-                expect.objectContaining({ email: 'new@test.com', username: 'New_user' }),
-            );
+            expect(res.body.data).toMatchObject({
+                user: { id: TEST_USER_ID },
+                accessToken: expect.any(String),
+                refreshToken: TEST_REFRESH_TOKEN_ID,
+            });
+            expect(userRepository.createUser).toHaveBeenCalledWith(expect.objectContaining({ email: 'new@test.com' }));
             expect(issueEmailOtp).toHaveBeenCalledWith(
                 expect.objectContaining({ email: 'test@test.com' }),
                 'EMAIL_VERIFICATION',
@@ -134,7 +136,6 @@ describe('Auth Routes', () => {
         it('should reject registration without email', async () => {
             const res = await request(app).post('/users').send({
                 password: 'New-password123',
-                username: 'New_user',
             });
 
             expect(res.status).toBe(UNPROCESSABLE_ENTITY);

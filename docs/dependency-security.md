@@ -1,6 +1,6 @@
 # Dependency security
 
-Last checked: 2026-10-01. Run `bun audit` before release. Advisory results can change without a lockfile change.
+Run `bun audit` before release. Advisory results can change without a lockfile change.
 
 ## Security updates
 
@@ -12,11 +12,6 @@ Three overrides cross an upstream dependency range:
 - `deepmerge-ts@8.0.2` fixes recursive-object handling. Prisma uses its `deepmerge` export for configuration. Remove the override when Prisma selects version 8 or later. Check Prisma generation and schema validation after updates.
 - `image-size@2.0.4` fixes image-parser loops in the older Metro dependency tree. That caller supplies a buffer, which the new API supports. It does not use the removed file-path API. Remove the override when React Native selects a fixed dependency. Check asset parsing and platform exports after updates.
 
-## October audit
-
-The October 1 audit reported five findings: two in `extract-zip`, plus `node-forge`, `basic-ftp`, and `dompurify`.
-The latter two have fixes: [basic-ftp 6.2.1](https://github.com/advisories/GHSA-c475-qrg2-pj4r) and [DOMPurify 3.4.16](https://github.com/advisories/GHSA-p98j-92pf-mc4p). Both fixes are installed and locked. The repeated audit reports three high-severity tool advisories below.
-
 ## Open tool advisories
 
 `extract-zip@2.0.1` remains through Cypress and the diagram generator's Puppeteer browser installer. These tools extract vendor browser archives. No app or API path uses them to extract user files. This limits exposure; it does not remove the build-machine risk.
@@ -26,7 +21,11 @@ The two `extract-zip` high-severity advisories have no published patch:
 - [GHSA-jmr9-qjv8-65gv](https://github.com/advisories/GHSA-jmr9-qjv8-65gv).
 - [GHSA-7pqw-9j4j-h8q3](https://github.com/advisories/GHSA-7pqw-9j4j-h8q3).
 
-`node-forge@1.4.0` also has an [unpatched signature-verification advisory](https://github.com/advisories/GHSA-86w9-cpqp-85rv). It comes through Expo's CLI. Tally's provider-token verification uses `jose`, not `node-forge`. This distinction does not remove the tool risk.
+Three more advisories have no fix inside the ranges that their parent tools declare:
+
+- `zod` 3.x through Expo's CLI and Puppeteer's `chromium-bidi`. The fix is in `zod` 4.6.6, a new major version for both tools. [GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5).
+- `deepmerge@4.3.1`, low severity, through Expo's config loader. No fixed release exists. [GHSA-gcqx-w48m-w2h4](https://github.com/advisories/GHSA-gcqx-w48m-w2h4).
+- `katex@0.16.47`, low severity, through Mermaid in the ERD generator. The fix is in 0.18.2, and Mermaid accepts only 0.16. [GHSA-238p-pmpm-9mq7](https://github.com/advisories/GHSA-238p-pmpm-9mq7).
 
 Use official download sources. Do not point these installers at untrusted archives or mirrors. Use isolated CI runners without production secrets. Update the parent tools when they remove or fix this dependency.
 

@@ -215,7 +215,6 @@ function AccountCounters({ children }: PropsWithChildren) {
         let active = true;
 
         void (async () => {
-            setLoading(true);
             setSyncError(false);
 
             try {
@@ -460,7 +459,7 @@ function AccountCounters({ children }: PropsWithChildren) {
             value={{
                 counters,
                 onlineUserIds,
-                loading: loading || syncStatus === 'syncing',
+                loading,
                 refreshing,
                 syncError: syncError || syncStatus === 'error',
                 failedCounterIds,

@@ -19,8 +19,6 @@ The approved US release prices are:
 
 Apple calculates prices in other currencies. The initial release excludes EU countries and mainland China. Check the app and all three products when reviewing availability.
 
-These settings do not publish the app or submit products for review. The owner confirmed Apple sandbox purchase, cancellation, and expiration behavior. Track the final signed build and submission in the [release checklist](plans/pre-ui-product-roadmap.md).
-
 ## Client configuration
 
 Set `EXPO_PUBLIC_REVENUECAT_TEST_API_KEY` to the Test Store's public SDK key in the client's ignored `.env`. Restart Expo after changes. Test Store keys are accepted only in development builds.
@@ -101,7 +99,7 @@ Unit tests exercise entitlement parsing, lifetime access, expiration boundaries,
 
 PostgreSQL integration tests exercise authenticated refresh, premium feature access, cancellation, refunds, stale snapshots, provider failures, transfers, and rejected requests. These tests replace only RevenueCat's HTTP response. They do not execute a store purchase.
 
-Keep device results in the release checklist. Automated provider tests do not replace signed-device checks.
+Automated provider tests do not replace signed-device checks.
 
 ## References
 

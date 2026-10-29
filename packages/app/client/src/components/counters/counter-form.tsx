@@ -103,7 +103,7 @@ export function CounterForm({ visible, counter, onCancel, onDone }: CounterFormP
         >
             <View style={styles.sheet}>
                 <Text accessibilityRole='header' aria-level={2} style={styles.heading}>
-                    {counter ? 'Update Counter' : 'Add Counter'}
+                    {counter ? 'Update Counter' : 'New Counter'}
                 </Text>
 
                 <ScrollView

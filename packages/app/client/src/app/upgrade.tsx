@@ -450,7 +450,7 @@ const styles = StyleSheet.create({
         alignSelf: 'flex-start',
     },
     restoreButton: { minHeight: 48, alignItems: 'center', justifyContent: 'center' },
-    restoreText: { color: colors.link, fontFamily: fonts.display, fontSize: 15, fontWeight: '600' },
+    restoreText: { color: colors.link, fontSize: 15, fontWeight: '600' },
     legalLinks: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 },
     legalText: { color: colors.muted, fontSize: 13, fontWeight: '400' },
 });

@@ -13,6 +13,7 @@ for (const allDevices of [false, true]) {
         };
         let otherDeviceToken: string;
         cy.request('POST', '/users', account);
+        cy.request('POST', '/users/username', { username: account.username });
         cy.request('POST', '/users/login', account).then(({ body }) => {
             otherDeviceToken = body.data.accessToken;
         });
@@ -58,7 +59,9 @@ for (const action of ['logout', 'deletion'] as const) {
         const a = credentials('logout-a');
         const b = credentials('login-b');
         cy.request('POST', '/users', a);
+        cy.request('POST', '/users/username', { username: a.username });
         cy.request('POST', '/users', b);
+        cy.request('POST', '/users/username', { username: b.username });
         cy.request('POST', '/users/login', a).then(({ body }) => {
             cy.visit('/settings', {
                 onBeforeLoad: (win) => win.localStorage.setItem('auth_user_profile', JSON.stringify(body.data.user)),
@@ -134,6 +137,7 @@ it('refreshes expired access before deleting an account without holding its own 
         username: `delete_${crypto.randomUUID().replaceAll('-', '')}`,
     };
     cy.request('POST', '/users', account);
+    cy.request('POST', '/users/username', { username: account.username });
     cy.request('POST', '/users/login', account).then(({ body }) => {
         cy.visit('/settings', {
             onBeforeLoad: (win) => win.localStorage.setItem('auth_user_profile', JSON.stringify(body.data.user)),

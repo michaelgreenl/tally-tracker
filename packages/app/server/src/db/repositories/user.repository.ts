@@ -54,15 +54,10 @@ export const createUser = async ({
 }: {
     email: string;
     password: string;
-    username: string;
+    username?: string;
 }) =>
     prisma.user.create({
-        data: {
-            email,
-            password,
-            username,
-            usernameKey: usernameKey(username),
-        },
+        data: { email, password, ...(username && { username, usernameKey: usernameKey(username) }) },
     });
 
 export const setUsername = (userId: string, username: string) =>

@@ -20,7 +20,6 @@ import { subscribeToCounterUpdates } from '../../infra/socket/socket';
 import { CounterService } from '../../services/counters/counter.service';
 import { getSessionScope } from '../../services/session/session-scope';
 import { colors } from '../../theme/colors';
-import { fonts } from '../../theme/fonts';
 import { relativeTime } from '../../utils/relative-time';
 import { MessageText } from '../shared/message-text';
 import { ToolbarButton } from '../shared/toolbar-button';
@@ -326,5 +325,5 @@ const styles = StyleSheet.create({
     errorText: { color: colors.danger, fontSize: 15 },
     retry: { minHeight: 48, justifyContent: 'center', paddingHorizontal: 16 },
     pressed: { opacity: 0.7 },
-    retryText: { color: colors.link, fontFamily: fonts.display, fontSize: 16, fontWeight: '600' },
+    retryText: { color: colors.link, fontSize: 16, fontWeight: '600' },
 });

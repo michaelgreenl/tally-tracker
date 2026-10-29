@@ -87,7 +87,30 @@ export default function SettingsScreen() {
                                         value={session.user?.username || 'Not set'}
                                         testID='settings-username'
                                     />
-                                    <Row label='Email' value={session.user?.email || 'Unknown account'} />
+                                    {session.user?.emailVerified ? (
+                                        <Row label='Email' value={session.user.email} />
+                                    ) : (
+                                        <Link
+                                            href={{
+                                                pathname: '/verify-email',
+                                                params: { email: session.user?.email, returnTo: '/settings' },
+                                            }}
+                                            asChild
+                                        >
+                                            <Pressable accessibilityRole='link' testID='settings-verify-email'>
+                                                {({ pressed }) => (
+                                                    <View style={[styles.detailRow, pressed && styles.rowPressed]}>
+                                                        <View style={styles.detailCopy}>
+                                                            <Text style={styles.rowLabel}>Email</Text>
+                                                            <Text style={styles.guestCopy}>{session.user?.email}</Text>
+                                                            <Text style={styles.unverified}>Not verified</Text>
+                                                        </View>
+                                                        <Text style={styles.verifyAction}>Verify</Text>
+                                                    </View>
+                                                )}
+                                            </Pressable>
+                                        </Link>
+                                    )}
                                     <Row label='Tier' value={session.isPremium ? 'Premium' : 'Basic'} />
                                     <SignInMethods
                                         key={session.sessionId}
@@ -402,6 +425,16 @@ const styles = StyleSheet.create({
     detailCopy: {
         flex: 1,
         gap: 4,
+    },
+    unverified: {
+        color: colors.warning,
+        fontSize: 13,
+        fontWeight: '700',
+    },
+    verifyAction: {
+        color: colors.link,
+        fontSize: 14,
+        fontWeight: '700',
     },
     deleteError: {
         color: colors.danger,

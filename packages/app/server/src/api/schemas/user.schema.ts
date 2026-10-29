@@ -8,7 +8,9 @@ export const createUserSchema = z.object({
         .object({
             email: emailSchema,
             password: passwordSchema,
-            username: usernameSchema,
+            // App build 4 and earlier send a username at sign-up. Newer builds choose it after verification.
+            username: usernameSchema.optional(),
+            rememberMe: z.boolean().optional(),
         })
         .refine((data) => data.email, {
             message: 'Email is required to login',

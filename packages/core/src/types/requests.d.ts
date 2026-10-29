@@ -24,10 +24,6 @@ export interface AuthRequest {
     rememberMe?: boolean;
 }
 
-export interface RegisterRequest extends Pick<AuthRequest, 'email' | 'password'> {
-    username: string;
-}
-
 export interface GoogleLoginRequest {
     idToken: string;
     password?: string;

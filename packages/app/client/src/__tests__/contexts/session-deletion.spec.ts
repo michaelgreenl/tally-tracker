@@ -43,6 +43,7 @@ vi.mock('../../infra/storage/token-storage', () => import('../../infra/storage/t
 vi.mock('expo-crypto', () => ({ randomUUID: () => crypto.randomUUID() }));
 vi.mock('expo-network', () => ({ getNetworkStateAsync: async () => ({ isConnected: false }) }));
 vi.mock('react-native', () => ({ Platform: { OS: 'ios' }, AppState: { addEventListener: () => ({ remove() {} }) } }));
+vi.mock('expo-constants', () => ({ default: {} }));
 vi.mock('expo-router', () => ({ useRouter: () => router }));
 
 const accountA: ClientUser = { id: 'a', email: 'a@example.com', username: 'alice', tier: 'BASIC', emailVerified: true };

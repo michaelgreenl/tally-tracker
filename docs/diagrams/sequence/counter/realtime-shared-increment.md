@@ -20,46 +20,54 @@
 
 sequenceDiagram
     autonumber
-    actor Owner as User A (Owner)
+    actor Writer as User A (Owner or Member)
     participant API as Backend API
     participant Repo as Repository
     participant DB as Database
     participant Socket as Socket.io
-    actor Viewer as User B (Shared)
+    actor Viewer as User B (Participant)
 
-    Note over Owner, DB: The Write Path
-    Owner->>API: PUT /counters/increment/:counterId (Amount: 1)
+    Note over Writer, DB: The Write Path
+    Writer->>API: PUT /counters/increment/:counterId { amount } + idempotency key
 
     API->>API: runIdempotentMutation()
-    API->>Repo: increment({ counterId, userId, amount })
 
-    Note right of API: Security Check (The OR Logic)
-    Repo->>DB: Find Counter where:<br/>1. User is Owner<br/>OR<br/>2. Share is ACCEPTED
+    alt Replayed Idempotency Key
+        API-->>Writer: Original status and body, without a second emit
+    else Fresh Mutation
+        API->>Repo: increment({ counterId, userId, amount })
 
-    alt Permission Granted
-        DB-->>Repo: Counter Found
-        Repo->>DB: Update count
-        DB-->>API: Updated Counter Data
-    else Permission Denied
-        DB-->>Repo: Null
-        Repo-->>API: Null
-        API-->>Owner: 404 Not Found
-    end
+        Note right of API: Security Check (The OR Logic)
+        Repo->>DB: Find Counter where:<br/>1. User is Owner<br/>OR<br/>2. Share is ACCEPTED
 
-    alt Fresh Mutation
-        Note over API, Viewer: The Read Path (Broadcast)
+        alt Permission Denied
+            DB-->>Repo: Null
+            Repo-->>API: Null
+            API-->>Writer: 404 Not Found
+        else Permission Granted
+            DB-->>Repo: Counter Found
+            Repo->>DB: Atomic increment
+            DB-->>API: Updated Counter Data
 
-        API->>Repo: getParticipants(counterId)
-        Repo-->>API: Returns [OwnerID, ViewerID]
+            opt Shared counter and amount is not 0
+                API->>DB: Upsert CounterActivity (latest change per member)
+            end
 
-        loop For Each Participant
-            API->>Socket: io.to(UserID).emit('counter-update', counter)
+            API->>Repo: getParticipants(counterId)
+            Repo-->>API: Owner and accepted member IDs
+
+            Note over API, Viewer: The Read Path (Broadcast)
+            loop For Each Participant
+                API->>Socket: io.to(UserID).emit('counter-update', counter)
+            end
+            API-->>Writer: 200 OK { counter }
+
+            Socket-->>Viewer: Event: 'counter-update'
+            Viewer->>API: GET /counters
+            API-->>Viewer: Current counters
+            Viewer->>Viewer: Merge the snapshot with pending local writes
         end
-
-        Socket-->>Viewer: Event: 'counter-update'
-        Viewer->>Viewer: Store Updates State (UI Refreshes)
-    else Replayed Idempotency Response
-        API-->>Owner: Return original response without re-emitting
     end
-
 ```
+
+Clients treat socket events as a signal to fetch a new snapshot. They do not apply the event payload directly.

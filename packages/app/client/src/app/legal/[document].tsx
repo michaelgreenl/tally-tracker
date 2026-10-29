@@ -85,7 +85,6 @@ const styles = StyleSheet.create({
         alignSelf: 'flex-start',
         marginBottom: 28,
         color: colors.link,
-        fontFamily: fonts.display,
         fontSize: 16,
         fontWeight: '700',
         textDecorationLine: 'underline',

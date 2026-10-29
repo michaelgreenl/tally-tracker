@@ -16,6 +16,7 @@ const { authService } = vi.hoisted(() => ({
 }));
 
 vi.mock('react-native', () => ({ Platform: { OS: 'ios' } }));
+vi.mock('expo-constants', () => ({ default: {} }));
 vi.mock('../../../services/auth/auth.service', () => ({ AuthService: authService }));
 
 describe('restoreSession', () => {

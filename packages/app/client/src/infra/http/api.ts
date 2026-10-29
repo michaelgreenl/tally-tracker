@@ -1,4 +1,5 @@
 import { OK_NO_CONTENT, REQUEST_TIMEOUT, SERVER_ERROR, UNAUTHORIZED } from '@tally/core/client';
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
 import { tokenStorage } from '../storage/token-storage';
@@ -39,7 +40,11 @@ export const getErrorMessage = (error: unknown, fallback = 'Unknown error') =>
 
 const isNative = Platform.OS !== 'web';
 const defaultLocal = Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
-export const API_URL = !isNative && __DEV__ ? '' : process.env.EXPO_PUBLIC_API_URL || defaultLocal;
+const configuredUrl = process.env.EXPO_PUBLIC_API_URL || defaultLocal;
+// A phone reaches the development computer at Metro's address, not at localhost. Only development builds have a hostUri.
+const metroHost = Constants.expoConfig?.hostUri?.replace(/:\d+$/, '');
+export const API_URL =
+    !isNative && __DEV__ ? '' : metroHost ? configuredUrl.replace('://localhost', `://${metroHost}`) : configuredUrl;
 
 let refreshRequest: { scope: SessionScope; promise: Promise<boolean> } | null = null;
 let unauthorizedHandler: (() => void | Promise<void>) | undefined;

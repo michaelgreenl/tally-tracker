@@ -59,17 +59,20 @@ struct WidgetLayoutChecks {
   @MainActor static func main() throws {
     func render(
       _ family: WidgetFamily, title: String = "Water", metric: String?, count: Double = 0,
-      width: Double, height: Double
+      width: Double, height: Double, entry: CounterEntry? = nil,
+      dynamicTypeSize: DynamicTypeSize = .large
     ) -> Pixels {
       let view = CounterWidgetView(
-        entry: CounterEntry(
-          date: .now, owner: "preview",
-          counter:
-            WidgetCounter(
-              id: "preview", title: title, count: count, increment: 16.9, metric: metric)),
+        entry: entry
+          ?? CounterEntry(
+            date: .now, owner: "preview",
+            counter:
+              WidgetCounter(
+                id: "preview", title: title, count: count, increment: 16.9, metric: metric)),
         family: family
       )
       .environment(\.colorScheme, .dark)
+      .environment(\.dynamicTypeSize, dynamicTypeSize)
       .frame(width: width, height: height)
       .background(Color(red: 37 / 255, green: 41 / 255, blue: 46 / 255))
       let renderer = ImageRenderer(content: view)
@@ -83,6 +86,25 @@ struct WidgetLayoutChecks {
       $0 < 40 && $1 > 100 && $1 < 150 && $2 > 130 && $2 < 180
     }
     let cyan: (UInt8, UInt8, UInt8) -> Bool = { $0 > 80 && Int($1) - Int($0) > 60 && $2 > 190 }
+
+    for width in [158.0, 182.0, 188.0] {
+      let empty = CounterEntry(date: .now)
+      let content = render(
+        .systemSmall, metric: nil, width: width, height: width, entry: empty
+      ).bands(matching: neutral)
+      let bounds = content.reduce(CGRect.null) { $0.union($1) }
+      precondition(
+        abs(bounds.midX - width / 2) <= 1 && abs(bounds.midY - width / 2) <= 3,
+        "Empty widget must center its content: \(bounds), size: \(width)")
+      for size in [DynamicTypeSize.xSmall, .accessibility5] {
+        let scaled = render(
+          .systemSmall, metric: nil, width: width, height: width, entry: empty,
+          dynamicTypeSize: size
+        ).bands(matching: neutral)
+        precondition(
+          content == scaled, "Empty widget must keep its size across system font settings")
+      }
+    }
 
     func lockScreenColumns(_ pixels: Pixels) -> (labels: CGRect, count: CGRect) {
       let columns = pixels.bands(along: .horizontal, matching: neutral)

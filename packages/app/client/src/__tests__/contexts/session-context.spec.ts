@@ -18,6 +18,7 @@ const { auth, billing, apiKey, appState, router } = vi.hoisted(() => ({
         cacheUser: vi.fn(),
         clearLocalAuth: vi.fn(),
         login: vi.fn(),
+        register: vi.fn(),
         logout: vi.fn(),
         setAccessToken: vi.fn(),
         setRefreshToken: vi.fn(),
@@ -213,6 +214,23 @@ it('leaves private UI immediately while server logout is pending and reports a f
     expect(router.replace).toHaveBeenCalledWith('/login');
     await act(async () => fail(new Error('Offline')));
     expect(session.notice).not.toBe('');
+});
+
+it('signs a new account in with a remembered native session', async () => {
+    await act(async () => {
+        await session.logout();
+    });
+    const created = { ...basic, id: 'account-new', emailVerified: false };
+    auth.register.mockResolvedValue({ success: true, data: { user: created, refreshToken: 'refresh' } });
+    await act(async () => {
+        await session.register({ email: created.email, password: 'Password1' });
+    });
+    expect(auth.register).toHaveBeenCalledWith(expect.objectContaining({ rememberMe: true }));
+    expect(auth.saveLogin).toHaveBeenCalledWith(
+        expect.objectContaining({ refreshToken: 'refresh' }),
+        getSessionScope(),
+    );
+    expect(session.user).toEqual(created);
 });
 
 it('returns to a usable guest session if a login cannot persist its credentials', async () => {

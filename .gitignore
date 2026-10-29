@@ -17,6 +17,7 @@ coverage
 .env
 .env.*
 !.env.example
+!packages/app/client/.env.production
 
 # Editor directories and files
 .claude/
