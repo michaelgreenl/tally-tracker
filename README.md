@@ -10,6 +10,7 @@
 [![Prisma](https://img.shields.io/badge/Prisma-3982CE?style=for-the-badge&logo=Prisma&logoColor=white)](https://www.prisma.io/) 
 ## Links
 - **💼 [Portfolio Link](https://michaelgreenl.net/projects/tally)**
+- **📱 [App Store](https://apps.apple.com/us/app/tally-counters-more/id6815841261)**
 
 ## Overview
 
