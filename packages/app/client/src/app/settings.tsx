@@ -198,11 +198,12 @@ export default function SettingsScreen() {
                         {Platform.OS !== 'web' && (
                             <Section title='Preferences'>
                                 <View style={[styles.row, styles.lastRow]}>
-                                    <Text aria-hidden style={styles.rowLabel}>
+                                    <Text aria-hidden style={[styles.rowLabel, { flexShrink: 1 }]}>
                                         Haptic feedback
                                     </Text>
                                     <Switch
                                         accessibilityLabel='Haptic feedback'
+                                        style={{ alignSelf: 'center' }}
                                         onValueChange={(value) => {
                                             setHaptics(value);
                                             setHapticsEnabled(value);
