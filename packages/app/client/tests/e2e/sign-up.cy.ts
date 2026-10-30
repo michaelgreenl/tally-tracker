@@ -101,7 +101,7 @@ describe('Sign-up username', () => {
         }
     });
 
-    it('lets an account that skipped verification verify from Home and Settings', () => {
+    it('asks an unverified account to verify once at launch and from Settings', () => {
         const unverified = { ...user, username: 'unverified_user', emailVerified: false };
         cy.intercept('GET', '**/users/check-auth', { body: { success: true, data: { user: unverified } } });
         cy.intercept('GET', '**/counters', { body: { success: true, data: { counters: [] } } });
@@ -110,11 +110,12 @@ describe('Sign-up username', () => {
                 win.localStorage.setItem('auth_user_profile', JSON.stringify(unverified));
             },
         });
-        cy.get('[data-testid="home-verify-email"]').click();
+        cy.get('[data-testid="verify-email-modal-verify"]').click();
         cy.location('pathname').should('eq', '/verify-email');
         cy.get('[data-testid="email-auth-email"]').should('have.value', unverified.email);
         cy.get('[data-testid="email-auth-back"]').filter(':visible').click();
         cy.location('pathname').should('eq', '/home');
+        cy.get('[data-testid="verify-email-modal"]').should('not.exist');
         cy.get('[data-testid="home-settings-link"]').filter(':visible').click();
         cy.get('[data-testid="settings-verify-email"]').filter(':visible').click();
         cy.location('pathname').should('eq', '/verify-email');

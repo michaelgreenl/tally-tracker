@@ -13,6 +13,8 @@ function signIn(username: string): Cypress.Chainable<ClientUser> {
 
 function openHome(user: ClientUser) {
     cy.visit('/home', { onBeforeLoad: (win) => win.localStorage.setItem('auth_user_profile', JSON.stringify(user)) });
+    // New accounts are not verified, so Home asks for verification at each launch.
+    cy.get('[data-testid="verify-email-modal-skip"]').click();
 }
 
 function swipeLeft(memberId: string, distance = 0.4) {

@@ -29,6 +29,8 @@ type SessionContextValue = {
     refreshPurchases: () => Promise<ClientUser>;
     notice: string;
     dismissNotice: () => void;
+    verificationPrompt: boolean;
+    dismissVerificationPrompt: () => void;
 };
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -41,6 +43,9 @@ export function SessionProvider({ children }: PropsWithChildren) {
     const [user, updateUserState] = useState<ClientUser | null>(null);
     const [ready, setReady] = useState(false);
     const [notice, setNotice] = useState('');
+    // Home asks for verification once after app launch and once after each login.
+    // Sign-up continues to the verification screen, so it does not ask.
+    const [promptSessionId, setPromptSessionId] = useState<number>();
     const userRef = useRef<ClientUser | null>(null);
     const setUser = useCallback((value: ClientUser | null) => {
         userRef.current = value;
@@ -85,7 +90,10 @@ export function SessionProvider({ children }: PropsWithChildren) {
 
         void restoreSession()
             .then((restoredUser) => {
-                if (active && scope === getSessionScope()) setUser(restoredUser);
+                if (active && scope === getSessionScope()) {
+                    setUser(restoredUser);
+                    setPromptSessionId(scope.id);
+                }
             })
             .catch(() => {
                 if (active && scope === getSessionScope()) setUser(null);
@@ -147,7 +155,9 @@ export function SessionProvider({ children }: PropsWithChildren) {
 
     async function login(request: AuthRequest | GoogleLoginRequest | AppleLoginRequest): Promise<ActionResult> {
         try {
-            return await startSession(AuthService.login, request, 'Login Failed');
+            const result = await startSession(AuthService.login, request, 'Login Failed');
+            if (result.success) setPromptSessionId(getSessionScope().id);
+            return result;
         } catch (error: unknown) {
             if (
                 error instanceof ApiError &&
@@ -245,6 +255,8 @@ export function SessionProvider({ children }: PropsWithChildren) {
                 refreshPurchases,
                 notice,
                 dismissNotice: () => setNotice(''),
+                verificationPrompt: Boolean(user && !user.emailVerified) && promptSessionId === sessionId,
+                dismissVerificationPrompt: () => setPromptSessionId(undefined),
             }}
         >
             {children}

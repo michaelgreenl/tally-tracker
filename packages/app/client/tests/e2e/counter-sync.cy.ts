@@ -8,6 +8,8 @@ function openAccount(user: ClientUser) {
             win.localStorage.setItem('auth_user_profile', JSON.stringify(user));
         },
     });
+    // New accounts are not verified, so Home asks for verification at each launch.
+    cy.get('[data-testid="verify-email-modal-skip"]').click();
     cy.get('[data-testid="home-sync-synced-icon"]').should('be.visible');
 }
 
@@ -117,6 +119,7 @@ describe('Counter sync recovery', () => {
                 win.localStorage.removeItem('app_counters');
             },
         });
+        cy.get('[data-testid="verify-email-modal-skip"]').click();
         cy.get('[data-testid="home-sync-error-icon"]').should('be.visible');
         cy.then(() => {
             cy.get(`[data-testid="counter-${counterId}-count"]`).should('have.text', '1');

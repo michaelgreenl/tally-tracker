@@ -194,6 +194,7 @@ describe('Counter actions', () => {
             cy.get('[data-testid="auth-email"]').type('basic@example.com');
             cy.get('[data-testid="auth-password"]').type('Password123');
             cy.get('[data-testid="auth-submit"]').click();
+            cy.get('[data-testid="verify-email-modal-skip"]').click();
             cy.get(`[data-testid="counter-${counter.id}-menu"]`).click();
             cy.get(`[data-testid="counter-${counter.id}-share"]`).should('be.enabled').click();
             cy.wait('@forward');
