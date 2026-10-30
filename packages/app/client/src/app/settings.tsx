@@ -1,7 +1,7 @@
 import { Link, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '../theme/colors';
@@ -12,6 +12,7 @@ import { Checkbox } from '../components/shared/checkbox';
 import { SignInMethods } from '../components/settings/sign-in-methods';
 import { Chevron, SettingsAction } from '../components/settings/settings-action';
 import { useSession } from '../contexts/session-context';
+import { hapticsEnabled, setHapticsEnabled } from '../infra/feedback/haptics';
 
 import type { PropsWithChildren } from 'react';
 
@@ -44,6 +45,7 @@ export default function SettingsScreen() {
     const [logoutOpen, setLogoutOpen] = useState(false);
     const [logoutAllDevices, setLogoutAllDevices] = useState(false);
     const [methodsBusy, setMethodsBusy] = useState(false);
+    const [haptics, setHaptics] = useState(hapticsEnabled);
 
     async function deleteAccount() {
         setDeleteLoading(true);
@@ -192,6 +194,26 @@ export default function SettingsScreen() {
                                 />
                             )}
                         </Section>
+
+                        {Platform.OS !== 'web' && (
+                            <Section title='Preferences'>
+                                <View style={[styles.row, styles.lastRow]}>
+                                    <Text aria-hidden style={styles.rowLabel}>
+                                        Haptic feedback
+                                    </Text>
+                                    <Switch
+                                        accessibilityLabel='Haptic feedback'
+                                        onValueChange={(value) => {
+                                            setHaptics(value);
+                                            setHapticsEnabled(value);
+                                        }}
+                                        testID='settings-haptics'
+                                        trackColor={{ true: colors.primary }}
+                                        value={haptics}
+                                    />
+                                </View>
+                            </Section>
+                        )}
 
                         <Section title='Legal'>
                             <Link href='/legal/privacy' asChild>

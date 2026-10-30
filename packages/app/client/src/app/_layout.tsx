@@ -6,11 +6,13 @@ import { ActivityIndicator, Appearance, Platform, StyleSheet, View } from 'react
 import { colors } from '../theme/colors';
 import { CounterProvider } from '../contexts/counter-context';
 import { useAppFonts } from '../hooks/use-app-fonts';
+import { loadHapticsSetting } from '../infra/feedback/haptics';
 import { initSentry, withSentry } from '../infra/monitoring/sentry';
 import { SessionProvider, useSession } from '../contexts/session-context';
 import { Snackbar } from '../components/shared/snackbar';
 
 initSentry();
+void loadHapticsSetting();
 if (Platform.OS !== 'web') Appearance.setColorScheme('dark');
 
 const navigationTheme = {
