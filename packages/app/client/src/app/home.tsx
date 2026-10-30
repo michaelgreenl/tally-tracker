@@ -323,7 +323,7 @@ export default function HomeScreen() {
                     visible={session.verificationPrompt && focused}
                     testID='verify-email-modal'
                     title='Verify your email'
-                    description='You need a verified email to upgrade to Premium or join a shared counter.'
+                    description='You need a verified email to join shared counters and to enable account recovery.'
                 >
                     <View style={styles.modalActions}>
                         <Pressable
@@ -332,7 +332,7 @@ export default function HomeScreen() {
                             style={styles.modalSecondary}
                             testID='verify-email-modal-skip'
                         >
-                            <Text style={styles.modalSecondaryText}>Skip</Text>
+                            <Text style={styles.modalSecondaryText}>Skip for now</Text>
                         </Pressable>
                         <Pressable
                             accessibilityRole='button'
