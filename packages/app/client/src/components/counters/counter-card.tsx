@@ -66,7 +66,11 @@ export function CounterCard({
     ].some((id) => id !== user?.id && onlineUserIds.has(id));
 
     async function share() {
-        if (!canShare || sharing) return;
+        if (sharing) return;
+        if (!canShare) {
+            router.push('/upgrade');
+            return;
+        }
         if (!alreadyShared && !user?.emailVerified) {
             router.push({ pathname: '/verify-email', params: { email: user?.email, returnTo: '/home' } });
             return;

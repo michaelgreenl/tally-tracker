@@ -68,12 +68,6 @@ describe('Expo full-stack counter journey', () => {
             expect(response?.statusCode).to.eq(CREATED);
         });
 
-        cy.then(() => {
-            cy.get(`[data-testid="counter-${counterId}-menu"]`).click();
-            cy.get(`[data-testid="counter-${counterId}-share"]`).should('be.disabled');
-            cy.get(`[data-testid="counter-${counterId}-menu"]`).click();
-        });
-
         cy.intercept('PUT', '**/counters/increment/*').as('incrementCounter');
         cy.then(() => {
             cy.get(`[data-testid="counter-${counterId}-increase"]`).click();
