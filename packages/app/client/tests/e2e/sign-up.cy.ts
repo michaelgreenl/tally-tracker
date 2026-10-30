@@ -121,5 +121,8 @@ describe('Sign-up username', () => {
         cy.location('pathname').should('eq', '/verify-email');
         cy.get('[data-testid="email-auth-back"]').filter(':visible').click();
         cy.location('pathname').should('eq', '/settings');
+        // Cancel returns to the open Settings screen. A new Settings screen would go back to verification.
+        cy.get('[data-testid="settings-back"]').filter(':visible').click();
+        cy.location('pathname').should('eq', '/home');
     });
 });

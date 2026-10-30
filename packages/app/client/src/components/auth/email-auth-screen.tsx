@@ -415,6 +415,7 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
                                                 ? returnTo
                                                 : { pathname: '/login', params: { email, inviteCode } }
                                         }
+                                        dismissTo={resumeSession}
                                         asChild
                                     >
                                         <Pressable
