@@ -28,6 +28,14 @@ export function SettingsAction({ label, tone = 'link', last = false, children, .
     );
 }
 
+export function Chevron() {
+    return (
+        <Text accessible={false} aria-hidden style={styles.chevron}>
+            ›
+        </Text>
+    );
+}
+
 const styles = StyleSheet.create({
     row: {
         minHeight: 54,
@@ -43,6 +51,7 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     label: { fontSize: 15, fontWeight: '700' },
+    chevron: { color: colors.muted, fontSize: 22 },
     last: { borderBottomWidth: 0 },
     pressed: { backgroundColor: colors.input },
 });
