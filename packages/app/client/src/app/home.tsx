@@ -323,7 +323,7 @@ export default function HomeScreen() {
                     visible={session.verificationPrompt && focused}
                     testID='verify-email-modal'
                     title='Verify your email'
-                    description='You need a verified email to join shared counters and to enable account recovery.'
+                    description='You need a verified email to join shared counters.'
                 >
                     <View style={styles.modalActions}>
                         <Pressable
