@@ -38,13 +38,42 @@ describe('Counter actions', () => {
         });
     });
 
-    it('keeps guest sharing disabled while edit and delete work through the menu', () => {
+    it('opens upgrade from premium sharing for a Basic account', () => {
+        const user = {
+            id: 'basic-menu-user',
+            username: 'basic_user',
+            email: 'basic@example.com',
+            tier: 'BASIC',
+            emailVerified: false,
+        };
+        const counter = {
+            id: crypto.randomUUID(),
+            userId: user.id,
+            title: 'Upgrade counter',
+            count: 0,
+            type: 'PERSONAL',
+            inviteCode: null,
+            color: '#000000',
+        };
+        cy.intercept('GET', '**/users/check-auth', { body: { success: true, data: { user } } });
+        cy.intercept('GET', '**/counters', { body: { success: true, data: { counters: [counter] } } });
+        cy.visit('/home', {
+            onBeforeLoad(win) {
+                win.localStorage.setItem('auth_user_profile', JSON.stringify(user));
+            },
+        });
+        cy.get('[data-testid="verify-email-modal-skip"]').click();
+        cy.get(`[data-testid="counter-${counter.id}-menu"]`).click();
+        cy.get(`[data-testid="counter-${counter.id}-share"]`).click();
+        cy.location('pathname').should('eq', '/upgrade');
+    });
+
+    it('edits and deletes guest counters through the menu', () => {
         cy.visit('/home');
         cy.get('[data-testid="add-counter-button"]').click();
         cy.get('[data-testid="counter-title"]').type('Menu counter');
         cy.get('[data-testid="counter-form-submit"]').click();
         cy.get('[data-testid^="counter-"][data-testid$="-menu"]').click();
-        cy.get('[data-testid^="counter-"][data-testid$="-share"]').should('be.visible').and('be.disabled');
         cy.get('[data-testid^="counter-"][data-testid$="-edit"]').click();
         cy.get('[data-testid="counter-title"]').clear().type('Edited counter');
         cy.get('[data-testid="counter-form-submit"]').click();
@@ -194,6 +223,7 @@ describe('Counter actions', () => {
             cy.get('[data-testid="auth-email"]').type('basic@example.com');
             cy.get('[data-testid="auth-password"]').type('Password123');
             cy.get('[data-testid="auth-submit"]').click();
+            cy.get('[data-testid="verify-email-modal-skip"]').click();
             cy.get(`[data-testid="counter-${counter.id}-menu"]`).click();
             cy.get(`[data-testid="counter-${counter.id}-share"]`).should('be.enabled').click();
             cy.wait('@forward');

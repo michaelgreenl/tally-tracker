@@ -1,4 +1,4 @@
-import { Link, Redirect, useRouter } from 'expo-router';
+import { Link, Redirect, useIsFocused, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { useNetworkState } from 'expo-network';
 import { useState } from 'react';
@@ -26,6 +26,7 @@ import type { ClientCounter } from '@tally/core/client';
 
 export default function HomeScreen() {
     const router = useRouter();
+    const focused = useIsFocused();
     const network = useNetworkState();
     const session = useSession();
     const counterState = useCounters();
@@ -167,32 +168,6 @@ export default function HomeScreen() {
                         </Link>
                     )}
                 </View>
-
-                {session.user && !session.user.emailVerified && !reordering && (
-                    <View style={styles.verifyBanner}>
-                        <View style={styles.verifyBannerBody}>
-                            <Text style={styles.verifyBannerText}>
-                                Verify your email to share counters and upgrade.
-                            </Text>
-                            <Link
-                                href={{
-                                    pathname: '/verify-email',
-                                    params: { email: session.user.email, returnTo: '/home' },
-                                }}
-                                asChild
-                            >
-                                <Pressable
-                                    accessibilityRole='link'
-                                    hitSlop={8}
-                                    style={({ pressed }) => pressed && styles.verifyBannerPressed}
-                                    testID='home-verify-email'
-                                >
-                                    <Text style={styles.verifyBannerLink}>Verify</Text>
-                                </Pressable>
-                            </Link>
-                        </View>
-                    </View>
-                )}
 
                 <CounterList
                     counters={reorderDraft ? orderCounters(counterState.counters, reorderDraft) : counterState.counters}
@@ -342,6 +317,39 @@ export default function HomeScreen() {
                         </Pressable>
                     </View>
                 </Dialog>
+
+                <Dialog
+                    onRequestClose={session.dismissVerificationPrompt}
+                    visible={session.verificationPrompt && focused}
+                    testID='verify-email-modal'
+                    title='Verify your email'
+                    description='You need a verified email to join shared counters.'
+                >
+                    <View style={styles.modalActions}>
+                        <Pressable
+                            accessibilityRole='button'
+                            onPress={session.dismissVerificationPrompt}
+                            style={styles.modalSecondary}
+                            testID='verify-email-modal-skip'
+                        >
+                            <Text style={styles.modalSecondaryText}>Skip for now</Text>
+                        </Pressable>
+                        <Pressable
+                            accessibilityRole='button'
+                            onPress={() => {
+                                session.dismissVerificationPrompt();
+                                router.push({
+                                    pathname: '/verify-email',
+                                    params: { email: session.user?.email, returnTo: '/home' },
+                                });
+                            }}
+                            style={styles.modalPrimary}
+                            testID='verify-email-modal-verify'
+                        >
+                            <Text style={styles.modalPrimaryText}>Verify</Text>
+                        </Pressable>
+                    </View>
+                </Dialog>
                 <Snackbar message={notice} onDismiss={() => setNotice('')} />
             </SafeAreaView>
         </>
@@ -395,35 +403,6 @@ const styles = StyleSheet.create({
         color: colors.onPrimary,
         fontSize: 14,
         fontWeight: '700',
-    },
-    verifyBanner: {
-        width: '100%',
-        maxWidth: 720,
-        alignSelf: 'center',
-        paddingHorizontal: 20,
-        paddingBottom: 16,
-    },
-    verifyBannerBody: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        padding: 14,
-        borderRadius: 16,
-        backgroundColor: colors.warningSurface,
-    },
-    verifyBannerText: {
-        flex: 1,
-        color: colors.text,
-        fontSize: 14,
-        lineHeight: 20,
-    },
-    verifyBannerLink: {
-        color: colors.warning,
-        fontSize: 14,
-        fontWeight: '700',
-    },
-    verifyBannerPressed: {
-        opacity: 0.7,
     },
     bottomActions: {
         position: 'absolute',

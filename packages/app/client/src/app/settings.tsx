@@ -1,7 +1,7 @@
 import { Link, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '../theme/colors';
@@ -10,8 +10,9 @@ import { BackButton } from '../components/shared/back-button';
 import { Dialog } from '../components/shared/dialog';
 import { Checkbox } from '../components/shared/checkbox';
 import { SignInMethods } from '../components/settings/sign-in-methods';
-import { SettingsAction } from '../components/settings/settings-action';
+import { Chevron, SettingsAction } from '../components/settings/settings-action';
 import { useSession } from '../contexts/session-context';
+import { hapticsEnabled, setHapticsEnabled } from '../infra/feedback/haptics';
 
 import type { PropsWithChildren } from 'react';
 
@@ -44,6 +45,7 @@ export default function SettingsScreen() {
     const [logoutOpen, setLogoutOpen] = useState(false);
     const [logoutAllDevices, setLogoutAllDevices] = useState(false);
     const [methodsBusy, setMethodsBusy] = useState(false);
+    const [haptics, setHaptics] = useState(hapticsEnabled);
 
     async function deleteAccount() {
         setDeleteLoading(true);
@@ -101,11 +103,15 @@ export default function SettingsScreen() {
                                                 {({ pressed }) => (
                                                     <View style={[styles.detailRow, pressed && styles.rowPressed]}>
                                                         <View style={styles.detailCopy}>
-                                                            <Text style={styles.rowLabel}>Email</Text>
+                                                            <View style={styles.labelRow}>
+                                                                <Text style={styles.rowLabel}>Email</Text>
+                                                                <View style={styles.badge}>
+                                                                    <Text style={styles.badgeText}>Not verified</Text>
+                                                                </View>
+                                                            </View>
                                                             <Text style={styles.guestCopy}>{session.user?.email}</Text>
-                                                            <Text style={styles.unverified}>Not verified</Text>
                                                         </View>
-                                                        <Text style={styles.verifyAction}>Verify</Text>
+                                                        <Chevron />
                                                     </View>
                                                 )}
                                             </Pressable>
@@ -169,6 +175,7 @@ export default function SettingsScreen() {
                                                         : 'Sign in to view subscription status'}
                                                 </Text>
                                             </View>
+                                            <Chevron />
                                         </View>
                                     )}
                                 </Pressable>
@@ -187,6 +194,27 @@ export default function SettingsScreen() {
                                 />
                             )}
                         </Section>
+
+                        {Platform.OS !== 'web' && (
+                            <Section title='Preferences'>
+                                <View style={[styles.row, styles.lastRow]}>
+                                    <Text aria-hidden style={[styles.rowLabel, { flexShrink: 1 }]}>
+                                        Haptic feedback
+                                    </Text>
+                                    <Switch
+                                        accessibilityLabel='Haptic feedback'
+                                        style={{ alignSelf: 'center' }}
+                                        onValueChange={(value) => {
+                                            setHaptics(value);
+                                            setHapticsEnabled(value);
+                                        }}
+                                        testID='settings-haptics'
+                                        trackColor={{ true: colors.primary }}
+                                        value={haptics}
+                                    />
+                                </View>
+                            </Section>
+                        )}
 
                         <Section title='Legal'>
                             <Link href='/legal/privacy' asChild>
@@ -426,14 +454,20 @@ const styles = StyleSheet.create({
         flex: 1,
         gap: 4,
     },
-    unverified: {
-        color: colors.warning,
-        fontSize: 13,
-        fontWeight: '700',
+    labelRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
     },
-    verifyAction: {
-        color: colors.link,
-        fontSize: 14,
+    badge: {
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        backgroundColor: colors.warningSurface,
+        borderRadius: 999,
+    },
+    badgeText: {
+        color: colors.warning,
+        fontSize: 12,
         fontWeight: '700',
     },
     deleteError: {

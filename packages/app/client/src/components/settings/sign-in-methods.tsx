@@ -11,7 +11,7 @@ import { AppleSignIn } from '../auth/apple-sign-in';
 import { GoogleSignIn } from '../auth/google-sign-in';
 import { Dialog } from '../shared/dialog';
 import { MessageText } from '../shared/message-text';
-import { SettingsAction } from './settings-action';
+import { Chevron, SettingsAction } from './settings-action';
 
 type Props = { disabled: boolean; onBusyChange: (busy: boolean) => void };
 
@@ -28,9 +28,7 @@ export function SignInMethods({ disabled, onBusyChange }: Props) {
                 onPress={() => setOpen(true)}
                 testID='settings-sign-in-methods'
             >
-                <Text accessible={false} aria-hidden style={styles.chevron}>
-                    ›
-                </Text>
+                <Chevron />
             </SettingsAction>
             {open && <MethodsDialog onClose={() => setOpen(false)} onBusyChange={onBusyChange} />}
         </>
@@ -198,7 +196,6 @@ function Connected({ provider }: { provider: 'Google' | 'Apple' }) {
 
 const styles = StyleSheet.create({
     label: { color: colors.text, fontSize: 15, fontWeight: '700' },
-    chevron: { color: colors.muted, fontSize: 22 },
     methods: { gap: 12 },
     connected: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
     unavailable: { color: colors.muted, fontSize: 15, flexShrink: 1 },

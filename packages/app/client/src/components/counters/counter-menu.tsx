@@ -32,7 +32,7 @@ export function CounterMenu({
                 {
                     id: 'share',
                     label: !canShare ? 'Share (Premium)' : busy ? 'Sharing…' : 'Share',
-                    disabled: !canShare || busy,
+                    disabled: busy,
                     onPress: () => onAction('share'),
                 },
                 {

@@ -68,12 +68,6 @@ describe('Expo full-stack counter journey', () => {
             expect(response?.statusCode).to.eq(CREATED);
         });
 
-        cy.then(() => {
-            cy.get(`[data-testid="counter-${counterId}-menu"]`).click();
-            cy.get(`[data-testid="counter-${counterId}-share"]`).should('be.disabled');
-            cy.get(`[data-testid="counter-${counterId}-menu"]`).click();
-        });
-
         cy.intercept('PUT', '**/counters/increment/*').as('incrementCounter');
         cy.then(() => {
             cy.get(`[data-testid="counter-${counterId}-increase"]`).click();
@@ -144,6 +138,8 @@ describe('Expo full-stack counter journey', () => {
             },
         });
         cy.wait('@refreshUnavailable').its('response.statusCode').should('eq', 503);
+        // Each visit is a new launch, so Home asks the unverified account again.
+        cy.get('[data-testid="verify-email-modal-skip"]').click();
         cy.get('[data-testid="home-settings-link"]').click();
         cy.get('[data-testid="settings-logout"]').should('be.visible');
         cy.visit('/home', {
@@ -160,6 +156,7 @@ describe('Expo full-stack counter journey', () => {
         });
 
         cy.intercept('DELETE', '**/users').as('deleteAccount');
+        cy.get('[data-testid="verify-email-modal-skip"]').click();
         cy.get('[data-testid="home-settings-link"]').click();
         cy.location('pathname').should('eq', '/settings');
         cy.get('[data-testid="settings-delete-account"]').click();

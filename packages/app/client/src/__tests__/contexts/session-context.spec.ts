@@ -249,3 +249,33 @@ it('returns to a usable guest session if a login cannot persist its credentials'
     expect(getSessionScope().signal.aborted).toBe(false);
     expect(auth.clearLocalAuth).toHaveBeenCalledWith(getSessionScope());
 });
+
+it('asks to verify once after launch and once after login, but not after sign-up', async () => {
+    const unverified = { ...basic, emailVerified: false };
+    await act(async () => root.unmount());
+    auth.getCachedUser.mockResolvedValue(unverified);
+    auth.checkAuth.mockResolvedValue({ success: true, data: { user: unverified } });
+    root = createRoot(document.createElement('div'));
+    await act(async () => root.render(createElement(SessionProvider, null, createElement(Probe))));
+    expect(session.verificationPrompt).toBe(true);
+    await act(async () => session.dismissVerificationPrompt());
+    expect(session.verificationPrompt).toBe(false);
+
+    await act(async () => {
+        await session.logout();
+    });
+    auth.register.mockResolvedValue({ success: true, data: { user: unverified } });
+    await act(async () => {
+        await session.register({ email: unverified.email, password: 'Password1' });
+    });
+    expect(session.verificationPrompt).toBe(false);
+
+    await act(async () => {
+        await session.logout();
+    });
+    auth.login.mockResolvedValue({ success: true, data: { user: unverified } });
+    await act(async () => {
+        await session.login({ email: unverified.email, password: 'Password1' });
+    });
+    expect(session.verificationPrompt).toBe(true);
+});
