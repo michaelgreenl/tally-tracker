@@ -8,7 +8,7 @@ The lockfile includes fixes for the runtime socket parser, engine, request parse
 
 Three overrides cross an upstream dependency range:
 
-- `decode-uri-component@0.5.0` replaces a recursive decoder with the upstream security fix. Expo Router still uses CommonJS `query-string@7.1.3`. Its one-line patch reads the new decoder's default export. Remove this patch and override when Expo Router selects a fixed, compatible dependency chain. The route-parameter test covers this module boundary. [Upstream advisory](https://github.com/SamVerschueren/decode-uri-component/security/advisories/GHSA-vcc3-ghjq-m6fr).
+- `decode-uri-component@0.5.1` fixes recursive decoding and repeated scans of malformed URLs. Expo Router still uses CommonJS `query-string@7.1.3`. Its one-line patch reads the new decoder's default export. Remove this patch and override when Expo Router selects a fixed, compatible dependency chain. The route-parameter test covers this module boundary. [Recursion advisory](https://github.com/SamVerschueren/decode-uri-component/security/advisories/GHSA-vcc3-ghjq-m6fr), [repeated-scan advisory](https://github.com/SamVerschueren/decode-uri-component/security/advisories/GHSA-qr28-fpjm-wq7f).
 - `deepmerge-ts@8.0.2` fixes recursive-object handling. Prisma uses its `deepmerge` export for configuration. Remove the override when Prisma selects version 8 or later. Check Prisma generation and schema validation after updates.
 - `image-size@2.0.4` fixes image-parser loops in the older Metro dependency tree. That caller supplies a buffer, which the new API supports. It does not use the removed file-path API. Remove the override when React Native selects a fixed dependency. Check asset parsing and platform exports after updates.
 
