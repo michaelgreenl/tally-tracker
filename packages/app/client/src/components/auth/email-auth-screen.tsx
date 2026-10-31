@@ -281,7 +281,7 @@ export function EmailAuthScreen({ mode }: EmailAuthScreenProps) {
                                     onChangeText={setCode}
                                     onSubmitEditing={Keyboard.dismiss}
                                     ref={codeInputRef}
-                                    returnKeyType='done'
+                                    returnKeyType={Platform.OS === 'ios' ? 'default' : 'done'}
                                     testID='email-auth-code'
                                     textContentType='oneTimeCode'
                                     value={code}
